@@ -1,6 +1,9 @@
 meta:
   id: id_018__proxford__operation__contents_list
   endian: be
+  imports:
+  - block_header__shell
+  - operation__shell_header
 doc: ! 'Encoding id: 018-Proxford.operation.contents_list'
 types:
   activate_account:
@@ -23,12 +26,16 @@ types:
       size: len_arbitrary
   args:
     seq:
+    - id: args_entries
+      type: args_entries
+      repeat: eos
+  args_0:
+    seq:
     - id: len_args
       type: s4
     - id: args
-      type: args_entries
+      type: args
       size: len_args
-      repeat: eos
   args_entries:
     seq:
     - id: args_elt
@@ -37,6 +44,7 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: period
       type: s4
     - id: proposal
@@ -45,17 +53,25 @@ types:
       type: s1
   bh1:
     seq:
+    - id: id_018__proxford__block_header__alpha__full_header
+      type: id_018__proxford__block_header__alpha__full_header
+  bh1_0:
+    seq:
     - id: len_bh1
       type: s4
     - id: bh1
-      type: id_018__proxford__block_header__alpha__full_header
+      type: bh1
       size: len_bh1
   bh2:
+    seq:
+    - id: id_018__proxford__block_header__alpha__full_header
+      type: id_018__proxford__block_header__alpha__full_header
+  bh2_0:
     seq:
     - id: len_bh2
       type: s4
     - id: bh2
-      type: id_018__proxford__block_header__alpha__full_header
+      type: bh2
       size: len_bh2
   bytes:
     seq:
@@ -65,12 +81,16 @@ types:
       size: len_bytes
   circuits_info:
     seq:
+    - id: circuits_info_entries
+      type: circuits_info_entries
+      repeat: eos
+  circuits_info_0:
+    seq:
     - id: len_circuits_info
       type: s4
     - id: circuits_info
-      type: circuits_info_entries
+      type: circuits_info
       size: len_circuits_info
-      repeat: eos
   circuits_info_elt_field0:
     seq:
     - id: len_circuits_info_elt_field0
@@ -111,6 +131,7 @@ types:
     seq:
     - id: attestor
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: attestation
       type: z
     - id: level
@@ -133,8 +154,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -147,8 +169,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -161,14 +184,19 @@ types:
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   dissection:
+    seq:
+    - id: dissection_entries
+      type: dissection_entries
+      repeat: eos
+  dissection_0:
     seq:
     - id: len_dissection
       type: s4
     - id: dissection
-      type: dissection_entries
+      type: dissection
       size: len_dissection
-      repeat: eos
   dissection_entries:
     seq:
     - id: state_tag
@@ -182,29 +210,52 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   drain_delegate:
     seq:
     - id: consensus_key
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: delegate
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: destination
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   entrypoint:
     seq:
     - id: len_entrypoint
@@ -238,12 +289,8 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: per_block_votes
-      type: u1
-      enum: id_018__proxford__per_block_votes_tag
+      type: id_018__proxford__per_block_votes
   id_018__proxford__contract_id:
-    doc: ! >-
-      A contract handle: A contract notation as given to an RPC or inside scripts.
-      Can be a base58 implicit contract hash or a base58 originated contract hash.
     seq:
     - id: id_018__proxford__contract_id_tag
       type: u1
@@ -251,13 +298,11 @@ types:
     - id: implicit
       type: public_key_hash
       if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: originated
       type: originated
       if: (id_018__proxford__contract_id_tag == id_018__proxford__contract_id_tag::originated)
   id_018__proxford__contract_id__originated:
-    doc: ! >-
-      A contract handle -- originated account: A contract notation as given to an
-      RPC or inside scripts. Can be a base58 originated contract hash.
     seq:
     - id: id_018__proxford__contract_id__originated_tag
       type: u1
@@ -266,13 +311,12 @@ types:
       type: originated
       if: (id_018__proxford__contract_id__originated_tag == id_018__proxford__contract_id__originated_tag::originated)
   id_018__proxford__entrypoint:
-    doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     seq:
     - id: id_018__proxford__entrypoint_tag
       type: u1
       enum: id_018__proxford__entrypoint_tag
     - id: named
-      type: named
+      type: named_0
       if: (id_018__proxford__entrypoint_tag == id_018__proxford__entrypoint_tag::named)
   id_018__proxford__inlined__endorsement:
     seq:
@@ -292,7 +336,7 @@ types:
       type: u1
       enum: id_018__proxford__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: preendorsement
+      type: endorsement_0
       if: (id_018__proxford__inlined__endorsement_mempool__contents_tag == id_018__proxford__inlined__endorsement_mempool__contents_tag::endorsement)
   id_018__proxford__inlined__preendorsement:
     seq:
@@ -312,8 +356,17 @@ types:
       type: u1
       enum: id_018__proxford__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: preendorsement
+      type: preendorsement_0
       if: (id_018__proxford__inlined__preendorsement__contents_tag == id_018__proxford__inlined__preendorsement__contents_tag::preendorsement)
+  id_018__proxford__michelson__v1__primitives:
+    seq:
+    - id: id_018__proxford__michelson__v1__primitives
+      type: u1
+      enum: id_018__proxford__michelson__v1__primitives
+  id_018__proxford__mutez:
+    seq:
+    - id: id_018__proxford__mutez
+      type: n
   id_018__proxford__operation__contents_list_entries:
     seq:
     - id: id_018__proxford__operation_with_legacy_attestation_name__alpha__contents
@@ -328,7 +381,7 @@ types:
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::preendorsement)
     - id: endorsement
-      type: preendorsement
+      type: endorsement
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::endorsement)
     - id: double_preendorsement_evidence
@@ -360,7 +413,7 @@ types:
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals_
+      type: proposals_1
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::proposals)
     - id: ballot
@@ -455,6 +508,11 @@ types:
       type: zk_rollup_update
       if: (id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag
         == id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag::zk_rollup_update)
+  id_018__proxford__per_block_votes:
+    seq:
+    - id: id_018__proxford__per_block_votes_tag
+      type: u1
+      enum: id_018__proxford__per_block_votes_tag
   id_018__proxford__scripted__contracts:
     seq:
     - id: code
@@ -473,8 +531,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -485,14 +544,21 @@ types:
       type: z
     - id: destination
       type: id_018__proxford__contract_id__originated
+      doc: ! >-
+        A contract handle -- originated account: A contract notation as given to an
+        RPC or inside scripts. Can be a base58 originated contract hash.
   init_state:
+    seq:
+    - id: init_state_entries
+      type: init_state_entries
+      repeat: eos
+  init_state_0:
     seq:
     - id: len_init_state
       type: s4
     - id: init_state
-      type: init_state_entries
+      type: init_state
       size: len_init_state
-      repeat: eos
   init_state_entries:
     seq:
     - id: init_state_elt
@@ -516,12 +582,16 @@ types:
       size: len_kernel
   message:
     seq:
+    - id: message_entries
+      type: message_entries
+      repeat: eos
+  message_0:
+    seq:
     - id: len_message
       type: s4
     - id: message
-      type: message_entries
+      type: message
       size: len_message
-      repeat: eos
   message_entries:
     seq:
     - id: len_message_elt
@@ -540,12 +610,11 @@ types:
       type: string
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::string)
     - id: sequence
-      type: sequence
+      type: sequence_0
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_018__proxford__michelson__v1__primitives
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_018__proxford__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__018__proxford__michelson_v1__expression_tag == micheline__018__proxford__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -587,59 +656,87 @@ types:
       type: b7be
   named:
     seq:
+    - id: named
+      size-eos: true
+  named_0:
+    seq:
     - id: len_named
       type: u1
     - id: named
+      type: named
       size: len_named
-      size-eos: true
   new_state:
+    seq:
+    - id: new_state_entries
+      type: new_state_entries
+      repeat: eos
+  new_state_0:
     seq:
     - id: len_new_state
       type: s4
     - id: new_state
-      type: new_state_entries
+      type: new_state
       size: len_new_state
-      repeat: eos
   new_state_entries:
     seq:
     - id: new_state_elt
       size: 32
   op:
     seq:
-    - id: len_op
-      type: s4
-    - id: op
+    - id: op_entries
       type: op_entries
-      size: len_op
       repeat: eos
   op1:
     seq:
-    - id: len_op1
-      type: s4
-    - id: op1
+    - id: id_018__proxford__inlined__preendorsement
       type: id_018__proxford__inlined__preendorsement
-      size: len_op1
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: s4
     - id: op1
+      type: op1
+      size: len_op1
+  op1_1:
+    seq:
+    - id: id_018__proxford__inlined__endorsement
       type: id_018__proxford__inlined__endorsement
+  op1_2:
+    seq:
+    - id: len_op1
+      type: s4
+    - id: op1
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: s4
-    - id: op2
+    - id: id_018__proxford__inlined__preendorsement
       type: id_018__proxford__inlined__preendorsement
-      size: len_op2
-  op2_:
+  op2_0:
     seq:
     - id: len_op2
       type: s4
     - id: op2
-      type: id_018__proxford__inlined__endorsement
+      type: op2
       size: len_op2
+  op2_1:
+    seq:
+    - id: id_018__proxford__inlined__endorsement
+      type: id_018__proxford__inlined__endorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: s4
+    - id: op2
+      type: op2_1
+      size: len_op2
+  op_0:
+    seq:
+    - id: len_op
+      type: s4
+    - id: op
+      type: op
+      size: len_op
   op_elt_field0:
     seq:
     - id: op_code
@@ -648,10 +745,11 @@ types:
       type: price
     - id: l1_dst
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: rollup_id
       size: 20
     - id: payload
-      type: payload
+      type: payload_0
   op_elt_field1:
     seq:
     - id: op_elt_field1_tag
@@ -677,8 +775,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -686,13 +785,14 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_018__proxford__mutez
     - id: delegate_tag
       type: u1
       enum: bool
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: script
       type: id_018__proxford__scripted__contracts
   output_proof:
@@ -705,6 +805,7 @@ types:
     seq:
     - id: entrypoint
       type: id_018__proxford__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
       type: value
   parameters_ty:
@@ -715,24 +816,32 @@ types:
       size: len_parameters_ty
   payload:
     seq:
+    - id: payload_entries
+      type: payload_entries
+      repeat: eos
+  payload_0:
+    seq:
     - id: len_payload
       type: s4
     - id: payload
-      type: payload_entries
+      type: payload
       size: len_payload
-      repeat: eos
   payload_entries:
     seq:
     - id: payload_elt
       size: 32
   pending_pis:
     seq:
+    - id: pending_pis_entries
+      type: pending_pis_entries
+      repeat: eos
+  pending_pis_0:
+    seq:
     - id: len_pending_pis
       type: s4
     - id: pending_pis
-      type: pending_pis_entries
+      type: pending_pis
       size: len_pending_pis
-      repeat: eos
   pending_pis_elt_field0:
     seq:
     - id: len_pending_pis_elt_field0
@@ -742,7 +851,7 @@ types:
   pending_pis_elt_field1:
     seq:
     - id: new_state
-      type: new_state
+      type: new_state_0
     - id: fee
       size: 32
     - id: exit_validity
@@ -764,6 +873,16 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   price:
     seq:
     - id: id
@@ -773,15 +892,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_018__proxford__michelson__v1__primitives
+      type: id_018__proxford__michelson__v1__primitives
     - id: arg
       type: micheline__018__proxford__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_018__proxford__michelson__v1__primitives
+      type: id_018__proxford__michelson__v1__primitives
     - id: arg
       type: micheline__018__proxford__michelson_v1__expression
     - id: annots
@@ -789,8 +906,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_018__proxford__michelson__v1__primitives
+      type: id_018__proxford__michelson__v1__primitives
     - id: arg1
       type: micheline__018__proxford__michelson_v1__expression
     - id: arg2
@@ -798,8 +914,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_018__proxford__michelson__v1__primitives
+      type: id_018__proxford__michelson__v1__primitives
     - id: arg1
       type: micheline__018__proxford__michelson_v1__expression
     - id: arg2
@@ -809,27 +924,29 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_018__proxford__michelson__v1__primitives
+      type: id_018__proxford__michelson__v1__primitives
     - id: args
-      type: args
+      type: args_0
     - id: annots
       type: annots
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_018__proxford__michelson__v1__primitives
+      type: id_018__proxford__michelson__v1__primitives
     - id: annots
       type: annots
   private_pis:
     seq:
+    - id: private_pis_entries
+      type: private_pis_entries
+      repeat: eos
+  private_pis_0:
+    seq:
     - id: len_private_pis
       type: s4
     - id: private_pis
-      type: private_pis_entries
+      type: private_pis
       size: len_private_pis
-      repeat: eos
   private_pis_elt_field0:
     seq:
     - id: len_private_pis_elt_field0
@@ -839,7 +956,7 @@ types:
   private_pis_elt_field1:
     seq:
     - id: new_state
-      type: new_state
+      type: new_state_0
     - id: fee
       size: 32
   private_pis_entries:
@@ -858,7 +975,7 @@ types:
     - id: input_proof
       type: input_proof
       if: (input_proof_tag == bool::true)
-  proof_:
+  proof_0:
     seq:
     - id: len_proof
       type: s4
@@ -866,26 +983,30 @@ types:
       size: len_proof
   proposals:
     seq:
+    - id: proposals_entries
+      type: proposals_entries
+      repeat: eos
+  proposals_0:
+    seq:
     - id: len_proposals
       type: s4
     - id: proposals
-      type: proposals_entries
+      type: proposals
       size: len_proposals
-      repeat: eos
-  proposals_:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: period
       type: s4
     - id: proposals
-      type: proposals
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
   public_key:
-    doc: A Ed25519, Secp256k1, or P256 public key
     seq:
     - id: public_key_tag
       type: u1
@@ -903,7 +1024,6 @@ types:
       size: 48
       if: (public_key_tag == public_key_tag::bls)
   public_key_hash:
-    doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -934,11 +1054,15 @@ types:
       size: len_pvm_step
   raw_data:
     seq:
+    - id: raw_data
+      size-eos: true
+  raw_data_0:
+    seq:
     - id: len_raw_data
       type: u2
     - id: raw_data
+      type: raw_data
       size: len_raw_data
-      size-eos: true
   refutation:
     seq:
     - id: refutation_tag
@@ -954,8 +1078,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -968,8 +1093,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -978,13 +1104,14 @@ types:
       type: n
     - id: public_key
       type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
   reveal_proof:
     seq:
     - id: reveal_proof_tag
       type: u1
       enum: reveal_proof_tag
     - id: raw__data__proof
-      type: raw_data
+      type: raw_data_0
       if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
     - id: dal__page__proof
       type: dal__page__proof
@@ -997,12 +1124,16 @@ types:
       size: 32
   sequence:
     seq:
+    - id: sequence_entries
+      type: sequence_entries
+      repeat: eos
+  sequence_0:
+    seq:
     - id: len_sequence
       type: s4
     - id: sequence
-      type: sequence_entries
+      type: sequence
       size: len_sequence
-      repeat: eos
   sequence_entries:
     seq:
     - id: sequence_elt
@@ -1025,8 +1156,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1034,13 +1166,14 @@ types:
     - id: storage_limit
       type: n
     - id: message
-      type: message
+      type: message_0
   smart_rollup_cement:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1053,8 +1186,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1071,8 +1205,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1090,8 +1225,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1106,8 +1242,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1118,12 +1255,14 @@ types:
       size: 20
     - id: staker
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   smart_rollup_refute:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1134,14 +1273,16 @@ types:
       size: 20
     - id: opponent
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: refutation
       type: refutation
   smart_rollup_timeout:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1166,12 +1307,17 @@ types:
       type: micheline__018__proxford__michelson_v1__expression
     - id: ticketer
       type: id_018__proxford__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
   stakers:
     seq:
     - id: alice
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: bob
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   start:
     seq:
     - id: player_commitment_hash
@@ -1184,7 +1330,7 @@ types:
       type: u1
       enum: step_tag
     - id: dissection
-      type: dissection
+      type: dissection_0
       if: (step_tag == step_tag::dissection)
     - id: proof
       type: proof
@@ -1217,8 +1363,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1226,9 +1373,12 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_018__proxford__mutez
     - id: destination
       type: id_018__proxford__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: parameters_tag
       type: u1
       enum: bool
@@ -1239,8 +1389,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1253,28 +1404,35 @@ types:
       type: ticket_ty
     - id: ticket_ticketer
       type: id_018__proxford__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: ticket_amount
       type: n
     - id: destination
       type: id_018__proxford__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: entrypoint
   update:
     seq:
     - id: pending_pis
-      type: pending_pis
+      type: pending_pis_0
     - id: private_pis
-      type: private_pis
+      type: private_pis_0
     - id: fee_pi
-      type: new_state
+      type: new_state_0
     - id: proof
-      type: proof_
+      type: proof_0
   update_consensus_key:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1283,6 +1441,7 @@ types:
       type: n
     - id: pk
       type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
   value:
     seq:
     - id: len_value
@@ -1306,8 +1465,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1317,17 +1477,18 @@ types:
     - id: public_parameters
       type: public_parameters
     - id: circuits_info
-      type: circuits_info
+      type: circuits_info_0
     - id: init_state
-      type: init_state
+      type: init_state_0
     - id: nb_ops
       type: s4
   zk_rollup_publish:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1337,13 +1498,14 @@ types:
     - id: zk_rollup
       size: 20
     - id: op
-      type: op
+      type: op_0
   zk_rollup_update:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_018__proxford__mutez
     - id: counter
       type: n
     - id: gas_limit

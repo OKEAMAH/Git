@@ -12,9 +12,6 @@ types:
       size: 20
       if: (alpha__bond_id_tag == alpha__bond_id_tag::smart_rollup_bond_id)
   alpha__contract_id:
-    doc: ! >-
-      A contract handle: A contract notation as given to an RPC or inside scripts.
-      Can be a base58 implicit contract hash or a base58 originated contract hash.
     seq:
     - id: alpha__contract_id_tag
       type: u1
@@ -22,6 +19,7 @@ types:
     - id: implicit
       type: public_key_hash
       if: (alpha__contract_id_tag == alpha__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: originated
       type: originated
       if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
@@ -34,61 +32,61 @@ types:
       type: contract
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::contract)
     - id: block_fees
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::block_fees)
     - id: deposits
       type: deposits
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::deposits)
     - id: nonce_revelation_rewards
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::nonce_revelation_rewards)
     - id: attesting_rewards
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::attesting_rewards)
     - id: baking_rewards
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::baking_rewards)
     - id: baking_bonuses
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::baking_bonuses)
     - id: storage_fees
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::storage_fees)
     - id: double_signing_punishments
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::double_signing_punishments)
     - id: lost_attesting_rewards
       type: lost_attesting_rewards
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::lost_attesting_rewards)
     - id: liquidity_baking_subsidies
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::liquidity_baking_subsidies)
     - id: burned
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::burned)
     - id: commitments
       type: commitments
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::commitments)
     - id: bootstrap
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::bootstrap)
     - id: invoice
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::invoice)
     - id: initial_commitments
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::initial_commitments)
     - id: minted
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::minted)
     - id: frozen_bonds
       type: frozen_bonds
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::frozen_bonds)
     - id: smart_rollup_refutation_punishments
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::smart_rollup_refutation_punishments)
     - id: smart_rollup_refutation_rewards
-      type: s8
+      type: alpha__operation_metadata__alpha__tez_balance_update
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::smart_rollup_refutation_rewards)
     - id: unstaked_deposits
       type: unstaked_deposits
@@ -101,23 +99,36 @@ types:
       if: (alpha__operation_metadata__alpha__balance_and_update_tag == alpha__operation_metadata__alpha__balance_and_update_tag::staking_delegate_denominator)
   alpha__operation_metadata__alpha__balance_updates:
     seq:
+    - id: alpha__operation_metadata__alpha__balance_updates_entries
+      type: alpha__operation_metadata__alpha__balance_updates_entries
+      repeat: eos
+  alpha__operation_metadata__alpha__balance_updates_0:
+    seq:
     - id: len_alpha__operation_metadata__alpha__balance_updates
       type: s4
     - id: alpha__operation_metadata__alpha__balance_updates
-      type: alpha__operation_metadata__alpha__balance_updates_entries
+      type: alpha__operation_metadata__alpha__balance_updates
       size: len_alpha__operation_metadata__alpha__balance_updates
-      repeat: eos
   alpha__operation_metadata__alpha__balance_updates_entries:
     seq:
     - id: alpha__operation_metadata__alpha__balance_and_update
       type: alpha__operation_metadata__alpha__balance_and_update
+    - id: alpha__operation_metadata__alpha__update_origin
+      type: alpha__operation_metadata__alpha__update_origin
+  alpha__operation_metadata__alpha__staking_abstract_quantity:
+    seq:
+    - id: change
+      type: s8
+  alpha__operation_metadata__alpha__tez_balance_update:
+    seq:
+    - id: change
+      type: s8
+  alpha__operation_metadata__alpha__update_origin:
+    seq:
     - id: origin
       type: u1
       enum: origin_tag
   alpha__staker:
-    doc: ! >-
-      staker: Abstract notion of staker used in operation receipts, either a single
-      staker or all the stakers delegating to some delegate.
     seq:
     - id: alpha__staker_tag
       type: u1
@@ -128,44 +139,55 @@ types:
     - id: shared
       type: public_key_hash
       if: (alpha__staker_tag == alpha__staker_tag::shared)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   commitments:
     seq:
     - id: committer
       size: 20
-    - id: change
-      type: s8
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__tez_balance_update
   contract:
     seq:
     - id: contract
       type: alpha__contract_id
-    - id: change
-      type: s8
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__tez_balance_update
   deposits:
     seq:
     - id: staker
       type: alpha__staker
-    - id: change
-      type: s8
+      doc: ! >-
+        staker: Abstract notion of staker used in operation receipts, either a single
+        staker or all the stakers delegating to some delegate.
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__tez_balance_update
   frozen_bonds:
     seq:
     - id: contract
       type: alpha__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: bond_id
       type: alpha__bond_id
-    - id: change
-      type: s8
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__tez_balance_update
   lost_attesting_rewards:
     seq:
     - id: delegate
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: participation
       type: u1
       enum: bool
     - id: revelation
       type: u1
       enum: bool
-    - id: change
-      type: s8
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__tez_balance_update
   originated:
     seq:
     - id: contract_hash
@@ -174,7 +196,6 @@ types:
       size: 1
       doc: This field is for padding, ignore
   public_key_hash:
-    doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -195,28 +216,39 @@ types:
     seq:
     - id: contract
       type: alpha__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: delegate
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   staking_delegate_denominator:
     seq:
     - id: delegate
       type: public_key_hash
-    - id: change
-      type: s8
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: alpha__operation_metadata__alpha__staking_abstract_quantity
+      type: alpha__operation_metadata__alpha__staking_abstract_quantity
   staking_delegator_numerator:
     seq:
     - id: delegator
       type: alpha__contract_id
-    - id: change
-      type: s8
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: alpha__operation_metadata__alpha__staking_abstract_quantity
+      type: alpha__operation_metadata__alpha__staking_abstract_quantity
   unstaked_deposits:
     seq:
     - id: staker
       type: alpha__staker
+      doc: ! >-
+        staker: Abstract notion of staker used in operation receipts, either a single
+        staker or all the stakers delegating to some delegate.
     - id: cycle
       type: s4
-    - id: change
-      type: s8
+    - id: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__tez_balance_update
 enums:
   alpha__bond_id_tag:
     1: smart_rollup_bond_id
@@ -265,4 +297,4 @@ enums:
     3: bls
 seq:
 - id: alpha__operation_metadata__alpha__balance_updates
-  type: alpha__operation_metadata__alpha__balance_updates
+  type: alpha__operation_metadata__alpha__balance_updates_0

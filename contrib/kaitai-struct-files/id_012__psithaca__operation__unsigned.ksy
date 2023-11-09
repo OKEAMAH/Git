@@ -1,6 +1,9 @@
 meta:
   id: id_012__psithaca__operation__unsigned
   endian: be
+  imports:
+  - block_header__shell
+  - operation__shell_header
 doc: ! 'Encoding id: 012-Psithaca.operation.unsigned'
 types:
   activate_account:
@@ -19,6 +22,7 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
     - id: proposal
@@ -27,17 +31,25 @@ types:
       type: s1
   bh1:
     seq:
+    - id: id_012__psithaca__block_header__alpha__full_header
+      type: id_012__psithaca__block_header__alpha__full_header
+  bh1_0:
+    seq:
     - id: len_bh1
       type: s4
     - id: bh1
-      type: id_012__psithaca__block_header__alpha__full_header
+      type: bh1
       size: len_bh1
   bh2:
+    seq:
+    - id: id_012__psithaca__block_header__alpha__full_header
+      type: id_012__psithaca__block_header__alpha__full_header
+  bh2_0:
     seq:
     - id: len_bh2
       type: s4
     - id: bh2
-      type: id_012__psithaca__block_header__alpha__full_header
+      type: bh2
       size: len_bh2
   code:
     seq:
@@ -53,8 +65,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_012__psithaca__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -67,25 +80,36 @@ types:
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
     seq:
     - id: slot
       type: u2
@@ -125,9 +149,6 @@ types:
       type: u1
       enum: bool
   id_012__psithaca__contract_id:
-    doc: ! >-
-      A contract handle: A contract notation as given to an RPC or inside scripts.
-      Can be a base58 implicit contract hash or a base58 originated contract hash.
     seq:
     - id: id_012__psithaca__contract_id_tag
       type: u1
@@ -135,17 +156,17 @@ types:
     - id: implicit
       type: public_key_hash
       if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated
       type: originated
       if: (id_012__psithaca__contract_id_tag == id_012__psithaca__contract_id_tag::originated)
   id_012__psithaca__entrypoint:
-    doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     seq:
     - id: id_012__psithaca__entrypoint_tag
       type: u1
       enum: id_012__psithaca__entrypoint_tag
     - id: named
-      type: named
+      type: named_0
       if: (id_012__psithaca__entrypoint_tag == id_012__psithaca__entrypoint_tag::named)
   id_012__psithaca__inlined__endorsement:
     seq:
@@ -165,7 +186,7 @@ types:
       type: u1
       enum: id_012__psithaca__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement
+      type: endorsement_0
       if: (id_012__psithaca__inlined__endorsement_mempool__contents_tag == id_012__psithaca__inlined__endorsement_mempool__contents_tag::endorsement)
   id_012__psithaca__inlined__preendorsement:
     seq:
@@ -185,8 +206,12 @@ types:
       type: u1
       enum: id_012__psithaca__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: endorsement
+      type: preendorsement_0
       if: (id_012__psithaca__inlined__preendorsement__contents_tag == id_012__psithaca__inlined__preendorsement__contents_tag::preendorsement)
+  id_012__psithaca__mutez:
+    seq:
+    - id: id_012__psithaca__mutez
+      type: n
   id_012__psithaca__operation__alpha__contents:
     seq:
     - id: id_012__psithaca__operation__alpha__contents_tag
@@ -196,7 +221,7 @@ types:
       type: endorsement
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::endorsement)
     - id: preendorsement
-      type: endorsement
+      type: preendorsement
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::preendorsement)
     - id: seed_nonce_revelation
       type: seed_nonce_revelation
@@ -214,7 +239,7 @@ types:
       type: activate_account
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals_
+      type: proposals_1
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -267,38 +292,58 @@ types:
       type: b7be
   named:
     seq:
+    - id: named
+      size-eos: true
+  named_0:
+    seq:
     - id: len_named
       type: u1
     - id: named
+      type: named
       size: len_named
-      size-eos: true
   op1:
     seq:
-    - id: len_op1
-      type: s4
-    - id: op1
+    - id: id_012__psithaca__inlined__endorsement
       type: id_012__psithaca__inlined__endorsement
-      size: len_op1
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: s4
     - id: op1
+      type: op1
+      size: len_op1
+  op1_1:
+    seq:
+    - id: id_012__psithaca__inlined__preendorsement
       type: id_012__psithaca__inlined__preendorsement
+  op1_2:
+    seq:
+    - id: len_op1
+      type: s4
+    - id: op1
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: s4
-    - id: op2
+    - id: id_012__psithaca__inlined__endorsement
       type: id_012__psithaca__inlined__endorsement
-      size: len_op2
-  op2_:
+  op2_0:
     seq:
     - id: len_op2
       type: s4
     - id: op2
+      type: op2
+      size: len_op2
+  op2_1:
+    seq:
+    - id: id_012__psithaca__inlined__preendorsement
       type: id_012__psithaca__inlined__preendorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: s4
+    - id: op2
+      type: op2_1
       size: len_op2
   originated:
     seq:
@@ -311,8 +356,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_012__psithaca__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -320,43 +366,69 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_012__psithaca__mutez
     - id: delegate_tag
       type: u1
       enum: bool
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: script
       type: id_012__psithaca__scripted__contracts
   parameters:
     seq:
     - id: entrypoint
       type: id_012__psithaca__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
       type: value
+  preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   proposals:
+    seq:
+    - id: proposals_entries
+      type: proposals_entries
+      repeat: eos
+  proposals_0:
     seq:
     - id: len_proposals
       type: s4
     - id: proposals
-      type: proposals_entries
+      type: proposals
       size: len_proposals
-      repeat: eos
-  proposals_:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
     - id: proposals
-      type: proposals
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
   public_key:
-    doc: A Ed25519, Secp256k1, or P256 public key
     seq:
     - id: public_key_tag
       type: u1
@@ -371,7 +443,6 @@ types:
       size: 33
       if: (public_key_tag == public_key_tag::p256)
   public_key_hash:
-    doc: A Ed25519, Secp256k1, or P256 public key hash
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -389,8 +460,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_012__psithaca__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -403,8 +475,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_012__psithaca__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -413,6 +486,7 @@ types:
       type: n
     - id: public_key
       type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
   seed_nonce_revelation:
     seq:
     - id: level
@@ -423,8 +497,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_012__psithaca__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -435,7 +510,7 @@ types:
       type: u1
       enum: bool
     - id: limit
-      type: n
+      type: id_012__psithaca__mutez
       if: (limit_tag == bool::true)
   storage:
     seq:
@@ -447,8 +522,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_012__psithaca__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -456,9 +532,12 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_012__psithaca__mutez
     - id: destination
       type: id_012__psithaca__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: parameters_tag
       type: u1
       enum: bool

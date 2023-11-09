@@ -1,6 +1,9 @@
 meta:
   id: id_013__ptjakart__operation__protocol_data
   endian: be
+  imports:
+  - block_header__shell
+  - operation__shell_header
 doc: ! 'Encoding id: 013-PtJakart.operation.protocol_data'
 types:
   activate_account:
@@ -36,6 +39,7 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
     - id: proposal
@@ -50,17 +54,25 @@ types:
       size: len_batch
   bh1:
     seq:
+    - id: id_013__ptjakart__block_header__alpha__full_header
+      type: id_013__ptjakart__block_header__alpha__full_header
+  bh1_0:
+    seq:
     - id: len_bh1
       type: s4
     - id: bh1
-      type: id_013__ptjakart__block_header__alpha__full_header
+      type: bh1
       size: len_bh1
   bh2:
+    seq:
+    - id: id_013__ptjakart__block_header__alpha__full_header
+      type: id_013__ptjakart__block_header__alpha__full_header
+  bh2_0:
     seq:
     - id: len_bh2
       type: s4
     - id: bh2
-      type: id_013__ptjakart__block_header__alpha__full_header
+      type: bh2
       size: len_bh2
   boot_sector:
     seq:
@@ -79,15 +91,19 @@ types:
       size: 32
       doc: context_hash
     - id: case__0_field3
-      type: case__0_field3
+      type: case__0_field3_0
   case__0_field3:
+    seq:
+    - id: case__0_field3_entries
+      type: case__0_field3_entries
+      repeat: eos
+  case__0_field3_0:
     seq:
     - id: len_case__0_field3
       type: s4
     - id: case__0_field3
-      type: case__0_field3_entries
+      type: case__0_field3
       size: len_case__0_field3
-      repeat: eos
   case__0_field3_entries:
     seq:
     - id: case__0_field3_elt_tag
@@ -148,13 +164,13 @@ types:
       type: case__130_entries
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131
+      type: case__131_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192
+      type: case__192_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193
+      type: case__193_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
     - id: case__195
       type: case__195
@@ -182,7 +198,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__1_field3
-      type: case__1_field3
+      type: case__1_field3_0
   case__10:
     seq:
     - id: case__10_field0
@@ -211,11 +227,15 @@ types:
       type: case__12_field1
   case__129_elt_field0:
     seq:
+    - id: case__129_elt_field0
+      size-eos: true
+  case__129_elt_field0_0:
+    seq:
     - id: len_case__129_elt_field0
       type: u1
     - id: case__129_elt_field0
+      type: case__129_elt_field0
       size: len_case__129_elt_field0
-      size-eos: true
   case__129_elt_field1:
     seq:
     - id: case__129_elt_field1_tag
@@ -230,7 +250,7 @@ types:
   case__129_entries:
     seq:
     - id: case__129_elt_field0
-      type: case__129_elt_field0
+      type: case__129_elt_field0_0
     - id: case__129_elt_field1
       type: case__129_elt_field1
   case__12_field1:
@@ -249,11 +269,15 @@ types:
       type: case__13_field1
   case__130_elt_field0:
     seq:
+    - id: case__130_elt_field0
+      size-eos: true
+  case__130_elt_field0_0:
+    seq:
     - id: len_case__130_elt_field0
       type: u1
     - id: case__130_elt_field0
+      type: case__130_elt_field0
       size: len_case__130_elt_field0
-      size-eos: true
   case__130_elt_field1:
     seq:
     - id: case__130_elt_field1_tag
@@ -268,24 +292,32 @@ types:
   case__130_entries:
     seq:
     - id: case__130_elt_field0
-      type: case__130_elt_field0
+      type: case__130_elt_field0_0
     - id: case__130_elt_field1
       type: case__130_elt_field1
   case__131:
     seq:
+    - id: case__131_entries
+      type: case__131_entries
+      repeat: eos
+  case__131_0:
+    seq:
     - id: len_case__131
       type: s4
     - id: case__131
-      type: case__131_entries
+      type: case__131
       size: len_case__131
-      repeat: eos
   case__131_elt_field0:
+    seq:
+    - id: case__131_elt_field0
+      size-eos: true
+  case__131_elt_field0_0:
     seq:
     - id: len_case__131_elt_field0
       type: u1
     - id: case__131_elt_field0
+      type: case__131_elt_field0
       size: len_case__131_elt_field0
-      size-eos: true
   case__131_elt_field1:
     seq:
     - id: case__131_elt_field1_tag
@@ -300,7 +332,7 @@ types:
   case__131_entries:
     seq:
     - id: case__131_elt_field0
-      type: case__131_elt_field0
+      type: case__131_elt_field0_0
     - id: case__131_elt_field1
       type: case__131_elt_field1
   case__13_field1:
@@ -341,18 +373,26 @@ types:
       doc: context_hash
   case__192:
     seq:
+    - id: case__192
+      size-eos: true
+  case__192_0:
+    seq:
     - id: len_case__192
       type: u1
     - id: case__192
+      type: case__192
       size: len_case__192
-      size-eos: true
   case__193:
+    seq:
+    - id: case__193
+      size-eos: true
+  case__193_0:
     seq:
     - id: len_case__193
       type: u2
     - id: case__193
+      type: case__193
       size: len_case__193
-      size-eos: true
   case__195:
     seq:
     - id: len_case__195
@@ -361,12 +401,16 @@ types:
       size: len_case__195
   case__1_field3:
     seq:
+    - id: case__1_field3_entries
+      type: case__1_field3_entries
+      repeat: eos
+  case__1_field3_0:
+    seq:
     - id: len_case__1_field3
       type: s4
     - id: case__1_field3
-      type: case__1_field3_entries
+      type: case__1_field3
       size: len_case__1_field3
-      repeat: eos
   case__1_field3_entries:
     seq:
     - id: case__1_field3_elt_tag
@@ -427,13 +471,13 @@ types:
       type: case__130_entries
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131
+      type: case__131_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192
+      type: case__192_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193
+      type: case__193_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
     - id: case__195
       type: case__195
@@ -461,79 +505,99 @@ types:
       size: 32
       doc: context_hash
     - id: case__2_field3
-      type: case__2_field3
+      type: case__2_field3_0
   case__224:
     seq:
     - id: case__224_field0
       type: u1
     - id: case__224_field1
-      type: case__224_field1
+      type: case__224_field1_0
     - id: case__224_field2
       size: 32
       doc: context_hash
   case__224_field1:
     seq:
+    - id: case__224_field1
+      size-eos: true
+  case__224_field1_0:
+    seq:
     - id: len_case__224_field1
       type: u1
     - id: case__224_field1
+      type: case__224_field1
       size: len_case__224_field1
-      size-eos: true
   case__225:
     seq:
     - id: case__225_field0
       type: u2
     - id: case__225_field1
-      type: case__225_field1
+      type: case__225_field1_0
     - id: case__225_field2
       size: 32
       doc: context_hash
   case__225_field1:
     seq:
+    - id: case__225_field1
+      size-eos: true
+  case__225_field1_0:
+    seq:
     - id: len_case__225_field1
       type: u1
     - id: case__225_field1
+      type: case__225_field1
       size: len_case__225_field1
-      size-eos: true
   case__226:
     seq:
     - id: case__226_field0
       type: s4
     - id: case__226_field1
-      type: case__226_field1
+      type: case__226_field1_0
     - id: case__226_field2
       size: 32
       doc: context_hash
   case__226_field1:
     seq:
+    - id: case__226_field1
+      size-eos: true
+  case__226_field1_0:
+    seq:
     - id: len_case__226_field1
       type: u1
     - id: case__226_field1
+      type: case__226_field1
       size: len_case__226_field1
-      size-eos: true
   case__227:
     seq:
     - id: case__227_field0
       type: s8
     - id: case__227_field1
-      type: case__227_field1
+      type: case__227_field1_0
     - id: case__227_field2
       size: 32
       doc: context_hash
   case__227_field1:
     seq:
+    - id: case__227_field1
+      size-eos: true
+  case__227_field1_0:
+    seq:
     - id: len_case__227_field1
       type: u1
     - id: case__227_field1
+      type: case__227_field1
       size: len_case__227_field1
-      size-eos: true
   case__2_field3:
+    seq:
+    - id: case__2_field3_entries
+      type: case__2_field3_entries
+      repeat: eos
+  case__2_field3_0:
     seq:
     - id: len_case__2_field3
       type: s4
     - id: case__2_field3
-      type: case__2_field3_entries
+      type: case__2_field3
       size: len_case__2_field3
-      repeat: eos
   case__2_field3_entries:
     seq:
     - id: case__2_field3_elt_tag
@@ -594,13 +658,13 @@ types:
       type: case__130_entries
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131
+      type: case__131_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192
+      type: case__192_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193
+      type: case__193_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
     - id: case__195
       type: case__195
@@ -628,15 +692,19 @@ types:
       size: 32
       doc: context_hash
     - id: case__3_field3
-      type: case__3_field3
+      type: case__3_field3_0
   case__3_field3:
+    seq:
+    - id: case__3_field3_entries
+      type: case__3_field3_entries
+      repeat: eos
+  case__3_field3_0:
     seq:
     - id: len_case__3_field3
       type: s4
     - id: case__3_field3
-      type: case__3_field3_entries
+      type: case__3_field3
       size: len_case__3_field3
-      repeat: eos
   case__3_field3_entries:
     seq:
     - id: case__3_field3_elt_tag
@@ -697,13 +765,13 @@ types:
       type: case__130_entries
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131
+      type: case__131_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192
+      type: case__192_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193
+      type: case__193_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
     - id: case__195
       type: case__195
@@ -791,12 +859,12 @@ types:
     - id: level
       type: s4
     - id: messages
-      type: messages
+      type: messages_0
     - id: predecessor
       type: predecessor
     - id: inbox_merkle_root
       size: 32
-  commitment_:
+  commitment_0:
     seq:
     - id: compressed_state
       size: 32
@@ -828,8 +896,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -842,10 +911,12 @@ types:
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   deposit:
     seq:
     - id: sender
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: destination
       size: 20
     - id: ticket_hash
@@ -855,22 +926,32 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
     seq:
     - id: slot
       type: u2
@@ -913,11 +994,8 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
-      type: s1
+      type: id_013__ptjakart__liquidity_baking_toggle_vote
   id_013__ptjakart__contract_id:
-    doc: ! >-
-      A contract handle: A contract notation as given to an RPC or inside scripts.
-      Can be a base58 implicit contract hash or a base58 originated contract hash.
     seq:
     - id: id_013__ptjakart__contract_id_tag
       type: u1
@@ -925,17 +1003,17 @@ types:
     - id: implicit
       type: public_key_hash
       if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated
       type: originated
       if: (id_013__ptjakart__contract_id_tag == id_013__ptjakart__contract_id_tag::originated)
   id_013__ptjakart__entrypoint:
-    doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     seq:
     - id: id_013__ptjakart__entrypoint_tag
       type: u1
       enum: id_013__ptjakart__entrypoint_tag
     - id: named
-      type: named
+      type: named_0
       if: (id_013__ptjakart__entrypoint_tag == id_013__ptjakart__entrypoint_tag::named)
   id_013__ptjakart__inlined__endorsement:
     seq:
@@ -955,7 +1033,7 @@ types:
       type: u1
       enum: id_013__ptjakart__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement
+      type: endorsement_0
       if: (id_013__ptjakart__inlined__endorsement_mempool__contents_tag == id_013__ptjakart__inlined__endorsement_mempool__contents_tag::endorsement)
   id_013__ptjakart__inlined__preendorsement:
     seq:
@@ -975,8 +1053,16 @@ types:
       type: u1
       enum: id_013__ptjakart__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: endorsement
+      type: preendorsement_0
       if: (id_013__ptjakart__inlined__preendorsement__contents_tag == id_013__ptjakart__inlined__preendorsement__contents_tag::preendorsement)
+  id_013__ptjakart__liquidity_baking_toggle_vote:
+    seq:
+    - id: id_013__ptjakart__liquidity_baking_toggle_vote
+      type: s1
+  id_013__ptjakart__mutez:
+    seq:
+    - id: id_013__ptjakart__mutez
+      type: n
   id_013__ptjakart__operation__alpha__contents:
     seq:
     - id: id_013__ptjakart__operation__alpha__contents_tag
@@ -986,7 +1072,7 @@ types:
       type: endorsement
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::endorsement)
     - id: preendorsement
-      type: endorsement
+      type: preendorsement
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::preendorsement)
     - id: seed_nonce_revelation
       type: seed_nonce_revelation
@@ -1004,7 +1090,7 @@ types:
       type: activate_account
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals_
+      type: proposals_1
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -1043,10 +1129,10 @@ types:
       type: tx_rollup_return_bond
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::tx_rollup_return_bond)
     - id: tx_rollup_finalize_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_finalize_commitment
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::tx_rollup_finalize_commitment)
     - id: tx_rollup_remove_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_remove_commitment
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::tx_rollup_remove_commitment)
     - id: tx_rollup_rejection
       type: tx_rollup_rejection
@@ -1077,9 +1163,6 @@ types:
     - id: signature
       size: 64
   id_013__ptjakart__rollup_address:
-    doc: ! >-
-      A smart contract rollup address: A smart contract rollup is identified by a
-      base58 address starting with scr1
     seq:
     - id: len_id_013__ptjakart__rollup_address
       type: s4
@@ -1092,11 +1175,6 @@ types:
     - id: storage
       type: storage
   id_013__ptjakart__transaction_destination:
-    doc: ! >-
-      A destination of a transaction: A destination notation compatible with the contract
-      notation as given to an RPC or inside scripts. Can be a base58 implicit contract
-      hash, a base58 originated contract hash, or a base58 originated transaction
-      rollup.
     seq:
     - id: id_013__ptjakart__transaction_destination_tag
       type: u1
@@ -1104,12 +1182,17 @@ types:
     - id: implicit
       type: public_key_hash
       if: (id_013__ptjakart__transaction_destination_tag == id_013__ptjakart__transaction_destination_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated
       type: originated
       if: (id_013__ptjakart__transaction_destination_tag == id_013__ptjakart__transaction_destination_tag::originated)
     - id: tx_rollup
       type: tx_rollup
       if: (id_013__ptjakart__transaction_destination_tag == id_013__ptjakart__transaction_destination_tag::tx_rollup)
+  id_013__ptjakart__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   message:
     seq:
     - id: message_tag
@@ -1121,14 +1204,18 @@ types:
     - id: deposit
       type: deposit
       if: (message_tag == message_tag::deposit)
-  message_:
+  message_0:
+    seq:
+    - id: message_entries
+      type: message_entries
+      repeat: eos
+  message_1:
     seq:
     - id: len_message
       type: s4
     - id: message
-      type: message_entries
+      type: message_0
       size: len_message
-      repeat: eos
   message_entries:
     seq:
     - id: len_message_elt
@@ -1137,36 +1224,64 @@ types:
       size: len_message_elt
   message_path:
     seq:
+    - id: message_path_entries
+      type: message_path_entries
+      repeat: eos
+  message_path_0:
+    seq:
     - id: len_message_path
       type: s4
     - id: message_path
-      type: message_path_entries
+      type: message_path
       size: len_message_path
-      repeat: eos
   message_path_entries:
     seq:
     - id: inbox_list_hash
       size: 32
   message_result_path:
     seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries
+      repeat: eos
+  message_result_path_0:
+    seq:
     - id: len_message_result_path
       type: s4
     - id: message_result_path
-      type: message_result_path_entries
+      type: message_result_path
       size: len_message_result_path
+  message_result_path_1:
+    seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries_0
       repeat: eos
+  message_result_path_2:
+    seq:
+    - id: len_message_result_path
+      type: s4
+    - id: message_result_path
+      type: message_result_path_1
+      size: len_message_result_path
   message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
+  message_result_path_entries_0:
     seq:
     - id: message_result_list_hash
       size: 32
   messages:
     seq:
+    - id: messages_entries
+      type: messages_entries
+      repeat: eos
+  messages_0:
+    seq:
     - id: len_messages
       type: s4
     - id: messages
-      type: messages_entries
+      type: messages
       size: len_messages
-      repeat: eos
   messages_entries:
     seq:
     - id: message_result_hash
@@ -1185,38 +1300,58 @@ types:
       type: b7be
   named:
     seq:
+    - id: named
+      size-eos: true
+  named_0:
+    seq:
     - id: len_named
       type: u1
     - id: named
+      type: named
       size: len_named
-      size-eos: true
   op1:
     seq:
-    - id: len_op1
-      type: s4
-    - id: op1
+    - id: id_013__ptjakart__inlined__endorsement
       type: id_013__ptjakart__inlined__endorsement
-      size: len_op1
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: s4
     - id: op1
+      type: op1
+      size: len_op1
+  op1_1:
+    seq:
+    - id: id_013__ptjakart__inlined__preendorsement
       type: id_013__ptjakart__inlined__preendorsement
+  op1_2:
+    seq:
+    - id: len_op1
+      type: s4
+    - id: op1
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: s4
-    - id: op2
+    - id: id_013__ptjakart__inlined__endorsement
       type: id_013__ptjakart__inlined__endorsement
-      size: len_op2
-  op2_:
+  op2_0:
     seq:
     - id: len_op2
       type: s4
     - id: op2
+      type: op2
+      size: len_op2
+  op2_1:
+    seq:
+    - id: id_013__ptjakart__inlined__preendorsement
       type: id_013__ptjakart__inlined__preendorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: s4
+    - id: op2
+      type: op2_1
       size: len_op2
   originated:
     seq:
@@ -1229,8 +1364,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1238,19 +1374,21 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_013__ptjakart__mutez
     - id: delegate_tag
       type: u1
       enum: bool
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: script
       type: id_013__ptjakart__scripted__contracts
   parameters:
     seq:
     - id: entrypoint
       type: id_013__ptjakart__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
       type: value
   predecessor:
@@ -1261,6 +1399,26 @@ types:
     - id: some
       size: 32
       if: (predecessor_tag == predecessor_tag::some)
+  preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   previous_message_result:
     seq:
     - id: context_hash
@@ -1269,12 +1427,20 @@ types:
       size: 32
   previous_message_result_path:
     seq:
+    - id: previous_message_result_path_entries
+      type: previous_message_result_path_entries
+      repeat: eos
+  previous_message_result_path_0:
+    seq:
     - id: len_previous_message_result_path
       type: s4
     - id: previous_message_result_path
-      type: message_result_path_entries
+      type: previous_message_result_path
       size: len_previous_message_result_path
-      repeat: eos
+  previous_message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
   proof:
     seq:
     - id: proof_tag
@@ -1294,26 +1460,30 @@ types:
       if: (proof_tag == proof_tag::case__3)
   proposals:
     seq:
+    - id: proposals_entries
+      type: proposals_entries
+      repeat: eos
+  proposals_0:
+    seq:
     - id: len_proposals
       type: s4
     - id: proposals
-      type: proposals_entries
+      type: proposals
       size: len_proposals
-      repeat: eos
-  proposals_:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
     - id: proposals
-      type: proposals
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
   public_key:
-    doc: A Ed25519, Secp256k1, or P256 public key
     seq:
     - id: public_key_tag
       type: u1
@@ -1328,7 +1498,6 @@ types:
       size: 33
       if: (public_key_tag == public_key_tag::p256)
   public_key_hash:
-    doc: A Ed25519, Secp256k1, or P256 public key hash
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -1346,8 +1515,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1360,8 +1530,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1370,12 +1541,14 @@ types:
       type: n
     - id: public_key
       type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
   sc_rollup_add_messages:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1384,14 +1557,18 @@ types:
       type: n
     - id: rollup
       type: id_013__ptjakart__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: message
-      type: message_
+      type: message_1
   sc_rollup_cement:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1400,14 +1577,18 @@ types:
       type: n
     - id: rollup
       type: id_013__ptjakart__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: commitment
       size: 32
   sc_rollup_originate:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1423,8 +1604,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1433,8 +1615,11 @@ types:
       type: n
     - id: rollup
       type: id_013__ptjakart__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: commitment
-      type: commitment_
+      type: commitment_0
   seed_nonce_revelation:
     seq:
     - id: level
@@ -1445,8 +1630,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1457,7 +1643,7 @@ types:
       type: u1
       enum: bool
     - id: limit
-      type: n
+      type: id_013__ptjakart__mutez
       if: (limit_tag == bool::true)
   storage:
     seq:
@@ -1479,12 +1665,16 @@ types:
       size: len_ticket_ty
   tickets_info:
     seq:
+    - id: tickets_info_entries
+      type: tickets_info_entries
+      repeat: eos
+  tickets_info_0:
+    seq:
     - id: len_tickets_info
       type: s4
     - id: tickets_info
-      type: tickets_info_entries
+      type: tickets_info
       size: len_tickets_info
-      repeat: eos
   tickets_info_entries:
     seq:
     - id: contents
@@ -1493,16 +1683,21 @@ types:
       type: ty
     - id: ticketer
       type: id_013__ptjakart__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: amount
       type: amount
     - id: claimer
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   transaction:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1510,9 +1705,14 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_013__ptjakart__mutez
     - id: destination
       type: id_013__ptjakart__transaction_destination
+      doc: ! >-
+        A destination of a transaction: A destination notation compatible with the
+        contract notation as given to an RPC or inside scripts. Can be a base58 implicit
+        contract hash, a base58 originated contract hash, or a base58 originated transaction
+        rollup.
     - id: parameters_tag
       type: u1
       enum: bool
@@ -1523,8 +1723,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1537,16 +1738,22 @@ types:
       type: ticket_ty
     - id: ticket_ticketer
       type: id_013__ptjakart__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: ticket_amount
       type: n
     - id: destination
       type: id_013__ptjakart__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: entrypoint
   tx_rollup:
     seq:
-    - id: rollup_hash
-      size: 20
+    - id: id_013__ptjakart__tx_rollup_id
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1557,8 +1764,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1566,7 +1774,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1576,8 +1784,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1585,7 +1794,7 @@ types:
     - id: storage_limit
       type: n
     - id: tx_rollup
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1596,15 +1805,34 @@ types:
     - id: message_index
       type: s4
     - id: message_result_path
-      type: message_result_path
+      type: message_result_path_2
     - id: tickets_info
-      type: tickets_info
+      type: tickets_info_0
+  tx_rollup_finalize_commitment:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_013__ptjakart__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_013__ptjakart__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
   tx_rollup_origination:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1615,8 +1843,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1624,7 +1853,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1635,23 +1864,24 @@ types:
     - id: message_position
       type: n
     - id: message_path
-      type: message_path
+      type: message_path_0
     - id: message_result_hash
       size: 32
     - id: message_result_path
-      type: message_result_path
+      type: message_result_path_0
     - id: previous_message_result
       type: previous_message_result
     - id: previous_message_result_path
-      type: previous_message_result_path
+      type: previous_message_result_path_0
     - id: proof
       type: proof
-  tx_rollup_return_bond:
+  tx_rollup_remove_commitment:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1659,7 +1889,25 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
+  tx_rollup_return_bond:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_013__ptjakart__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1667,8 +1915,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_013__ptjakart__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1676,7 +1925,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1686,7 +1935,7 @@ types:
       type: u1
       enum: bool
     - id: burn_limit
-      type: n
+      type: id_013__ptjakart__mutez
       if: (burn_limit_tag == bool::true)
   ty:
     seq:

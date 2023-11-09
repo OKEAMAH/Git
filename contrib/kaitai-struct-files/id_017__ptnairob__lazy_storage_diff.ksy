@@ -1,20 +1,24 @@
 meta:
   id: id_017__ptnairob__lazy_storage_diff
   endian: be
+  imports:
+  - sapling__transaction__ciphertext
+  - sapling__transaction__commitment
+  - sapling__transaction__nullifier
 doc: ! 'Encoding id: 017-PtNairob.lazy_storage_diff'
 types:
   alloc:
     seq:
     - id: updates
-      type: updates
+      type: updates_0
     - id: key_type
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: value_type
       type: micheline__017__ptnairob__michelson_v1__expression
-  alloc_:
+  alloc_0:
     seq:
     - id: updates
-      type: updates___
+      type: updates_1
     - id: memo_size
       type: u2
   annots:
@@ -25,12 +29,16 @@ types:
       size: len_annots
   args:
     seq:
+    - id: args_entries
+      type: args_entries
+      repeat: eos
+  args_0:
+    seq:
     - id: len_args
       type: s4
     - id: args
-      type: args_entries
+      type: args
       size: len_args
-      repeat: eos
   args_entries:
     seq:
     - id: args_elt
@@ -38,7 +46,7 @@ types:
   big_map:
     seq:
     - id: id
-      type: z
+      type: id_017__ptnairob__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: diff
       type: diff
@@ -50,12 +58,16 @@ types:
       size: len_bytes
   commitments_and_ciphertexts:
     seq:
+    - id: commitments_and_ciphertexts_entries
+      type: commitments_and_ciphertexts_entries
+      repeat: eos
+  commitments_and_ciphertexts_0:
+    seq:
     - id: len_commitments_and_ciphertexts
       type: s4
     - id: commitments_and_ciphertexts
-      type: commitments_and_ciphertexts_entries
+      type: commitments_and_ciphertexts
       size: len_commitments_and_ciphertexts
-      repeat: eos
   commitments_and_ciphertexts_entries:
     seq:
     - id: commitments_and_ciphertexts_elt_field0
@@ -65,24 +77,24 @@ types:
   copy:
     seq:
     - id: source
-      type: z
+      type: id_017__ptnairob__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: updates
-      type: updates
-  copy_:
+      type: updates_0
+  copy_0:
     seq:
     - id: source
-      type: z
+      type: id_017__ptnairob__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: updates
-      type: updates__
+      type: updates_1
   diff:
     seq:
     - id: diff_tag
       type: u1
       enum: diff_tag
     - id: update
-      type: updates
+      type: updates_0
       if: (diff_tag == diff_tag::update)
     - id: copy
       type: copy
@@ -90,20 +102,29 @@ types:
     - id: alloc
       type: alloc
       if: (diff_tag == diff_tag::alloc)
-  diff_:
+  diff_0:
     seq:
     - id: diff_tag
       type: u1
       enum: diff_tag
     - id: update
-      type: updates_
+      type: updates_1
       if: (diff_tag == diff_tag::update)
     - id: copy
-      type: copy_
+      type: copy_0
       if: (diff_tag == diff_tag::copy)
     - id: alloc
-      type: alloc_
+      type: alloc_0
       if: (diff_tag == diff_tag::alloc)
+  id_017__ptnairob__big_map_id:
+    seq:
+    - id: id_017__ptnairob__big_map_id
+      type: z
+  id_017__ptnairob__lazy_storage_diff:
+    seq:
+    - id: id_017__ptnairob__lazy_storage_diff_entries
+      type: id_017__ptnairob__lazy_storage_diff_entries
+      repeat: eos
   id_017__ptnairob__lazy_storage_diff_entries:
     seq:
     - id: id_017__ptnairob__lazy_storage_diff_elt_tag
@@ -115,6 +136,15 @@ types:
     - id: sapling_state
       type: sapling_state
       if: (id_017__ptnairob__lazy_storage_diff_elt_tag == id_017__ptnairob__lazy_storage_diff_elt_tag::sapling_state)
+  id_017__ptnairob__michelson__v1__primitives:
+    seq:
+    - id: id_017__ptnairob__michelson__v1__primitives
+      type: u1
+      enum: id_017__ptnairob__michelson__v1__primitives
+  id_017__ptnairob__sapling_state_id:
+    seq:
+    - id: id_017__ptnairob__sapling_state_id
+      type: z
   micheline__017__ptnairob__michelson_v1__expression:
     seq:
     - id: micheline__017__ptnairob__michelson_v1__expression_tag
@@ -127,12 +157,11 @@ types:
       type: string
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::string)
     - id: sequence
-      type: sequence
+      type: sequence_0
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_017__ptnairob__michelson__v1__primitives
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_017__ptnairob__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -162,12 +191,16 @@ types:
       type: b7be
   nullifiers:
     seq:
+    - id: nullifiers_entries
+      type: nullifiers_entries
+      repeat: eos
+  nullifiers_0:
+    seq:
     - id: len_nullifiers
       type: s4
     - id: nullifiers
-      type: nullifiers_entries
+      type: nullifiers
       size: len_nullifiers
-      repeat: eos
   nullifiers_entries:
     seq:
     - id: nullifiers_elt
@@ -175,15 +208,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg
       type: micheline__017__ptnairob__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: annots
@@ -191,8 +222,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg1
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: arg2
@@ -200,8 +230,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg1
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: arg2
@@ -211,34 +240,36 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: args
-      type: args
+      type: args_0
     - id: annots
       type: annots
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: annots
       type: annots
   sapling_state:
     seq:
     - id: id
-      type: z
+      type: id_017__ptnairob__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: diff
-      type: diff_
+      type: diff_0
   sequence:
+    seq:
+    - id: sequence_entries
+      type: sequence_entries
+      repeat: eos
+  sequence_0:
     seq:
     - id: len_sequence
       type: s4
     - id: sequence
-      type: sequence_entries
+      type: sequence
       size: len_sequence
-      repeat: eos
   sequence_entries:
     seq:
     - id: sequence_elt
@@ -251,30 +282,22 @@ types:
       size: len_string
   updates:
     seq:
+    - id: updates_entries
+      type: updates_entries
+      repeat: eos
+  updates_0:
+    seq:
     - id: len_updates
       type: s4
     - id: updates
-      type: updates_entries
+      type: updates
       size: len_updates
-      repeat: eos
-  updates_:
+  updates_1:
     seq:
     - id: commitments_and_ciphertexts
-      type: commitments_and_ciphertexts
+      type: commitments_and_ciphertexts_0
     - id: nullifiers
-      type: nullifiers
-  updates__:
-    seq:
-    - id: commitments_and_ciphertexts
-      type: commitments_and_ciphertexts
-    - id: nullifiers
-      type: nullifiers
-  updates___:
-    seq:
-    - id: commitments_and_ciphertexts
-      type: commitments_and_ciphertexts
-    - id: nullifiers
-      type: nullifiers
+      type: nullifiers_0
   updates_entries:
     seq:
     - id: key_hash
@@ -736,6 +759,5 @@ seq:
 - id: len_id_017__ptnairob__lazy_storage_diff
   type: s4
 - id: id_017__ptnairob__lazy_storage_diff
-  type: id_017__ptnairob__lazy_storage_diff_entries
+  type: id_017__ptnairob__lazy_storage_diff
   size: len_id_017__ptnairob__lazy_storage_diff
-  repeat: eos

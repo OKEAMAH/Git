@@ -1,43 +1,50 @@
 meta:
   id: id_008__ptedo2zk__operation__unsigned
   endian: be
+  imports:
+  - block_header__shell
+  - operation__shell_header
+doc: ! 'Encoding id: 008-PtEdo2Zk.operation.unsigned'
 types:
+  activate_account:
+    seq:
+    - id: pkh
+      size: 20
+    - id: secret
+      size: 20
+  ballot:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: period
+      type: s4
+    - id: proposal
+      size: 32
+    - id: ballot
+      type: s1
   bh1:
+    seq:
+    - id: id_008__ptedo2zk__block_header__alpha__full_header
+      type: id_008__ptedo2zk__block_header__alpha__full_header
+  bh1_0:
     seq:
     - id: len_bh1
       type: s4
     - id: bh1
-      type: id_008__ptedo2zk__block_header__alpha__full_header
+      type: bh1
       size: len_bh1
   bh2:
+    seq:
+    - id: id_008__ptedo2zk__block_header__alpha__full_header
+      type: id_008__ptedo2zk__block_header__alpha__full_header
+  bh2_0:
     seq:
     - id: len_bh2
       type: s4
     - id: bh2
-      type: id_008__ptedo2zk__block_header__alpha__full_header
+      type: bh2
       size: len_bh2
-  block_header__shell:
-    doc: ! >-
-      Shell header: Block header's shell-related content. It contains information
-      such as the block level, its predecessor and timestamp.
-    seq:
-    - id: level
-      type: s4
-    - id: proto
-      type: u1
-    - id: predecessor
-      size: 32
-    - id: timestamp
-      type: s8
-      doc: ! 'A timestamp as seen by the protocol: second-level precision, epoch based.'
-    - id: validation_pass
-      type: u1
-    - id: operations_hash
-      size: 32
-    - id: fitness
-      type: fitness
-    - id: context
-      size: 32
   code:
     seq:
     - id: len_code
@@ -48,32 +55,41 @@ types:
     seq:
     - id: id_008__ptedo2zk__operation__alpha__contents
       type: id_008__ptedo2zk__operation__alpha__contents
-  fitness:
-    doc: ! >-
-      Block fitness: The fitness, or score, of a block, that allow the Tezos to decide
-      which chain is the best. A fitness value is a list of byte sequences. They are
-      compared as follows: shortest lists are smaller; lists of the same length are
-      compared according to the lexicographical order.
+  delegation:
     seq:
-    - id: len_fitness
-      type: s4
-    - id: fitness
-      type: fitness_entries
-      size: len_fitness
-      repeat: eos
-  fitness__elem:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_008__ptedo2zk__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: public_key_hash
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+  double_baking_evidence:
     seq:
-    - id: len_fitness__elem
-      type: s4
-    - id: fitness__elem
-      size: len_fitness__elem
-  fitness_entries:
+    - id: bh1
+      type: bh1_0
+    - id: bh2
+      type: bh2_0
+  double_endorsement_evidence:
     seq:
-    - id: fitness__elem
-      type: fitness__elem
+    - id: op1
+      type: op1_0
+    - id: op2
+      type: op2_0
   id_008__ptedo2zk__block_header__alpha__full_header:
     seq:
-    - id: block_header__shell
+    - id: id_008__ptedo2zk__block_header__alpha__full_header
       type: block_header__shell
     - id: id_008__ptedo2zk__block_header__alpha__signed_contents
       type: id_008__ptedo2zk__block_header__alpha__signed_contents
@@ -96,47 +112,29 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
   id_008__ptedo2zk__contract_id:
-    doc: ! >-
-      A contract handle: A contract notation as given to an RPC or inside scripts.
-      Can be a base58 implicit contract hash or a base58 originated contract hash.
     seq:
     - id: id_008__ptedo2zk__contract_id_tag
       type: u1
       enum: id_008__ptedo2zk__contract_id_tag
-    - id: id_008__ptedo2zk__contract_id_implicit
+    - id: implicit
       type: public_key_hash
       if: (id_008__ptedo2zk__contract_id_tag == id_008__ptedo2zk__contract_id_tag::implicit)
-    - id: id_008__ptedo2zk__contract_id_originated
-      type: id_008__ptedo2zk__contract_id_originated
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: originated
+      type: originated
       if: (id_008__ptedo2zk__contract_id_tag == id_008__ptedo2zk__contract_id_tag::originated)
-  id_008__ptedo2zk__contract_id_originated:
-    seq:
-    - id: contract_hash
-      size: 20
-    - id: originated_padding
-      size: 1
-      doc: This field is for padding, ignore
   id_008__ptedo2zk__entrypoint:
-    doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     seq:
     - id: id_008__ptedo2zk__entrypoint_tag
       type: u1
       enum: id_008__ptedo2zk__entrypoint_tag
-    - id: id_008__ptedo2zk__entrypoint_named
-      type: id_008__ptedo2zk__entrypoint_named
-      if: (id_008__ptedo2zk__entrypoint_tag == id_008__ptedo2zk__entrypoint_tag::named)
-  id_008__ptedo2zk__entrypoint_named:
-    seq:
-    - id: len_named
-      type: u1
     - id: named
-      size: len_named
-      size-eos: true
+      type: named_0
+      if: (id_008__ptedo2zk__entrypoint_tag == id_008__ptedo2zk__entrypoint_tag::named)
   id_008__ptedo2zk__inlined__endorsement:
     seq:
-    - id: branch
-      size: 32
-      doc: An operation's shell header.
+    - id: id_008__ptedo2zk__inlined__endorsement
+      type: operation__shell_header
     - id: operations
       type: id_008__ptedo2zk__inlined__endorsement__contents
     - id: signature_tag
@@ -150,170 +148,55 @@ types:
     - id: id_008__ptedo2zk__inlined__endorsement__contents_tag
       type: u1
       enum: id_008__ptedo2zk__inlined__endorsement__contents_tag
-    - id: id_008__ptedo2zk__inlined__endorsement__contents_endorsement
+    - id: endorsement
       type: s4
       if: (id_008__ptedo2zk__inlined__endorsement__contents_tag == id_008__ptedo2zk__inlined__endorsement__contents_tag::endorsement)
+  id_008__ptedo2zk__mutez:
+    seq:
+    - id: id_008__ptedo2zk__mutez
+      type: n
   id_008__ptedo2zk__operation__alpha__contents:
     seq:
     - id: id_008__ptedo2zk__operation__alpha__contents_tag
       type: u1
       enum: id_008__ptedo2zk__operation__alpha__contents_tag
-    - id: id_008__ptedo2zk__operation__alpha__contents_endorsement
+    - id: endorsement
       type: s4
       if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::endorsement)
-    - id: id_008__ptedo2zk__operation__alpha__contents_seed_nonce_revelation
-      type: id_008__ptedo2zk__operation__alpha__contents_seed_nonce_revelation
+    - id: seed_nonce_revelation
+      type: seed_nonce_revelation
       if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::seed_nonce_revelation)
-    - id: id_008__ptedo2zk__operation__alpha__contents_double_endorsement_evidence
-      type: id_008__ptedo2zk__operation__alpha__contents_double_endorsement_evidence
+    - id: double_endorsement_evidence
+      type: double_endorsement_evidence
       if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::double_endorsement_evidence)
-    - id: id_008__ptedo2zk__operation__alpha__contents_double_baking_evidence
-      type: id_008__ptedo2zk__operation__alpha__contents_double_baking_evidence
+    - id: double_baking_evidence
+      type: double_baking_evidence
       if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::double_baking_evidence)
-    - id: id_008__ptedo2zk__operation__alpha__contents_activate_account
-      type: id_008__ptedo2zk__operation__alpha__contents_activate_account
+    - id: activate_account
+      type: activate_account
       if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::activate_account)
-    - id: id_008__ptedo2zk__operation__alpha__contents_proposals
-      type: id_008__ptedo2zk__operation__alpha__contents_proposals
-      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::proposals)
-    - id: id_008__ptedo2zk__operation__alpha__contents_ballot
-      type: id_008__ptedo2zk__operation__alpha__contents_ballot
-      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::ballot)
-    - id: id_008__ptedo2zk__operation__alpha__contents_reveal
-      type: id_008__ptedo2zk__operation__alpha__contents_reveal
-      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::reveal)
-    - id: id_008__ptedo2zk__operation__alpha__contents_transaction
-      type: id_008__ptedo2zk__operation__alpha__contents_transaction
-      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::transaction)
-    - id: id_008__ptedo2zk__operation__alpha__contents_origination
-      type: id_008__ptedo2zk__operation__alpha__contents_origination
-      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::origination)
-    - id: id_008__ptedo2zk__operation__alpha__contents_delegation
-      type: id_008__ptedo2zk__operation__alpha__contents_delegation
-      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::delegation)
-  id_008__ptedo2zk__operation__alpha__contents_activate_account:
-    seq:
-    - id: pkh
-      size: 20
-    - id: secret
-      size: 20
-  id_008__ptedo2zk__operation__alpha__contents_ballot:
-    seq:
-    - id: source
-      type: public_key_hash
-    - id: period
-      type: s4
-    - id: proposal
-      size: 32
-    - id: ballot
-      type: s1
-  id_008__ptedo2zk__operation__alpha__contents_delegation:
-    seq:
-    - id: source
-      type: public_key_hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: delegate_tag
-      type: u1
-      enum: bool
-    - id: delegate
-      type: public_key_hash
-      if: (delegate_tag == bool::true)
-  id_008__ptedo2zk__operation__alpha__contents_double_baking_evidence:
-    seq:
-    - id: bh1
-      type: bh1
-    - id: bh2
-      type: bh2
-  id_008__ptedo2zk__operation__alpha__contents_double_endorsement_evidence:
-    seq:
-    - id: op1
-      type: op1
-    - id: op2
-      type: op2
-  id_008__ptedo2zk__operation__alpha__contents_origination:
-    seq:
-    - id: source
-      type: public_key_hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: balance
-      type: n
-    - id: delegate_tag
-      type: u1
-      enum: bool
-    - id: delegate
-      type: public_key_hash
-      if: (delegate_tag == bool::true)
-    - id: script
-      type: id_008__ptedo2zk__scripted__contracts
-  id_008__ptedo2zk__operation__alpha__contents_proposals:
-    seq:
-    - id: source
-      type: public_key_hash
-    - id: period
-      type: s4
     - id: proposals
-      type: proposals
-  id_008__ptedo2zk__operation__alpha__contents_reveal:
-    seq:
-    - id: source
-      type: public_key_hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: public_key
-      type: public_key
-  id_008__ptedo2zk__operation__alpha__contents_seed_nonce_revelation:
-    seq:
-    - id: level
-      type: s4
-    - id: nonce
-      size: 32
-  id_008__ptedo2zk__operation__alpha__contents_transaction:
-    seq:
-    - id: source
-      type: public_key_hash
-    - id: fee
-      type: n
-    - id: counter
-      type: n
-    - id: gas_limit
-      type: n
-    - id: storage_limit
-      type: n
-    - id: amount
-      type: n
-    - id: destination
-      type: id_008__ptedo2zk__contract_id
-    - id: parameters_tag
-      type: u1
-      enum: bool
-    - id: parameters
-      type: parameters
-      if: (parameters_tag == bool::true)
+      type: proposals_1
+      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::proposals)
+    - id: ballot
+      type: ballot
+      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::ballot)
+    - id: reveal
+      type: reveal
+      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::reveal)
+    - id: transaction
+      type: transaction
+      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::transaction)
+    - id: origination
+      type: origination
+      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::origination)
+    - id: delegation
+      type: delegation
+      if: (id_008__ptedo2zk__operation__alpha__contents_tag == id_008__ptedo2zk__operation__alpha__contents_tag::delegation)
   id_008__ptedo2zk__operation__alpha__unsigned_operation:
     seq:
-    - id: branch
-      size: 32
-      doc: An operation's shell header.
+    - id: id_008__ptedo2zk__operation__alpha__unsigned_operation
+      type: operation__shell_header
     - id: contents
       type: contents_entries
       repeat: eos
@@ -335,74 +218,184 @@ types:
       type: b1be
     - id: payload
       type: b7be
+  named:
+    seq:
+    - id: named
+      size-eos: true
+  named_0:
+    seq:
+    - id: len_named
+      type: u1
+    - id: named
+      type: named
+      size: len_named
   op1:
+    seq:
+    - id: id_008__ptedo2zk__inlined__endorsement
+      type: id_008__ptedo2zk__inlined__endorsement
+  op1_0:
     seq:
     - id: len_op1
       type: s4
     - id: op1
-      type: id_008__ptedo2zk__inlined__endorsement
+      type: op1
       size: len_op1
   op2:
+    seq:
+    - id: id_008__ptedo2zk__inlined__endorsement
+      type: id_008__ptedo2zk__inlined__endorsement
+  op2_0:
     seq:
     - id: len_op2
       type: s4
     - id: op2
-      type: id_008__ptedo2zk__inlined__endorsement
+      type: op2
       size: len_op2
+  originated:
+    seq:
+    - id: contract_hash
+      size: 20
+    - id: originated_padding
+      size: 1
+      doc: This field is for padding, ignore
+  origination:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_008__ptedo2zk__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: balance
+      type: id_008__ptedo2zk__mutez
+    - id: delegate_tag
+      type: u1
+      enum: bool
+    - id: delegate
+      type: public_key_hash
+      if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: script
+      type: id_008__ptedo2zk__scripted__contracts
   parameters:
     seq:
     - id: entrypoint
       type: id_008__ptedo2zk__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
       type: value
   proposals:
     seq:
+    - id: proposals_entries
+      type: proposals_entries
+      repeat: eos
+  proposals_0:
+    seq:
     - id: len_proposals
       type: s4
     - id: proposals
-      type: proposals_entries
+      type: proposals
       size: len_proposals
-      repeat: eos
+  proposals_1:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: period
+      type: s4
+    - id: proposals
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
   public_key:
-    doc: A Ed25519, Secp256k1, or P256 public key
     seq:
     - id: public_key_tag
       type: u1
       enum: public_key_tag
-    - id: public_key_ed25519
+    - id: ed25519
       size: 32
       if: (public_key_tag == public_key_tag::ed25519)
-    - id: public_key_secp256k1
+    - id: secp256k1
       size: 33
       if: (public_key_tag == public_key_tag::secp256k1)
-    - id: public_key_p256
+    - id: p256
       size: 33
       if: (public_key_tag == public_key_tag::p256)
   public_key_hash:
-    doc: A Ed25519, Secp256k1, or P256 public key hash
     seq:
     - id: public_key_hash_tag
       type: u1
       enum: public_key_hash_tag
-    - id: public_key_hash_ed25519
+    - id: ed25519
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::ed25519)
-    - id: public_key_hash_secp256k1
+    - id: secp256k1
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::secp256k1)
-    - id: public_key_hash_p256
+    - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  reveal:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_008__ptedo2zk__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: public_key
+      type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
+  seed_nonce_revelation:
+    seq:
+    - id: level
+      type: s4
+    - id: nonce
+      size: 32
   storage:
     seq:
     - id: len_storage
       type: s4
     - id: storage
       size: len_storage
+  transaction:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_008__ptedo2zk__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: amount
+      type: id_008__ptedo2zk__mutez
+    - id: destination
+      type: id_008__ptedo2zk__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
+    - id: parameters_tag
+      type: u1
+      enum: bool
+    - id: parameters
+      type: parameters
+      if: (parameters_tag == bool::true)
   value:
     seq:
     - id: len_value

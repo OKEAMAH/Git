@@ -1,6 +1,9 @@
 meta:
   id: id_015__ptlimapt__operation__protocol_data
   endian: be
+  imports:
+  - block_header__shell
+  - operation__shell_header
 doc: ! 'Encoding id: 015-PtLimaPt.operation.protocol_data'
 types:
   activate_account:
@@ -40,12 +43,16 @@ types:
       size: len_arbitrary
   args:
     seq:
+    - id: args_entries
+      type: args_entries
+      repeat: eos
+  args_0:
+    seq:
     - id: len_args
       type: s4
     - id: args
-      type: args_entries
+      type: args
       size: len_args
-      repeat: eos
   args_entries:
     seq:
     - id: args_elt
@@ -54,6 +61,7 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
     - id: proposal
@@ -68,17 +76,25 @@ types:
       size: len_batch
   bh1:
     seq:
+    - id: id_015__ptlimapt__block_header__alpha__full_header
+      type: id_015__ptlimapt__block_header__alpha__full_header
+  bh1_0:
+    seq:
     - id: len_bh1
       type: s4
     - id: bh1
-      type: id_015__ptlimapt__block_header__alpha__full_header
+      type: bh1
       size: len_bh1
   bh2:
+    seq:
+    - id: id_015__ptlimapt__block_header__alpha__full_header
+      type: id_015__ptlimapt__block_header__alpha__full_header
+  bh2_0:
     seq:
     - id: len_bh2
       type: s4
     - id: bh2
-      type: id_015__ptlimapt__block_header__alpha__full_header
+      type: bh2
       size: len_bh2
   boot_sector:
     seq:
@@ -105,7 +121,7 @@ types:
     - id: case__0_field3
       type: tree_encoding
       doc: tree_encoding
-  case__0_:
+  case__0_0:
     seq:
     - id: case__0_field0
       type: s2
@@ -170,15 +186,19 @@ types:
       doc: case__12_field1_entries
   case__129_elt_field0:
     seq:
+    - id: case__129_elt_field0
+      size-eos: true
+  case__129_elt_field0_0:
+    seq:
     - id: len_case__129_elt_field0
       type: u1
     - id: case__129_elt_field0
+      type: case__129_elt_field0
       size: len_case__129_elt_field0
-      size-eos: true
   case__129_entries:
     seq:
     - id: case__129_elt_field0
-      type: case__129_elt_field0
+      type: case__129_elt_field0_0
     - id: case__129_elt_field1
       type: tree_encoding
   case__12_field1_entries:
@@ -198,132 +218,172 @@ types:
       doc: case__13_field1_entries
   case__130_elt_field0:
     seq:
+    - id: case__130_elt_field0
+      size-eos: true
+  case__130_elt_field0_0:
+    seq:
     - id: len_case__130_elt_field0
       type: u1
     - id: case__130_elt_field0
+      type: case__130_elt_field0
       size: len_case__130_elt_field0
-      size-eos: true
   case__130_entries:
     seq:
     - id: case__130_elt_field0
-      type: case__130_elt_field0
+      type: case__130_elt_field0_0
     - id: case__130_elt_field1
       type: tree_encoding
   case__131_elt_field0:
     seq:
+    - id: case__131_elt_field0
+      size-eos: true
+  case__131_elt_field0_0:
+    seq:
     - id: len_case__131_elt_field0
       type: u1
     - id: case__131_elt_field0
+      type: case__131_elt_field0
       size: len_case__131_elt_field0
-      size-eos: true
   case__131_entries:
     seq:
     - id: case__131_elt_field0
-      type: case__131_elt_field0
+      type: case__131_elt_field0_0
     - id: case__131_elt_field1
       type: tree_encoding
   case__132_elt_field0:
     seq:
+    - id: case__132_elt_field0
+      size-eos: true
+  case__132_elt_field0_0:
+    seq:
     - id: len_case__132_elt_field0
       type: u1
     - id: case__132_elt_field0
+      type: case__132_elt_field0
       size: len_case__132_elt_field0
-      size-eos: true
   case__132_entries:
     seq:
     - id: case__132_elt_field0
-      type: case__132_elt_field0
+      type: case__132_elt_field0_0
     - id: case__132_elt_field1
       type: tree_encoding
   case__133_elt_field0:
     seq:
+    - id: case__133_elt_field0
+      size-eos: true
+  case__133_elt_field0_0:
+    seq:
     - id: len_case__133_elt_field0
       type: u1
     - id: case__133_elt_field0
+      type: case__133_elt_field0
       size: len_case__133_elt_field0
-      size-eos: true
   case__133_entries:
     seq:
     - id: case__133_elt_field0
-      type: case__133_elt_field0
+      type: case__133_elt_field0_0
     - id: case__133_elt_field1
       type: tree_encoding
   case__134_elt_field0:
     seq:
+    - id: case__134_elt_field0
+      size-eos: true
+  case__134_elt_field0_0:
+    seq:
     - id: len_case__134_elt_field0
       type: u1
     - id: case__134_elt_field0
+      type: case__134_elt_field0
       size: len_case__134_elt_field0
-      size-eos: true
   case__134_entries:
     seq:
     - id: case__134_elt_field0
-      type: case__134_elt_field0
+      type: case__134_elt_field0_0
     - id: case__134_elt_field1
       type: tree_encoding
   case__135_elt_field0:
     seq:
+    - id: case__135_elt_field0
+      size-eos: true
+  case__135_elt_field0_0:
+    seq:
     - id: len_case__135_elt_field0
       type: u1
     - id: case__135_elt_field0
+      type: case__135_elt_field0
       size: len_case__135_elt_field0
-      size-eos: true
   case__135_entries:
     seq:
     - id: case__135_elt_field0
-      type: case__135_elt_field0
+      type: case__135_elt_field0_0
     - id: case__135_elt_field1
       type: tree_encoding
   case__136_elt_field0:
     seq:
+    - id: case__136_elt_field0
+      size-eos: true
+  case__136_elt_field0_0:
+    seq:
     - id: len_case__136_elt_field0
       type: u1
     - id: case__136_elt_field0
+      type: case__136_elt_field0
       size: len_case__136_elt_field0
-      size-eos: true
   case__136_entries:
     seq:
     - id: case__136_elt_field0
-      type: case__136_elt_field0
+      type: case__136_elt_field0_0
     - id: case__136_elt_field1
       type: tree_encoding
   case__137_elt_field0:
     seq:
+    - id: case__137_elt_field0
+      size-eos: true
+  case__137_elt_field0_0:
+    seq:
     - id: len_case__137_elt_field0
       type: u1
     - id: case__137_elt_field0
+      type: case__137_elt_field0
       size: len_case__137_elt_field0
-      size-eos: true
   case__137_entries:
     seq:
     - id: case__137_elt_field0
-      type: case__137_elt_field0
+      type: case__137_elt_field0_0
     - id: case__137_elt_field1
       type: tree_encoding
   case__138_elt_field0:
     seq:
+    - id: case__138_elt_field0
+      size-eos: true
+  case__138_elt_field0_0:
+    seq:
     - id: len_case__138_elt_field0
       type: u1
     - id: case__138_elt_field0
+      type: case__138_elt_field0
       size: len_case__138_elt_field0
-      size-eos: true
   case__138_entries:
     seq:
     - id: case__138_elt_field0
-      type: case__138_elt_field0
+      type: case__138_elt_field0_0
     - id: case__138_elt_field1
       type: tree_encoding
   case__139_elt_field0:
     seq:
+    - id: case__139_elt_field0
+      size-eos: true
+  case__139_elt_field0_0:
+    seq:
     - id: len_case__139_elt_field0
       type: u1
     - id: case__139_elt_field0
+      type: case__139_elt_field0
       size: len_case__139_elt_field0
-      size-eos: true
   case__139_entries:
     seq:
     - id: case__139_elt_field0
-      type: case__139_elt_field0
+      type: case__139_elt_field0_0
     - id: case__139_elt_field1
       type: tree_encoding
   case__13_field1_entries:
@@ -343,132 +403,172 @@ types:
       doc: case__14_field1_entries
   case__140_elt_field0:
     seq:
+    - id: case__140_elt_field0
+      size-eos: true
+  case__140_elt_field0_0:
+    seq:
     - id: len_case__140_elt_field0
       type: u1
     - id: case__140_elt_field0
+      type: case__140_elt_field0
       size: len_case__140_elt_field0
-      size-eos: true
   case__140_entries:
     seq:
     - id: case__140_elt_field0
-      type: case__140_elt_field0
+      type: case__140_elt_field0_0
     - id: case__140_elt_field1
       type: tree_encoding
   case__141_elt_field0:
     seq:
+    - id: case__141_elt_field0
+      size-eos: true
+  case__141_elt_field0_0:
+    seq:
     - id: len_case__141_elt_field0
       type: u1
     - id: case__141_elt_field0
+      type: case__141_elt_field0
       size: len_case__141_elt_field0
-      size-eos: true
   case__141_entries:
     seq:
     - id: case__141_elt_field0
-      type: case__141_elt_field0
+      type: case__141_elt_field0_0
     - id: case__141_elt_field1
       type: tree_encoding
   case__142_elt_field0:
     seq:
+    - id: case__142_elt_field0
+      size-eos: true
+  case__142_elt_field0_0:
+    seq:
     - id: len_case__142_elt_field0
       type: u1
     - id: case__142_elt_field0
+      type: case__142_elt_field0
       size: len_case__142_elt_field0
-      size-eos: true
   case__142_entries:
     seq:
     - id: case__142_elt_field0
-      type: case__142_elt_field0
+      type: case__142_elt_field0_0
     - id: case__142_elt_field1
       type: tree_encoding
   case__143_elt_field0:
     seq:
+    - id: case__143_elt_field0
+      size-eos: true
+  case__143_elt_field0_0:
+    seq:
     - id: len_case__143_elt_field0
       type: u1
     - id: case__143_elt_field0
+      type: case__143_elt_field0
       size: len_case__143_elt_field0
-      size-eos: true
   case__143_entries:
     seq:
     - id: case__143_elt_field0
-      type: case__143_elt_field0
+      type: case__143_elt_field0_0
     - id: case__143_elt_field1
       type: tree_encoding
   case__144_elt_field0:
     seq:
+    - id: case__144_elt_field0
+      size-eos: true
+  case__144_elt_field0_0:
+    seq:
     - id: len_case__144_elt_field0
       type: u1
     - id: case__144_elt_field0
+      type: case__144_elt_field0
       size: len_case__144_elt_field0
-      size-eos: true
   case__144_entries:
     seq:
     - id: case__144_elt_field0
-      type: case__144_elt_field0
+      type: case__144_elt_field0_0
     - id: case__144_elt_field1
       type: tree_encoding
   case__145_elt_field0:
     seq:
+    - id: case__145_elt_field0
+      size-eos: true
+  case__145_elt_field0_0:
+    seq:
     - id: len_case__145_elt_field0
       type: u1
     - id: case__145_elt_field0
+      type: case__145_elt_field0
       size: len_case__145_elt_field0
-      size-eos: true
   case__145_entries:
     seq:
     - id: case__145_elt_field0
-      type: case__145_elt_field0
+      type: case__145_elt_field0_0
     - id: case__145_elt_field1
       type: tree_encoding
   case__146_elt_field0:
     seq:
+    - id: case__146_elt_field0
+      size-eos: true
+  case__146_elt_field0_0:
+    seq:
     - id: len_case__146_elt_field0
       type: u1
     - id: case__146_elt_field0
+      type: case__146_elt_field0
       size: len_case__146_elt_field0
-      size-eos: true
   case__146_entries:
     seq:
     - id: case__146_elt_field0
-      type: case__146_elt_field0
+      type: case__146_elt_field0_0
     - id: case__146_elt_field1
       type: tree_encoding
   case__147_elt_field0:
     seq:
+    - id: case__147_elt_field0
+      size-eos: true
+  case__147_elt_field0_0:
+    seq:
     - id: len_case__147_elt_field0
       type: u1
     - id: case__147_elt_field0
+      type: case__147_elt_field0
       size: len_case__147_elt_field0
-      size-eos: true
   case__147_entries:
     seq:
     - id: case__147_elt_field0
-      type: case__147_elt_field0
+      type: case__147_elt_field0_0
     - id: case__147_elt_field1
       type: tree_encoding
   case__148_elt_field0:
     seq:
+    - id: case__148_elt_field0
+      size-eos: true
+  case__148_elt_field0_0:
+    seq:
     - id: len_case__148_elt_field0
       type: u1
     - id: case__148_elt_field0
+      type: case__148_elt_field0
       size: len_case__148_elt_field0
-      size-eos: true
   case__148_entries:
     seq:
     - id: case__148_elt_field0
-      type: case__148_elt_field0
+      type: case__148_elt_field0_0
     - id: case__148_elt_field1
       type: tree_encoding
   case__149_elt_field0:
     seq:
+    - id: case__149_elt_field0
+      size-eos: true
+  case__149_elt_field0_0:
+    seq:
     - id: len_case__149_elt_field0
       type: u1
     - id: case__149_elt_field0
+      type: case__149_elt_field0
       size: len_case__149_elt_field0
-      size-eos: true
   case__149_entries:
     seq:
     - id: case__149_elt_field0
-      type: case__149_elt_field0
+      type: case__149_elt_field0_0
     - id: case__149_elt_field1
       type: tree_encoding
   case__14_field1_entries:
@@ -488,132 +588,172 @@ types:
       doc: case__15_field1_entries
   case__150_elt_field0:
     seq:
+    - id: case__150_elt_field0
+      size-eos: true
+  case__150_elt_field0_0:
+    seq:
     - id: len_case__150_elt_field0
       type: u1
     - id: case__150_elt_field0
+      type: case__150_elt_field0
       size: len_case__150_elt_field0
-      size-eos: true
   case__150_entries:
     seq:
     - id: case__150_elt_field0
-      type: case__150_elt_field0
+      type: case__150_elt_field0_0
     - id: case__150_elt_field1
       type: tree_encoding
   case__151_elt_field0:
     seq:
+    - id: case__151_elt_field0
+      size-eos: true
+  case__151_elt_field0_0:
+    seq:
     - id: len_case__151_elt_field0
       type: u1
     - id: case__151_elt_field0
+      type: case__151_elt_field0
       size: len_case__151_elt_field0
-      size-eos: true
   case__151_entries:
     seq:
     - id: case__151_elt_field0
-      type: case__151_elt_field0
+      type: case__151_elt_field0_0
     - id: case__151_elt_field1
       type: tree_encoding
   case__152_elt_field0:
     seq:
+    - id: case__152_elt_field0
+      size-eos: true
+  case__152_elt_field0_0:
+    seq:
     - id: len_case__152_elt_field0
       type: u1
     - id: case__152_elt_field0
+      type: case__152_elt_field0
       size: len_case__152_elt_field0
-      size-eos: true
   case__152_entries:
     seq:
     - id: case__152_elt_field0
-      type: case__152_elt_field0
+      type: case__152_elt_field0_0
     - id: case__152_elt_field1
       type: tree_encoding
   case__153_elt_field0:
     seq:
+    - id: case__153_elt_field0
+      size-eos: true
+  case__153_elt_field0_0:
+    seq:
     - id: len_case__153_elt_field0
       type: u1
     - id: case__153_elt_field0
+      type: case__153_elt_field0
       size: len_case__153_elt_field0
-      size-eos: true
   case__153_entries:
     seq:
     - id: case__153_elt_field0
-      type: case__153_elt_field0
+      type: case__153_elt_field0_0
     - id: case__153_elt_field1
       type: tree_encoding
   case__154_elt_field0:
     seq:
+    - id: case__154_elt_field0
+      size-eos: true
+  case__154_elt_field0_0:
+    seq:
     - id: len_case__154_elt_field0
       type: u1
     - id: case__154_elt_field0
+      type: case__154_elt_field0
       size: len_case__154_elt_field0
-      size-eos: true
   case__154_entries:
     seq:
     - id: case__154_elt_field0
-      type: case__154_elt_field0
+      type: case__154_elt_field0_0
     - id: case__154_elt_field1
       type: tree_encoding
   case__155_elt_field0:
     seq:
+    - id: case__155_elt_field0
+      size-eos: true
+  case__155_elt_field0_0:
+    seq:
     - id: len_case__155_elt_field0
       type: u1
     - id: case__155_elt_field0
+      type: case__155_elt_field0
       size: len_case__155_elt_field0
-      size-eos: true
   case__155_entries:
     seq:
     - id: case__155_elt_field0
-      type: case__155_elt_field0
+      type: case__155_elt_field0_0
     - id: case__155_elt_field1
       type: tree_encoding
   case__156_elt_field0:
     seq:
+    - id: case__156_elt_field0
+      size-eos: true
+  case__156_elt_field0_0:
+    seq:
     - id: len_case__156_elt_field0
       type: u1
     - id: case__156_elt_field0
+      type: case__156_elt_field0
       size: len_case__156_elt_field0
-      size-eos: true
   case__156_entries:
     seq:
     - id: case__156_elt_field0
-      type: case__156_elt_field0
+      type: case__156_elt_field0_0
     - id: case__156_elt_field1
       type: tree_encoding
   case__157_elt_field0:
     seq:
+    - id: case__157_elt_field0
+      size-eos: true
+  case__157_elt_field0_0:
+    seq:
     - id: len_case__157_elt_field0
       type: u1
     - id: case__157_elt_field0
+      type: case__157_elt_field0
       size: len_case__157_elt_field0
-      size-eos: true
   case__157_entries:
     seq:
     - id: case__157_elt_field0
-      type: case__157_elt_field0
+      type: case__157_elt_field0_0
     - id: case__157_elt_field1
       type: tree_encoding
   case__158_elt_field0:
     seq:
+    - id: case__158_elt_field0
+      size-eos: true
+  case__158_elt_field0_0:
+    seq:
     - id: len_case__158_elt_field0
       type: u1
     - id: case__158_elt_field0
+      type: case__158_elt_field0
       size: len_case__158_elt_field0
-      size-eos: true
   case__158_entries:
     seq:
     - id: case__158_elt_field0
-      type: case__158_elt_field0
+      type: case__158_elt_field0_0
     - id: case__158_elt_field1
       type: tree_encoding
   case__159_elt_field0:
     seq:
+    - id: case__159_elt_field0
+      size-eos: true
+  case__159_elt_field0_0:
+    seq:
     - id: len_case__159_elt_field0
       type: u1
     - id: case__159_elt_field0
+      type: case__159_elt_field0
       size: len_case__159_elt_field0
-      size-eos: true
   case__159_entries:
     seq:
     - id: case__159_elt_field0
-      type: case__159_elt_field0
+      type: case__159_elt_field0_0
     - id: case__159_elt_field1
       type: tree_encoding
   case__15_field1_entries:
@@ -633,132 +773,172 @@ types:
       doc: case__16_field1_entries
   case__160_elt_field0:
     seq:
+    - id: case__160_elt_field0
+      size-eos: true
+  case__160_elt_field0_0:
+    seq:
     - id: len_case__160_elt_field0
       type: u1
     - id: case__160_elt_field0
+      type: case__160_elt_field0
       size: len_case__160_elt_field0
-      size-eos: true
   case__160_entries:
     seq:
     - id: case__160_elt_field0
-      type: case__160_elt_field0
+      type: case__160_elt_field0_0
     - id: case__160_elt_field1
       type: tree_encoding
   case__161_elt_field0:
     seq:
+    - id: case__161_elt_field0
+      size-eos: true
+  case__161_elt_field0_0:
+    seq:
     - id: len_case__161_elt_field0
       type: u1
     - id: case__161_elt_field0
+      type: case__161_elt_field0
       size: len_case__161_elt_field0
-      size-eos: true
   case__161_entries:
     seq:
     - id: case__161_elt_field0
-      type: case__161_elt_field0
+      type: case__161_elt_field0_0
     - id: case__161_elt_field1
       type: tree_encoding
   case__162_elt_field0:
     seq:
+    - id: case__162_elt_field0
+      size-eos: true
+  case__162_elt_field0_0:
+    seq:
     - id: len_case__162_elt_field0
       type: u1
     - id: case__162_elt_field0
+      type: case__162_elt_field0
       size: len_case__162_elt_field0
-      size-eos: true
   case__162_entries:
     seq:
     - id: case__162_elt_field0
-      type: case__162_elt_field0
+      type: case__162_elt_field0_0
     - id: case__162_elt_field1
       type: tree_encoding
   case__163_elt_field0:
     seq:
+    - id: case__163_elt_field0
+      size-eos: true
+  case__163_elt_field0_0:
+    seq:
     - id: len_case__163_elt_field0
       type: u1
     - id: case__163_elt_field0
+      type: case__163_elt_field0
       size: len_case__163_elt_field0
-      size-eos: true
   case__163_entries:
     seq:
     - id: case__163_elt_field0
-      type: case__163_elt_field0
+      type: case__163_elt_field0_0
     - id: case__163_elt_field1
       type: tree_encoding
   case__164_elt_field0:
     seq:
+    - id: case__164_elt_field0
+      size-eos: true
+  case__164_elt_field0_0:
+    seq:
     - id: len_case__164_elt_field0
       type: u1
     - id: case__164_elt_field0
+      type: case__164_elt_field0
       size: len_case__164_elt_field0
-      size-eos: true
   case__164_entries:
     seq:
     - id: case__164_elt_field0
-      type: case__164_elt_field0
+      type: case__164_elt_field0_0
     - id: case__164_elt_field1
       type: tree_encoding
   case__165_elt_field0:
     seq:
+    - id: case__165_elt_field0
+      size-eos: true
+  case__165_elt_field0_0:
+    seq:
     - id: len_case__165_elt_field0
       type: u1
     - id: case__165_elt_field0
+      type: case__165_elt_field0
       size: len_case__165_elt_field0
-      size-eos: true
   case__165_entries:
     seq:
     - id: case__165_elt_field0
-      type: case__165_elt_field0
+      type: case__165_elt_field0_0
     - id: case__165_elt_field1
       type: tree_encoding
   case__166_elt_field0:
     seq:
+    - id: case__166_elt_field0
+      size-eos: true
+  case__166_elt_field0_0:
+    seq:
     - id: len_case__166_elt_field0
       type: u1
     - id: case__166_elt_field0
+      type: case__166_elt_field0
       size: len_case__166_elt_field0
-      size-eos: true
   case__166_entries:
     seq:
     - id: case__166_elt_field0
-      type: case__166_elt_field0
+      type: case__166_elt_field0_0
     - id: case__166_elt_field1
       type: tree_encoding
   case__167_elt_field0:
     seq:
+    - id: case__167_elt_field0
+      size-eos: true
+  case__167_elt_field0_0:
+    seq:
     - id: len_case__167_elt_field0
       type: u1
     - id: case__167_elt_field0
+      type: case__167_elt_field0
       size: len_case__167_elt_field0
-      size-eos: true
   case__167_entries:
     seq:
     - id: case__167_elt_field0
-      type: case__167_elt_field0
+      type: case__167_elt_field0_0
     - id: case__167_elt_field1
       type: tree_encoding
   case__168_elt_field0:
     seq:
+    - id: case__168_elt_field0
+      size-eos: true
+  case__168_elt_field0_0:
+    seq:
     - id: len_case__168_elt_field0
       type: u1
     - id: case__168_elt_field0
+      type: case__168_elt_field0
       size: len_case__168_elt_field0
-      size-eos: true
   case__168_entries:
     seq:
     - id: case__168_elt_field0
-      type: case__168_elt_field0
+      type: case__168_elt_field0_0
     - id: case__168_elt_field1
       type: tree_encoding
   case__169_elt_field0:
     seq:
+    - id: case__169_elt_field0
+      size-eos: true
+  case__169_elt_field0_0:
+    seq:
     - id: len_case__169_elt_field0
       type: u1
     - id: case__169_elt_field0
+      type: case__169_elt_field0
       size: len_case__169_elt_field0
-      size-eos: true
   case__169_entries:
     seq:
     - id: case__169_elt_field0
-      type: case__169_elt_field0
+      type: case__169_elt_field0_0
     - id: case__169_elt_field1
       type: tree_encoding
   case__16_field1_entries:
@@ -778,132 +958,172 @@ types:
       doc: case__17_field1_entries
   case__170_elt_field0:
     seq:
+    - id: case__170_elt_field0
+      size-eos: true
+  case__170_elt_field0_0:
+    seq:
     - id: len_case__170_elt_field0
       type: u1
     - id: case__170_elt_field0
+      type: case__170_elt_field0
       size: len_case__170_elt_field0
-      size-eos: true
   case__170_entries:
     seq:
     - id: case__170_elt_field0
-      type: case__170_elt_field0
+      type: case__170_elt_field0_0
     - id: case__170_elt_field1
       type: tree_encoding
   case__171_elt_field0:
     seq:
+    - id: case__171_elt_field0
+      size-eos: true
+  case__171_elt_field0_0:
+    seq:
     - id: len_case__171_elt_field0
       type: u1
     - id: case__171_elt_field0
+      type: case__171_elt_field0
       size: len_case__171_elt_field0
-      size-eos: true
   case__171_entries:
     seq:
     - id: case__171_elt_field0
-      type: case__171_elt_field0
+      type: case__171_elt_field0_0
     - id: case__171_elt_field1
       type: tree_encoding
   case__172_elt_field0:
     seq:
+    - id: case__172_elt_field0
+      size-eos: true
+  case__172_elt_field0_0:
+    seq:
     - id: len_case__172_elt_field0
       type: u1
     - id: case__172_elt_field0
+      type: case__172_elt_field0
       size: len_case__172_elt_field0
-      size-eos: true
   case__172_entries:
     seq:
     - id: case__172_elt_field0
-      type: case__172_elt_field0
+      type: case__172_elt_field0_0
     - id: case__172_elt_field1
       type: tree_encoding
   case__173_elt_field0:
     seq:
+    - id: case__173_elt_field0
+      size-eos: true
+  case__173_elt_field0_0:
+    seq:
     - id: len_case__173_elt_field0
       type: u1
     - id: case__173_elt_field0
+      type: case__173_elt_field0
       size: len_case__173_elt_field0
-      size-eos: true
   case__173_entries:
     seq:
     - id: case__173_elt_field0
-      type: case__173_elt_field0
+      type: case__173_elt_field0_0
     - id: case__173_elt_field1
       type: tree_encoding
   case__174_elt_field0:
     seq:
+    - id: case__174_elt_field0
+      size-eos: true
+  case__174_elt_field0_0:
+    seq:
     - id: len_case__174_elt_field0
       type: u1
     - id: case__174_elt_field0
+      type: case__174_elt_field0
       size: len_case__174_elt_field0
-      size-eos: true
   case__174_entries:
     seq:
     - id: case__174_elt_field0
-      type: case__174_elt_field0
+      type: case__174_elt_field0_0
     - id: case__174_elt_field1
       type: tree_encoding
   case__175_elt_field0:
     seq:
+    - id: case__175_elt_field0
+      size-eos: true
+  case__175_elt_field0_0:
+    seq:
     - id: len_case__175_elt_field0
       type: u1
     - id: case__175_elt_field0
+      type: case__175_elt_field0
       size: len_case__175_elt_field0
-      size-eos: true
   case__175_entries:
     seq:
     - id: case__175_elt_field0
-      type: case__175_elt_field0
+      type: case__175_elt_field0_0
     - id: case__175_elt_field1
       type: tree_encoding
   case__176_elt_field0:
     seq:
+    - id: case__176_elt_field0
+      size-eos: true
+  case__176_elt_field0_0:
+    seq:
     - id: len_case__176_elt_field0
       type: u1
     - id: case__176_elt_field0
+      type: case__176_elt_field0
       size: len_case__176_elt_field0
-      size-eos: true
   case__176_entries:
     seq:
     - id: case__176_elt_field0
-      type: case__176_elt_field0
+      type: case__176_elt_field0_0
     - id: case__176_elt_field1
       type: tree_encoding
   case__177_elt_field0:
     seq:
+    - id: case__177_elt_field0
+      size-eos: true
+  case__177_elt_field0_0:
+    seq:
     - id: len_case__177_elt_field0
       type: u1
     - id: case__177_elt_field0
+      type: case__177_elt_field0
       size: len_case__177_elt_field0
-      size-eos: true
   case__177_entries:
     seq:
     - id: case__177_elt_field0
-      type: case__177_elt_field0
+      type: case__177_elt_field0_0
     - id: case__177_elt_field1
       type: tree_encoding
   case__178_elt_field0:
     seq:
+    - id: case__178_elt_field0
+      size-eos: true
+  case__178_elt_field0_0:
+    seq:
     - id: len_case__178_elt_field0
       type: u1
     - id: case__178_elt_field0
+      type: case__178_elt_field0
       size: len_case__178_elt_field0
-      size-eos: true
   case__178_entries:
     seq:
     - id: case__178_elt_field0
-      type: case__178_elt_field0
+      type: case__178_elt_field0_0
     - id: case__178_elt_field1
       type: tree_encoding
   case__179_elt_field0:
     seq:
+    - id: case__179_elt_field0
+      size-eos: true
+  case__179_elt_field0_0:
+    seq:
     - id: len_case__179_elt_field0
       type: u1
     - id: case__179_elt_field0
+      type: case__179_elt_field0
       size: len_case__179_elt_field0
-      size-eos: true
   case__179_entries:
     seq:
     - id: case__179_elt_field0
-      type: case__179_elt_field0
+      type: case__179_elt_field0_0
     - id: case__179_elt_field1
       type: tree_encoding
   case__17_field1_entries:
@@ -923,132 +1143,172 @@ types:
       doc: case__18_field1_entries
   case__180_elt_field0:
     seq:
+    - id: case__180_elt_field0
+      size-eos: true
+  case__180_elt_field0_0:
+    seq:
     - id: len_case__180_elt_field0
       type: u1
     - id: case__180_elt_field0
+      type: case__180_elt_field0
       size: len_case__180_elt_field0
-      size-eos: true
   case__180_entries:
     seq:
     - id: case__180_elt_field0
-      type: case__180_elt_field0
+      type: case__180_elt_field0_0
     - id: case__180_elt_field1
       type: tree_encoding
   case__181_elt_field0:
     seq:
+    - id: case__181_elt_field0
+      size-eos: true
+  case__181_elt_field0_0:
+    seq:
     - id: len_case__181_elt_field0
       type: u1
     - id: case__181_elt_field0
+      type: case__181_elt_field0
       size: len_case__181_elt_field0
-      size-eos: true
   case__181_entries:
     seq:
     - id: case__181_elt_field0
-      type: case__181_elt_field0
+      type: case__181_elt_field0_0
     - id: case__181_elt_field1
       type: tree_encoding
   case__182_elt_field0:
     seq:
+    - id: case__182_elt_field0
+      size-eos: true
+  case__182_elt_field0_0:
+    seq:
     - id: len_case__182_elt_field0
       type: u1
     - id: case__182_elt_field0
+      type: case__182_elt_field0
       size: len_case__182_elt_field0
-      size-eos: true
   case__182_entries:
     seq:
     - id: case__182_elt_field0
-      type: case__182_elt_field0
+      type: case__182_elt_field0_0
     - id: case__182_elt_field1
       type: tree_encoding
   case__183_elt_field0:
     seq:
+    - id: case__183_elt_field0
+      size-eos: true
+  case__183_elt_field0_0:
+    seq:
     - id: len_case__183_elt_field0
       type: u1
     - id: case__183_elt_field0
+      type: case__183_elt_field0
       size: len_case__183_elt_field0
-      size-eos: true
   case__183_entries:
     seq:
     - id: case__183_elt_field0
-      type: case__183_elt_field0
+      type: case__183_elt_field0_0
     - id: case__183_elt_field1
       type: tree_encoding
   case__184_elt_field0:
     seq:
+    - id: case__184_elt_field0
+      size-eos: true
+  case__184_elt_field0_0:
+    seq:
     - id: len_case__184_elt_field0
       type: u1
     - id: case__184_elt_field0
+      type: case__184_elt_field0
       size: len_case__184_elt_field0
-      size-eos: true
   case__184_entries:
     seq:
     - id: case__184_elt_field0
-      type: case__184_elt_field0
+      type: case__184_elt_field0_0
     - id: case__184_elt_field1
       type: tree_encoding
   case__185_elt_field0:
     seq:
+    - id: case__185_elt_field0
+      size-eos: true
+  case__185_elt_field0_0:
+    seq:
     - id: len_case__185_elt_field0
       type: u1
     - id: case__185_elt_field0
+      type: case__185_elt_field0
       size: len_case__185_elt_field0
-      size-eos: true
   case__185_entries:
     seq:
     - id: case__185_elt_field0
-      type: case__185_elt_field0
+      type: case__185_elt_field0_0
     - id: case__185_elt_field1
       type: tree_encoding
   case__186_elt_field0:
     seq:
+    - id: case__186_elt_field0
+      size-eos: true
+  case__186_elt_field0_0:
+    seq:
     - id: len_case__186_elt_field0
       type: u1
     - id: case__186_elt_field0
+      type: case__186_elt_field0
       size: len_case__186_elt_field0
-      size-eos: true
   case__186_entries:
     seq:
     - id: case__186_elt_field0
-      type: case__186_elt_field0
+      type: case__186_elt_field0_0
     - id: case__186_elt_field1
       type: tree_encoding
   case__187_elt_field0:
     seq:
+    - id: case__187_elt_field0
+      size-eos: true
+  case__187_elt_field0_0:
+    seq:
     - id: len_case__187_elt_field0
       type: u1
     - id: case__187_elt_field0
+      type: case__187_elt_field0
       size: len_case__187_elt_field0
-      size-eos: true
   case__187_entries:
     seq:
     - id: case__187_elt_field0
-      type: case__187_elt_field0
+      type: case__187_elt_field0_0
     - id: case__187_elt_field1
       type: tree_encoding
   case__188_elt_field0:
     seq:
+    - id: case__188_elt_field0
+      size-eos: true
+  case__188_elt_field0_0:
+    seq:
     - id: len_case__188_elt_field0
       type: u1
     - id: case__188_elt_field0
+      type: case__188_elt_field0
       size: len_case__188_elt_field0
-      size-eos: true
   case__188_entries:
     seq:
     - id: case__188_elt_field0
-      type: case__188_elt_field0
+      type: case__188_elt_field0_0
     - id: case__188_elt_field1
       type: tree_encoding
   case__189_elt_field0:
     seq:
+    - id: case__189_elt_field0
+      size-eos: true
+  case__189_elt_field0_0:
+    seq:
     - id: len_case__189_elt_field0
       type: u1
     - id: case__189_elt_field0
+      type: case__189_elt_field0
       size: len_case__189_elt_field0
-      size-eos: true
   case__189_entries:
     seq:
     - id: case__189_elt_field0
-      type: case__189_elt_field0
+      type: case__189_elt_field0_0
     - id: case__189_elt_field1
       type: tree_encoding
   case__18_field1_entries:
@@ -1068,52 +1328,72 @@ types:
       doc: case__19_field1_entries
   case__190_elt_field0:
     seq:
+    - id: case__190_elt_field0
+      size-eos: true
+  case__190_elt_field0_0:
+    seq:
     - id: len_case__190_elt_field0
       type: u1
     - id: case__190_elt_field0
+      type: case__190_elt_field0
       size: len_case__190_elt_field0
-      size-eos: true
   case__190_entries:
     seq:
     - id: case__190_elt_field0
-      type: case__190_elt_field0
+      type: case__190_elt_field0_0
     - id: case__190_elt_field1
       type: tree_encoding
   case__191:
     seq:
+    - id: case__191_entries
+      type: case__191_entries
+      repeat: eos
+  case__191_0:
+    seq:
     - id: len_case__191
       type: s4
     - id: case__191
-      type: case__191_entries
+      type: case__191
       size: len_case__191
-      repeat: eos
   case__191_elt_field0:
+    seq:
+    - id: case__191_elt_field0
+      size-eos: true
+  case__191_elt_field0_0:
     seq:
     - id: len_case__191_elt_field0
       type: u1
     - id: case__191_elt_field0
+      type: case__191_elt_field0
       size: len_case__191_elt_field0
-      size-eos: true
   case__191_entries:
     seq:
     - id: case__191_elt_field0
-      type: case__191_elt_field0
+      type: case__191_elt_field0_0
     - id: case__191_elt_field1
       type: tree_encoding
   case__192:
     seq:
+    - id: case__192
+      size-eos: true
+  case__192_0:
+    seq:
     - id: len_case__192
       type: u1
     - id: case__192
+      type: case__192
       size: len_case__192
-      size-eos: true
   case__193:
+    seq:
+    - id: case__193
+      size-eos: true
+  case__193_0:
     seq:
     - id: len_case__193
       type: u2
     - id: case__193
+      type: case__193
       size: len_case__193
-      size-eos: true
   case__195:
     seq:
     - id: len_case__195
@@ -1152,31 +1432,39 @@ types:
     - id: case__208_field0
       type: u1
     - id: case__208_field1
-      type: case__208_field1
+      type: case__208_field1_0
     - id: case__208_field2
       type: inode_tree
   case__208_field1:
     seq:
+    - id: case__208_field1
+      size-eos: true
+  case__208_field1_0:
+    seq:
     - id: len_case__208_field1
       type: u1
     - id: case__208_field1
+      type: case__208_field1
       size: len_case__208_field1
-      size-eos: true
   case__209:
     seq:
     - id: case__209_field0
       type: u2
     - id: case__209_field1
-      type: case__209_field1
+      type: case__209_field1_0
     - id: case__209_field2
       type: inode_tree
   case__209_field1:
     seq:
+    - id: case__209_field1
+      size-eos: true
+  case__209_field1_0:
+    seq:
     - id: len_case__209_field1
       type: u1
     - id: case__209_field1
+      type: case__209_field1
       size: len_case__209_field1
-      size-eos: true
   case__20_field1_entries:
     seq:
     - id: case__20_field1_elt_field0
@@ -1197,91 +1485,115 @@ types:
     - id: case__210_field0
       type: s4
     - id: case__210_field1
-      type: case__210_field1
+      type: case__210_field1_0
     - id: case__210_field2
       type: inode_tree
   case__210_field1:
     seq:
+    - id: case__210_field1
+      size-eos: true
+  case__210_field1_0:
+    seq:
     - id: len_case__210_field1
       type: u1
     - id: case__210_field1
+      type: case__210_field1
       size: len_case__210_field1
-      size-eos: true
   case__211:
     seq:
     - id: case__211_field0
       type: s8
     - id: case__211_field1
-      type: case__211_field1
+      type: case__211_field1_0
     - id: case__211_field2
       type: inode_tree
   case__211_field1:
     seq:
+    - id: case__211_field1
+      size-eos: true
+  case__211_field1_0:
+    seq:
     - id: len_case__211_field1
       type: u1
     - id: case__211_field1
+      type: case__211_field1
       size: len_case__211_field1
-      size-eos: true
   case__216:
     seq:
     - id: case__216_field0
       type: u1
     - id: case__216_field1
-      type: case__216_field1
+      type: case__216_field1_0
     - id: case__216_field2
       type: inode_tree
   case__216_field1:
     seq:
+    - id: case__216_field1
+      size-eos: true
+  case__216_field1_0:
+    seq:
     - id: len_case__216_field1
       type: u1
     - id: case__216_field1
+      type: case__216_field1
       size: len_case__216_field1
-      size-eos: true
   case__217:
     seq:
     - id: case__217_field0
       type: u2
     - id: case__217_field1
-      type: case__217_field1
+      type: case__217_field1_0
     - id: case__217_field2
       type: inode_tree
   case__217_field1:
     seq:
+    - id: case__217_field1
+      size-eos: true
+  case__217_field1_0:
+    seq:
     - id: len_case__217_field1
       type: u1
     - id: case__217_field1
+      type: case__217_field1
       size: len_case__217_field1
-      size-eos: true
   case__218:
     seq:
     - id: case__218_field0
       type: s4
     - id: case__218_field1
-      type: case__218_field1
+      type: case__218_field1_0
     - id: case__218_field2
       type: inode_tree
   case__218_field1:
     seq:
+    - id: case__218_field1
+      size-eos: true
+  case__218_field1_0:
+    seq:
     - id: len_case__218_field1
       type: u1
     - id: case__218_field1
+      type: case__218_field1
       size: len_case__218_field1
-      size-eos: true
   case__219:
     seq:
     - id: case__219_field0
       type: s8
     - id: case__219_field1
-      type: case__219_field1
+      type: case__219_field1_0
     - id: case__219_field2
       type: inode_tree
   case__219_field1:
     seq:
+    - id: case__219_field1
+      size-eos: true
+  case__219_field1_0:
+    seq:
     - id: len_case__219_field1
       type: u1
     - id: case__219_field1
+      type: case__219_field1
       size: len_case__219_field1
-      size-eos: true
   case__21_field1_entries:
     seq:
     - id: case__21_field1_elt_field0
@@ -1729,12 +2041,12 @@ types:
       type: u1
     - id: case__49_field1_elt_field1
       type: inode_tree
-  case__4_:
+  case__4_0:
     seq:
     - id: case__4_field0
       type: u1
     - id: case__4_field1
-      type: case__4_field1_entries_
+      type: case__4_field1_entries_0
       repeat: expr
       repeat-expr: 1
       doc: case__4_field1_entries
@@ -1744,7 +2056,7 @@ types:
       type: u1
     - id: case__4_field1_elt_field1
       type: inode_tree
-  case__4_field1_entries_:
+  case__4_field1_entries_0:
     seq:
     - id: case__4_field1_elt_field0
       type: u1
@@ -1930,15 +2242,19 @@ types:
     - id: case__60_field0
       type: u1
     - id: case__60_field1
-      type: case__60_field1
+      type: case__60_field1_0
   case__60_field1:
+    seq:
+    - id: case__60_field1_entries
+      type: case__60_field1_entries
+      repeat: eos
+  case__60_field1_0:
     seq:
     - id: len_case__60_field1
       type: s4
     - id: case__60_field1
-      type: case__60_field1_entries
+      type: case__60_field1
       size: len_case__60_field1
-      repeat: eos
   case__60_field1_entries:
     seq:
     - id: case__60_field1_elt_field0
@@ -1950,15 +2266,19 @@ types:
     - id: case__61_field0
       type: u2
     - id: case__61_field1
-      type: case__61_field1
+      type: case__61_field1_0
   case__61_field1:
+    seq:
+    - id: case__61_field1_entries
+      type: case__61_field1_entries
+      repeat: eos
+  case__61_field1_0:
     seq:
     - id: len_case__61_field1
       type: s4
     - id: case__61_field1
-      type: case__61_field1_entries
+      type: case__61_field1
       size: len_case__61_field1
-      repeat: eos
   case__61_field1_entries:
     seq:
     - id: case__61_field1_elt_field0
@@ -1970,15 +2290,19 @@ types:
     - id: case__62_field0
       type: s4
     - id: case__62_field1
-      type: case__62_field1
+      type: case__62_field1_0
   case__62_field1:
+    seq:
+    - id: case__62_field1_entries
+      type: case__62_field1_entries
+      repeat: eos
+  case__62_field1_0:
     seq:
     - id: len_case__62_field1
       type: s4
     - id: case__62_field1
-      type: case__62_field1_entries
+      type: case__62_field1
       size: len_case__62_field1
-      repeat: eos
   case__62_field1_entries:
     seq:
     - id: case__62_field1_elt_field0
@@ -1990,15 +2314,19 @@ types:
     - id: case__63_field0
       type: s8
     - id: case__63_field1
-      type: case__63_field1
+      type: case__63_field1_0
   case__63_field1:
+    seq:
+    - id: case__63_field1_entries
+      type: case__63_field1_entries
+      repeat: eos
+  case__63_field1_0:
     seq:
     - id: len_case__63_field1
       type: s4
     - id: case__63_field1
-      type: case__63_field1_entries
+      type: case__63_field1
       size: len_case__63_field1
-      repeat: eos
   case__63_field1_entries:
     seq:
     - id: case__63_field1_elt_field0
@@ -2110,12 +2438,16 @@ types:
       type: inode_tree
   circuits_info:
     seq:
+    - id: circuits_info_entries
+      type: circuits_info_entries
+      repeat: eos
+  circuits_info_0:
+    seq:
     - id: len_circuits_info
       type: s4
     - id: circuits_info
-      type: circuits_info_entries
+      type: circuits_info
       size: len_circuits_info
-      repeat: eos
   circuits_info_elt_field0:
     seq:
     - id: len_circuits_info_elt_field0
@@ -2140,12 +2472,12 @@ types:
     - id: level
       type: s4
     - id: messages
-      type: messages
+      type: messages_0
     - id: predecessor
       type: predecessor
     - id: inbox_merkle_root
       size: 32
-  commitment_:
+  commitment_0:
     seq:
     - id: compressed_state
       size: 32
@@ -2175,8 +2507,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2189,14 +2522,16 @@ types:
     seq:
     - id: endorser
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: endorsement
       type: z
   delegation:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2209,10 +2544,12 @@ types:
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   deposit:
     seq:
     - id: sender
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: destination
       size: 20
     - id: ticket_hash
@@ -2221,12 +2558,16 @@ types:
       type: amount
   dissection:
     seq:
+    - id: dissection_entries
+      type: dissection_entries
+      repeat: eos
+  dissection_0:
+    seq:
     - id: len_dissection
       type: s4
     - id: dissection
-      type: dissection_entries
+      type: dissection
       size: len_dissection
-      repeat: eos
   dissection_entries:
     seq:
     - id: state_tag
@@ -2240,30 +2581,43 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   drain_delegate:
     seq:
     - id: consensus_key
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: delegate
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: destination
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
     seq:
     - id: slot
       type: u2
@@ -2306,11 +2660,8 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
-      type: s1
+      type: id_015__ptlimapt__liquidity_baking_toggle_vote
   id_015__ptlimapt__contract_id:
-    doc: ! >-
-      A contract handle: A contract notation as given to an RPC or inside scripts.
-      Can be a base58 implicit contract hash or a base58 originated contract hash.
     seq:
     - id: id_015__ptlimapt__contract_id_tag
       type: u1
@@ -2318,13 +2669,11 @@ types:
     - id: implicit
       type: public_key_hash
       if: (id_015__ptlimapt__contract_id_tag == id_015__ptlimapt__contract_id_tag::implicit)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: originated
       type: originated
       if: (id_015__ptlimapt__contract_id_tag == id_015__ptlimapt__contract_id_tag::originated)
   id_015__ptlimapt__contract_id__originated:
-    doc: ! >-
-      A contract handle -- originated account: A contract notation as given to an
-      RPC or inside scripts. Can be a base58 originated contract hash.
     seq:
     - id: id_015__ptlimapt__contract_id__originated_tag
       type: u1
@@ -2333,13 +2682,12 @@ types:
       type: originated
       if: (id_015__ptlimapt__contract_id__originated_tag == id_015__ptlimapt__contract_id__originated_tag::originated)
   id_015__ptlimapt__entrypoint:
-    doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     seq:
     - id: id_015__ptlimapt__entrypoint_tag
       type: u1
       enum: id_015__ptlimapt__entrypoint_tag
     - id: named
-      type: named
+      type: named_0
       if: (id_015__ptlimapt__entrypoint_tag == id_015__ptlimapt__entrypoint_tag::named)
   id_015__ptlimapt__inlined__endorsement:
     seq:
@@ -2359,7 +2707,7 @@ types:
       type: u1
       enum: id_015__ptlimapt__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement
+      type: endorsement_0
       if: (id_015__ptlimapt__inlined__endorsement_mempool__contents_tag == id_015__ptlimapt__inlined__endorsement_mempool__contents_tag::endorsement)
   id_015__ptlimapt__inlined__preendorsement:
     seq:
@@ -2379,8 +2727,21 @@ types:
       type: u1
       enum: id_015__ptlimapt__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: endorsement
+      type: preendorsement_0
       if: (id_015__ptlimapt__inlined__preendorsement__contents_tag == id_015__ptlimapt__inlined__preendorsement__contents_tag::preendorsement)
+  id_015__ptlimapt__liquidity_baking_toggle_vote:
+    seq:
+    - id: id_015__ptlimapt__liquidity_baking_toggle_vote
+      type: s1
+  id_015__ptlimapt__michelson__v1__primitives:
+    seq:
+    - id: id_015__ptlimapt__michelson__v1__primitives
+      type: u1
+      enum: id_015__ptlimapt__michelson__v1__primitives
+  id_015__ptlimapt__mutez:
+    seq:
+    - id: id_015__ptlimapt__mutez
+      type: n
   id_015__ptlimapt__operation__alpha__contents:
     seq:
     - id: id_015__ptlimapt__operation__alpha__contents_tag
@@ -2390,7 +2751,7 @@ types:
       type: endorsement
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::endorsement)
     - id: preendorsement
-      type: endorsement
+      type: preendorsement
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::preendorsement)
     - id: dal_slot_availability
       type: dal_slot_availability
@@ -2414,7 +2775,7 @@ types:
       type: activate_account
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals_
+      type: proposals_1
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -2462,10 +2823,10 @@ types:
       type: tx_rollup_return_bond
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::tx_rollup_return_bond)
     - id: tx_rollup_finalize_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_finalize_commitment
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::tx_rollup_finalize_commitment)
     - id: tx_rollup_remove_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_remove_commitment
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::tx_rollup_remove_commitment)
     - id: tx_rollup_rejection
       type: tx_rollup_rejection
@@ -2520,9 +2881,6 @@ types:
     - id: signature
       size: 64
   id_015__ptlimapt__rollup_address:
-    doc: ! >-
-      A smart contract rollup address: A smart contract rollup is identified by a
-      base58 address starting with scr1
     seq:
     - id: len_id_015__ptlimapt__rollup_address
       type: s4
@@ -2534,6 +2892,10 @@ types:
       type: code
     - id: storage
       type: storage
+  id_015__ptlimapt__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   inbox__proof:
     seq:
     - id: level
@@ -2546,8 +2908,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2558,14 +2921,21 @@ types:
       type: z
     - id: destination
       type: id_015__ptlimapt__contract_id__originated
+      doc: ! >-
+        A contract handle -- originated account: A contract notation as given to an
+        RPC or inside scripts. Can be a base58 originated contract hash.
   init_state:
+    seq:
+    - id: init_state_entries
+      type: init_state_entries
+      repeat: eos
+  init_state_0:
     seq:
     - id: len_init_state
       type: s4
     - id: init_state
-      type: init_state_entries
+      type: init_state
       size: len_init_state
-      repeat: eos
   init_state_entries:
     seq:
     - id: init_state_elt
@@ -2966,7 +3336,7 @@ types:
       type: case__190_entries
       if: (inode_tree_tag == inode_tree_tag::case__190)
     - id: case__191
-      type: case__191
+      type: case__191_0
       if: (inode_tree_tag == inode_tree_tag::case__191)
     - id: case__192
       size: 32
@@ -3005,14 +3375,18 @@ types:
     - id: deposit
       type: deposit
       if: (message_tag == message_tag::deposit)
-  message_:
+  message_0:
+    seq:
+    - id: message_entries
+      type: message_entries
+      repeat: eos
+  message_1:
     seq:
     - id: len_message
       type: s4
     - id: message
-      type: message_entries
+      type: message_0
       size: len_message
-      repeat: eos
   message_entries:
     seq:
     - id: len_message_elt
@@ -3021,36 +3395,64 @@ types:
       size: len_message_elt
   message_path:
     seq:
+    - id: message_path_entries
+      type: message_path_entries
+      repeat: eos
+  message_path_0:
+    seq:
     - id: len_message_path
       type: s4
     - id: message_path
-      type: message_path_entries
+      type: message_path
       size: len_message_path
-      repeat: eos
   message_path_entries:
     seq:
     - id: inbox_list_hash
       size: 32
   message_result_path:
     seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries
+      repeat: eos
+  message_result_path_0:
+    seq:
     - id: len_message_result_path
       type: s4
     - id: message_result_path
-      type: message_result_path_entries
+      type: message_result_path
       size: len_message_result_path
+  message_result_path_1:
+    seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries_0
       repeat: eos
+  message_result_path_2:
+    seq:
+    - id: len_message_result_path
+      type: s4
+    - id: message_result_path
+      type: message_result_path_1
+      size: len_message_result_path
   message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
+  message_result_path_entries_0:
     seq:
     - id: message_result_list_hash
       size: 32
   messages:
     seq:
+    - id: messages_entries
+      type: messages_entries
+      repeat: eos
+  messages_0:
+    seq:
     - id: len_messages
       type: s4
     - id: messages
-      type: messages_entries
+      type: messages
       size: len_messages
-      repeat: eos
   messages_entries:
     seq:
     - id: message_result_hash
@@ -3067,12 +3469,11 @@ types:
       type: string
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::string)
     - id: sequence
-      type: sequence
+      type: sequence_0
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_015__ptlimapt__michelson__v1__primitives
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_015__ptlimapt__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -3108,47 +3509,71 @@ types:
       type: b7be
   named:
     seq:
+    - id: named
+      size-eos: true
+  named_0:
+    seq:
     - id: len_named
       type: u1
     - id: named
+      type: named
       size: len_named
-      size-eos: true
   op:
+    seq:
+    - id: op_entries
+      type: op_entries
+      repeat: eos
+  op1:
+    seq:
+    - id: id_015__ptlimapt__inlined__endorsement
+      type: id_015__ptlimapt__inlined__endorsement
+  op1_0:
+    seq:
+    - id: len_op1
+      type: s4
+    - id: op1
+      type: op1
+      size: len_op1
+  op1_1:
+    seq:
+    - id: id_015__ptlimapt__inlined__preendorsement
+      type: id_015__ptlimapt__inlined__preendorsement
+  op1_2:
+    seq:
+    - id: len_op1
+      type: s4
+    - id: op1
+      type: op1_1
+      size: len_op1
+  op2:
+    seq:
+    - id: id_015__ptlimapt__inlined__endorsement
+      type: id_015__ptlimapt__inlined__endorsement
+  op2_0:
+    seq:
+    - id: len_op2
+      type: s4
+    - id: op2
+      type: op2
+      size: len_op2
+  op2_1:
+    seq:
+    - id: id_015__ptlimapt__inlined__preendorsement
+      type: id_015__ptlimapt__inlined__preendorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: s4
+    - id: op2
+      type: op2_1
+      size: len_op2
+  op_0:
     seq:
     - id: len_op
       type: s4
     - id: op
-      type: op_entries
+      type: op
       size: len_op
-      repeat: eos
-  op1:
-    seq:
-    - id: len_op1
-      type: s4
-    - id: op1
-      type: id_015__ptlimapt__inlined__endorsement
-      size: len_op1
-  op1_:
-    seq:
-    - id: len_op1
-      type: s4
-    - id: op1
-      type: id_015__ptlimapt__inlined__preendorsement
-      size: len_op1
-  op2:
-    seq:
-    - id: len_op2
-      type: s4
-    - id: op2
-      type: id_015__ptlimapt__inlined__endorsement
-      size: len_op2
-  op2_:
-    seq:
-    - id: len_op2
-      type: s4
-    - id: op2
-      type: id_015__ptlimapt__inlined__preendorsement
-      size: len_op2
   op_elt_field0:
     seq:
     - id: op_code
@@ -3157,10 +3582,11 @@ types:
       type: price
     - id: l1_dst
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: rollup_id
       size: 20
     - id: payload
-      type: payload
+      type: payload_0
   op_elt_field1:
     seq:
     - id: op_elt_field1_tag
@@ -3186,8 +3612,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3195,13 +3622,14 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: delegate_tag
       type: u1
       enum: bool
     - id: delegate
       type: public_key_hash
       if: (delegate_tag == bool::true)
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: script
       type: id_015__ptlimapt__scripted__contracts
   origination_proof:
@@ -3220,6 +3648,7 @@ types:
     seq:
     - id: entrypoint
       type: id_015__ptlimapt__entrypoint
+      doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
       type: value
   parameters_ty:
@@ -3230,12 +3659,16 @@ types:
       size: len_parameters_ty
   payload:
     seq:
+    - id: payload_entries
+      type: payload_entries
+      repeat: eos
+  payload_0:
+    seq:
     - id: len_payload
       type: s4
     - id: payload
-      type: payload_entries
+      type: payload
       size: len_payload
-      repeat: eos
   payload_entries:
     seq:
     - id: payload_elt
@@ -3248,6 +3681,26 @@ types:
     - id: some
       size: 32
       if: (predecessor_tag == predecessor_tag::some)
+  preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   previous_message_result:
     seq:
     - id: context_hash
@@ -3256,12 +3709,20 @@ types:
       size: 32
   previous_message_result_path:
     seq:
+    - id: previous_message_result_path_entries
+      type: previous_message_result_path_entries
+      repeat: eos
+  previous_message_result_path_0:
+    seq:
     - id: len_previous_message_result_path
       type: s4
     - id: previous_message_result_path
-      type: message_result_path_entries
+      type: previous_message_result_path
       size: len_previous_message_result_path
-      repeat: eos
+  previous_message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
   price:
     seq:
     - id: id
@@ -3271,15 +3732,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg
       type: micheline__015__ptlimapt__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: annots
@@ -3287,8 +3746,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg1
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: arg2
@@ -3296,8 +3754,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg1
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: arg2
@@ -3307,17 +3764,15 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: args
-      type: args
+      type: args_0
     - id: annots
       type: annots
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: annots
       type: annots
   proof:
@@ -3326,7 +3781,7 @@ types:
       type: s4
     - id: proof
       size: len_proof
-  proof_:
+  proof_0:
     seq:
     - id: proof_tag
       type: u1
@@ -3343,13 +3798,13 @@ types:
     - id: case__3
       type: case__3
       if: (proof_tag == proof_tag::case__3)
-  proof__:
+  proof_1:
     seq:
     - id: proof_tag
       type: u1
       enum: proof_tag
     - id: case__0
-      type: case__0_
+      type: case__0_0
       if: (proof_tag == proof_tag::case__0)
     - id: case__2
       type: case__2
@@ -3360,7 +3815,7 @@ types:
     - id: case__3
       type: case__3
       if: (proof_tag == proof_tag::case__3)
-  proof___:
+  proof_2:
     seq:
     - id: pvm_step
       type: pvm_step
@@ -3372,26 +3827,30 @@ types:
       if: (input_proof_tag == bool::true)
   proposals:
     seq:
+    - id: proposals_entries
+      type: proposals_entries
+      repeat: eos
+  proposals_0:
+    seq:
     - id: len_proposals
       type: s4
     - id: proposals
-      type: proposals_entries
+      type: proposals
       size: len_proposals
-      repeat: eos
-  proposals_:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: period
       type: s4
     - id: proposals
-      type: proposals
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
       size: 32
   public_key:
-    doc: A Ed25519, Secp256k1, or P256 public key
     seq:
     - id: public_key_tag
       type: u1
@@ -3406,7 +3865,6 @@ types:
       size: 33
       if: (public_key_tag == public_key_tag::p256)
   public_key_hash:
-    doc: A Ed25519, Secp256k1, or P256 public key hash
     seq:
     - id: public_key_hash_tag
       type: u1
@@ -3444,10 +3902,10 @@ types:
       type: u1
       enum: pvm_step_tag
     - id: arithmetic__pvm__with__proof
-      type: proof_
+      type: proof_0
       if: (pvm_step_tag == pvm_step_tag::arithmetic__pvm__with__proof)
     - id: wasm__2__0__0__pvm__with__proof
-      type: proof__
+      type: proof_1
       if: (pvm_step_tag == pvm_step_tag::wasm__2__0__0__pvm__with__proof)
   raw_data:
     seq:
@@ -3465,8 +3923,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3479,8 +3938,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3489,6 +3949,7 @@ types:
       type: n
     - id: public_key
       type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
   reveal_proof:
     seq:
     - id: reveal_proof_tag
@@ -3501,8 +3962,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3511,14 +3973,18 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: message
-      type: message_
+      type: message_1
   sc_rollup_cement:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3527,14 +3993,18 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: commitment
       size: 32
   sc_rollup_dal_slot_subscribe:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3543,14 +4013,18 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: slot_index
       type: u1
   sc_rollup_execute_outbox_message:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3559,6 +4033,9 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: cemented_commitment
       size: 32
     - id: output_proof
@@ -3567,8 +4044,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3588,8 +4066,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3598,14 +4077,18 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: commitment
-      type: commitment_
+      type: commitment_0
   sc_rollup_recover_bond:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3618,8 +4101,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3628,8 +4112,12 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: opponent
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: refutation_tag
       type: u1
       enum: bool
@@ -3640,8 +4128,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3650,6 +4139,9 @@ types:
       type: n
     - id: rollup
       type: id_015__ptlimapt__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
     - id: stakers
       type: stakers
   seed_nonce_revelation:
@@ -3660,12 +4152,16 @@ types:
       size: 32
   sequence:
     seq:
+    - id: sequence_entries
+      type: sequence_entries
+      repeat: eos
+  sequence_0:
+    seq:
     - id: len_sequence
       type: s4
     - id: sequence
-      type: sequence_entries
+      type: sequence
       size: len_sequence
-      repeat: eos
   sequence_entries:
     seq:
     - id: sequence_elt
@@ -3680,8 +4176,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3692,7 +4189,7 @@ types:
       type: u1
       enum: bool
     - id: limit
-      type: n
+      type: id_015__ptlimapt__mutez
       if: (limit_tag == bool::true)
   slot:
     seq:
@@ -3716,22 +4213,27 @@ types:
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: ticketer
       type: id_015__ptlimapt__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
   stakers:
     seq:
     - id: alice
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: bob
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   step:
     seq:
     - id: step_tag
       type: u1
       enum: step_tag
     - id: dissection
-      type: dissection
+      type: dissection_0
       if: (step_tag == step_tag::dissection)
     - id: proof
-      type: proof___
+      type: proof_2
       if: (step_tag == step_tag::proof)
   storage:
     seq:
@@ -3759,12 +4261,16 @@ types:
       size: len_ticket_ty
   tickets_info:
     seq:
+    - id: tickets_info_entries
+      type: tickets_info_entries
+      repeat: eos
+  tickets_info_0:
+    seq:
     - id: len_tickets_info
       type: s4
     - id: tickets_info
-      type: tickets_info_entries
+      type: tickets_info
       size: len_tickets_info
-      repeat: eos
   tickets_info_entries:
     seq:
     - id: contents
@@ -3773,16 +4279,21 @@ types:
       type: ty
     - id: ticketer
       type: id_015__ptlimapt__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: amount
       type: amount
     - id: claimer
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
   transaction:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3790,9 +4301,12 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: destination
       type: id_015__ptlimapt__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: parameters_tag
       type: u1
       enum: bool
@@ -3803,8 +4317,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3817,10 +4332,16 @@ types:
       type: ticket_ty
     - id: ticket_ticketer
       type: id_015__ptlimapt__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: ticket_amount
       type: n
     - id: destination
       type: id_015__ptlimapt__contract_id
+      doc: ! >-
+        A contract handle: A contract notation as given to an RPC or inside scripts.
+        Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: entrypoint
   tree_encoding:
@@ -3832,7 +4353,7 @@ types:
       type: u1
       if: (tree_encoding_tag == tree_encoding_tag::case__0)
     - id: case__4
-      type: case__4_
+      type: case__4_0
       if: (tree_encoding_tag == tree_encoding_tag::case__4)
     - id: case__8
       type: case__8
@@ -4219,13 +4740,13 @@ types:
       type: case__190_entries
       if: (tree_encoding_tag == tree_encoding_tag::case__190)
     - id: case__191
-      type: case__191
+      type: case__191_0
       if: (tree_encoding_tag == tree_encoding_tag::case__191)
     - id: case__192
-      type: case__192
+      type: case__192_0
       if: (tree_encoding_tag == tree_encoding_tag::case__192)
     - id: case__193
-      type: case__193
+      type: case__193_0
       if: (tree_encoding_tag == tree_encoding_tag::case__193)
     - id: case__195
       type: case__195
@@ -4252,8 +4773,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4261,7 +4783,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4271,8 +4793,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4280,7 +4803,7 @@ types:
     - id: storage_limit
       type: n
     - id: tx_rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4291,15 +4814,34 @@ types:
     - id: message_index
       type: s4
     - id: message_result_path
-      type: message_result_path
+      type: message_result_path_2
     - id: tickets_info
-      type: tickets_info
+      type: tickets_info_0
+  tx_rollup_finalize_commitment:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_015__ptlimapt__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_015__ptlimapt__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
   tx_rollup_origination:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4310,8 +4852,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4319,7 +4862,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4330,23 +4873,24 @@ types:
     - id: message_position
       type: n
     - id: message_path
-      type: message_path
+      type: message_path_0
     - id: message_result_hash
       size: 32
     - id: message_result_path
-      type: message_result_path
+      type: message_result_path_0
     - id: previous_message_result
       type: previous_message_result
     - id: previous_message_result_path
-      type: previous_message_result_path
+      type: previous_message_result_path_0
     - id: proof
       type: proof
-  tx_rollup_return_bond:
+  tx_rollup_remove_commitment:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4354,7 +4898,25 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
+  tx_rollup_return_bond:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_015__ptlimapt__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4362,8 +4924,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4371,7 +4934,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4381,7 +4944,7 @@ types:
       type: u1
       enum: bool
     - id: burn_limit
-      type: n
+      type: id_015__ptlimapt__mutez
       if: (burn_limit_tag == bool::true)
   ty:
     seq:
@@ -4393,8 +4956,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4403,6 +4967,7 @@ types:
       type: n
     - id: pk
       type: public_key
+      doc: A Ed25519, Secp256k1, or P256 public key
   value:
     seq:
     - id: len_value
@@ -4426,8 +4991,9 @@ types:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4437,17 +5003,18 @@ types:
     - id: public_parameters
       type: public_parameters
     - id: circuits_info
-      type: circuits_info
+      type: circuits_info_0
     - id: init_state
-      type: init_state
+      type: init_state_0
     - id: nb_ops
       type: s4
   zk_rollup_publish:
     seq:
     - id: source
       type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4457,7 +5024,7 @@ types:
     - id: zk_rollup
       size: 20
     - id: op
-      type: op
+      type: op_0
 enums:
   amount_tag:
     0: case__0
