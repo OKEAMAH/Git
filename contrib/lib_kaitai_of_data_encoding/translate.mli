@@ -18,7 +18,4 @@ val escape_id : string -> string
 
     @param [?description] is added to the "doc" section of the class-spec.  *)
 val from_data_encoding :
-  id:string ->
-  ?description:string ->
-  'a Data_encoding.t ->
-  Kaitai.Types.ClassSpec.t
+  id:string -> 'a Data_encoding.t -> Kaitai.Types.ClassSpec.t
