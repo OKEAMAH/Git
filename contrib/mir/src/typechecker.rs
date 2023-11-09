@@ -2248,7 +2248,6 @@ mod typecheck_tests {
 
     #[test]
     fn test_push_address() {
-        use crate::ast::michelson_address::AddressHash;
         #[track_caller]
         fn test_ok(lit: &str, bytes: &str, exp: Address) {
             let exp = Ok(Push(TypedValue::Address(exp)));
@@ -2272,7 +2271,7 @@ mod typecheck_tests {
         fn hex<T: Into<AddressHash>>(con: fn(Vec<u8>) -> T, hex: &str, ep: &str) -> Address {
             Address {
                 hash: con(hex::decode(hex).unwrap()).into(),
-                entrypoint: ep.to_owned(),
+                entrypoint: Entrypoint::try_from(ep).unwrap(),
             }
         }
         use tezos_crypto_rs::hash::*;
@@ -2434,7 +2433,7 @@ mod typecheck_tests {
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(TcError::AddressError(AddressError::WrongFormat(_)))
+            Err(TcError::AddressError(AddressError::UnknownPrefix(p))) if p == "0xff"
         );
         assert_matches!(
             typecheck_instruction(
@@ -2442,7 +2441,7 @@ mod typecheck_tests {
                 &mut Ctx::default(),
                 &mut tc_stk![],
             ),
-            Err(TcError::AddressError(AddressError::WrongFormat(_)))
+            Err(TcError::AddressError(AddressError::UnknownPrefix(p))) if p == "0x00ff"
         );
         assert_matches!(
             typecheck_instruction(

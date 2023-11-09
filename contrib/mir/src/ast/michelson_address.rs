@@ -11,6 +11,10 @@ use tezos_crypto_rs::hash::{
     FromBytesError, Hash, HashTrait, SmartRollupHash,
 };
 
+pub mod entrypoint;
+
+pub use self::entrypoint::Entrypoint;
+
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
 pub enum AddressError {
     #[error("unknown address prefix: {0}")]
@@ -227,54 +231,19 @@ impl AddressHash {
 #[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq)]
 pub struct Address {
     pub hash: AddressHash,
-    pub entrypoint: String,
-}
-
-// NB: default entrypoint is represented as literal "default", because it
-// affects comparision for addresses.
-const DEFAULT_EP_NAME: &str = "default";
-
-fn check_ep_name(ep: &[u8]) -> Result<&str, AddressError> {
-    if ep.len() > Address::MAX_EP_LEN {
-        return Err(AddressError::WrongFormat(format!(
-            "entrypoint name must be at most {} characters long, but it is {} characters long",
-            Address::MAX_EP_LEN,
-            ep.len()
-        )));
-    }
-    let mut first_char = true;
-    for c in ep {
-        // direct encoding of the regex defined in
-        // https://tezos.gitlab.io/alpha/michelson.html#syntax
-        match c {
-            b'_' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' => Ok(()),
-            b'.' | b'%' | b'@' if !first_char => Ok(()),
-            c => Err(AddressError::WrongFormat(format!(
-                "forbidden byte in entrypoint name: {}",
-                hex::encode([*c])
-            ))),
-        }?;
-        first_char = false;
-    }
-    // SAFETY: we just checked all bytes are valid ASCII
-    Ok(unsafe { std::str::from_utf8_unchecked(ep) })
+    pub entrypoint: Entrypoint,
 }
 
 impl Address {
-    const MAX_EP_LEN: usize = 31;
-
     pub fn from_base58_check(data: &str) -> Result<Self, AddressError> {
         let (hash, ep) = if let Some(ep_sep_pos) = data.find('%') {
-            (
-                &data[..ep_sep_pos],
-                Some(check_ep_name(data[ep_sep_pos + 1..].as_bytes())?),
-            )
+            (&data[..ep_sep_pos], &data[ep_sep_pos + 1..])
         } else {
-            (data, None)
+            (data, "")
         };
         Ok(Address {
             hash: AddressHash::from_base58_check(hash)?,
-            entrypoint: ep.unwrap_or(DEFAULT_EP_NAME).to_owned(),
+            entrypoint: Entrypoint::try_from(ep)?,
         })
     }
 
@@ -282,26 +251,14 @@ impl Address {
         check_size(bytes, AddressHash::BYTE_SIZE, "bytes")?;
 
         let (hash, ep) = bytes.split_at(AddressHash::BYTE_SIZE);
-        let ep = if ep.is_empty() {
-            DEFAULT_EP_NAME
-        } else {
-            match check_ep_name(ep)? {
-                DEFAULT_EP_NAME => {
-                    return Err(AddressError::WrongFormat(
-                        "explicit default entrypoint is forbidden in binary encoding".to_owned(),
-                    ))
-                }
-                ep => ep,
-            }
-        };
         Ok(Address {
             hash: AddressHash::from_bytes(hash)?,
-            entrypoint: ep.to_owned(),
+            entrypoint: Entrypoint::try_from(ep)?,
         })
     }
 
     pub fn is_default_ep(&self) -> bool {
-        self.entrypoint == DEFAULT_EP_NAME
+        self.entrypoint.is_default()
     }
 
     pub fn to_bytes(&self, out: &mut Vec<u8>) {
@@ -321,7 +278,11 @@ impl Address {
         if self.is_default_ep() {
             self.hash.to_base58_check()
         } else {
-            format!("{}%{}", self.hash.to_base58_check(), self.entrypoint)
+            format!(
+                "{}%{}",
+                self.hash.to_base58_check(),
+                self.entrypoint.as_str()
+            )
         }
     }
 }
@@ -343,43 +304,6 @@ impl TryFrom<&str> for Address {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_ep_format() {
-        assert_eq!(check_ep_name(&[b'q'; 31]), Ok("q".repeat(31).as_str()));
-
-        // more than 31 bytes
-        assert!(matches!(
-            check_ep_name(&[b'q'; 32]),
-            Err(AddressError::WrongFormat(_))
-        ));
-
-        // '.', '%', '@' are allowed
-        for i in ['.', '%', '@'] {
-            assert_eq!(
-                check_ep_name(format!("foo{i}bar").as_bytes()),
-                Ok(format!("foo{i}bar").as_str())
-            );
-
-            // but not as the first character
-            assert!(matches!(
-                check_ep_name(format!("{i}bar").as_bytes()),
-                Err(AddressError::WrongFormat(_))
-            ));
-        }
-
-        // ! is forbidden
-        assert!(matches!(
-            check_ep_name(b"foo!"),
-            Err(AddressError::WrongFormat(_))
-        ));
-
-        // unicode is forbidden
-        assert!(matches!(
-            check_ep_name("नमस्ते".as_bytes()),
-            Err(AddressError::WrongFormat(_))
-        ));
-    }
 
     #[test]
     fn test_base58_to_bin() {
@@ -418,20 +342,20 @@ mod tests {
         ));
 
         // unknown implicit tag
-        assert!(matches!(
-            Address::from_bytes(
-                &hex::decode("00ff7b09f782e0bcd67739510afa819d85976119d5ef64656661756c74").unwrap()
-            ),
-            Err(AddressError::WrongFormat(_)),
-        ));
+        assert_eq!(
+            dbg!(Address::from_bytes(
+                &hex::decode("00ff7b09f782e0bcd67739510afa819d85976119d5ef").unwrap()
+            )),
+            Err(AddressError::UnknownPrefix("0x00ff".to_owned())),
+        );
 
         // unknown tag
-        assert!(matches!(
+        assert_eq!(
             Address::from_bytes(
-                &hex::decode("ffff7b09f782e0bcd67739510afa819d85976119d5ef64656661756c74").unwrap()
+                &hex::decode("ffff7b09f782e0bcd67739510afa819d85976119d5ef").unwrap()
             ),
-            Err(AddressError::WrongFormat(_)),
-        ));
+            Err(AddressError::UnknownPrefix("0xff".to_owned())),
+        );
 
         for (b58, hex) in FIXTURES {
             assert_eq!(

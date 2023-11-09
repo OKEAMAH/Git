@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 
 use crate::gas::{tc_cost, Gas, OutOfGas};
 
-pub use michelson_address::{Address, AddressError};
+pub use michelson_address::*;
 pub use michelson_list::MichelsonList;
 pub use or::Or;
 pub use parsed::{ParsedInstruction, ParsedStage};
