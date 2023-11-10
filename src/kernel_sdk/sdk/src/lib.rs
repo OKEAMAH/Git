@@ -44,6 +44,8 @@ pub mod prelude {
     //! ```
     //! use tezos_smart_rollup::prelude::*;
     //! use tezos_smart_rollup::kernel_entry;
+    //! use std::cell::RefCell;
+    //! use std::rc::Rc;
     //!
     //! fn kernel_run(host: &mut impl Runtime) {
     //!   debug_msg!(host, "Hello, world!");
@@ -53,7 +55,22 @@ pub mod prelude {
     //!
     //! # use tezos_smart_rollup::testing::prelude::MockHost;
     //! # let mut host = MockHost::default();
+    //! # let out = Rc::new(RefCell::new(vec![]));
+    //! # host.set_debug_handler(&out);
+    //! #
     //! # host.run_level(kernel_run);
+    //! # let logs = out.as_ref().replace(vec![]);
+    //! # let message = String::from_utf8_lossy(&logs);
+    //! # assert_eq!(message, "Hello, world!");
+    //!
+    //! # let mut host = MockHost::default();
+    //! # let out = Rc::new(RefCell::new(vec![]));
+    //! # host.set_debug_handler(&out);
+    //! #
+    //! # host.run_level(kernel_run);
+    //! # let logs = out.as_ref().replace(vec![]);
+    //! # let message = String::from_utf8_lossy(&logs);
+    //! # assert_eq!(message, "Hello, world!");
     //! ```
     #[cfg(feature = "debug_alloc")]
     pub use tezos_smart_rollup_debug::debug_msg;

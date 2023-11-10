@@ -26,6 +26,8 @@ use tezos_smart_rollup_host::metadata::RollupMetadata;
 
 use state::HostState;
 use std::cell::RefCell;
+use std::rc::Rc;
+use std::io;
 
 const MAXIMUM_REBOOTS_PER_INPUT: i32 = 1000;
 
@@ -45,13 +47,16 @@ const NAIROBI_BLOCK_TIME: i64 = 15;
 const NAIROBI_ACTIVATION_TIMESTAMP: i64 = 1_687_561_630;
 
 /// The runtime host when _not_ running in **wasm**.
-#[derive(Debug)]
-pub struct MockHost {
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
+pub struct MockHost<'a> {
     state: RefCell<HostState>,
+    #[derivative(Debug="ignore")]
+    debug: Rc<RefCell<dyn io::Write + 'a>>,
     info: inbox::InfoPerLevel,
 }
 
-impl Default for MockHost {
+impl<'a> Default for MockHost<'a> {
     fn default() -> Self {
         let address = SmartRollupAddress::new(SmartRollupHash(vec![
                 0;
@@ -93,7 +98,7 @@ impl TransferMetadata {
     }
 }
 
-impl MockHost {
+impl<'a> MockHost<'a> {
     /// Create a new instance of the `MockHost`, specifying the rollup address.
     pub fn with_address(address: &SmartRollupAddress) -> Self {
         let raw_rollup_address = address
@@ -121,7 +126,13 @@ impl MockHost {
         Self {
             state: state.into(),
             info,
+            debug: Rc::new(RefCell::new(std::io::stderr()))
         }
+    }
+
+    /// Overwrite the debug log handler - for example to a file.
+    pub fn set_debug_handler<T: io::Write + 'a>(&mut self, handler: &Rc<RefCell<T>>) {
+        self.debug = handler.clone();
     }
 
     /// Append an internal message to the current inbox.

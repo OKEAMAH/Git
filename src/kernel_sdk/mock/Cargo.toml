@@ -17,6 +17,7 @@ categories = ["development-tools", "development-tools::testing"]
 hex = "0.4"
 tezos_crypto_rs = { version = "0.5", default-features = false }
 tezos_data_encoding = "0.5"
+derivative = "2.2.0"
 
 [dependencies.tezos-smart-rollup-encoding]
 path = "../encoding"
