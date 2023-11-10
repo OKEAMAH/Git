@@ -67,7 +67,7 @@ mod tests {
         report_gas(&mut ctx, |ctx| {
             assert!(ast.interpret(ctx, &mut istack).is_ok());
         });
-        assert_eq!(ctx.gas.milligas(), Gas::default().milligas() - 1359);
+        assert_eq!(Gas::default().milligas() - ctx.gas.milligas(), 1359);
     }
 
     #[test]
@@ -178,9 +178,17 @@ mod tests {
 
     #[test]
     fn parser_test_expect_fail() {
+        use crate::ast::micheline::test_helpers::app;
         assert_eq!(
-            &parse(FIBONACCI_MALFORMED_SRC).unwrap_err().to_string(),
-            "Unrecognized token `GT` found at 133:135\nExpected one of \";\" or \"}\""
+            parse(FIBONACCI_MALFORMED_SRC).unwrap().typecheck(
+                &mut Ctx::default(),
+                None,
+                &mut tc_stk![Type::Nat]
+            ),
+            Err(typechecker::TcError::UnexpectedMicheline(format!(
+                "{:?}",
+                app!(DUP[4, app!(GT)])
+            )))
         );
     }
 
@@ -195,6 +203,7 @@ mod tests {
 
     #[test]
     fn vote_contract() {
+        use crate::ast::micheline::test_helpers::*;
         let mut ctx = Ctx {
             amount: 5_000_000,
             ..Ctx::default()
@@ -206,7 +215,7 @@ mod tests {
             .interpret(
                 &mut ctx,
                 "foo".into(),
-                vec![Elt("bar", 0), Elt("baz", 0), Elt("foo", 0)].into(),
+                seq! {app!(Elt["bar", 0]); app!(Elt["baz", 0]); app!(Elt["foo", 0])},
             );
         use TypedValue as TV;
         match interp_res.unwrap() {
