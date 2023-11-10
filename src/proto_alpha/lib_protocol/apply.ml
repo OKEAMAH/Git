@@ -607,28 +607,18 @@ let apply_transaction_to_smart_contract ~ctxt ~sender ~contract_hash ~amount
       let* ctxt =
         match parameter with
         | Untyped_arg parameter ->
-            let (Ex_script (Script {arg_type; entrypoints; _})) = script_ir in
-            let*? res, ctxt =
-              Gas_monad.run
-                ctxt
-                (Script_ir_translator.find_entrypoint
-                   ~error_details:(Informative ())
-                   arg_type
-                   entrypoints
-                   entrypoint)
-            in
-            let*? (Ex_ty_cstr {ty = entrypoint_ty; _}) = res in
-            let*? has_tickets, ctxt =
-              Ticket_scanner.type_has_tickets ctxt entrypoint_ty
-            in
-            let arg = Micheline.root parameter in
+            let (Ex_script (Script {arg_type; _})) = script_ir in
             let* entrypoint_arg, ctxt =
+              (* parsing and type-checking at same time. *)
               Script_ir_translator.parse_data
                 ctxt
                 ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
                 ~allow_forged:true
-                entrypoint_ty
-                arg
+                arg_type
+                (Micheline.root parameter)
+            in
+            let*? has_tickets, ctxt =
+              Ticket_scanner.type_has_tickets ctxt arg_type
             in
             let* tickets, ctxt =
               Ticket_scanner.tickets_of_value
@@ -636,6 +626,10 @@ let apply_transaction_to_smart_contract ~ctxt ~sender ~contract_hash ~amount
                 ctxt
                 has_tickets
                 entrypoint_arg
+            in
+            let _ =
+              (* At this point, we have enough info to turn `Unparsed_arg` into `Typed_arg`. *)
+              Typed_arg (Micheline.dummy_location, arg_type, entrypoint_arg)
             in
             List.fold_left_es
               (fun ctxt ticket ->
