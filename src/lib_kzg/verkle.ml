@@ -194,6 +194,26 @@ let create_diff nb =
   in
   repeat add IntMap.empty nb
 
+let create_uniform_diff nb =
+  let nb_els = nb / arity in
+  assert (nb = nb_els * arity) ;
+  let rec add1 snd_lvl_diff =
+    let j = Random.int arity in
+    if IntMap.mem j snd_lvl_diff then add1 snd_lvl_diff
+    else IntMap.add j (Scalar.random ()) snd_lvl_diff
+  in
+
+  let rec repeat f diff n = if n = 0 then diff else repeat f (f diff) (n - 1) in
+  let rec repeat_i f acc i =
+    if i = 0 then acc else repeat_i f (f i acc) (i - 1)
+  in
+
+  let create_snd_lvl_diff () = repeat add1 IntMap.empty nb_els in
+  repeat_i
+    (fun i acc -> IntMap.add i (create_snd_lvl_diff ()) acc)
+    IntMap.empty
+    (arity - 1)
+
 let map_to_array map =
   List.map snd (List.of_seq (IntMap.to_seq map)) |> Array.of_list
 
@@ -211,6 +231,7 @@ let update_commit file_name diff =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
 
   let ec_of_diff diff =
+    (* Don't convert srs_lagrange to an OCaml list, keep it as a C array and use a `get` function *)
     let filtered_list =
       List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
     in
