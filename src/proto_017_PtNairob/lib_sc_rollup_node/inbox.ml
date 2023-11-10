@@ -163,6 +163,14 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
   let witness_hash =
     Sc_rollup_proto_types.Merkelized_payload_hashes_hash.to_octez witness_hash
   in
+  Printf.eprintf
+    "\nlen messages = %d, %d \n"
+    (List.length messages)
+    (List.length messages_with_protocol_internal_messages) ;
+  Printf.printf
+    "\nlen messages = %d, %d \n"
+    (List.length messages)
+    (List.length messages_with_protocol_internal_messages) ;
   Metrics.Inbox.Stats.set
     messages_with_protocol_internal_messages
     ~is_internal:(function
