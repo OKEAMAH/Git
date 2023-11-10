@@ -10,7 +10,7 @@ all of them are put in that order on disk
 
 module Parameters = struct
   (** The parameters of Verkle Tree *)
-  let log_nb_cells = 8
+  let log_nb_cells = 24
 
   (* the square root should be a power of two  *)
   let () = assert (log_nb_cells mod 2 = 0)
@@ -177,7 +177,8 @@ let read_storage file_name =
 let create_diff nb =
   (* Gets a random index that does not belong to the diff *)
   let rec random_index diff =
-    let i, j = (Random.int arity, Random.int arity) in
+    let ij = Random.int nb_cells in
+    let i, j = (Int.div ij arity, ij mod arity) in
     if IntMap.mem i diff && IntMap.mem j (IntMap.find i diff) then
       random_index diff
     else (i, j)
@@ -217,7 +218,6 @@ let update_commit file_name diff =
     let to_pippinger_fr = map_to_array diff in
     G1.pippenger to_pippinger_ec to_pippinger_fr
   in
-
   (* Compute the EC diff for the fst lvl *)
   let fst_lvl_diff_ec = IntMap.map ec_of_diff diff in
 

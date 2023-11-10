@@ -1,18 +1,52 @@
+let test_create_diff log_size =
+  let open Kzg.Verkle in
+  let t1 = Unix.gettimeofday () in
+  let _diff = create_diff (1 lsl log_size) in
+  let t2 = Unix.gettimeofday () in
+  Printf.printf "\n log_size = %i ; time = %f \n" log_size (t2 -. t1)
+
+let test_bench_create_diff () =
+  for i = 12 to 20 do
+    test_create_diff i
+  done
+
 let test_correctness () =
   let open Kzg.Verkle in
   let fd = "test_vc" in
   let snd_lvl = generate_snd_lvl () in
   let () = commit_storage fd snd_lvl in
 
-  let diff = create_diff 10 in
+  let diff = create_diff (1 lsl 16) in
+  let t1 = Unix.gettimeofday () in
   let () = update_commit fd diff in
+  let t2 = Unix.gettimeofday () in
+  Printf.printf "\n time = %f \n" (t2 -. t1) ;
   let root = read_root fd in
 
   update_storage diff snd_lvl ;
   let root_new, _ = commit snd_lvl in
   assert (Bls12_381.G1.eq root root_new)
 
+(* let test_bench () = *)
+(*   let open Kzg.Verkle in *)
+(*   let fd = "test_vc_bench" in *)
+(*   let diff = create_diff (1 lsl 14) in *)
+(*   let () = update_commit fd diff in *)
+(*   () *)
+
+(* let prepare_bench () = *)
+(*   let open Kzg.Verkle in *)
+(*   let fd = "test_vc_bench" in *)
+(*   let snd_lvl = generate_snd_lvl () in *)
+(*   let () = commit_storage fd snd_lvl in *)
+(*   () *)
+
 let tests =
   List.map
     (fun (name, f) -> Alcotest.test_case name `Quick f)
-    [("Verkle_correctness", test_correctness)]
+    [
+      (*       ("Bench create diff", test_bench_create_diff) *)
+      ("Verkle_correctness", test_correctness)
+      (*       ("Verkle_bench", test_bench); *)
+      (*       ("Verkle_prepare", prepare_bench); *);
+    ]
