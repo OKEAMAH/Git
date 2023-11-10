@@ -94,15 +94,15 @@ let check_some hash what = function
   | None ->
       error_with "Could not read %s at %a after import." what Block_hash.pp hash
 
-let check_block_data (store : _ Store.t) context hash =
+let check_export_block (store : _ Store.t) context hash =
   let open Lwt_result_syntax in
   let* b = Store.L2_blocks.read store.l2_blocks hash in
   let*? _b, header = check_some hash "L2 block" b in
   let* messages = Store.Messages.read store.messages header.inbox_witness in
-  let*? messages, _ = check_some hash "messages" messages in
+  let*? _messages, _ = check_some hash "messages" messages in
   let* inbox = Store.Inboxes.read store.inboxes header.inbox_hash in
-  let*? inbox, () = check_some hash "inbox" inbox in
-  let* commitment =
+  let*? _inbox, () = check_some hash "inbox" inbox in
+  let* _commitment =
     match header.commitment_hash with
     | None -> return_none
     | Some commitment_hash ->
@@ -114,25 +114,141 @@ let check_block_data (store : _ Store.t) context hash =
   in
   (* Ensure head context is available. *)
   let*! head_ctxt = Context.checkout context header.context in
-  let*? head_ctxt = check_some hash "context" head_ctxt in
-  return (b, header, inbox, messages, commitment, head_ctxt)
+  let*? _head_ctxt = check_some hash "context" head_ctxt in
+  return header
 
-let check_block_data_consistency kind (store : _ Store.t) context hash =
+let check_l2_chain_export ~data_dir (store : _ Store.t) context
+    (head : Sc_rollup_block.t) =
   let open Lwt_result_syntax in
-  let* _b, header, inbox, _messages, commitment, head_ctxt =
-    check_block_data store context hash
+  let* first_available_level = first_available_level ~data_dir store in
+  let blocks_to_check =
+    Int32.sub head.header.level first_available_level |> Int32.to_int |> succ
   in
+  let progress_bar =
+    Progress_bar.progress_bar
+      ~counter:`Int
+      ~message:"Checking snapshot   "
+      ~color:(Terminal.Color.rgb 3 252 132)
+      blocks_to_check
+  in
+  Progress_bar.Lwt.with_reporter progress_bar @@ fun count_progress ->
+  let rec check_chain hash =
+    let* header = check_export_block store context hash in
+    let*! () = count_progress 1 in
+    if header.Sc_rollup_block.level <= first_available_level then return_unit
+    else check_chain header.predecessor
+  in
+  check_chain head.header.block_hash
+
+let check_block_eval (node_ctxt : Store_sigs.ro Node_context.t)
+    (pred : Sc_rollup_block.t) (block : Sc_rollup_block.t) expected_state_hash =
+  let open Lwt_result_syntax in
+  let* pred_inbox = Node_context.get_inbox node_ctxt pred.header.inbox_hash
+  and* expected_inbox = Node_context.get_inbox node_ctxt block.header.inbox_hash
+  and* messages = Messages.get_ro node_ctxt block.header.inbox_witness in
   let* (module Plugin) =
-    Protocol_plugins.proto_plugin_for_level_with_store store header.level
+    Protocol_plugins.proto_plugin_for_level node_ctxt block.header.level
+  in
+  let* inbox, witness_hash =
+    Plugin.Inbox.add_all_messages pred_inbox messages
+  in
+  let*? () =
+    error_unless (Inbox.equal inbox expected_inbox)
+    @@ error_of_fmt
+         "Erroneous inbox %a for level %ld instead of computed %a."
+         Inbox.pp
+         expected_inbox
+         block.header.level
+         Inbox.pp
+         inbox
+  in
+  let*? () =
+    error_unless
+      Merkelized_payload_hashes_hash.(witness_hash = block.header.inbox_witness)
+    @@ error_of_fmt
+         "Erroneous payload witness hash %a for level %ld instead of computed \
+          %a."
+         Merkelized_payload_hashes_hash.pp
+         block.header.inbox_witness
+         block.header.level
+         Merkelized_payload_hashes_hash.pp
+         witness_hash
+  in
+  let*! ctxt = Context.checkout node_ctxt.context pred.header.context in
+  let*? ctxt = check_some pred.header.block_hash "context" ctxt in
+  let* new_ctxt, _num_messages, num_ticks, tick =
+    Interpreter.process_head_read_only
+      (module Plugin)
+      node_ctxt
+      ctxt
+      ~predecessor:
+        Layer1.{hash = pred.header.block_hash; level = pred.header.level}
+      Layer1.{hash = block.header.block_hash; level = block.header.level}
+      (inbox, messages)
+  in
+  let* computed_state_hash =
+    let*! pvm_state = Context.PVMState.find new_ctxt in
+    let*? pvm_state =
+      check_some block.header.block_hash "computed_pvm_state" pvm_state
+    in
+    let*! h = Plugin.Pvm.state_hash node_ctxt.kind pvm_state in
+    return h
+  in
+  let*? () =
+    error_unless State_hash.(computed_state_hash = expected_state_hash)
+    @@ error_of_fmt
+         "Incorrect state hash %a for level %ld instead of computed %a."
+         State_hash.pp
+         expected_state_hash
+         block.header.level
+         State_hash.pp
+         computed_state_hash
+  in
+  let*? () =
+    error_unless (num_ticks = block.num_ticks)
+    @@ error_of_fmt
+         "Incorrect number of ticks %Ld for level %ld instead of computed %Ld."
+         block.num_ticks
+         block.header.level
+         num_ticks
+  in
+  let*? () =
+    error_unless (Z.equal tick block.initial_tick)
+    @@ error_of_fmt
+         "Incorrect initial tick number %a for level %ld instead of computed \
+          %a."
+         Z.pp_print
+         block.initial_tick
+         block.header.level
+         Z.pp_print
+         tick
+  in
+  return_unit
+
+let check_block_data_consistency (node_ctxt : Store_sigs.ro Node_context.t) hash
+    =
+  let open Lwt_result_syntax in
+  let* block = Node_context.find_l2_block node_ctxt hash in
+  let*? block = check_some hash "L2 block" block in
+  let* inbox = Node_context.find_inbox node_ctxt block.header.inbox_hash in
+  let*? inbox = check_some hash "inbox" inbox in
+  (* Ensure head context is available. *)
+  let*! head_ctxt = Context.checkout node_ctxt.context block.header.context in
+  let*? head_ctxt = check_some hash "context" head_ctxt in
+  let* (module Plugin) =
+    Protocol_plugins.proto_plugin_for_level node_ctxt block.header.level
   in
   let*! pvm_state = Context.PVMState.find head_ctxt in
   let*? pvm_state = check_some hash "pvm_state" pvm_state in
-  let*! state_hash = Plugin.Pvm.state_hash kind pvm_state in
+  let*! state_hash = Plugin.Pvm.state_hash node_ctxt.kind pvm_state in
   let* () =
-    match (commitment, header.commitment_hash) with
-    | None, None -> return_unit
-    | Some _, None | None, Some _ -> assert false
-    | Some commitment, Some commitment_hash ->
+    match block.header.commitment_hash with
+    | None -> return_unit
+    | Some commitment_hash ->
+        let* commitment =
+          Node_context.find_commitment node_ctxt commitment_hash
+        in
+        let*? commitment = check_some hash "commitment" commitment in
         let hash_of_commitment = Commitment.hash commitment in
         let*? () =
           error_unless Commitment.Hash.(hash_of_commitment = commitment_hash)
@@ -140,7 +256,7 @@ let check_block_data_consistency kind (store : _ Store.t) context hash =
                "Erroneous commitment %a for level %ld instead of %a."
                Commitment.Hash.pp
                hash_of_commitment
-               header.level
+               block.header.level
                Commitment.Hash.pp
                commitment_hash
         in
@@ -150,7 +266,7 @@ let check_block_data_consistency kind (store : _ Store.t) context hash =
                "Erroneous state hash %a for level %ld instead of %a."
                State_hash.pp
                state_hash
-               header.level
+               block.header.level
                State_hash.pp
                commitment.compressed_state
         in
@@ -158,49 +274,36 @@ let check_block_data_consistency kind (store : _ Store.t) context hash =
   in
   let hash_of_inbox = Inbox.hash inbox in
   let*? () =
-    error_unless Inbox.Hash.(hash_of_inbox = header.inbox_hash)
+    error_unless Inbox.Hash.(hash_of_inbox = block.header.inbox_hash)
     @@ error_of_fmt
          "Erroneous inbox %a for level %ld instead of %a."
          Inbox.Hash.pp
          hash_of_inbox
-         header.level
+         block.header.level
          Inbox.Hash.pp
-         header.inbox_hash
+         block.header.inbox_hash
   in
-  return header
+  if block.header.level < (Reference.get node_ctxt.lcc).level then return block
+  else
+    let* pred = Node_context.find_l2_block node_ctxt block.header.predecessor in
+    let* () =
+      match pred with
+      | None -> return_unit
+      | Some pred -> check_block_eval node_ctxt pred block state_hash
+    in
+    return block
 
-let check_block_data (store : _ Store.t) context hash =
+let check_last_commitment (module Plugin : Protocol_plugin_sig.S) cctxt
+    node_ctxt snapshot_metadata =
   let open Lwt_result_syntax in
-  let* _b, header, _inbox, _messages, _commitment, _head_ctxt =
-    check_block_data store context hash
+  let* head = Node_context.last_processed_head_opt node_ctxt in
+  let*? head =
+    match head with
+    | None ->
+        error_with
+          "There is no head in the rollup node store, cannot produce snapshot."
+    | Some head -> Ok head
   in
-  return header
-
-let check_l2_chain ~message ~data_dir (store : _ Store.t) context
-    (head : Sc_rollup_block.t) check_block =
-  let open Lwt_result_syntax in
-  let* first_available_level = first_available_level ~data_dir store in
-  let blocks_to_check =
-    Int32.sub head.header.level first_available_level |> Int32.to_int |> succ
-  in
-  let progress_bar =
-    Progress_bar.progress_bar
-      ~counter:`Int
-      ~message
-      ~color:(Terminal.Color.rgb 3 252 132)
-      blocks_to_check
-  in
-  Progress_bar.Lwt.with_reporter progress_bar @@ fun count_progress ->
-  let rec check_chain hash =
-    let* header = check_block store context hash in
-    let*! () = count_progress 1 in
-    if header.Sc_rollup_block.level <= first_available_level then return_unit
-    else check_chain header.predecessor
-  in
-  check_chain head.header.block_hash
-
-let check_last_commitment cctxt head snapshot_metadata =
-  let open Lwt_result_syntax in
   let last_snapshot_commitment =
     Sc_rollup_block.most_recent_commitment head.Sc_rollup_block.header
   in
@@ -217,16 +320,7 @@ let check_last_commitment cctxt head snapshot_metadata =
   in
   Error.trace_lwt_result_with
     "Last commitment of snapshot is not published on L1."
-  @@ let* {current_protocol; _} =
-       Tezos_shell_services.Shell_services.Blocks.protocols
-         cctxt
-         ~block:(`Hash (head.header.block_hash, 0))
-         ()
-     in
-     let*? (module Plugin) =
-       Protocol_plugins.proto_plugin_for_protocol current_protocol
-     in
-     let* (_commitment : Commitment.t) =
+  @@ let* (_commitment : Commitment.t) =
        Plugin.Layer1_helpers.get_commitment
          cctxt
          snapshot_metadata.address
@@ -234,7 +328,38 @@ let check_last_commitment cctxt head snapshot_metadata =
      in
      return_unit
 
-let post_checks ~action ~message snapshot_metadata ~dest =
+let check_l2_chain_import node_ctxt =
+  let open Lwt_result_syntax in
+  let* head = Node_context.last_processed_head_opt node_ctxt in
+  let*? head =
+    match head with
+    | None ->
+        error_with
+          "There is no head in the rollup node store, cannot produce snapshot."
+    | Some head -> Ok head
+  in
+  let* {first_available_level; _} = Node_context.get_gc_levels node_ctxt in
+  let blocks_to_check =
+    Int32.sub head.header.level first_available_level |> Int32.to_int |> succ
+  in
+  let progress_bar =
+    Progress_bar.progress_bar
+      ~counter:`Int
+      ~message:"Checking snapshot   "
+      ~color:(Terminal.Color.rgb 3 252 132)
+      blocks_to_check
+  in
+  Progress_bar.Lwt.with_reporter progress_bar @@ fun count_progress ->
+  let rec check_chain hash =
+    let* block = check_block_data_consistency node_ctxt hash in
+    let*! () = count_progress 1 in
+    if block.header.Sc_rollup_block.level <= first_available_level then
+      return_unit
+    else check_chain block.header.predecessor
+  in
+  check_chain head.header.block_hash
+
+let post_export_checks ~dest =
   let open Lwt_result_syntax in
   let store_dir = Configuration.default_storage_dir dest in
   let context_dir = Configuration.default_context_dir dest in
@@ -249,20 +374,7 @@ let post_checks ~action ~message snapshot_metadata ~dest =
       store_dir
   in
   let* head = check_head store context in
-  let* check_block_data =
-    match action with
-    | `Export -> return check_block_data
-    | `Import cctxt -> (
-        let* metadata = Metadata.read_metadata_file ~dir:dest in
-        match metadata with
-        | None -> failwith "No metadata (needs rollup kind)."
-        | Some {kind; _} ->
-            let+ () = check_last_commitment cctxt head snapshot_metadata in
-            check_block_data_consistency kind)
-  in
-  let* () =
-    check_l2_chain ~message ~data_dir:dest store context head check_block_data
-  in
+  let* () = check_l2_chain_export ~data_dir:dest store context head in
   let*! () = Context.close context in
   let* () = Store.close store in
   return_unit
@@ -270,7 +382,7 @@ let post_checks ~action ~message snapshot_metadata ~dest =
 let post_export_checks ~snapshot_file =
   let open Lwt_result_syntax in
   Lwt_utils_unix.with_tempdir "snapshot_checks_" @@ fun dest ->
-  let* snapshot_metadata =
+  let* _snapshot_metadata =
     extract
       gzip_reader
       stdlib_writer
@@ -278,11 +390,46 @@ let post_export_checks ~snapshot_file =
       ~snapshot_file
       ~dest
   in
-  post_checks
-    ~action:`Export
-    ~message:"Checking snapshot   "
-    snapshot_metadata
-    ~dest
+  post_export_checks ~dest
+
+let post_import_checks cctxt ~data_dir snapshot_metadata =
+  let open Lwt_result_syntax in
+  let* {current_protocol; _} =
+    Tezos_shell_services.Shell_services.Blocks.protocols
+      cctxt
+      ~block:(`Head 0)
+      ()
+  and* l1_header =
+    Tezos_shell_services.Shell_services.Blocks.Header.shell_header
+      cctxt
+      ~block:(`Head 0)
+      ()
+  in
+  let*? (module Plugin) =
+    Protocol_plugins.proto_plugin_for_protocol current_protocol
+  in
+  let* constants =
+    Plugin.Layer1_helpers.retrieve_constants cctxt ~block:(`Head 0)
+  in
+  let current_protocol =
+    {
+      Node_context.hash = current_protocol;
+      proto_level = l1_header.proto_level;
+      constants;
+    }
+  in
+  let* node_ctxt =
+    Node_context.For_snapshots.create_node_context
+      cctxt
+      current_protocol
+      ~data_dir
+  in
+  let* () =
+    check_last_commitment (module Plugin) cctxt node_ctxt snapshot_metadata
+  in
+  let* () = check_l2_chain_import node_ctxt in
+  let* () = Node_context.close node_ctxt in
+  return_unit
 
 let operator_local_file_regexp =
   Re.Str.regexp "^storage/\\(commitments_published_at_level.*\\|lpc$\\)"
@@ -413,8 +560,4 @@ let import ~no_checks cctxt ~data_dir ~snapshot_file =
       ~dest:data_dir
   in
   unless no_checks @@ fun () ->
-  post_checks
-    ~action:(`Import cctxt)
-    ~message:"Checking snapshot import"
-    snapshot_metadata
-    ~dest:data_dir
+  post_import_checks cctxt ~data_dir snapshot_metadata

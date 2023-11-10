@@ -67,3 +67,27 @@ let get node_ctxt messages_hash =
         Merkelized_payload_hashes_hash.pp
         messages_hash
   | Some res -> return res
+
+let find_ro node_ctxt messages_hash =
+  let open Lwt_result_syntax in
+  let* msg = Node_context.unsafe_find_stored_messages node_ctxt messages_hash in
+  match msg with
+  | None -> return_none
+  | Some (messages, pred_hash) ->
+      if has_sol messages then return_some messages
+      else
+        (* The messages do not contain the internal protocol messages, we add
+           them back. NOTE: this requires to potentially make L1 rpc calls. *)
+        let* messages = add_all_messages node_ctxt ~messages ~pred_hash in
+        return_some messages
+
+let get_ro node_ctxt messages_hash =
+  let open Lwt_result_syntax in
+  let* res = find_ro node_ctxt messages_hash in
+  match res with
+  | None ->
+      failwith
+        "Could not retrieve messages with payloads merkelized hash %a"
+        Merkelized_payload_hashes_hash.pp
+        messages_hash
+  | Some res -> return res

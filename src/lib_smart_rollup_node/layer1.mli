@@ -77,6 +77,15 @@ val start :
   #Client_context.full ->
   t tzresult Lwt.t
 
+val create :
+  name:string ->
+  reconnection_delay:float ->
+  l1_blocks_cache_size:int ->
+  ?protocols:Protocol_hash.t trace ->
+  ?prefetch_blocks:int ->
+  #Client_context.full ->
+  t tzresult
+
 (** [shutdown t] properly shuts the layer 1 down. *)
 val shutdown : t -> unit Lwt.t
 

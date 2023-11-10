@@ -551,6 +551,14 @@ val make_kernel_logger :
 
 (**/**)
 
+module For_snapshots : sig
+  val create_node_context :
+    #Client_context.full ->
+    current_protocol ->
+    data_dir:string ->
+    Store_sigs.ro t tzresult Lwt.t
+end
+
 module Internal_for_tests : sig
   (** Create a node context which really stores data on disk but does not
       connect to any layer 1 node. It is meant to be used in unit tests for the
