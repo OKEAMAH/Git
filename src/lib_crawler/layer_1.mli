@@ -71,14 +71,14 @@ val wait_first : t -> (Block_hash.t * Block_header.t) Lwt.t
     calls when one need to access multiple predecessors. *)
 val get_predecessor_opt :
   ?max_read:int ->
-  t ->
+  #Client_context.full ->
   Block_hash.t * int32 ->
   (Block_hash.t * int32) option tzresult Lwt.t
 
 (** [get_predecessor ?max_read state head] returns the predecessor block of [head]. *)
 val get_predecessor :
   ?max_read:int ->
-  t ->
+  #Client_context.full ->
   Block_hash.t * int32 ->
   (Block_hash.t * int32) tzresult Lwt.t
 
@@ -101,7 +101,7 @@ val nth_predecessor :
     necessary when the old head is not in the L1 chain anymore and forgotten by
     the L1 node. *)
 val get_tezos_reorg_for_new_head :
-  t ->
+  #Client_context.full ->
   ?get_old_predecessor:
     (Block_hash.t * int32 -> (Block_hash.t * int32) tzresult Lwt.t) ->
   [`Head of Block_hash.t * int32 | `Level of int32] ->

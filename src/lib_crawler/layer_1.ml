@@ -216,10 +216,7 @@ let get_predecessor =
     Aches.Vache.Map (Aches.Vache.FIFO_Precise) (Aches.Vache.Strong) (Block_hash)
   in
   let cache = HM.create max_cached in
-  fun ~max_read
-      cctxt
-      (chain : Tezos_shell_services.Chain_services.chain)
-      ancestor ->
+  fun ~max_read cctxt ancestor ->
     let open Lwt_result_syntax in
     (* Don't read more than the hard limit in one RPC call. *)
     let max_read = min max_read hard_max_read in
@@ -231,7 +228,6 @@ let get_predecessor =
         let* blocks =
           Tezos_shell_services.Chain_services.Blocks.list
             cctxt
-            ~chain
             ~heads:[ancestor]
             ~length:max_read
             ()
@@ -248,17 +244,17 @@ let get_predecessor =
             | Some predecessor -> return_some predecessor)
         | _ -> return_none)
 
-let get_predecessor_opt ?(max_read = 8) state (hash, level) =
+let get_predecessor_opt ?(max_read = 8) cctxt (hash, level) =
   let open Lwt_result_syntax in
   if level = 0l then return_none
   else
     let level = Int32.pred level in
-    let+ hash = get_predecessor ~max_read state.cctxt state.cctxt#chain hash in
+    let+ hash = get_predecessor ~max_read (cctxt :> Client_context.full) hash in
     Option.map (fun hash -> (hash, level)) hash
 
-let get_predecessor ?max_read state ((hash, _) as head) =
+let get_predecessor ?max_read cctxt ((hash, _) as head) =
   let open Lwt_result_syntax in
-  let* pred = get_predecessor_opt ?max_read state head in
+  let* pred = get_predecessor_opt ?max_read cctxt head in
   match pred with
   | None -> tzfail (Cannot_find_predecessor hash)
   | Some pred -> return pred
@@ -274,8 +270,8 @@ let nth_predecessor ~get_predecessor n block =
   in
   aux [] n block
 
-let get_tezos_reorg_for_new_head l1_state
-    ?(get_old_predecessor = get_predecessor l1_state) old_head new_head =
+let get_tezos_reorg_for_new_head cctxt
+    ?(get_old_predecessor = get_predecessor cctxt) old_head new_head =
   let open Lwt_result_syntax in
   (* old_head and new_head must have the same level when calling aux *)
   let rec aux reorg old_head new_head =
@@ -284,7 +280,7 @@ let get_tezos_reorg_for_new_head l1_state
     if Block_hash.(old_head_hash = new_head_hash) then return reorg
     else
       let* old_head_pred = get_old_predecessor old_head in
-      let* new_head_pred = get_predecessor l1_state new_head in
+      let* new_head_pred = get_predecessor cctxt new_head in
       let reorg =
         Reorg.
           {
@@ -306,7 +302,7 @@ let get_tezos_reorg_for_new_head l1_state
       let max_read = distance + 1 (* reading includes the head *) in
       let+ new_head, new_chain =
         nth_predecessor
-          ~get_predecessor:(get_predecessor ~max_read l1_state)
+          ~get_predecessor:(get_predecessor ~max_read cctxt)
           distance
           new_head
       in
@@ -321,8 +317,7 @@ let get_tezos_reorg_for_new_head l1_state
   aux reorg old_head new_head
 
 (** Returns the reorganization of L1 blocks (if any) for [new_head]. *)
-let get_tezos_reorg_for_new_head l1_state ?get_old_predecessor old_head new_head
-    =
+let get_tezos_reorg_for_new_head cctxt ?get_old_predecessor old_head new_head =
   let open Lwt_result_syntax in
   match old_head with
   | `Level l ->
@@ -334,17 +329,13 @@ let get_tezos_reorg_for_new_head l1_state ?get_old_predecessor old_head new_head
         let max_read = distance + 1 (* reading includes the head *) in
         let* _block_at_l, new_chain =
           nth_predecessor
-            ~get_predecessor:(get_predecessor ~max_read l1_state)
+            ~get_predecessor:(get_predecessor ~max_read cctxt)
             distance
             new_head
         in
         return Reorg.{old_chain = []; new_chain}
   | `Head old_head ->
-      get_tezos_reorg_for_new_head
-        l1_state
-        ?get_old_predecessor
-        old_head
-        new_head
+      get_tezos_reorg_for_new_head cctxt ?get_old_predecessor old_head new_head
 
 module Internal_for_tests = struct
   let dummy cctxt =

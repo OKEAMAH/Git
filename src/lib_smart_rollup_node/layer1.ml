@@ -100,7 +100,7 @@ type headers_cache = (Block_header.shell_header, tztrace) Blocks_cache.t
 
 type blocks_cache = (block, tztrace) Blocks_cache.t
 
-open Octez_crawler.Layer_1
+include Octez_crawler.Layer_1
 
 type nonrec t = {
   l1 : t;
@@ -144,14 +144,6 @@ let wait_first l1_ctxt =
   let open Lwt_syntax in
   let+ hash, {shell = {level; _} as header; _} = wait_first l1_ctxt.l1 in
   {hash; level; header}
-
-let get_predecessor_opt ?max_read {l1; _} = get_predecessor_opt ?max_read l1
-
-let get_predecessor ?max_read {l1; _} = get_predecessor ?max_read l1
-
-let get_tezos_reorg_for_new_head {l1; _} ?get_old_predecessor old_head new_head
-    =
-  get_tezos_reorg_for_new_head l1 ?get_old_predecessor old_head new_head
 
 module Internal_for_tests = struct
   let dummy cctxt =

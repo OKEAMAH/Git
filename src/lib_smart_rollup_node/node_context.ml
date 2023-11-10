@@ -480,7 +480,7 @@ let get_predecessor_opt node_ctxt (hash, level) =
   | Some p -> return_some p
   | None ->
       (* [head] is not already known in the L2 chain *)
-      Layer1.get_predecessor_opt node_ctxt.l1_ctxt (hash, level)
+      Layer1.get_predecessor_opt node_ctxt.cctxt (hash, level)
 
 let get_predecessor node_ctxt (hash, level) =
   let open Lwt_result_syntax in
@@ -489,7 +489,7 @@ let get_predecessor node_ctxt (hash, level) =
   | Some p -> return p
   | None ->
       (* [head] is not already known in the L2 chain *)
-      Layer1.get_predecessor node_ctxt.l1_ctxt (hash, level)
+      Layer1.get_predecessor node_ctxt.cctxt (hash, level)
 
 let header_of_hash node_ctxt hash =
   let open Lwt_result_syntax in
@@ -508,7 +508,7 @@ let get_tezos_reorg_for_new_head node_ctxt old_head new_head =
   in
   let+ reorg =
     Layer1.get_tezos_reorg_for_new_head
-      node_ctxt.l1_ctxt
+      node_ctxt.cctxt
       ~get_old_predecessor:(get_predecessor node_ctxt)
       old_head
       (block_level_of_head new_head)

@@ -92,18 +92,18 @@ val wait_first : t -> header Lwt.t
 
 val get_predecessor_opt :
   ?max_read:int ->
-  t ->
+  #Client_context.full ->
   Block_hash.t * int32 ->
   (Block_hash.t * int32) option tzresult Lwt.t
 
 val get_predecessor :
   ?max_read:int ->
-  t ->
+  #Client_context.full ->
   Block_hash.t * int32 ->
   (Block_hash.t * int32) tzresult Lwt.t
 
 val get_tezos_reorg_for_new_head :
-  t ->
+  #Client_context.full ->
   ?get_old_predecessor:
     (Block_hash.t * int32 -> (Block_hash.t * int32) tzresult Lwt.t) ->
   [`Head of Block_hash.t * int32 | `Level of int32] ->

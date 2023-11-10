@@ -1031,7 +1031,7 @@ module Make (Parameters : PARAMETERS) = struct
           return {Reorg.no_reorg with new_chain = [(head_hash, head_level)]}
       | Some last_head ->
           Layer_1.get_tezos_reorg_for_new_head
-            state.l1_ctxt
+            state.cctxt
             (`Head (last_head.block_hash, last_head.level))
             (head_hash, head_level)
     in
