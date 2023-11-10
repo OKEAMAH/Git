@@ -379,11 +379,11 @@ let export_snapshot =
   command
     ~group
     ~desc:"Export a snapshot of the rollup node state."
-    (args1 data_dir_arg)
+    (args2 data_dir_arg Cli.no_checks_arg)
     (prefixes ["export"; "snapshot"; "into"] @@ Cli.snapshot_dir_param @@ stop)
-    (fun data_dir dest cctxt ->
+    (fun (data_dir, no_checks) dest cctxt ->
       let open Lwt_result_syntax in
-      let* snapshot_file = Snapshots.export ~data_dir ~dest in
+      let* snapshot_file = Snapshots.export ~no_checks ~data_dir ~dest in
       let*! () = cctxt#message "Snapshot exported to %s@." snapshot_file in
       return_unit)
 
@@ -392,11 +392,11 @@ let import_snapshot =
   command
     ~group
     ~desc:"Export a snapshot of the rollup node state."
-    (args1 data_dir_arg)
+    (args2 data_dir_arg Cli.no_checks_arg)
     (prefixes ["import"; "snapshot"] @@ Cli.snapshot_file_param @@ stop)
-    (fun data_dir snapshot_file cctxt ->
+    (fun (data_dir, no_checks) snapshot_file cctxt ->
       let open Lwt_result_syntax in
-      let* () = Snapshots.import cctxt ~data_dir ~snapshot_file in
+      let* () = Snapshots.import cctxt ~no_checks ~data_dir ~snapshot_file in
       let*! () = cctxt#message "Snapshot successfully imported@." in
       return_unit)
 
