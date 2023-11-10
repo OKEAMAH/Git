@@ -1,6 +1,9 @@
+include: .gitlab/ci/jobs/test/common.yml
+
 misc_opam_checks:
   extends:
     - .test_template
+    - .image_template__runtime_prebuild_dependencies
   needs: [trigger]
   script:
     # checks that all deps of opam packages are already installed
