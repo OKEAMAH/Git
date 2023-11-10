@@ -166,6 +166,14 @@ module Info = struct
       Counter.labels node_general_info [version; commit_hash; commit_date]
     in
     ()
+
+  let lcc_last_update =
+    v_gauge
+      ~help:"Block level of the last update to the Last Cement Commitment (LCC)"
+      "lcc_last_update"
+
+  let set_lcc_last_update pt =
+    Prometheus.Gauge.set lcc_last_update (Int32.to_float pt)
 end
 
 module Inbox = struct

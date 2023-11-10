@@ -648,6 +648,7 @@ let set_lcc node_ctxt lcc =
   let*! () =
     Commitment_event.last_cemented_commitment_updated lcc.commitment lcc.level
   in
+  Metrics.Info.set_lcc_last_update lcc.level ;
   return_unit
 
 let last_seen_lcc {store; genesis_info; _} =

@@ -44,6 +44,8 @@ module Info : sig
     genesis_level:int32 ->
     pvm_kind:string ->
     unit
+
+  val set_lcc_last_update : int32 -> unit
 end
 
 (** The metrics related to Inboxes *)
