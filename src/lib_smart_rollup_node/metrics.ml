@@ -254,3 +254,20 @@ module Gc = struct
 
   let set_last_gc pt = Prometheus.Gauge.set last_gc (Ptime.to_float_s pt)
 end
+
+module Wasm_2_0_0 = struct
+  let level =
+    v_gauge
+      ~help:"Level of the L2 block, corresponds to the level of the tezos block"
+      "etherlink_l2_head_level"
+
+  let set_l2_head_level f = Prometheus.Gauge.set level (Int32.to_float f)
+
+  let global_transactions_amount =
+    v_gauge
+      ~help:"Amount of transactions objects since the origination of the rollup"
+      "etherlink_global_transactions_amount"
+
+  let set_transactions_amount f =
+    Prometheus.Gauge.set global_transactions_amount (Int.to_float f)
+end

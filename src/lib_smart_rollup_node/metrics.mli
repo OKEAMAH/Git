@@ -69,3 +69,9 @@ end
 module Gc : sig
   val set_last_gc : Ptime.t -> unit
 end
+
+module Wasm_2_0_0 : sig
+  val set_l2_head_level : int32 -> unit
+
+  val set_transactions_amount : int -> unit
+end

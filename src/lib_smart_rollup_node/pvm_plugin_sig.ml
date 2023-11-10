@@ -144,6 +144,8 @@ module type S = sig
       init:'a ->
       f:(string list -> Context.tree -> 'a -> 'a Lwt.t) ->
       'a Lwt.t
+
+    val lookup : Context.tree -> string list -> bytes option Lwt.t
   end
 
   module Fueled : sig

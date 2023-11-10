@@ -43,6 +43,14 @@ let decode_value ~(pvm : (module Pvm_plugin_sig.S)) tree =
   in
   Tezos_lazy_containers.Chunked_byte_vector.to_string cbv
 
+let get_value ~(pvm : (module Pvm_plugin_sig.S)) ~tree ~durable_path =
+  let open Lwt_syntax in
+  let module Pvm : Pvm_plugin_sig.S = (val pvm) in
+  let* value = Pvm.Wasm_2_0_0.lookup tree durable_path in
+  match value with
+  | Some v -> return_some (String.of_bytes v)
+  | None -> return_none
+
 (** Returns whether the value under the current key should be dumped. *)
 let check_dumpable_path key =
   match key with
