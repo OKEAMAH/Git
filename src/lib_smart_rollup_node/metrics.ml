@@ -271,3 +271,21 @@ module Wasm_2_0_0 = struct
   let set_transactions_amount f =
     Prometheus.Gauge.set global_transactions_amount (Int.to_float f)
 end
+
+module Batcher = struct
+  let message_queue_size =
+    v_gauge ~help:"Size of Batcher's message queue" "message_queue_size"
+
+  let set_message_queue_size s =
+    Prometheus.Gauge.set message_queue_size (Int.to_float s)
+
+  let last_batch_level = v_gauge ~help:"Level of last batch" "last_batch_level"
+
+  let set_last_batch_level l =
+    Prometheus.Gauge.set last_batch_level (Int32.to_float l)
+
+  let last_batch_time = v_gauge ~help:"Time of last batch" "last_batch_time"
+
+  let set_last_batch_time pt =
+    Prometheus.Gauge.set last_batch_time (Ptime.to_float_s pt)
+end

@@ -200,13 +200,15 @@ let on_register state (messages : string list) =
       (fun message ->
         let msg_hash = L2_message.hash message in
         Message_queue.replace state.messages msg_hash message ;
+        Metrics.Batcher.set_message_queue_size
+          (Message_queue.length state.messages) ;
         msg_hash)
       messages
   in
   let+ () = produce_batches state ~only_full:true in
   hashes
 
-let on_new_head state head =
+let on_new_head state head : (unit, tztrace) result Lwt.t =
   let open Lwt_result_syntax in
   (* Produce batches first *)
   let* () = produce_batches state ~only_full:false in
@@ -215,7 +217,7 @@ let on_new_head state head =
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4224
      Replay with simulation may be too expensive *)
-  let+ simulation_ctxt, failing =
+  let* simulation_ctxt, failing =
     if not state.node_ctxt.config.batcher.simulate then
       return (simulation_ctxt, [])
     else
@@ -231,7 +233,12 @@ let on_new_head state head =
   in
   state.simulation_ctxt <- Some simulation_ctxt ;
   (* Forget failing messages *)
-  List.iter (Message_queue.remove state.messages) failing
+  List.iter (Message_queue.remove state.messages) failing ;
+  Metrics.Batcher.set_last_batch_time (Ptime_clock.now ()) ;
+  let+ block = Node_context.last_processed_head_opt state.node_ctxt in
+  match block with
+  | Some block -> Metrics.Batcher.set_last_batch_level block.header.level
+  | _ -> ()
 
 let init_batcher_state plugin node_ctxt =
   {

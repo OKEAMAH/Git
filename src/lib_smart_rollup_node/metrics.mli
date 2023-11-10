@@ -75,3 +75,11 @@ module Wasm_2_0_0 : sig
 
   val set_transactions_amount : int -> unit
 end
+
+module Batcher : sig
+  val set_message_queue_size : int -> unit
+
+  val set_last_batch_level : int32 -> unit
+
+  val set_last_batch_time : Ptime.t -> unit
+end
