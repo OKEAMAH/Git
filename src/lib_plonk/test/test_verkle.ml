@@ -1,27 +1,18 @@
-let test_verkle () =
-  let arity = Kzg.Verkle.Parameters.arity in
-  let expected_snd_lvl =
-    Array.init arity (fun _ ->
-        Array.init arity (fun i -> Bls12_381.Fr.of_int i))
-  in
-  let () = Kzg.Verkle.create_storage ~test:true "vfd" in
-  let _, _, snd_level = Kzg.Verkle.read_storage "vfd" in
-  Array.iteri
-    (fun fst v ->
-      Array.iteri
-        (fun snd expected ->
-          assert (Bls12_381.Fr.eq expected snd_level.(fst).(snd)))
-        v)
-    expected_snd_lvl
-
-let test_update () =
+let test_correctness () =
   let open Kzg.Verkle in
-  let () = create_storage "test" in
+  let fd = "test_vc" in
+  let snd_lvl = generate_snd_lvl () in
+  let () = commit_storage fd snd_lvl in
+
   let diff = create_diff 10 in
-  let () = update_storage "test" diff in
-  ()
+  let () = update_commit fd diff in
+  let root = read_root fd in
+
+  update_storage diff snd_lvl ;
+  let root_new, _ = commit snd_lvl in
+  assert (Bls12_381.G1.eq root root_new)
 
 let tests =
   List.map
     (fun (name, f) -> Alcotest.test_case name `Quick f)
-    [("Verkle", test_verkle); ("Update", test_update)]
+    [("Verkle_correctness", test_correctness)]

@@ -117,18 +117,13 @@ let serialize_fst_lvl fst_lvl =
 
 let serialize_root root = G1.to_bytes root
 
+let generate_snd_lvl () =
+  let random_vector () = Array.init arity (fun _i -> Scalar.random ()) in
+  Array.init arity (fun _ -> random_vector ())
+
 (** Writes in the file [root; fst_lvl; snd_level] in bytes. *)
-let create_storage ?(test = false) file_name =
+let commit_storage file_name snd_lvl =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-
-  let snd_lvl =
-    let random_vector () =
-      Array.init arity (fun i ->
-          if test then Scalar.of_int i else Scalar.random ())
-    in
-    Array.init arity (fun _ -> random_vector ())
-  in
-
   let root, fst_lvl = commit snd_lvl in
 
   let root_bytes = serialize_root root in
@@ -138,6 +133,12 @@ let create_storage ?(test = false) file_name =
   write_file file_descr root_bytes ~offset:0 ~len:root_size ;
   write_file file_descr fst_lvl_bytes ~offset:fst_lvl_offset ~len:fst_lvl_size ;
   write_file file_descr snd_lvl_bytes ~offset:snd_lvl_offset ~len:snd_lvl_size
+
+let read_root file_name =
+  let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+  let buffer_root = Bytes.create root_size in
+  read_file file_descr buffer_root ~offset:0 ~len:root_size ;
+  G1.of_bytes_exn buffer_root
 
 (** Returns [root; fst_lvl; snd_level] not in bytes. *)
 let read_storage file_name =
@@ -195,8 +196,17 @@ let create_diff nb =
 let map_to_array map =
   List.map snd (List.of_seq (IntMap.to_seq map)) |> Array.of_list
 
+let update_storage (diff : scalar IntMap.t IntMap.t)
+    (snd_lvl : scalar array array) =
+  IntMap.iter
+    (fun i snd_lvl_diff ->
+      (IntMap.iter (fun j diff ->
+           snd_lvl.(i).(j) <- Scalar.(snd_lvl.(i).(j) + diff)))
+        snd_lvl_diff)
+    diff
+
 (** Modifies the storage and recomputes the commitment according to [diff]. *)
-let update_storage file_name diff =
+let update_commit file_name diff =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
 
   let ec_of_diff diff =
