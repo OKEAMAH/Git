@@ -149,6 +149,10 @@ type _ successful_manager_operation_result =
       paid_storage_size_diff : Z.t;
     }
       -> Kind.zk_rollup_update successful_manager_operation_result
+  | Auth_source_result : {
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.auth_source successful_manager_operation_result
 
 let migration_origination_result_to_successful_manager_operation_result
     ({
@@ -1022,6 +1026,8 @@ let equal_manager_kind :
   | Kind.Zk_rollup_update_manager_kind, Kind.Zk_rollup_update_manager_kind ->
       Some Eq
   | Kind.Zk_rollup_update_manager_kind, _ -> None
+  | Kind.Auth_source_manager_kind, Kind.Auth_source_manager_kind -> Some Eq
+  | Kind.Auth_source_manager_kind, _ -> None
 
 module Encoding = struct
   let consensus_result_encoding power_name =
@@ -2521,6 +2527,30 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Zk_rollup_update _; _}, _ -> None
+  | ( Manager_operation {operation = Auth_source _; _},
+      Manager_operation_result
+        {operation_result = Applied (Auth_source_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Auth_source _; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Auth_source_result _, _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Auth_source _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Auth_source_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Auth_source _; _},
+      Manager_operation_result
+        {
+          operation_result = Skipped Alpha_context.Kind.Auth_source_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | Manager_operation {operation = Auth_source _; _}, _ -> None
 
 let rec kind_equal_list :
     type kind kind2.

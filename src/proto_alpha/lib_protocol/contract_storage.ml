@@ -670,7 +670,9 @@ let credit_only_call_from_token c contract amount =
   | None -> (
       match contract with
       | Originated _ -> tzfail (Non_existing_contract contract)
-      | Implicit manager -> create_implicit c manager ~balance:amount)
+      | Implicit manager ->
+          (* lin: Implicit allocated here if non allocated. *)
+          create_implicit c manager ~balance:amount)
   | Some balance ->
       let*? balance = Tez_repr.(amount +? balance) in
       let* c = Storage.Contract.Spendable_balance.update c contract balance in

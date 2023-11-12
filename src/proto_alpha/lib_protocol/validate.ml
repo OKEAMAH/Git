@@ -2005,9 +2005,14 @@ module Manager = struct
       several managers to group-sign a sequence of operations. *)
   let check_sanity_and_find_public_key vi
       (contents_list : _ Kind.manager contents_list) =
-    (* lin: A lot of checks against batch done here. *)
+    (* lin: A lot of checks against batch done here.
+            But sig check is done after returning pk from this function. *)
     let open Lwt_result_syntax in
+    (* lin: public key taken here *)
     let*? source, revealed_key, first_counter = check_batch contents_list in
+    (* lin: Contract must be allocated? => The `source` manager operation must be allocated.
+            The [deposit tx from sponsor; auth_source(sponsee); reveal for sponsee; tx from sponsee]
+            case would not work if we check allocation for the sponsee's operations. *)
     let* balance = Contract.check_allocated_and_get_balance vi.ctxt source in
     let* () = Contract.check_counter_increment vi.ctxt source first_counter in
     let* pk =
@@ -2205,6 +2210,7 @@ module Manager = struct
        must make {!check_kind_specific_content} return the [remaining_gas].*)
     (* lin: Probably checking that [source] can pay [fee]. *)
     let* balance, is_allocated =
+      (* lin: check if can pay fee here. *)
       Contract.simulate_spending
         vi.ctxt
         ~balance:batch_state.balance
@@ -2225,11 +2231,17 @@ module Manager = struct
       type kind.
       info ->
       batch_state ->
+      fee_payer:public_key_hash ->
       kind Kind.manager contents_list ->
       consume_gas_for_sig_check:Gas.cost option ->
       Gas.Arith.fp ->
       Gas.Arith.fp tzresult Lwt.t =
-   fun vi batch_state contents_list ~consume_gas_for_sig_check remaining_gas ->
+   fun vi
+       batch_state
+       ~fee_payer
+       contents_list
+       ~consume_gas_for_sig_check
+       remaining_gas ->
     let open Lwt_result_syntax in
     match contents_list with
     | Single contents ->
@@ -2273,10 +2285,16 @@ module Manager = struct
         (Michelson_v1_gas.Cost_of.Interpreter.algo_of_public_key source_pk)
         operation
     in
+    let fee_payer =
+      match contents_list with
+      | Single (Manager_operation {source; _}) -> source
+      | Cons (Manager_operation {source; _}, _) -> source
+    in
     let* gas_used =
       check_contents_list
         vi
         batch_state
+        ~fee_payer
         contents_list
         ~consume_gas_for_sig_check:(Some signature_checking_gas_cost)
         remaining_block_gas

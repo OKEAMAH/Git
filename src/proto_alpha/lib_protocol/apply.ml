@@ -1520,6 +1520,19 @@ let apply_manager_operation :
         Zk_rollup_apply.publish ~ctxt_before_op ~ctxt ~zk_rollup ~l2_ops:ops
     | Zk_rollup_update {zk_rollup; update} ->
         Zk_rollup_apply.update ~ctxt_before_op ~ctxt ~zk_rollup ~update
+    | Auth_source _ ->
+        let sig_check_gas_cost =
+          match consume_gas_for_sig_check with
+          | None -> Gas.free
+          | Some gas_for_sig_check -> gas_for_sig_check
+        in
+        let*? ctxt = Gas.consume ctxt_before_op sig_check_gas_cost in
+        return
+          ( ctxt,
+            (Auth_source_result
+               {consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt}
+              : kind successful_manager_operation_result),
+            [] )
 
 type success_or_failure = Success of context | Failure
 
@@ -1675,7 +1688,7 @@ let burn_manager_storage_fees :
             ~payer
         in
         (ctxt, storage_limit, Origination_result origination_result)
-    | Reveal_result _ | Delegation_result _ ->
+    | Reveal_result _ | Delegation_result _ | Auth_source_result _ ->
         return (ctxt, storage_limit, smopr)
     | Register_global_constant_result payload ->
         let consumed = payload.size_of_constant in
@@ -1802,8 +1815,8 @@ let burn_internal_storage_fees :
     | IDelegation_result _ -> return (ctxt, storage_limit, smopr)
     | IEvent_result _ -> return (ctxt, storage_limit, smopr)
 
-let apply_manager_contents (type kind) ctxt chain_id ~consume_gas_for_sig_check
-    (op : kind Kind.manager contents) :
+let apply_manager_contents (type kind) ctxt ~fee_payer chain_id
+    ~consume_gas_for_sig_check (op : kind Kind.manager contents) :
     (success_or_failure
     * kind manager_operation_result
     * packed_internal_operation_result list)
@@ -1839,7 +1852,7 @@ let apply_manager_contents (type kind) ctxt chain_id ~consume_gas_for_sig_check
               ctxt
               operation_results
               ~storage_limit
-              ~payer:source
+              ~payer:fee_payer
           in
           match result with
           | Ok (ctxt, storage_limit, operation_results) ->
@@ -1944,8 +1957,9 @@ let rec mark_skipped :
    {!Validate.validate_operation}. The latter is responsible for ensuring that
    the operation is solvable, i.e. its fees can be taken, i.e.
    [take_fees] cannot return an error. *)
-let take_fees ctxt contents_list =
+let take_fees ctxt ~fee_payer contents_list =
   let open Lwt_result_syntax in
+  (* The payer of the fee is the source of the first manager operation. *)
   let rec take_fees_rec :
       type kind.
       context ->
@@ -1959,7 +1973,7 @@ let take_fees ctxt contents_list =
       let+ ctxt, balance_updates =
         Token.transfer
           ctxt
-          (`Contract (Contract.Implicit source))
+          (`Contract (Contract.Implicit fee_payer))
           `Block_fees
           fee
       in
@@ -1977,9 +1991,11 @@ let take_fees ctxt contents_list =
   let*! result = take_fees_rec ctxt contents_list in
   Lwt.return (record_trace Error_while_taking_fees result)
 
+(* lin: let-rec done here *)
 let rec apply_manager_contents_list_rec :
     type kind.
     context ->
+    fee_payer:public_key_hash ->
     payload_producer:Consensus_key.t ->
     Chain_id.t ->
     consume_gas_for_sig_check:Gas.cost option ->
@@ -1987,6 +2003,7 @@ let rec apply_manager_contents_list_rec :
     (success_or_failure * kind Kind.manager contents_result_list) Lwt.t =
   let open Lwt_syntax in
   fun ctxt
+      ~fee_payer
       ~payload_producer
       chain_id
       ~consume_gas_for_sig_check
@@ -1996,7 +2013,12 @@ let rec apply_manager_contents_list_rec :
     | FeesUpdatedSingle {contents = Manager_operation _ as op; balance_updates}
       ->
         let+ ctxt_result, operation_result, internal_operation_results =
-          apply_manager_contents ctxt chain_id ~consume_gas_for_sig_check op
+          apply_manager_contents
+            ctxt
+            ~fee_payer
+            chain_id
+            ~consume_gas_for_sig_check
+            op
         in
         let result =
           Manager_operation_result
@@ -2006,7 +2028,12 @@ let rec apply_manager_contents_list_rec :
     | FeesUpdatedCons
         ({contents = Manager_operation _ as op; balance_updates}, rest) -> (
         let* result =
-          apply_manager_contents ctxt chain_id ~consume_gas_for_sig_check op
+          apply_manager_contents
+            ctxt
+            ~fee_payer
+            chain_id
+            ~consume_gas_for_sig_check
+            op
         in
         match result with
         | Failure, operation_result, internal_operation_results ->
@@ -2026,6 +2053,7 @@ let rec apply_manager_contents_list_rec :
             let+ ctxt_result, results =
               apply_manager_contents_list_rec
                 ctxt
+                ~fee_payer
                 ~payload_producer
                 chain_id
                 ~consume_gas_for_sig_check:None
@@ -2222,12 +2250,13 @@ let record_attestation ctxt (mode : mode) (content : consensus_content) :
       in
       return (ctxt, mk_attestation_result consensus_key 0 (* Fake power. *))
 
-let apply_manager_contents_list ctxt ~payload_producer chain_id
+let apply_manager_contents_list ctxt ~fee_payer ~payload_producer chain_id
     ~gas_cost_for_sig_check fees_updated_contents_list =
   let open Lwt_syntax in
   let* ctxt_result, results =
     apply_manager_contents_list_rec
       ctxt
+      ~fee_payer
       ~payload_producer
       chain_id
       ~consume_gas_for_sig_check:(Some gas_cost_for_sig_check)
@@ -2239,11 +2268,19 @@ let apply_manager_contents_list ctxt ~payload_producer chain_id
       let+ ctxt = Lazy_storage.cleanup_temporaries ctxt in
       (ctxt, results)
 
-let apply_manager_operations ctxt ~payload_producer chain_id ~mempool_mode
-    ~source ~operation contents_list =
+let apply_manager_operations (type kind) ctxt ~payload_producer chain_id
+    ~mempool_mode ~source ~operation
+    (contents_list : kind Kind.manager contents_list) =
   let open Lwt_result_syntax in
   let ctxt = if mempool_mode then Gas.reset_block_gas ctxt else ctxt in
-  let* ctxt, fees_updated_contents_list = take_fees ctxt contents_list in
+  let fee_payer =
+    match contents_list with
+    | Single (Manager_operation {source; _}) -> source
+    | Cons (Manager_operation {source; _}, _) -> source
+  in
+  let* ctxt, fees_updated_contents_list =
+    take_fees ctxt ~fee_payer contents_list
+  in
   let gas_cost_for_sig_check =
     let algo =
       Michelson_v1_gas.Cost_of.Interpreter.algo_of_public_key_hash source
@@ -2253,6 +2290,7 @@ let apply_manager_operations ctxt ~payload_producer chain_id ~mempool_mode
   let*! ctxt, contents_result_list =
     apply_manager_contents_list
       ctxt
+      ~fee_payer
       ~payload_producer
       chain_id
       ~gas_cost_for_sig_check
@@ -2419,7 +2457,7 @@ let apply_contents_list (type kind) ctxt chain_id (mode : mode)
       (* This operation always fails. It should already have been
          rejected by {!Validate.validate_operation}. *)
       tzfail Validate_errors.Failing_noop_error
-  | Single (Manager_operation {source; _}) ->
+  | Single (Manager_operation {source; _}) as contents_list ->
       apply_manager_operations
         ctxt
         ~payload_producer
@@ -3115,5 +3153,5 @@ let finalize_block (application_state : application_state) shell_header_opt =
 let value_of_key ctxt k = Cache.Admin.value_of_key ctxt k
 
 module Internal_for_benchmark = struct
-  let take_fees ctxt batch = ignore (take_fees ctxt batch)
+  let take_fees ctxt ~fee_payer batch = ignore (take_fees ~fee_payer ctxt batch)
 end

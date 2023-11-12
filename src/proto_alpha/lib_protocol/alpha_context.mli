@@ -4315,6 +4315,8 @@ module Kind : sig
 
   type zk_rollup_update = Zk_rollup_update_kind
 
+  type auth_source = Auth_source_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -4338,6 +4340,7 @@ module Kind : sig
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
     | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Auth_source_manager_kind : auth_source manager
 end
 
 (** All the definitions below are re-exported from {!Operation_repr}. *)
@@ -4538,6 +4541,11 @@ and _ manager_operation =
       update : Zk_rollup.Update.t;
     }
       -> Kind.zk_rollup_update manager_operation
+  | Auth_source : {
+      auth_source : Signature.Public_key_hash.t;
+      auth_signature : Signature.t;
+    }
+      -> Kind.auth_source manager_operation
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation

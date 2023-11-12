@@ -109,6 +109,8 @@ module Kind = struct
 
   type zk_rollup_update = Zk_rollup_update_kind
 
+  type auth_source = Auth_source_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -132,6 +134,7 @@ module Kind = struct
     | Zk_rollup_origination_manager_kind : zk_rollup_origination manager
     | Zk_rollup_publish_manager_kind : zk_rollup_publish manager
     | Zk_rollup_update_manager_kind : zk_rollup_update manager
+    | Auth_source_manager_kind : auth_source manager
 end
 
 type 'a consensus_operation_type =
@@ -400,6 +403,11 @@ and _ manager_operation =
       update : Zk_rollup_update_repr.t;
     }
       -> Kind.zk_rollup_update manager_operation
+  | Auth_source : {
+      auth_source : Signature.Public_key_hash.t;
+      auth_signature : Signature.t;
+    }
+      -> Kind.auth_source manager_operation
 
 let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   function
@@ -424,6 +432,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Zk_rollup_origination _ -> Kind.Zk_rollup_origination_manager_kind
   | Zk_rollup_publish _ -> Kind.Zk_rollup_publish_manager_kind
   | Zk_rollup_update _ -> Kind.Zk_rollup_update_manager_kind
+  | Auth_source _ -> Kind.Auth_source_manager_kind
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -2018,6 +2027,8 @@ let equal_manager_operation_kind :
   | Zk_rollup_publish _, _ -> None
   | Zk_rollup_update _, Zk_rollup_update _ -> Some Eq
   | Zk_rollup_update _, _ -> None
+  | Auth_source _, Auth_source _ -> Some Eq
+  | Auth_source _, _ -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
