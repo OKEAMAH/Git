@@ -220,21 +220,22 @@ mod tests {
             amount: 5_000_000,
             ..Ctx::default()
         };
-        let interp_res = parse_contract_script(VOTE_SRC)
+        let initial_storage = vec![Elt("bar", 0), Elt("baz", 0), Elt("foo", 0)].into();
+        let script = parse_contract_script(VOTE_SRC)
             .unwrap()
             .typecheck(&mut ctx)
-            .unwrap()
-            .interpret(
-                &mut ctx,
-                "foo".into(),
-                vec![Elt("bar", 0), Elt("baz", 0), Elt("foo", 0)].into(),
-            );
-        use TypedValue as TV;
+            .unwrap();
+        let interp_res = script.interpret(&mut ctx, "foo".into(), initial_storage);
+        let expected_final_storage: Value =
+            vec![Elt("bar", 0), Elt("baz", 0), Elt("foo", 1)].into();
+        let expected_final_storage = expected_final_storage
+            .typecheck(&mut Ctx::default(), &script.storage.clone())
+            .unwrap();
         match interp_res.unwrap() {
-            (_, TV::Map(m)) => {
-                assert_eq!(m.get(&TV::String("foo".to_owned())).unwrap(), &TV::Int(1))
+            (ops, m) => {
+                assert_eq!(m, expected_final_storage);
+                assert_eq!(ops, vec![]);
             }
-            _ => panic!("unexpected contract output"),
         }
     }
 
