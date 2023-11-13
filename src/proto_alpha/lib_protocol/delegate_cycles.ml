@@ -164,10 +164,9 @@ let adjust_frozen_stakes ctxt :
           let*? optimal_to_stake = Tez_repr.(to_have_frozen -? own_frozen) in
           Staking.stake
             ctxt
-            ~amount_strictness:`Best_effort
+            ~amount_strictness:(`Best_effort optimal_to_stake)
             ~sender:delegate
             ~delegate
-            optimal_to_stake
         else if Tez_repr.(to_have_frozen < own_frozen) then
           let*? to_unstake = Tez_repr.(own_frozen -? to_have_frozen) in
           Staking.request_unstake
