@@ -196,23 +196,27 @@ pub fn typed_value_to_value_optimized<'a>(
         TV::Int(i) => V::Int(i),
         TV::Nat(u) => V::Int(u.try_into().unwrap()),
         TV::Mutez(u) => V::Int(u.try_into().unwrap()),
-        TV::Bool(true) => V::App(Prim::True, &[], vec![]),
-        TV::Bool(false) => V::App(Prim::False, &[], vec![]),
+        TV::Bool(true) => V::prim0(Prim::True),
+        TV::Bool(false) => V::prim0(Prim::False),
         TV::String(s) => V::String(s),
-        TV::Unit => V::App(Prim::Unit, &[], vec![]),
+        TV::Unit => V::prim0(Prim::Unit),
         // This transformation for pairs deviates from the optimized representation of the
         // reference implementation, because reference implementation optimizes the size of combs
         // and uses an untyped representation that is the shortest.
-        TV::Pair(b) => V::new_pair(arena, go(b.0), go(b.1)),
+        TV::Pair(b) => V::prim2(arena, Prim::Pair, go(b.0), go(b.1)),
         TV::List(l) => V::Seq(arena.alloc_extend(l.into_iter().map(go))),
         TV::Map(m) => V::Seq(
             arena.alloc_extend(
                 m.into_iter()
-                    .map(|(key, val)| V::new_elt(arena, go(key), go(val))),
+                    .map(|(key, val)| V::prim2(arena, Prim::Elt, go(key), go(val))),
             ),
         ),
-        TV::Option(x) => V::new_option(arena, x.map(|x| go(*x))),
-        TV::Or(x) => V::new_or(arena, x.map(|x| typed_value_to_value_optimized(arena, x))),
+        TV::Option(Some(x)) => V::prim1(arena, Prim::Some, go(*x)),
+        TV::Option(None) => V::prim0(Prim::None),
+        TV::Or(x) => match *x {
+            or::Or::Left(x) => V::prim1(arena, Prim::Left, go(x)),
+            or::Or::Right(x) => V::prim1(arena, Prim::Right, go(x)),
+        },
         TV::Address(x) => V::Bytes(x.to_bytes_vec()),
         TV::ChainId(x) => V::Bytes(x.into()),
         TV::Contract(x) => typed_value_to_value_optimized(arena, TV::Address(x)),

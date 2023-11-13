@@ -7,7 +7,6 @@
 
 use typed_arena::Arena;
 
-use super::or::Or;
 use crate::lexer::Prim;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -20,26 +19,22 @@ pub enum Micheline<'a> {
 }
 
 impl<'a> Micheline<'a> {
-    pub fn new_pair(arena: &'a Arena<Micheline<'a>>, l: Micheline<'a>, r: Micheline<'a>) -> Self {
-        Micheline::App(Prim::Pair, arena.alloc_extend([l, r]), vec![])
+    // Helpers for building the `App` cases with few parameters
+    pub fn prim0(prim: Prim) -> Self {
+        Micheline::App(prim, &[], vec![])
     }
 
-    pub fn new_elt(arena: &'a Arena<Micheline<'a>>, l: Micheline<'a>, r: Micheline<'a>) -> Self {
-        Micheline::App(Prim::Elt, arena.alloc_extend([l, r]), vec![])
+    pub fn prim1(arena: &'a Arena<Micheline<'a>>, prim: Prim, l: Micheline<'a>) -> Self {
+        Micheline::App(prim, arena.alloc_extend([l]), vec![])
     }
 
-    pub fn new_or(arena: &'a Arena<Micheline<'a>>, l: Or<Micheline<'a>, Micheline<'a>>) -> Self {
-        match l {
-            Or::Left(x) => Micheline::App(Prim::Left, arena.alloc_extend([x]), vec![]),
-            Or::Right(x) => Micheline::App(Prim::Right, arena.alloc_extend([x]), vec![]),
-        }
-    }
-
-    pub fn new_option(arena: &'a Arena<Micheline<'a>>, l: Option<Micheline<'a>>) -> Self {
-        match l {
-            Some(l) => Micheline::App(Prim::Some, arena.alloc_extend([l]), vec![]),
-            None => Micheline::App(Prim::None, &[], vec![]),
-        }
+    pub fn prim2(
+        arena: &'a Arena<Micheline<'a>>,
+        prim: Prim,
+        l: Micheline<'a>,
+        r: Micheline<'a>,
+    ) -> Self {
+        Micheline::App(prim, arena.alloc_extend([l, r]), vec![])
     }
 }
 
