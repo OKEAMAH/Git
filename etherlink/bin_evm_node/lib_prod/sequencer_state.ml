@@ -22,7 +22,7 @@ let execute ?(commit = false) ctxt inbox =
       ()
   in
   let* evm_state, _, _, _ =
-    Wasm.Commands.eval 0l inbox config Inbox ctxt.Sequencer_context.evm_state
+    Wasm.Cmds.eval 0l inbox config Inbox ctxt.Sequencer_context.evm_state
   in
   let* ctxt =
     if commit then Sequencer_context.commit ctxt evm_state else return ctxt
@@ -58,7 +58,7 @@ let init ~smart_rollup_address ~rollup_node_endpoint ctxt =
 let inspect evm_state key =
   let open Lwt_syntax in
   let key = Tezos_scoru_wasm.Durable.key_of_string_exn key in
-  let* value = Wasm.Commands.find_key_in_durable evm_state key in
+  let* value = Wasm.Cmds.find_key_in_durable evm_state key in
   Option.map_s Tezos_lazy_containers.Chunked_byte_vector.to_bytes value
 
 let execute_and_inspect ctxt

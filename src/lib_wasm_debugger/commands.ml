@@ -101,6 +101,7 @@ let parse_profile_options =
 type command_description = {
   parse : string list -> commands option;
   documentation : string;
+  completions : string list;
 }
 
 (* Parsing and documentation of each possible command *)
@@ -114,12 +115,14 @@ let rec commands_docs =
       documentation =
         "time <command>: Executes <command> and returns the time required for \
          its execution.";
+      completions = ["time"];
     };
     {
       parse = (function ["show"; "inbox"] -> Some Show_inbox | _ -> None);
       documentation =
         "show inbox: Prints the current input buffer and the number of \
          messages it contains.";
+      completions = ["show inbox"];
     };
     {
       parse =
@@ -129,10 +132,12 @@ let rec commands_docs =
         | _ -> None);
       documentation =
         "show outbox at level <level>: Prints the outbox messages for <level>.";
+      completions = ["show outbox at level"];
     };
     {
       parse = (function ["show"; "status"] -> Some Show_status | _ -> None);
       documentation = "show status: Shows the state of the PVM.";
+      completions = ["show status"];
     };
     {
       parse =
@@ -142,6 +147,7 @@ let rec commands_docs =
       documentation =
         "show durable storage: Prints the durable storage from the root of the \
          tree.";
+      completions = ["show durable storage"];
     };
     {
       parse =
@@ -152,6 +158,7 @@ let rec commands_docs =
       documentation =
         "show subkeys [<path>] | ls [<path>]: Prints the direct subkeys under \
          <path> (default '/')";
+      completions = ["show subkeys"; "ls"];
     };
     {
       parse =
@@ -165,6 +172,7 @@ let rec commands_docs =
         "show key <key> [as <kind>]: Looks for given <key> in durable storage \
          and prints its value in <kind> format. Prints errors if <key> is \
          invalid or not existing.";
+      completions = ["show key"; "as"];
     };
     {
       parse =
@@ -175,6 +183,7 @@ let rec commands_docs =
         "dump function symbols: Pretty-prints the parsed functions custom \
          section. The result will be empty if the kernel is in `wast` format \
          or has been stripped of its custom sections.";
+      completions = ["dump functions symbols"];
     };
     {
       parse =
@@ -191,12 +200,15 @@ let rec commands_docs =
          version of the PVM.\n\
         \          - inbox: Run until the next inbox level. Loads the next \
          inbox if the interpreter is waiting for inputs.";
+      completions =
+        ["step inbox"; "step tick"; "step kernel_run"; "step result"];
     };
     {
       parse = (function ["load"; "inputs"] -> Some Load_inputs | _ -> None);
       documentation =
         "load inputs: If the kernel is waiting for inputs, go the the next \
          level and load the next inbox.";
+      completions = ["load inputs"];
     };
     {
       parse =
@@ -210,6 +222,7 @@ let rec commands_docs =
          waiting for a preimage, parses <hex_encoded_preimage> as an \
          hexadecimal representation of the data or uses the builtin if none is \
          given, and does a reveal step.";
+      completions = ["reveal preimage"];
     };
     {
       parse =
@@ -217,10 +230,12 @@ let rec commands_docs =
       documentation =
         "reveal metadata: While in a reveal step, print the current metadata \
          from PVM.";
+      completions = ["reveal metadata"];
     };
     {
       parse = (function ["stop"] -> Some Stop | _ -> None);
       documentation = "stop: Stops the execution of the current session.";
+      completions = ["stop"];
     };
     {
       parse =
@@ -240,6 +255,7 @@ let rec commands_docs =
         \ - `--without-time`: does not profile the time (can have an impact on \
          performance if the kernel does too many function calls).\n\
         \ - `--no-reboot`: profile a single `kernel_run`, not a full inbox.";
+      completions = ["profile"];
     };
     {
       parse =
@@ -252,11 +268,13 @@ let rec commands_docs =
          The command is only available if the memory hasn't been flushed and \
          during the evaluation of the kernel, i.e. after `step result` or \
          `step tick`.";
+      completions = ["show memory at"];
     };
     {
       parse = (function ["help"] | ["man"] -> Some Help | _ -> None);
       documentation =
         "help: Provide documentation about the available commands.";
+      completions = ["help"];
     };
   ]
 
@@ -269,6 +287,12 @@ and try_parse command =
         | command -> command)
   in
   go commands_docs
+
+let all_completions =
+  List.flatten
+  @@ List.map
+       (fun {completions; _} -> List.map Zed_string.unsafe_of_utf8 completions)
+       commands_docs
 
 let parse_commands s =
   let commands = try_parse (String.split_no_empty ' ' (String.trim s)) in
@@ -294,6 +318,31 @@ let lterm_print ?(endline = true) s =
   let* term = Lazy.force LTerm.stdout in
   let* () = LTerm.flush term in
   LTerm.printf "%s%!%s" s (if endline then "\n" else "")
+
+let make_prompt () =
+  let open LTerm_text in
+  eval [S "> "]
+
+class read_line ~term ~history =
+  let open React in
+  object (self)
+    inherit LTerm_read_line.read_line ~history ()
+
+    inherit [Zed_string.t] LTerm_read_line.term term
+
+    method! completion =
+      let prefix = Zed_rope.to_string self#input_prev in
+      let commands =
+        List.filter
+          (fun cmd -> Zed_string.starts_with ~prefix cmd)
+          all_completions
+      in
+      self#set_completion
+        0
+        (List.map (fun file -> (file, Zed_string.unsafe_of_utf8 " ")) commands)
+
+    initializer self#set_prompt (S.const (make_prompt ()))
+  end
 
 let read_data_from_stdin retries =
   let open Lwt_syntax in
