@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 module Make (Wasm : Wasm_utils_intf.S) = struct
-  module Commands = Commands.Make (Wasm)
+  module Cmds = Commands.Make (Wasm)
 
   let parse_binary_module name module_ =
     let bytes = Tezos_lazy_containers.Chunked_byte_vector.of_string module_ in
@@ -136,7 +136,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
       let*! input =
         Option.catch_s (fun () ->
             let rl =
-              new Repl_helpers.read_line
+              new Commands.read_line
                 ~term
                 ~history:(LTerm_history.contents history)
             in
@@ -151,7 +151,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
                 Option.fold
                   ~none:return_none
                   ~some:(fun (tree, inboxes, level) ->
-                    Commands.handle_command command config tree inboxes level)
+                    Cmds.handle_command command config tree inboxes level)
                   ctx)
               (Some (tree, inboxes, level))
               commands
