@@ -888,9 +888,6 @@ let patch_block_time ctxt ~head_level ~block_time_target =
       constants.proof_of_work_threshold
       (max 0 (log speedup_ratio /. log 2. |> int_of_float))
   in
-  let max_operations_time_to_live =
-    float constants.max_operations_time_to_live *. speedup_ratio |> int_of_float
-  in
   let minimal_block_delay =
     Period_repr.of_seconds_exn (Int64.of_int block_time_target)
   in
@@ -925,10 +922,7 @@ let patch_block_time ctxt ~head_level ~block_time_target =
     "Proof of work difficulty: %.1f -> %.1f@."
     (log (float (Int64.to_int constants.proof_of_work_threshold)))
     (log (float (Int64.to_int proof_of_work_threshold))) ;
-  pf
-    "Max operations time to live: %d -> %d@."
-    constants.max_operations_time_to_live
-    max_operations_time_to_live ;
+  pf "Max operations time to live: NOT CHANGED@." ;
   let patched_constants =
     {
       constants with
@@ -937,7 +931,7 @@ let patch_block_time ctxt ~head_level ~block_time_target =
       blocks_per_cycle;
       hard_gas_limit_per_block;
       proof_of_work_threshold;
-      max_operations_time_to_live;
+      (* max_operations_time_to_live; *)
     }
     |> Data_encoding.Binary.to_bytes_exn Constants_parametric_repr.encoding
   in
