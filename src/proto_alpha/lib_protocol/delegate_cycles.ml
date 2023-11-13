@@ -151,17 +151,25 @@ let adjust_frozen_stakes ctxt :
           ctxt
           full_staking_balance
       in
+      let* deposit_limit =
+        Delegate_storage.frozen_deposits_limit ctxt delegate
+      in
+      let to_have_frozen =
+        match deposit_limit with
+        | None -> optimal_frozen
+        | Some limit -> Tez_repr.min optimal_frozen limit
+      in
       let* ctxt, new_balance_updates =
-        if Tez_repr.(optimal_frozen > own_frozen) then
-          let*? optimal_to_stake = Tez_repr.(optimal_frozen -? own_frozen) in
+        if Tez_repr.(to_have_frozen > own_frozen) then
+          let*? optimal_to_stake = Tez_repr.(to_have_frozen -? own_frozen) in
           Staking.stake
             ctxt
             ~amount_strictness:`Best_effort
             ~sender:delegate
             ~delegate
             optimal_to_stake
-        else if Tez_repr.(optimal_frozen < own_frozen) then
-          let*? to_unstake = Tez_repr.(own_frozen -? optimal_frozen) in
+        else if Tez_repr.(to_have_frozen < own_frozen) then
+          let*? to_unstake = Tez_repr.(own_frozen -? to_have_frozen) in
           Staking.request_unstake
             ctxt
             ~sender_contract:Contract_repr.(Implicit delegate)

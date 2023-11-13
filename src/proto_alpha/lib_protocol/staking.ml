@@ -109,6 +109,26 @@ let finalize_unstake ctxt contract =
   in
   return (ctxt, balance_updates)
 
+let can_stake_from_unstake ctxt ~delegate =
+  let open Lwt_result_syntax in
+  let* slashing_history_opt =
+    Storage.Contract.Slashed_deposits.find
+      ctxt
+      (Contract_repr.Implicit delegate)
+  in
+  let slashing_history = Option.value slashing_history_opt ~default:[] in
+  let current_cycle = (Raw_context.current_level ctxt).cycle in
+  let preserved_cycles = Constants_storage.preserved_cycles ctxt in
+  let oldest_slashable_cycle =
+    Cycle_repr.sub current_cycle (preserved_cycles + 1)
+    |> Option.value ~default:Cycle_repr.root
+  in
+  return
+  @@ not
+       (List.exists
+          (fun (x, _) -> Cycle_repr.(x >= oldest_slashable_cycle))
+          slashing_history)
+
 let stake_from_unstake_for_delegate ctxt ~delegate ~unfinalizable_requests_opt
     amount =
   let open Lwt_result_syntax in
@@ -139,23 +159,8 @@ let stake_from_unstake_for_delegate ctxt ~delegate ~unfinalizable_requests_opt
       if Signature.Public_key_hash.(delegate <> delegate_requests) then
         (* impossible *) return (ctxt, [], amount)
       else
-        let* slashing_history_opt =
-          Storage.Contract.Slashed_deposits.find
-            ctxt
-            (Contract_repr.Implicit delegate)
-        in
-        let slashing_history = Option.value slashing_history_opt ~default:[] in
-        let current_cycle = (Raw_context.current_level ctxt).cycle in
-        let preserved_cycles = Constants_storage.preserved_cycles ctxt in
-        let oldest_slashable_cycle =
-          Cycle_repr.sub current_cycle (preserved_cycles + 1)
-          |> Option.value ~default:Cycle_repr.root
-        in
-        if
-          List.exists
-            (fun (x, _) -> Cycle_repr.(x >= oldest_slashable_cycle))
-            slashing_history
-        then
+        let* allowed = can_stake_from_unstake ctxt ~delegate in
+        if not allowed then
           (* a slash could have modified the unstaked frozen deposits: cannot stake from unstake *)
           return (ctxt, [], amount)
         else
@@ -269,36 +274,22 @@ let stake ctxt ~(amount_strictness : [`Best_effort | `Exact]) ~sender ~delegate
     match amount_strictness with
     | `Exact -> return amount
     | `Best_effort ->
-        let* ({own_frozen; _} : Full_staking_balance_repr.t) =
-          Stake_storage.get_full_staking_balance ctxt delegate
-        in
         let*? unstake_frozen_balance =
           List.fold_left_e
             (fun acc (_, t) -> Tez_repr.(acc +? t))
             Tez_repr.zero
             unfinalizable_requests
         in
-        let* deposit_limit =
-          Delegate_storage.frozen_deposits_limit ctxt delegate
-        in
         let* spendable =
           Contract_storage.get_balance ctxt (Implicit delegate)
         in
-        let*? max_stakable =
-          let open Result_syntax in
-          match deposit_limit with
-          | None -> return spendable
-          | Some deposit_limit -> (
-              let* total_frozen =
-                Tez_repr.(unstake_frozen_balance +? own_frozen)
-              in
-              ok
-              @@
-              match Tez_repr.sub_opt deposit_limit total_frozen with
-              | None -> Tez_repr.zero
-              | Some limit -> Tez_repr.min limit spendable)
+        let* stake_from_unstake = can_stake_from_unstake ctxt ~delegate in
+        let*? max_spendable =
+          if stake_from_unstake then
+            Tez_repr.(spendable +? unstake_frozen_balance)
+          else ok spendable
         in
-        return Tez_repr.(min amount max_stakable)
+        return Tez_repr.(min amount max_spendable)
   in
   let* ctxt, stake_balance_updates1, amount_from_liquid =
     if Signature.Public_key_hash.(sender <> delegate) then
