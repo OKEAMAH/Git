@@ -53,7 +53,8 @@
   test_polynomial_protocol
   test_range_checks
   test_utils
-  test_verkle))
+  test_verkle
+  test_merkle))
 
 (executable
  (name bench)

@@ -1712,6 +1712,8 @@ let _octez_plonk_test_helpers_main =
         "test_polynomial_protocol";
         "test_range_checks";
         "test_utils";
+        "test_verkle";
+        "test_merkle";
       ]
     ~bisect_ppx:No
     ~deps:
