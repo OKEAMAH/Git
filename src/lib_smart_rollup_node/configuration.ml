@@ -286,7 +286,7 @@ let description_of_mode = function
       "Follows the chain and publishes commitments, cement and refute"
   | Operator -> "Equivalent to maintenance + batcher"
   | Private_operator ->
-      "Equivalent to maintenance + batcher. Also execute whitelist update of \
+      "Equivalent to maintenance and batcher, it also executes whitelist updates for a \
        private rollup."
   | Custom op_kinds ->
       let op_kinds_desc =

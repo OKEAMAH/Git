@@ -35,7 +35,7 @@ type mode =
   | Operator  (** Equivalent to maintenance + batcher  *)
   | Private_operator
       (** Equivalent to operator + execute whitelist update for
-          private rollup. *)
+          a private rollup. *)
   | Custom of Operation_kind.t list
       (** In this mode, the system handles only the specific operation kinds
         defined by the user, allowing for tailored control and flexibility. *)
