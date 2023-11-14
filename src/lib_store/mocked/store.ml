@@ -1862,8 +1862,6 @@ let init ?patch_context ?commit_genesis ?history_mode ?(readonly = false)
       ?history_mode
       ~allow_testchains)
 
-let sync_locked _ _ = Stdlib.failwith "sync: unimplemented"
-
 let sync ?last_status:_ ~trigger_hash:_ _store =
   Stdlib.failwith "sync: unimplemented"
 

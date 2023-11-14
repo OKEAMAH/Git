@@ -84,9 +84,7 @@ let build_rpc_directory node_version config dynamic_store
             match store with
             | None -> Lwt.fail Not_found
             | Some store ->
-                Store.sync_locked store (fun () ->
-                    let () = Format.printf "%s@." __LOC__ in
-                    Tezos_shell.Chain_directory.get_chain_store_exn store chain))
+                Tezos_shell.Chain_directory.get_chain_store_exn store chain)
           dir
       in
       Lwt.return dir)
