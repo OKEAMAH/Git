@@ -191,6 +191,10 @@ In addition, a rollup node can run under different modes:
    rollup node will accept transactions in its queue and batch them on
    the Layer 1.
 
+#. ``private_operator`` Is equal to the ``operator`` mode and
+   additionally execute whitelist update outbox message for private
+   rollup when it encounters one when a commitment have been cemented.
+
 #. ``batcher`` means that the rollup node will accept transactions in
    its queue and batch them on the Layer 1. In this mode, the rollup
    node follows the Layer 1 chain, but it does not update its state
@@ -224,24 +228,29 @@ In addition, a rollup node can run under different modes:
 The following table summarizes the operation modes, focusing on the L1
 operations which are injected by the rollup node in each mode.
 
-+-------------+--------------+-----------+------------+------------+
-|             | Add messages | Publish   | Cement     | Refute     |
-+=============+==============+===========+============+============+
-| Operator    | Yes          | Yes       | Yes        | Yes        |
-+-------------+--------------+-----------+------------+------------+
-| Batcher     | Yes          | No        | No         | No         |
-+-------------+--------------+-----------+------------+------------+
-| Observer    | No           | No        | No         | No         |
-+-------------+--------------+-----------+------------+------------+
-| Maintenance | No           | Yes       | Yes        | Yes        |
-+-------------+--------------+-----------+------------+------------+
-| Accuser     | No           | Yes [*]_  | No         | Yes        |
-+-------------+--------------+-----------+------------+------------+
-| Bailout     | No           | No        | Yes        | Yes        |
-+-------------+--------------+-----------+------------+------------+
++------------------+--------------+-----------+------------+------------+------------------------+
+|                  | Add messages | Publish   | Cement     | Refute     | Execute_outbox_message |
++==================+==============+===========+============+============+========================+
+| Operator         | Yes          | Yes       | Yes        | Yes        | No                     |
++------------------+--------------+-----------+------------+------------+------------------------+
+| Private_operator | Yes          | Yes       | Yes        | Yes        | Yes [**]_              |
++------------------+--------------+-----------+------------+------------+------------------------+
+| Batcher          | Yes          | No        | No         | No         | No                     |
++------------------+--------------+-----------+------------+------------+------------------------+
+| Observer         | No           | No        | No         | No         | No                     |
++------------------+--------------+-----------+------------+------------+------------------------+
+| Maintenance      | No           | Yes       | Yes        | Yes        | No                     |
++------------------+--------------+-----------+------------+------------+------------------------+
+| Accuser          | No           | Yes [*]_  | No         | Yes        | No                     |
++------------------+--------------+-----------+------------+------------+------------------------+
+| Bailout          | No           | No        | Yes        | Yes        | No                     |
++------------------+--------------+-----------+------------+------------+------------------------+
 
 .. [*] An accuser node will publish commitments only when it detects
        conflicts; for such cases it must make a deposit of 10,000 tez.
+
+.. [*] An private operator will publish execute outbox message only
+       for whitelist update. Any other outbox message are discarded.
 
 .. _rollup_node_config_file:
 
