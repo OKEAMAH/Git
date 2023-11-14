@@ -133,12 +133,14 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
   let repl tree inboxes level config history =
     let open Lwt_result_syntax in
     let rec loop term tree inboxes level =
+      let*! keys = Cmds.get_keys tree in
       let*! input =
         Option.catch_s (fun () ->
             let rl =
               new Commands.read_line
                 ~term
                 ~history:(LTerm_history.contents history)
+                ~keys
             in
             rl#run)
       in
