@@ -78,6 +78,8 @@ module type FUELED_PVM = sig
 end
 
 module type S = sig
+  module Store : Context.SMSTORE
+
   val get_tick : Kind.t -> Context.tree -> Z.t Lwt.t
 
   val state_hash : Kind.t -> Context.tree -> State_hash.t Lwt.t

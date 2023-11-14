@@ -25,6 +25,23 @@
 (*****************************************************************************)
 open Protocol
 open Alpha_context
+module Context_encoding = Tezos_context_encoding.Context_binary
+module Maker = Irmin_pack_unix.Maker (Context_encoding.Conf)
+
+module Store = struct
+  module Gc_stats = struct
+    type t = Irmin_pack_unix.Stats.Latest_gc.stats
+
+    let total_duration stats =
+      Irmin_pack_unix.Stats.Latest_gc.total_duration stats
+
+    let finalise_duration stats =
+      Irmin_pack_unix.Stats.Latest_gc.finalise_duration stats
+  end
+
+  include Maker.Make (Context_encoding.Schema)
+  module Schema = Context_encoding.Schema
+end
 
 let get_tick kind state =
   let open Lwt_syntax in
