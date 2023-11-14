@@ -23,6 +23,8 @@ pub enum TcError {
     StacksNotEqual(TypeStack, TypeStack, StacksNotEqualReason),
     #[error(transparent)]
     OutOfGas(#[from] OutOfGas),
+    #[error(transparent)]
+    TypePropertyError(#[from] TypePropertyError),
     #[error("FAIL instruction is not in tail position")]
     FailNotInTail,
     #[error("numeric conversion failed: {0}")]
@@ -37,8 +39,6 @@ pub enum TcError {
     InvalidEltForMap(Value, Type),
     #[error("sequence elements must be in strictly ascending order for type {0:?}")]
     ElementsNotSorted(Type),
-    #[error("type not comparable: {0:?}")]
-    TypeNotComparable(Type),
     #[error("sequence elements must contain no duplicate keys for type {0:?}")]
     DuplicateElements(Type),
     #[error("no matching overload for {instr} on stack {stack:?}{}", .reason.as_ref().map_or("".to_owned(), |x| format!(", reason: {}", x)))]
@@ -47,16 +47,6 @@ pub enum TcError {
         stack: TypeStack,
         reason: Option<NoMatchingOverloadReason>,
     },
-    #[error("type not packable: {0:?}")]
-    TypeNotPackable(Type),
-    #[error("type not passable: {0:?}")]
-    TypeNotPassable(Type),
-    #[error("type not storable: {0:?}")]
-    TypeNotStorable(Type),
-    #[error("type not pushable: {0:?}")]
-    TypeNotPushable(Type),
-    #[error("type not duplicable: {0:?}")]
-    TypeNotDuplicable(Type),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
@@ -100,12 +90,8 @@ impl ContractScript<ParsedStage> {
         let ContractScript {
             parameter, storage, ..
         } = self;
-        if !parameter.is_passable(&mut ctx.gas)? {
-            return Err(TcError::TypeNotPassable(parameter));
-        }
-        if !storage.is_storable(&mut ctx.gas)? {
-            return Err(TcError::TypeNotStorable(storage));
-        }
+        parameter.ensure_prop(&mut ctx.gas, TypeProperty::Passable)?;
+        storage.ensure_prop(&mut ctx.gas, TypeProperty::Storable)?;
         let mut stack = tc_stk![Type::new_pair(parameter.clone(), storage.clone())];
         let code = self.code.typecheck(ctx, &mut stack)?;
         unify_stacks(
@@ -158,12 +144,9 @@ fn verify_ty(ctx: &mut Ctx, t: &Type) -> Result<(), TcError> {
         }
         Option(ty) | List(ty) => verify_ty(ctx, ty),
         Map(tys) => {
-            if tys.0.is_comparable(&mut ctx.gas)? {
-                verify_ty(ctx, &tys.0)?;
-                verify_ty(ctx, &tys.1)
-            } else {
-                Err(TcError::TypeNotComparable(tys.0.clone()))
-            }
+            tys.0.ensure_prop(&mut ctx.gas, TypeProperty::Comparable)?;
+            verify_ty(ctx, &tys.0)?;
+            verify_ty(ctx, &tys.1)
         }
     }
 }
@@ -308,9 +291,7 @@ fn typecheck_instruction(
             let dup_height: usize = opt_height.unwrap_or(1) as usize;
             ensure_stack_len(Prim::DUP, stack, dup_height)?;
             let ty = &stack[dup_height - 1];
-            if !ty.is_duplicable(&mut ctx.gas)? {
-                return Err(TcError::TypeNotDuplicable(ty.clone()));
-            }
+            ty.ensure_prop(&mut ctx.gas, TypeProperty::Duplicable)?;
             stack.push(ty.clone());
             I::Dup(opt_height)
         }
@@ -440,7 +421,7 @@ fn typecheck_instruction(
         (I::Iter(..), []) => no_overload!(ITER, len 1),
 
         (I::Push((t, v)), ..) => {
-            ensure_pushable(ctx, &t)?;
+            t.ensure_prop(&mut ctx.gas, TypeProperty::Pushable)?;
             verify_ty(ctx, &t)?;
             let v = typecheck_value(ctx, &t, v)?;
             stack.push(t);
@@ -455,7 +436,7 @@ fn typecheck_instruction(
 
         (I::Failwith(..), [.., _]) => {
             let ty = pop!();
-            ensure_packable(ctx, &ty)?;
+            ty.ensure_prop(&mut ctx.gas, TypeProperty::Packable)?;
             // mark stack as failed
             *opt_stack = FailingTypeStack::Failed;
             I::Failwith(ty)
@@ -515,13 +496,7 @@ fn typecheck_instruction(
                 },
                 e => e,
             })?;
-            if !t.is_comparable(&mut ctx.gas)? {
-                return Err(TcError::NoMatchingOverload {
-                    instr: Prim::COMPARE,
-                    stack: stack.clone(),
-                    reason: Some(NoMatchingOverloadReason::TypeNotComparable(t.clone())),
-                });
-            }
+            t.ensure_prop(&mut ctx.gas, TypeProperty::Comparable)?;
             pop!();
             stack[0] = T::Int;
             I::Compare
@@ -668,22 +643,6 @@ fn ensure_stack_len(instr: Prim, stack: &TypeStack, l: usize) -> Result<(), TcEr
             stack: stack.clone(),
             reason: Some(NoMatchingOverloadReason::StackTooShort { expected: l }),
         })
-    }
-}
-
-fn ensure_packable(ctx: &mut Ctx, ty: &Type) -> Result<(), TcError> {
-    if ty.is_packable(&mut ctx.gas)? {
-        Ok(())
-    } else {
-        Err(TcError::TypeNotPackable(ty.clone()))
-    }
-}
-
-fn ensure_pushable(ctx: &mut Ctx, ty: &Type) -> Result<(), TcError> {
-    if ty.is_pushable(&mut ctx.gas)? {
-        Ok(())
-    } else {
-        Err(TcError::TypeNotPushable(ty.clone()))
     }
 }
 
@@ -1594,7 +1553,9 @@ mod typecheck_tests {
         let mut stack = tc_stk![Type::new_list(Type::Operation)];
         assert_eq!(
             typecheck_instruction(parse("FAILWITH").unwrap(), &mut Ctx::default(), &mut stack),
-            Err(TcError::TypeNotPackable(Type::new_list(Type::Operation)))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(TypeProperty::Packable, Type::Operation)
+            ))
         );
     }
 
@@ -1641,7 +1602,12 @@ mod typecheck_tests {
                 &mut Ctx::default(),
                 &mut stack
             ),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Int)))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Int)
+                )
+            ))
         );
     }
 
@@ -1654,7 +1620,12 @@ mod typecheck_tests {
                 &mut Ctx::default(),
                 &mut stack
             ),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Int)))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Int)
+                )
+            ))
         );
     }
 
@@ -1726,7 +1697,12 @@ mod typecheck_tests {
             parse("GET")
                 .unwrap()
                 .typecheck(&mut Ctx::default(), &mut stack),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Int))),
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Int)
+                )
+            ))
         );
     }
 
@@ -1777,7 +1753,12 @@ mod typecheck_tests {
             parse("UPDATE")
                 .unwrap()
                 .typecheck(&mut Ctx::default(), &mut stack),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Int),))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Int)
+                )
+            ))
         );
     }
 
@@ -2031,11 +2012,9 @@ mod typecheck_tests {
                 &mut ctx,
                 &mut tc_stk![Type::Operation, Type::Operation]
             ),
-            Err(TcError::NoMatchingOverload {
-                instr: Prim::COMPARE,
-                stack: stk![Type::Operation, Type::Operation],
-                reason: Some(NoMatchingOverloadReason::TypeNotComparable(Type::Operation)),
-            })
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(TypeProperty::Comparable, Type::Operation)
+            ))
         );
     }
 
@@ -2078,7 +2057,9 @@ mod typecheck_tests {
                 &mut ctx,
                 &mut tc_stk![]
             ),
-            Err(TcError::TypeNotPushable(Type::Operation))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(TypeProperty::Pushable, Type::Operation)
+            ))
         );
     }
 
@@ -2092,7 +2073,9 @@ mod typecheck_tests {
                 code: Failwith(())
             }
             .typecheck(&mut ctx),
-            Err(TcError::TypeNotPassable(Type::Operation))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(TypeProperty::Passable, Type::Operation)
+            ))
         );
     }
 
@@ -2106,7 +2089,9 @@ mod typecheck_tests {
                 code: Failwith(())
             }
             .typecheck(&mut ctx),
-            Err(TcError::TypeNotStorable(Type::Operation))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(TypeProperty::Storable, Type::Operation)
+            ))
         );
     }
 
@@ -2120,7 +2105,12 @@ mod typecheck_tests {
                 code: Failwith(())
             }
             .typecheck(&mut ctx),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Unit)))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Unit)
+                )
+            ))
         );
     }
 
@@ -2132,7 +2122,12 @@ mod typecheck_tests {
                 &mut ctx,
                 &Type::new_map(Type::new_list(Type::Unit), Type::Unit)
             ),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Unit)))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Unit)
+                )
+            ))
         );
     }
 
@@ -2149,7 +2144,12 @@ mod typecheck_tests {
                 code: Failwith(())
             }
             .typecheck(&mut ctx),
-            Err(TcError::TypeNotComparable(Type::new_list(Type::Unit)))
+            Err(TcError::TypePropertyError(
+                TypePropertyError::InvalidTypeProperty(
+                    TypeProperty::Comparable,
+                    Type::new_list(Type::Unit)
+                )
+            ))
         );
     }
 }

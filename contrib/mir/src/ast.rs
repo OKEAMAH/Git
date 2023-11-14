@@ -37,7 +37,7 @@ pub enum Type {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum TypeProperty {
+pub enum TypeProperty {
     Comparable,
     Passable,
     Storable,
@@ -47,72 +47,61 @@ enum TypeProperty {
     Duplicable,
 }
 
+/// Error type for ensuring that type properties hold
+#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
+pub enum TypePropertyError {
+    #[error(transparent)]
+    OutOfGas(#[from] OutOfGas),
+    #[error("type not {0:?}: {1:?}")]
+    InvalidTypeProperty(TypeProperty, Type),
+}
+
 impl Type {
     #[inline(always)]
-    fn prop(&self, gas: &mut Gas, prop: TypeProperty) -> Result<bool, OutOfGas> {
+    pub fn ensure_prop(&self, gas: &mut Gas, prop: TypeProperty) -> Result<(), TypePropertyError> {
         use Type::*;
         gas.consume(tc_cost::TYPE_PROP_STEP)?;
         Ok(match self {
-            Nat | Int | Bool | Mutez | String | Unit => true,
+            Nat | Int | Bool | Mutez | String | Unit => (),
             Operation => match prop {
                 TypeProperty::Comparable
                 | TypeProperty::Passable
                 | TypeProperty::Storable
                 | TypeProperty::Pushable
                 | TypeProperty::Packable
-                | TypeProperty::BigMapValue => false,
-                TypeProperty::Duplicable => true,
+                | TypeProperty::BigMapValue => {
+                    return Err(TypePropertyError::InvalidTypeProperty(prop, self.clone()))
+                }
+                TypeProperty::Duplicable => (),
             },
-            Pair(p) | Or(p) => p.0.prop(gas, prop)? && p.1.prop(gas, prop)?,
-            Option(x) => x.prop(gas, prop)?,
+            Pair(p) | Or(p) => {
+                p.0.ensure_prop(gas, prop)?;
+                p.1.ensure_prop(gas, prop)?
+            }
+            Option(x) => x.ensure_prop(gas, prop)?,
             List(x) => match prop {
-                TypeProperty::Comparable => false,
+                TypeProperty::Comparable => {
+                    return Err(TypePropertyError::InvalidTypeProperty(prop, self.clone()))
+                }
                 TypeProperty::Passable
                 | TypeProperty::Storable
                 | TypeProperty::Pushable
                 | TypeProperty::Packable
                 | TypeProperty::BigMapValue
-                | TypeProperty::Duplicable => x.prop(gas, prop)?,
+                | TypeProperty::Duplicable => x.ensure_prop(gas, prop)?,
             },
             Map(p) => match prop {
-                TypeProperty::Comparable => false,
+                TypeProperty::Comparable => {
+                    return Err(TypePropertyError::InvalidTypeProperty(prop, self.clone()))
+                }
                 TypeProperty::Passable
                 | TypeProperty::Storable
                 | TypeProperty::Pushable
                 | TypeProperty::Packable
                 | TypeProperty::BigMapValue
-                | TypeProperty::Duplicable => p.1.prop(gas, prop)?,
+                | TypeProperty::Duplicable => p.1.ensure_prop(gas, prop)?,
             },
         })
-    }
-
-    pub fn is_comparable(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::Comparable)
-    }
-
-    pub fn is_passable(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::Passable)
-    }
-
-    pub fn is_storable(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::Storable)
-    }
-
-    pub fn is_pushable(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::Pushable)
-    }
-
-    pub fn is_duplicable(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::Duplicable)
-    }
-
-    #[allow(dead_code)] // while we don't have big_maps
-    pub fn is_big_map_value(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::BigMapValue)
-    }
-
-    pub fn is_packable(&self, gas: &mut Gas) -> Result<bool, OutOfGas> {
-        self.prop(gas, TypeProperty::Packable)
     }
 
     /// Returns abstract size of the type representation. Used for gas cost
