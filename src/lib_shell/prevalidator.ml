@@ -557,10 +557,8 @@ module Make_s
       let our_mempool =
         let validated_hashes =
           Profiler.aggregate_f "fold validated hashes" @@ fun () ->
-          Classification.Sized_map.fold
-            (fun x _ acc -> Operation_hash.Set.add x acc)
-            pv_shell.classification.validated
-            Operation_hash.Set.empty
+          Operation_hash.Set.(
+            fold add delta_mempool.known_valid pv_shell.mempool.known_valid)
         in
         let pending =
           Profiler.aggregate_f "pending hashes" @@ fun () ->
