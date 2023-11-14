@@ -76,9 +76,7 @@ let read_file file_descr buffer ~offset ~len =
   let i = Unix.lseek file_descr offset Unix.SEEK_SET in
   assert (i = offset) ;
   let i = Unix.read file_descr buffer 0 len in
-  assert (i = len) ;
-  let i = Unix.lseek file_descr 0 Unix.SEEK_SET in
-  assert (i = 0)
+  assert (i = len)
 
 (** Writes [len] bytes to descriptor [file_descr], taking them from
     byte sequence [buffer], starting at position [offset] in [file_descr].*)
@@ -87,9 +85,7 @@ let write_file file_descr buffer ~offset ~len =
   let i = Unix.lseek file_descr offset Unix.SEEK_SET in
   assert (i = offset) ;
   let i = Unix.write file_descr buffer 0 len in
-  assert (i = len) ;
-  let i = Unix.lseek file_descr 0 Unix.SEEK_SET in
-  assert (i = 0)
+  assert (i = len)
 
 let commit snd_lvl =
   let fst_lvl =
@@ -231,7 +227,8 @@ let update_commit file_name diff =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
 
   let ec_of_diff diff =
-    (* Don't convert srs_lagrange to an OCaml list, keep it as a C array and use a `get` function *)
+    (* Don't convert srs_lagrange to an OCaml list,
+       keep it as a C array and use a `get` function *)
     let filtered_list =
       List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
     in
