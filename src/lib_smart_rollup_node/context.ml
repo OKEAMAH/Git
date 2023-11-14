@@ -24,6 +24,34 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module type SMSTORE = sig
+  include Tezos_context_helpers.Context.DB
+
+  module Gc_stats : sig
+    type t
+
+    val total_duration : t -> float
+
+    val finalise_duration : t -> float
+  end
+
+  module Gc : sig
+    type msg = [`Msg of step]
+
+    val is_finished : repo -> bool
+
+    val cancel : repo -> bool
+
+    val wait : repo -> (Gc_stats.t option, msg) result Lwt.t
+
+    val run :
+      ?finished:((Gc_stats.t, msg) result -> metadata Lwt.t) ->
+      repo ->
+      commit_key ->
+      (bool, msg) result Lwt.t
+  end
+end
+
 open Store_sigs
 module Context_encoding = Tezos_context_encoding.Context_binary
 
@@ -35,7 +63,17 @@ module Tezos_context_encoding = struct end
 
 module Maker = Irmin_pack_unix.Maker (Context_encoding.Conf)
 
-module IStore = struct
+module IStore : SMSTORE = struct
+  module Gc_stats = struct
+    type t = Irmin_pack_unix.Stats.Latest_gc.stats
+
+    let total_duration stats =
+      Irmin_pack_unix.Stats.Latest_gc.total_duration stats
+
+    let finalise_duration stats =
+      Irmin_pack_unix.Stats.Latest_gc.finalise_duration stats
+  end
+
   include Maker.Make (Context_encoding.Schema)
   module Schema = Context_encoding.Schema
 end
@@ -129,13 +167,9 @@ let gc index ?(callback : unit -> unit Lwt.t = fun () -> Lwt.return ())
       Fmt.failwith "%a: unknown context hash" Smart_rollup_context_hash.pp hash
   | Some commit -> (
       let finished = function
-        | Ok (stats : Irmin_pack_unix.Stats.Latest_gc.stats) ->
-            let total_duration =
-              Irmin_pack_unix.Stats.Latest_gc.total_duration stats
-            in
-            let finalise_duration =
-              Irmin_pack_unix.Stats.Latest_gc.finalise_duration stats
-            in
+        | Ok (stats : IStore.Gc_stats.t) ->
+            let total_duration = IStore.Gc_stats.total_duration stats in
+            let finalise_duration = IStore.Gc_stats.finalise_duration stats in
             let* () = callback () in
             Event.ending_context_gc
               ( Time.System.Span.of_seconds_exn total_duration,

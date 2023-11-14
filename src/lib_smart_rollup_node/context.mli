@@ -24,6 +24,34 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module type SMSTORE = sig
+  include Tezos_context_helpers.Context.DB
+
+  module Gc_stats : sig
+    type t
+
+    val total_duration : t -> float
+
+    val finalise_duration : t -> float
+  end
+
+  module Gc : sig
+    type msg = [`Msg of step]
+
+    val is_finished : repo -> bool
+
+    val cancel : repo -> bool
+
+    val wait : repo -> (Gc_stats.t option, msg) result Lwt.t
+
+    val run :
+      ?finished:((Gc_stats.t, msg) result -> metadata Lwt.t) ->
+      repo ->
+      commit_key ->
+      (bool, msg) result Lwt.t
+  end
+end
+
 open Store_sigs
 
 (** The type of indexed repository for contexts. The parameter indicates if the
