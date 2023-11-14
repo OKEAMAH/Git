@@ -1,0 +1,36 @@
+include:
+  - .gitlab/ci/jobs/test/common.yml
+
+  # Stage: build
+  - .gitlab/ci/jobs/build/x86_64.yml
+  - .gitlab/ci/jobs/build/kernels.yml
+
+  # Stage: test
+  - .gitlab/ci/jobs/test/kernels.yml
+  
+tezt_etherlink:
+  extends:
+    - .test_template
+    - .image_template__runtime_e2etest_dependencies
+  dependencies:
+    - "build_x86_64-released"
+    - "build_x86_64-exp-dev-extra"
+    - "build_kernels"
+  needs:
+    - "build_x86_64-released"
+    - "build_x86_64-exp-dev-extra"
+    - "build_kernels"
+  script:
+     - timeout -k 60 1860 _build/default/tezt/tests/main.exe
+        -f evm_rollup.ml
+        -f test_ethbloom.ml
+        -f test_rlp.ml
+        --color
+        --log-buffer-size 5000
+        --log-file tezt.log
+        --global-timeout 1800
+        --on-unknown-regression-files fail
+        --job-count 3
+        --job ${CI_NODE_INDEX:-1}/${CI_NODE_TOTAL:-1}
+        --retry 1
+  parallel: 2

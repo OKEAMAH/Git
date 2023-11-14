@@ -143,10 +143,15 @@ include:
   # Common templates
   - local: .gitlab/ci/jobs/shared/templates.yml
 
+  # Before merging Etherlink
+  - local: .gitlab/ci/pipelines/before_merging_etherlink.yml
+    rules:
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_LABELS =~ /evm-fast-pipeline/'
+
   # Before merging
   - local: .gitlab/ci/pipelines/before_merging.yml
     rules:
-      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_LABELS !~ /evm-fast-pipeline/'
 
   # Latest release
   - local: .gitlab/ci/pipelines/latest_release.yml
