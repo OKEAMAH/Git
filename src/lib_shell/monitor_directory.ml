@@ -40,6 +40,8 @@ let monitor_head
       let* updated_chain_store =
         Chain_directory.get_chain_store_exn !store chain
       in
+      let* current_head = Store.Chain.current_head updated_chain_store in
+      Format.printf "----> %ld@." (Store.Block.level current_head) ;
       let+ p = Store.Chain.find_protocol updated_chain_store ~protocol_level in
       WithExceptions.Option.to_exn
         ~none:

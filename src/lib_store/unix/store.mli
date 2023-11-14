@@ -222,6 +222,8 @@ val init :
   Genesis.t ->
   store tzresult Lwt.t
 
+val sync_locked : t -> (unit -> 'a Lwt.t) -> 'a Lwt.t
+
 val sync :
   ?last_status:Naming.block_store_status ->
   trigger_hash:Block_hash.t ->
