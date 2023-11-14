@@ -172,7 +172,7 @@ let rec commands_docs =
         "show key <key> [as <kind>]: Looks for given <key> in durable storage \
          and prints its value in <kind> format. Prints errors if <key> is \
          invalid or not existing.";
-      completions = ["show key"; "as"];
+      completions = ["show key"];
     };
     {
       parse =
@@ -294,6 +294,11 @@ let all_completions =
        (fun {completions; _} -> List.map Zed_string.unsafe_of_utf8 completions)
        commands_docs
 
+(* Commands that expect a path from the storage.
+   The all have a trailing whitespace to indicate where the
+   path should start. *)
+let path_commands = ["show key "; "ls "; "show subkeys "]
+
 let parse_commands s =
   let commands = try_parse (String.split_no_empty ' ' (String.trim s)) in
   match commands with None -> Unknown s | Some cmd -> cmd
@@ -323,7 +328,7 @@ let make_prompt () =
   let open LTerm_text in
   eval [S "> "]
 
-class read_line ~term ~history =
+class read_line ~term ~history ~keys =
   let open React in
   object (self)
     inherit LTerm_read_line.read_line ~history ()
@@ -331,15 +336,75 @@ class read_line ~term ~history =
     inherit [Zed_string.t] LTerm_read_line.term term
 
     method! completion =
+      (* Given a [partial] path and a [key], this function
+          completes [partial] with the next step in the key
+         if [partial] is a prefix of key.
+
+         Example: if key = ["evm";"blocks";"abcd"], partial = ["evm";"b"]
+         this function returns "/evm/blocks"
+      *)
+      let match_paths partial key =
+        match partial with
+        | "" :: partial ->
+            let rec go partial key acc =
+              match (partial, key) with
+              | [], k :: _ks -> Some (acc ^ "/" ^ k)
+              | p :: ps, k :: ks ->
+                  if p = k then go ps ks (acc ^ "/" ^ k)
+                  else if String.has_prefix ~prefix:p k then Some (acc ^ "/" ^ k)
+                  else None
+              | _ -> None
+            in
+            go partial key ""
+        | _ -> None
+      in
       let prefix = Zed_rope.to_string self#input_prev in
       let commands =
         List.filter
           (fun cmd -> Zed_string.starts_with ~prefix cmd)
           all_completions
       in
-      self#set_completion
-        0
-        (List.map (fun file -> (file, Zed_string.unsafe_of_utf8 " ")) commands)
+      let path_commands = List.map Zed_string.of_utf8 path_commands in
+      let is_path_command =
+        List.fold_left
+          (fun acc cmd ->
+            if Option.is_none acc && Zed_string.starts_with ~prefix:cmd prefix
+            then Some cmd
+            else acc)
+          None
+          path_commands
+      in
+      let keys =
+        match is_path_command with
+        | Some path_command ->
+            let path_command_len = Zed_string.length path_command in
+            let partial_path =
+              Zed_string.sub
+                ~pos:path_command_len
+                ~len:(Zed_string.length prefix - path_command_len)
+                prefix
+              |> Zed_string.to_utf8 |> String.split_no_empty ' '
+              |> function
+              | [] -> []
+              | hd :: _ -> String.split_on_char '/' hd
+            in
+            List.filter_map
+              (fun (key : string list) ->
+                match match_paths partial_path key with
+                | Some k -> Some Zed_string.(append path_command (of_utf8 k))
+                | None -> None)
+              keys
+        | None -> []
+      in
+      let commands =
+        List.map (fun file -> (file, Zed_string.unsafe_of_utf8 " ")) commands
+      in
+      let module StringSet = Set.Make (Zed_string) in
+      let keys =
+        StringSet.of_list keys |> StringSet.to_seq |> List.of_seq
+        |> List.map (fun file -> (file, Zed_string.empty ()))
+      in
+      self#set_completion 0 (commands @ keys)
 
     initializer self#set_prompt (S.const (make_prompt ()))
   end
@@ -351,7 +416,7 @@ let read_data_from_stdin retries =
     else
       let* input =
         Option.catch_s (fun () ->
-            let rl = new read_line ~term ~history:[] in
+            let rl = new read_line ~term ~history:[] ~keys:[] in
             let* i = rl#run in
             return (Zed_string.to_utf8 i))
       in
@@ -845,6 +910,26 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
       @@ Format.asprintf
            "The path /%s is not available in the durable storage"
            (String.concat "/" path)
+
+  let get_keys ?(depth = 10) ?(path = []) tree =
+    let open Lwt_syntax in
+    let durable_path = "durable" :: path in
+    let* path_exists = Wasm_utils.Ctx.Tree.mem_tree tree durable_path in
+    if path_exists then
+      Wasm_utils.Ctx.Tree.fold
+        ~depth:(`Le depth)
+        tree
+        ("durable" :: path)
+        ~order:`Sorted
+        ~init:[]
+        ~f:(fun key _tree acc ->
+          let full_key = String.concat "/" key in
+          (* If we need to show the values, we show every keys, even the root and
+             '@'. *)
+          if key <> [] && key <> ["@"] then
+            return (String.split_no_empty '/' full_key :: acc)
+          else return acc)
+    else return []
 
   (* [show_durable] prints the durable storage from the tree. *)
   let show_durable tree = print_durable ~depth:10 tree
