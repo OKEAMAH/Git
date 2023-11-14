@@ -26,17 +26,22 @@ end
 
 open Parameters
 
+let lvl_from_index index = 1
+
 (* [index] is the index of the considerated node in the array (not considering the cell size)
    [lvl] is the layer where the considerated node is *)
-let left_child ~lvl index =
+let left_child index =
+  let lvl = lvl_from_index index in
   assert (lvl <= log_nb_cells) ;
   level_offset (lvl + 1) + ((index - level_offset lvl) * 2)
 
-let right_child ~lvl index =
+let right_child index =
+  let lvl = lvl_from_index index in
   assert (lvl <= log_nb_cells) ;
   level_offset (lvl + 1) + (((index - level_offset lvl) * 2) + 1)
 
-let parent ~lvl index =
+let parent index =
+  let lvl = lvl_from_index index in
   assert (lvl <= log_nb_cells) ;
   level_offset (lvl - 1) + ((index - level_offset lvl) / 2)
 
@@ -120,7 +125,7 @@ let update_one file_name index new_value =
           ~offset:(sibling ~lvl node * cell_size)
           ~len:cell_size ;
         siblings.(log_nb_cells - lvl) <- (is_left node, buffer) ;
-        (lvl - 1, parent ~lvl node))
+        (lvl - 1, parent node))
       (log_nb_cells, index)
       siblings
   in
@@ -137,15 +142,66 @@ let update_one file_name index new_value =
           hash_node_value
           ~offset:(node_index * cell_size)
           ~len:cell_size ;
-        (lvl - 1, parent ~lvl node_index, hash_node_value))
+        (lvl - 1, parent node_index, hash_node_value))
       (log_nb_cells, index, new_value)
       siblings
   in
   ()
 
-let update_storage (_diff : scalar IntMap.t IntMap.t)
-    (_snd_lvl : scalar array array) =
-  assert false
+module My_int = struct
+  type t = int
+
+  let compare x y = Int.compare y x
+end
+
+module IntSet = Set.Make (My_int)
+
+let update_commit file_name (new_values : bytes IntMap.t) =
+  let new_values =
+    IntMap.fold
+      (fun k v acc -> IntMap.add (k + level_offset log_nb_cells) v acc)
+      new_values
+      IntMap.empty
+  in
+  let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+  let get_to_read_write index =
+    let set_to_read = ref IntSet.empty in
+    let set_to_write = ref IntSet.empty in
+
+    let current_index = ref index in
+    for lvl = log_nb_cells downto 1 do
+      set_to_read := IntSet.add (sibling ~lvl !current_index) !set_to_read ;
+      set_to_write := IntSet.add !current_index !set_to_write ;
+      current_index := parent !current_index
+    done ;
+    (!set_to_read, !set_to_write)
+  in
+  let set_to_read = ref IntSet.empty in
+  let set_to_write = ref IntSet.empty in
+  IntMap.iter
+    (fun index _ ->
+      let new_to_read, new_to_write = get_to_read_write index in
+      set_to_read := IntSet.union !set_to_read new_to_read ;
+      set_to_write := IntSet.union !set_to_write new_to_write)
+    new_values ;
+  let hashes = ref new_values in
+  (* ref (IntMap.mapi (fun k v -> (v, is_left k)) new_values) in *)
+  let buffer = Bytes.create cell_size in
+  IntSet.iter
+    (fun i ->
+      read_file file_descr buffer ~offset:(i * cell_size) ~len:cell_size ;
+      hashes := IntMap.add i buffer !hashes)
+    !set_to_read ;
+
+  let write index =
+    let left_child = IntMap.find (left_child index) !hashes in
+    let right_child = IntMap.find (right_child index) !hashes in
+    let to_write = hash (Bytes.cat left_child right_child) in
+    hashes := IntMap.add index to_write !hashes ;
+    write_file file_descr to_write ~offset:(index * cell_size) ~len:cell_size
+  in
+  IntSet.iter write !set_to_write ;
+  ()
 
 (** Modifies the storage and recomputes the commitment according to [diff]. *)
 let update_commit _file_name _diff = assert false
