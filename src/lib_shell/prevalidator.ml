@@ -331,9 +331,19 @@ module Make_s
         (Unit.catch_s (fun () ->
              Events.(emit ban_operation_encountered) (origin, oph))) ;
       true)
-    else if Classification.is_in_mempool oph shell.classification <> None then (
-      Profiler.mark ["is already handled"; "is_classified"] ;
-      true)
+    else if Classification.is_in_mempool oph shell.classification <> None then
+      let r = Classification.is_in_mempool oph shell.classification in
+      match r with
+      | Some (op, _) ->
+          let op_kind =
+            match Char.code (Bytes.get op.raw.proto 0) with
+            | 0x14 -> "preendorsement"
+            | 0x15 -> "endorsement"
+            | _ -> "other"
+          in
+          Profiler.mark ["already handled"; "classified in mempool"; op_kind] ;
+          true
+      | None -> false
     else if Operation_hash.Set.mem oph shell.live_operations then (
       Profiler.mark ["is already handled"; "is_live_operation"] ;
       true)
@@ -444,6 +454,7 @@ module Make_s
       Lwt.t =
     let open Lwt_syntax in
     let* v_state, op, classification, replacements =
+      Profiler.aggregate_s "add/validate operation" @@ fun () ->
       Prevalidation_t.add_operation validation_state config op
     in
     let to_replace =
@@ -561,7 +572,7 @@ module Make_s
         Profiler.aggregate_s "set mempool" @@ fun () ->
         set_mempool pv_shell our_mempool
       in
-      Profiler.aggregate_s "pause" @@ fun () -> Lwt.pause ()
+      Lwt.pause ()
 
   let handle_unprocessed pv =
     let open Lwt_syntax in
@@ -623,22 +634,26 @@ module Make_s
      happened, we can still fetch this operation in the future. *)
   let may_fetch_operation (shell : ('operation_data, _) types_state_shell) peer
       oph =
+    Profiler.mark ["may fetch operation"] ;
     let origin =
       match peer with Some peer -> Events.Peer peer | None -> Leftover
     in
     let spawn_fetch_operation ~notify_arrival =
-      Profiler.aggregate_f "fetching thread" @@ fun () ->
+      Profiler.mark
+        [
+          "spawn fetching thread";
+          (if notify_arrival then "first reception" else "already fetching");
+        ] ;
       ignore
         (Unit.catch_s (fun () ->
              fetch_operation ~notify_arrival shell ?peer oph))
     in
-    if Operation_hash.Set.mem oph shell.fetching then (
-      Profiler.mark ["already fetching"] ;
+    if Operation_hash.Set.mem oph shell.fetching then
       (* If the operation is already being fetched, we notify the DDB
          that another peer may also be requested for the resource. In
          any case, the initial fetching thread will still be resolved
          and push an arrived worker request. *)
-      spawn_fetch_operation ~notify_arrival:false)
+      spawn_fetch_operation ~notify_arrival:false
     else if not (already_handled ~origin shell oph) then (
       shell.fetching <- Operation_hash.Set.add oph shell.fetching ;
       spawn_fetch_operation ~notify_arrival:true)
@@ -793,10 +808,7 @@ module Make_s
 
     let on_notify (shell : ('operation_data, _) types_state_shell) peer mempool
         =
-      let may_fetch_operation =
-        Profiler.aggregate_f "may_fetch_operation" @@ fun () ->
-        may_fetch_operation shell (Some peer)
-      in
+      let may_fetch_operation = may_fetch_operation shell (Some peer) in
       let () =
         Operation_hash.Set.iter may_fetch_operation mempool.Mempool.known_valid
       in
