@@ -338,7 +338,7 @@ let start plugin node_ctxt =
 let start_in_mode mode =
   let open Configuration in
   match mode with
-  | Batcher | Operator -> true
+  | Batcher | Operator | Private_operator -> true
   | Observer | Accuser | Bailout | Maintenance -> false
   | Custom ops -> purpose_matches_mode (Custom ops) Batching
 

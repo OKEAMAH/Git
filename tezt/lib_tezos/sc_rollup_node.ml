@@ -43,6 +43,7 @@ type mode =
   | Maintenance
   | Observer
   | Operator
+  | Private_operator
   | Accuser
   | Bailout
 
@@ -103,6 +104,7 @@ let string_of_mode = function
   | Batcher -> "batcher"
   | Maintenance -> "maintenance"
   | Operator -> "operator"
+  | Private_operator -> "private_operator"
   | Custom op_kinds ->
       if op_kinds = [] then "custom"
       else
@@ -127,6 +129,7 @@ let mode_of_string s =
       | "batcher" -> Batcher
       | "maintenance" -> Maintenance
       | "operator" -> Operator
+      | "private_operator" -> Private_operator
       | "custom" -> Custom []
       | _ -> invalid_arg (Format.sprintf "%S is not an existing mode" s))
 

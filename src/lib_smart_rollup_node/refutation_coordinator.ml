@@ -190,7 +190,7 @@ let start (node_ctxt : _ Node_context.t) =
 let start_in_mode mode =
   let open Configuration in
   match mode with
-  | Accuser | Bailout | Operator | Maintenance -> true
+  | Accuser | Bailout | Operator | Private_operator | Maintenance -> true
   | Observer | Batcher -> false
   | Custom ops -> purpose_matches_mode (Custom ops) Operating
 

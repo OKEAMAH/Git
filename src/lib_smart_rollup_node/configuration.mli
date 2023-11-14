@@ -33,6 +33,9 @@ type mode =
   | Batcher  (** Accept transactions in its queue and batches them on the L1 *)
   | Maintenance  (** Follows the chain and publishes commitments *)
   | Operator  (** Equivalent to maintenance + batcher  *)
+  | Private_operator
+      (** Equivalent to operator + execute whitelist update for
+          private rollup. *)
   | Custom of Operation_kind.t list
       (** In this mode, the system handles only the specific operation kinds
         defined by the user, allowing for tailored control and flexibility. *)

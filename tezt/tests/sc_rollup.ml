@@ -2997,7 +2997,7 @@ let bailout_mode_fail_operator_no_stake ~kind =
     - start an operator rollup and wait until it publish a commitment
     - stop the rollup node
     - bakes until refutation period is over
-    - using octez client cement the commitment   
+    - using octez client cement the commitment
     - restart the rollup node in bailout mode
   check that it fails directly when the operator has no stake.
     *)
@@ -4687,7 +4687,6 @@ let test_private_rollup_node_publish_not_in_whitelist =
     ~whitelist_enable:true
     ~whitelist:[Constant.bootstrap2.public_key_hash]
     ~operator
-    ~mode:Operator
     {
       variant = None;
       tags = ["whitelist"; "bla"];
@@ -4718,6 +4717,7 @@ let test_rollup_whitelist_update ~kind =
     ~whitelist_enable:true
     ~whitelist
     ~supports:(From_protocol 018)
+    ~mode:Private_operator
     ~commitment_period
     ~challenge_window
     ~operator:Constant.bootstrap1.public_key_hash
@@ -4847,6 +4847,7 @@ let test_rollup_whitelist_outdated_update ~kind =
       description = "outdated whitelist update";
     }
     ~kind
+    ~mode:Private_operator
     ~whitelist_enable:true
     ~whitelist
     ~supports:(From_protocol 018)

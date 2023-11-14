@@ -32,6 +32,7 @@ type mode =
   | Batcher
   | Maintenance
   | Operator
+  | Private_operator
   | Custom of Operation_kind.t list
 
 type batcher = {
@@ -238,6 +239,7 @@ let modes =
     Batcher;
     Maintenance;
     Operator;
+    Private_operator;
     Custom Operation_kind.all;
   ]
 
@@ -248,6 +250,7 @@ let string_of_mode = function
   | Batcher -> "batcher"
   | Maintenance -> "maintenance"
   | Operator -> "operator"
+  | Private_operator -> "private_operator"
   | Custom op_kinds ->
       if op_kinds = [] then "custom"
       else
@@ -262,6 +265,7 @@ let mode_of_string s =
   | "batcher" -> Ok Batcher
   | "maintenance" -> Ok Maintenance
   | "operator" -> Ok Operator
+  | "private_operator" -> Ok Private_operator
   | "custom" -> Ok (Custom [])
   | s when String.starts_with ~prefix:"custom:" s ->
       let kinds = String.sub s 7 (String.length s - 7) in
@@ -281,6 +285,9 @@ let description_of_mode = function
   | Maintenance ->
       "Follows the chain and publishes commitments, cement and refute"
   | Operator -> "Equivalent to maintenance + batcher"
+  | Private_operator ->
+      "Equivalent to maintenance + batcher. Also execute whitelist update of \
+       private rollup."
   | Custom op_kinds ->
       let op_kinds_desc =
         List.map Operation_kind.to_string op_kinds |> String.concat ", "
@@ -313,7 +320,15 @@ let mode_encoding =
   let all_cases =
     List.map
       constant_case
-      [Observer; Accuser; Bailout; Batcher; Maintenance; Operator]
+      [
+        Observer;
+        Accuser;
+        Bailout;
+        Batcher;
+        Maintenance;
+        Operator;
+        Private_operator;
+      ]
     @ [custom_case]
   in
   def "sc_rollup_node_mode" @@ union all_cases
@@ -588,7 +603,8 @@ let purposes_of_mode mode : Purpose.ex_purpose list =
   | Bailout -> [Purpose Operating; Purpose Cementing; Purpose Recovering]
   | Maintenance ->
       [Purpose Operating; Purpose Cementing; Purpose Executing_outbox]
-  | Operator ->
+  | Operator -> [Purpose Operating; Purpose Cementing; Purpose Batching]
+  | Private_operator ->
       [
         Purpose Operating;
         Purpose Cementing;
