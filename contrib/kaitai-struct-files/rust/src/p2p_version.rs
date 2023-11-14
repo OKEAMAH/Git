@@ -1,47 +1,61 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
 
-/*
+/**
  * A version number for the p2p layer.
  */
-#[derive(Default)]
+
+#[derive(Default, Debug, Clone)]
 pub struct P2pVersion {
-    pub p2pVersion: u16,
+    pub _root: SharedType<P2pVersion>,
+    pub _parent: SharedType<P2pVersion>,
+    pub _self: SharedType<Self>,
+    p2p_version: RefCell<u16>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for P2pVersion {
+    type Root = P2pVersion;
+    type Parent = P2pVersion;
 
-impl KaitaiStruct for P2pVersion {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.p2pVersion = self.stream.read_u2be()?;
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.p2p_version.borrow_mut() = _io.read_u2be()?.into();
+        Ok(())
     }
 }
-
 impl P2pVersion {
+}
+impl P2pVersion {
+    pub fn p2p_version(&self) -> Ref<u16> {
+        self.p2p_version.borrow()
+    }
+}
+impl P2pVersion {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

@@ -1,45 +1,64 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
-#[derive(Default)]
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
+
+#[derive(Default, Debug, Clone)]
 pub struct GroundString {
-    pub lenGroundString: i32,
-    pub groundString: Vec<u8>,
+    pub _root: SharedType<GroundString>,
+    pub _parent: SharedType<GroundString>,
+    pub _self: SharedType<Self>,
+    len_ground__string: RefCell<i32>,
+    ground__string: RefCell<Vec<u8>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for GroundString {
+    type Root = GroundString;
+    type Parent = GroundString;
 
-impl KaitaiStruct for GroundString {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.lenGroundString = self.stream.read_s4be()?;
-        self.groundString = self.stream.read_bytes(self.len_ground__string)?;
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.len_ground__string.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.ground__string.borrow_mut() = _io.read_bytes(*self_rc.len_ground__string() as usize)?.into();
+        Ok(())
     }
 }
-
 impl GroundString {
+}
+impl GroundString {
+    pub fn len_ground__string(&self) -> Ref<i32> {
+        self.len_ground__string.borrow()
+    }
+}
+impl GroundString {
+    pub fn ground__string(&self) -> Ref<Vec<u8>> {
+        self.ground__string.borrow()
+    }
+}
+impl GroundString {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

@@ -1,123 +1,185 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
-#[derive(Default)]
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
+
+#[derive(Default, Debug, Clone)]
 pub struct Id008Ptedo2zkGasCost {
-    pub id008Ptedo2zkGasCost: Box<Id008Ptedo2zkGasCost__Z>,
+    pub _root: SharedType<Id008Ptedo2zkGasCost>,
+    pub _parent: SharedType<Id008Ptedo2zkGasCost>,
+    pub _self: SharedType<Self>,
+    id_008__ptedo2zk__gas__cost: RefCell<OptRc<Id008Ptedo2zkGasCost_Z>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for Id008Ptedo2zkGasCost {
+    type Root = Id008Ptedo2zkGasCost;
+    type Parent = Id008Ptedo2zkGasCost;
 
-impl KaitaiStruct for Id008Ptedo2zkGasCost {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.id008Ptedo2zkGasCost = Box::new(Id008Ptedo2zkGasCost__Z::new(self.stream, self, _root)?);
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        let t = Self::read_into::<_, Id008Ptedo2zkGasCost_Z>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+        *self_rc.id_008__ptedo2zk__gas__cost.borrow_mut() = t;
+        Ok(())
     }
 }
-
 impl Id008Ptedo2zkGasCost {
 }
-#[derive(Default)]
-pub struct Id008Ptedo2zkGasCost__Z {
-    pub hasTail: bool,
-    pub sign: bool,
-    pub payload: u64,
-    pub tail: Vec<Box<Id008Ptedo2zkGasCost__NChunk>>,
+impl Id008Ptedo2zkGasCost {
+    pub fn id_008__ptedo2zk__gas__cost(&self) -> Ref<OptRc<Id008Ptedo2zkGasCost_Z>> {
+        self.id_008__ptedo2zk__gas__cost.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }
 
-impl KaitaiStruct for Id008Ptedo2zkGasCost__Z {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
+#[derive(Default, Debug, Clone)]
+pub struct Id008Ptedo2zkGasCost_Z {
+    pub _root: SharedType<Id008Ptedo2zkGasCost>,
+    pub _parent: SharedType<Id008Ptedo2zkGasCost>,
+    pub _self: SharedType<Self>,
+    has_tail: RefCell<bool>,
+    sign: RefCell<bool>,
+    payload: RefCell<u64>,
+    tail: RefCell<Vec<OptRc<Id008Ptedo2zkGasCost_NChunk>>>,
+    _io: RefCell<BytesReader>,
+}
+impl KStruct for Id008Ptedo2zkGasCost_Z {
+    type Root = Id008Ptedo2zkGasCost;
+    type Parent = Id008Ptedo2zkGasCost;
 
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.hasTail = self.stream.read_bits_int(1)? != 0;
-        self.sign = self.stream.read_bits_int(1)? != 0;
-        self.payload = self.stream.read_bits_int(6)?;
-        self.stream.alignToByte();
-        if self.has_tail {
-            self.tail = vec!();
-            while {
-                let tmpa = Box::new(Id008Ptedo2zkGasCost__NChunk::new(self.stream, self, _root)?);
-                self.tail.append(tmpa);
-                !(!(tmpa.has_more))
-            } { }
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.has_tail.borrow_mut() = _io.read_bits_int_be(1)? != 0;
+        *self_rc.sign.borrow_mut() = _io.read_bits_int_be(1)? != 0;
+        *self_rc.payload.borrow_mut() = _io.read_bits_int_be(6)?;
+        _io.align_to_byte()?;
+        if (*self_rc.has_tail() as bool) {
+            *self_rc.tail.borrow_mut() = Vec::new();
+            {
+                let mut _i = 0;
+                while {
+                    let t = Self::read_into::<_, Id008Ptedo2zkGasCost_NChunk>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+                    self_rc.tail.borrow_mut().push(t);
+                    let _t_tail = self_rc.tail.borrow();
+                    let _tmpa = _t_tail.last().unwrap();
+                    _i += 1;
+                    let x = !(!((*_tmpa.has_more() as bool)));
+                    x
+                } {}
+            }
         }
+        Ok(())
+    }
+}
+impl Id008Ptedo2zkGasCost_Z {
+}
+impl Id008Ptedo2zkGasCost_Z {
+    pub fn has_tail(&self) -> Ref<bool> {
+        self.has_tail.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost_Z {
+    pub fn sign(&self) -> Ref<bool> {
+        self.sign.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost_Z {
+    pub fn payload(&self) -> Ref<u64> {
+        self.payload.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost_Z {
+    pub fn tail(&self) -> Ref<Vec<OptRc<Id008Ptedo2zkGasCost_NChunk>>> {
+        self.tail.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost_Z {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
     }
 }
 
-impl Id008Ptedo2zkGasCost__Z {
+#[derive(Default, Debug, Clone)]
+pub struct Id008Ptedo2zkGasCost_NChunk {
+    pub _root: SharedType<Id008Ptedo2zkGasCost>,
+    pub _parent: SharedType<Id008Ptedo2zkGasCost_Z>,
+    pub _self: SharedType<Self>,
+    has_more: RefCell<bool>,
+    payload: RefCell<u64>,
+    _io: RefCell<BytesReader>,
 }
-#[derive(Default)]
-pub struct Id008Ptedo2zkGasCost__NChunk {
-    pub hasMore: bool,
-    pub payload: u64,
-}
+impl KStruct for Id008Ptedo2zkGasCost_NChunk {
+    type Root = Id008Ptedo2zkGasCost;
+    type Parent = Id008Ptedo2zkGasCost_Z;
 
-impl KaitaiStruct for Id008Ptedo2zkGasCost__NChunk {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.hasMore = self.stream.read_bits_int(1)? != 0;
-        self.payload = self.stream.read_bits_int(7)?;
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.has_more.borrow_mut() = _io.read_bits_int_be(1)? != 0;
+        *self_rc.payload.borrow_mut() = _io.read_bits_int_be(7)?;
+        Ok(())
     }
 }
-
-impl Id008Ptedo2zkGasCost__NChunk {
+impl Id008Ptedo2zkGasCost_NChunk {
+}
+impl Id008Ptedo2zkGasCost_NChunk {
+    pub fn has_more(&self) -> Ref<bool> {
+        self.has_more.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost_NChunk {
+    pub fn payload(&self) -> Ref<u64> {
+        self.payload.borrow()
+    }
+}
+impl Id008Ptedo2zkGasCost_NChunk {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

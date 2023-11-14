@@ -1,55 +1,89 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
 
-/*
+/**
  * Input of a transaction
  */
-#[derive(Default)]
+
+#[derive(Default, Debug, Clone)]
 pub struct SaplingTransactionInput {
-    pub cv: Vec<u8>,
-    pub nf: Vec<u8>,
-    pub rk: Vec<u8>,
-    pub proofI: Vec<u8>,
-    pub signature: Vec<u8>,
+    pub _root: SharedType<SaplingTransactionInput>,
+    pub _parent: SharedType<SaplingTransactionInput>,
+    pub _self: SharedType<Self>,
+    cv: RefCell<Vec<u8>>,
+    nf: RefCell<Vec<u8>>,
+    rk: RefCell<Vec<u8>>,
+    proof_i: RefCell<Vec<u8>>,
+    signature: RefCell<Vec<u8>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for SaplingTransactionInput {
+    type Root = SaplingTransactionInput;
+    type Parent = SaplingTransactionInput;
 
-impl KaitaiStruct for SaplingTransactionInput {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.cv = self.stream.read_bytes(32)?;
-        self.nf = self.stream.read_bytes(32)?;
-        self.rk = self.stream.read_bytes(32)?;
-        self.proofI = self.stream.read_bytes(192)?;
-        self.signature = self.stream.read_bytes(64)?;
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.cv.borrow_mut() = _io.read_bytes(32 as usize)?.into();
+        *self_rc.nf.borrow_mut() = _io.read_bytes(32 as usize)?.into();
+        *self_rc.rk.borrow_mut() = _io.read_bytes(32 as usize)?.into();
+        *self_rc.proof_i.borrow_mut() = _io.read_bytes(192 as usize)?.into();
+        *self_rc.signature.borrow_mut() = _io.read_bytes(64 as usize)?.into();
+        Ok(())
     }
 }
-
 impl SaplingTransactionInput {
+}
+impl SaplingTransactionInput {
+    pub fn cv(&self) -> Ref<Vec<u8>> {
+        self.cv.borrow()
+    }
+}
+impl SaplingTransactionInput {
+    pub fn nf(&self) -> Ref<Vec<u8>> {
+        self.nf.borrow()
+    }
+}
+impl SaplingTransactionInput {
+    pub fn rk(&self) -> Ref<Vec<u8>> {
+        self.rk.borrow()
+    }
+}
+impl SaplingTransactionInput {
+    pub fn proof_i(&self) -> Ref<Vec<u8>> {
+        self.proof_i.borrow()
+    }
+}
+impl SaplingTransactionInput {
+    pub fn signature(&self) -> Ref<Vec<u8>> {
+        self.signature.borrow()
+    }
+}
+impl SaplingTransactionInput {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

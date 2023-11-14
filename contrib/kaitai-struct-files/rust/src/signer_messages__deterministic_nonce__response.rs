@@ -1,77 +1,107 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
-#[derive(Default)]
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
+
+#[derive(Default, Debug, Clone)]
 pub struct SignerMessagesDeterministicNonceResponse {
-    pub deterministicNonce: Box<SignerMessagesDeterministicNonceResponse__DeterministicNonce>,
+    pub _root: SharedType<SignerMessagesDeterministicNonceResponse>,
+    pub _parent: SharedType<SignerMessagesDeterministicNonceResponse>,
+    pub _self: SharedType<Self>,
+    deterministic_nonce: RefCell<OptRc<SignerMessagesDeterministicNonceResponse_DeterministicNonce>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for SignerMessagesDeterministicNonceResponse {
+    type Root = SignerMessagesDeterministicNonceResponse;
+    type Parent = SignerMessagesDeterministicNonceResponse;
 
-impl KaitaiStruct for SignerMessagesDeterministicNonceResponse {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.deterministicNonce = Box::new(SignerMessagesDeterministicNonceResponse__DeterministicNonce::new(self.stream, self, _root)?);
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        let t = Self::read_into::<_, SignerMessagesDeterministicNonceResponse_DeterministicNonce>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+        *self_rc.deterministic_nonce.borrow_mut() = t;
+        Ok(())
     }
 }
-
 impl SignerMessagesDeterministicNonceResponse {
 }
-#[derive(Default)]
-pub struct SignerMessagesDeterministicNonceResponse__DeterministicNonce {
-    pub lenDeterministicNonce: i32,
-    pub deterministicNonce: Vec<u8>,
-}
-
-impl KaitaiStruct for SignerMessagesDeterministicNonceResponse__DeterministicNonce {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
+impl SignerMessagesDeterministicNonceResponse {
+    pub fn deterministic_nonce(&self) -> Ref<OptRc<SignerMessagesDeterministicNonceResponse_DeterministicNonce>> {
+        self.deterministic_nonce.borrow()
     }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.lenDeterministicNonce = self.stream.read_s4be()?;
-        self.deterministicNonce = self.stream.read_bytes(self.len_deterministic_nonce)?;
+}
+impl SignerMessagesDeterministicNonceResponse {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
     }
 }
 
-impl SignerMessagesDeterministicNonceResponse__DeterministicNonce {
+#[derive(Default, Debug, Clone)]
+pub struct SignerMessagesDeterministicNonceResponse_DeterministicNonce {
+    pub _root: SharedType<SignerMessagesDeterministicNonceResponse>,
+    pub _parent: SharedType<SignerMessagesDeterministicNonceResponse>,
+    pub _self: SharedType<Self>,
+    len_deterministic_nonce: RefCell<i32>,
+    deterministic_nonce: RefCell<Vec<u8>>,
+    _io: RefCell<BytesReader>,
+}
+impl KStruct for SignerMessagesDeterministicNonceResponse_DeterministicNonce {
+    type Root = SignerMessagesDeterministicNonceResponse;
+    type Parent = SignerMessagesDeterministicNonceResponse;
+
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.len_deterministic_nonce.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.deterministic_nonce.borrow_mut() = _io.read_bytes(*self_rc.len_deterministic_nonce() as usize)?.into();
+        Ok(())
+    }
+}
+impl SignerMessagesDeterministicNonceResponse_DeterministicNonce {
+}
+impl SignerMessagesDeterministicNonceResponse_DeterministicNonce {
+    pub fn len_deterministic_nonce(&self) -> Ref<i32> {
+        self.len_deterministic_nonce.borrow()
+    }
+}
+impl SignerMessagesDeterministicNonceResponse_DeterministicNonce {
+    pub fn deterministic_nonce(&self) -> Ref<Vec<u8>> {
+        self.deterministic_nonce.borrow()
+    }
+}
+impl SignerMessagesDeterministicNonceResponse_DeterministicNonce {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

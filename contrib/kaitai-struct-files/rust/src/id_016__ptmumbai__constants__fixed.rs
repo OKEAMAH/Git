@@ -1,138 +1,245 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
-#[derive(Default)]
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
+
+#[derive(Default, Debug, Clone)]
 pub struct Id016PtmumbaiConstantsFixed {
-    pub proofOfWorkNonceSize: u8,
-    pub nonceLength: u8,
-    pub maxAnonOpsPerBlock: u8,
-    pub maxOperationDataLength: i32,
-    pub maxProposalsPerDelegate: u8,
-    pub maxMichelineNodeCount: i32,
-    pub maxMichelineBytesLimit: i32,
-    pub maxAllowedGlobalConstantsDepth: i32,
-    pub cacheLayoutSize: u8,
-    pub michelsonMaximumTypeSize: u16,
-    pub smartRollupMaxWrappedProofBinarySize: i32,
-    pub smartRollupMessageSizeLimit: i32,
-    pub smartRollupMaxNumberOfMessagesPerLevel: Box<Id016PtmumbaiConstantsFixed__N>,
+    pub _root: SharedType<Id016PtmumbaiConstantsFixed>,
+    pub _parent: SharedType<Id016PtmumbaiConstantsFixed>,
+    pub _self: SharedType<Self>,
+    proof_of_work_nonce_size: RefCell<u8>,
+    nonce_length: RefCell<u8>,
+    max_anon_ops_per_block: RefCell<u8>,
+    max_operation_data_length: RefCell<i32>,
+    max_proposals_per_delegate: RefCell<u8>,
+    max_micheline_node_count: RefCell<i32>,
+    max_micheline_bytes_limit: RefCell<i32>,
+    max_allowed_global_constants_depth: RefCell<i32>,
+    cache_layout_size: RefCell<u8>,
+    michelson_maximum_type_size: RefCell<u16>,
+    smart_rollup_max_wrapped_proof_binary_size: RefCell<i32>,
+    smart_rollup_message_size_limit: RefCell<i32>,
+    smart_rollup_max_number_of_messages_per_level: RefCell<OptRc<Id016PtmumbaiConstantsFixed_N>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for Id016PtmumbaiConstantsFixed {
+    type Root = Id016PtmumbaiConstantsFixed;
+    type Parent = Id016PtmumbaiConstantsFixed;
 
-impl KaitaiStruct for Id016PtmumbaiConstantsFixed {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.proofOfWorkNonceSize = self.stream.read_u1()?;
-        self.nonceLength = self.stream.read_u1()?;
-        self.maxAnonOpsPerBlock = self.stream.read_u1()?;
-        self.maxOperationDataLength = self.stream.read_s4be()?;
-        self.maxProposalsPerDelegate = self.stream.read_u1()?;
-        self.maxMichelineNodeCount = self.stream.read_s4be()?;
-        self.maxMichelineBytesLimit = self.stream.read_s4be()?;
-        self.maxAllowedGlobalConstantsDepth = self.stream.read_s4be()?;
-        self.cacheLayoutSize = self.stream.read_u1()?;
-        self.michelsonMaximumTypeSize = self.stream.read_u2be()?;
-        self.smartRollupMaxWrappedProofBinarySize = self.stream.read_s4be()?;
-        self.smartRollupMessageSizeLimit = self.stream.read_s4be()?;
-        self.smartRollupMaxNumberOfMessagesPerLevel = Box::new(Id016PtmumbaiConstantsFixed__N::new(self.stream, self, _root)?);
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.proof_of_work_nonce_size.borrow_mut() = _io.read_u1()?.into();
+        *self_rc.nonce_length.borrow_mut() = _io.read_u1()?.into();
+        *self_rc.max_anon_ops_per_block.borrow_mut() = _io.read_u1()?.into();
+        *self_rc.max_operation_data_length.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.max_proposals_per_delegate.borrow_mut() = _io.read_u1()?.into();
+        *self_rc.max_micheline_node_count.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.max_micheline_bytes_limit.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.max_allowed_global_constants_depth.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.cache_layout_size.borrow_mut() = _io.read_u1()?.into();
+        *self_rc.michelson_maximum_type_size.borrow_mut() = _io.read_u2be()?.into();
+        *self_rc.smart_rollup_max_wrapped_proof_binary_size.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.smart_rollup_message_size_limit.borrow_mut() = _io.read_s4be()?.into();
+        let t = Self::read_into::<_, Id016PtmumbaiConstantsFixed_N>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+        *self_rc.smart_rollup_max_number_of_messages_per_level.borrow_mut() = t;
+        Ok(())
     }
 }
-
 impl Id016PtmumbaiConstantsFixed {
 }
-#[derive(Default)]
-pub struct Id016PtmumbaiConstantsFixed__N {
-    pub n: Vec<Box<Id016PtmumbaiConstantsFixed__NChunk>>,
-}
-
-impl KaitaiStruct for Id016PtmumbaiConstantsFixed__N {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.n = vec!();
-        while {
-            let tmpa = Box::new(Id016PtmumbaiConstantsFixed__NChunk::new(self.stream, self, _root)?);
-            self.n.append(tmpa);
-            !(!(tmpa.has_more))
-        } { }
+impl Id016PtmumbaiConstantsFixed {
+    pub fn proof_of_work_nonce_size(&self) -> Ref<u8> {
+        self.proof_of_work_nonce_size.borrow()
     }
 }
-
-impl Id016PtmumbaiConstantsFixed__N {
-}
-#[derive(Default)]
-pub struct Id016PtmumbaiConstantsFixed__NChunk {
-    pub hasMore: bool,
-    pub payload: u64,
-}
-
-impl KaitaiStruct for Id016PtmumbaiConstantsFixed__NChunk {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.hasMore = self.stream.read_bits_int(1)? != 0;
-        self.payload = self.stream.read_bits_int(7)?;
+impl Id016PtmumbaiConstantsFixed {
+    pub fn nonce_length(&self) -> Ref<u8> {
+        self.nonce_length.borrow()
     }
 }
+impl Id016PtmumbaiConstantsFixed {
+    pub fn max_anon_ops_per_block(&self) -> Ref<u8> {
+        self.max_anon_ops_per_block.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn max_operation_data_length(&self) -> Ref<i32> {
+        self.max_operation_data_length.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn max_proposals_per_delegate(&self) -> Ref<u8> {
+        self.max_proposals_per_delegate.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn max_micheline_node_count(&self) -> Ref<i32> {
+        self.max_micheline_node_count.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn max_micheline_bytes_limit(&self) -> Ref<i32> {
+        self.max_micheline_bytes_limit.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn max_allowed_global_constants_depth(&self) -> Ref<i32> {
+        self.max_allowed_global_constants_depth.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn cache_layout_size(&self) -> Ref<u8> {
+        self.cache_layout_size.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn michelson_maximum_type_size(&self) -> Ref<u16> {
+        self.michelson_maximum_type_size.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn smart_rollup_max_wrapped_proof_binary_size(&self) -> Ref<i32> {
+        self.smart_rollup_max_wrapped_proof_binary_size.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn smart_rollup_message_size_limit(&self) -> Ref<i32> {
+        self.smart_rollup_message_size_limit.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn smart_rollup_max_number_of_messages_per_level(&self) -> Ref<OptRc<Id016PtmumbaiConstantsFixed_N>> {
+        self.smart_rollup_max_number_of_messages_per_level.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
+}
 
-impl Id016PtmumbaiConstantsFixed__NChunk {
+#[derive(Default, Debug, Clone)]
+pub struct Id016PtmumbaiConstantsFixed_N {
+    pub _root: SharedType<Id016PtmumbaiConstantsFixed>,
+    pub _parent: SharedType<Id016PtmumbaiConstantsFixed>,
+    pub _self: SharedType<Self>,
+    n: RefCell<Vec<OptRc<Id016PtmumbaiConstantsFixed_NChunk>>>,
+    _io: RefCell<BytesReader>,
+}
+impl KStruct for Id016PtmumbaiConstantsFixed_N {
+    type Root = Id016PtmumbaiConstantsFixed;
+    type Parent = Id016PtmumbaiConstantsFixed;
+
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.n.borrow_mut() = Vec::new();
+        {
+            let mut _i = 0;
+            while {
+                let t = Self::read_into::<_, Id016PtmumbaiConstantsFixed_NChunk>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+                self_rc.n.borrow_mut().push(t);
+                let _t_n = self_rc.n.borrow();
+                let _tmpa = _t_n.last().unwrap();
+                _i += 1;
+                let x = !(!((*_tmpa.has_more() as bool)));
+                x
+            } {}
+        }
+        Ok(())
+    }
+}
+impl Id016PtmumbaiConstantsFixed_N {
+}
+impl Id016PtmumbaiConstantsFixed_N {
+    pub fn n(&self) -> Ref<Vec<OptRc<Id016PtmumbaiConstantsFixed_NChunk>>> {
+        self.n.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed_N {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Id016PtmumbaiConstantsFixed_NChunk {
+    pub _root: SharedType<Id016PtmumbaiConstantsFixed>,
+    pub _parent: SharedType<Id016PtmumbaiConstantsFixed_N>,
+    pub _self: SharedType<Self>,
+    has_more: RefCell<bool>,
+    payload: RefCell<u64>,
+    _io: RefCell<BytesReader>,
+}
+impl KStruct for Id016PtmumbaiConstantsFixed_NChunk {
+    type Root = Id016PtmumbaiConstantsFixed;
+    type Parent = Id016PtmumbaiConstantsFixed_N;
+
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.has_more.borrow_mut() = _io.read_bits_int_be(1)? != 0;
+        *self_rc.payload.borrow_mut() = _io.read_bits_int_be(7)?;
+        Ok(())
+    }
+}
+impl Id016PtmumbaiConstantsFixed_NChunk {
+}
+impl Id016PtmumbaiConstantsFixed_NChunk {
+    pub fn has_more(&self) -> Ref<bool> {
+        self.has_more.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed_NChunk {
+    pub fn payload(&self) -> Ref<u64> {
+        self.payload.borrow()
+    }
+}
+impl Id016PtmumbaiConstantsFixed_NChunk {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

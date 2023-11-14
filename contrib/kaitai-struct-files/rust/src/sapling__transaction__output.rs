@@ -1,161 +1,203 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
 
-/*
+/**
  * Output of a transaction
  */
-#[derive(Default)]
+
+#[derive(Default, Debug, Clone)]
 pub struct SaplingTransactionOutput {
-    pub cm: Vec<u8>,
-    pub proofO: Vec<u8>,
-    pub ciphertext: Box<SaplingTransactionOutput__SaplingTransactionCiphertext>,
+    pub _root: SharedType<SaplingTransactionOutput>,
+    pub _parent: SharedType<SaplingTransactionOutput>,
+    pub _self: SharedType<Self>,
+    cm: RefCell<Vec<u8>>,
+    proof_o: RefCell<Vec<u8>>,
+    ciphertext: RefCell<OptRc<SaplingTransactionOutput_SaplingTransactionCiphertext>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for SaplingTransactionOutput {
+    type Root = SaplingTransactionOutput;
+    type Parent = SaplingTransactionOutput;
 
-impl KaitaiStruct for SaplingTransactionOutput {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.cm = self.stream.read_bytes(32)?;
-        self.proofO = self.stream.read_bytes(192)?;
-        self.ciphertext = Box::new(SaplingTransactionOutput__SaplingTransactionCiphertext::new(self.stream, self, _root)?);
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.cm.borrow_mut() = _io.read_bytes(32 as usize)?.into();
+        *self_rc.proof_o.borrow_mut() = _io.read_bytes(192 as usize)?.into();
+        let t = Self::read_into::<_, SaplingTransactionOutput_SaplingTransactionCiphertext>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+        *self_rc.ciphertext.borrow_mut() = t;
+        Ok(())
     }
 }
-
 impl SaplingTransactionOutput {
 }
-#[derive(Default)]
-pub struct SaplingTransactionOutput__SaplingTransactionCiphertext {
-    pub cv: Vec<u8>,
-    pub epk: Vec<u8>,
-    pub payloadEnc: Box<SaplingTransactionOutput__SaplingTransactionCiphertext__PayloadEnc>,
-    pub nonceEnc: Vec<u8>,
-    pub payloadOut: Vec<u8>,
-    pub nonceOut: Vec<u8>,
-}
-
-impl KaitaiStruct for SaplingTransactionOutput__SaplingTransactionCiphertext {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
+impl SaplingTransactionOutput {
+    pub fn cm(&self) -> Ref<Vec<u8>> {
+        self.cm.borrow()
     }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.cv = self.stream.read_bytes(32)?;
-        self.epk = self.stream.read_bytes(32)?;
-        self.payloadEnc = Box::new(SaplingTransactionOutput__SaplingTransactionCiphertext__PayloadEnc::new(self.stream, self, _root)?);
-        self.nonceEnc = self.stream.read_bytes(24)?;
-        self.payloadOut = self.stream.read_bytes(80)?;
-        self.nonceOut = self.stream.read_bytes(24)?;
+}
+impl SaplingTransactionOutput {
+    pub fn proof_o(&self) -> Ref<Vec<u8>> {
+        self.proof_o.borrow()
+    }
+}
+impl SaplingTransactionOutput {
+    pub fn ciphertext(&self) -> Ref<OptRc<SaplingTransactionOutput_SaplingTransactionCiphertext>> {
+        self.ciphertext.borrow()
+    }
+}
+impl SaplingTransactionOutput {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
     }
 }
 
-impl SaplingTransactionOutput__SaplingTransactionCiphertext {
+#[derive(Default, Debug, Clone)]
+pub struct SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub _root: SharedType<SaplingTransactionOutput>,
+    pub _parent: SharedType<SaplingTransactionOutput>,
+    pub _self: SharedType<Self>,
+    cv: RefCell<Vec<u8>>,
+    epk: RefCell<Vec<u8>>,
+    payload_enc: RefCell<OptRc<SaplingTransactionOutput_PayloadEnc>>,
+    nonce_enc: RefCell<Vec<u8>>,
+    payload_out: RefCell<Vec<u8>>,
+    nonce_out: RefCell<Vec<u8>>,
+    _io: RefCell<BytesReader>,
 }
-#[derive(Default)]
-pub struct SaplingTransactionOutput__SaplingTransactionCiphertext__PayloadEnc {
-    pub lenPayloadEnc: i32,
-    pub payloadEnc: Vec<u8>,
-}
+impl KStruct for SaplingTransactionOutput_SaplingTransactionCiphertext {
+    type Root = SaplingTransactionOutput;
+    type Parent = SaplingTransactionOutput;
 
-impl KaitaiStruct for SaplingTransactionOutput__SaplingTransactionCiphertext__PayloadEnc {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.lenPayloadEnc = self.stream.read_s4be()?;
-        self.payloadEnc = self.stream.read_bytes(self.len_payload_enc)?;
-    }
-}
-
-impl SaplingTransactionOutput__SaplingTransactionCiphertext__PayloadEnc {
-}
-#[derive(Default)]
-pub struct SaplingTransactionOutput__PayloadEnc {
-    pub lenPayloadEnc: i32,
-    pub payloadEnc: Vec<u8>,
-}
-
-impl KaitaiStruct for SaplingTransactionOutput__PayloadEnc {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.lenPayloadEnc = self.stream.read_s4be()?;
-        self.payloadEnc = self.stream.read_bytes(self.len_payload_enc)?;
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.cv.borrow_mut() = _io.read_bytes(32 as usize)?.into();
+        *self_rc.epk.borrow_mut() = _io.read_bytes(32 as usize)?.into();
+        let t = Self::read_into::<_, SaplingTransactionOutput_PayloadEnc>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+        *self_rc.payload_enc.borrow_mut() = t;
+        *self_rc.nonce_enc.borrow_mut() = _io.read_bytes(24 as usize)?.into();
+        *self_rc.payload_out.borrow_mut() = _io.read_bytes(80 as usize)?.into();
+        *self_rc.nonce_out.borrow_mut() = _io.read_bytes(24 as usize)?.into();
+        Ok(())
     }
 }
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn cv(&self) -> Ref<Vec<u8>> {
+        self.cv.borrow()
+    }
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn epk(&self) -> Ref<Vec<u8>> {
+        self.epk.borrow()
+    }
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn payload_enc(&self) -> Ref<OptRc<SaplingTransactionOutput_PayloadEnc>> {
+        self.payload_enc.borrow()
+    }
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn nonce_enc(&self) -> Ref<Vec<u8>> {
+        self.nonce_enc.borrow()
+    }
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn payload_out(&self) -> Ref<Vec<u8>> {
+        self.payload_out.borrow()
+    }
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn nonce_out(&self) -> Ref<Vec<u8>> {
+        self.nonce_out.borrow()
+    }
+}
+impl SaplingTransactionOutput_SaplingTransactionCiphertext {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
+}
 
-impl SaplingTransactionOutput__PayloadEnc {
+#[derive(Default, Debug, Clone)]
+pub struct SaplingTransactionOutput_PayloadEnc {
+    pub _root: SharedType<SaplingTransactionOutput>,
+    pub _parent: SharedType<SaplingTransactionOutput_SaplingTransactionCiphertext>,
+    pub _self: SharedType<Self>,
+    len_payload_enc: RefCell<i32>,
+    payload_enc: RefCell<Vec<u8>>,
+    _io: RefCell<BytesReader>,
+}
+impl KStruct for SaplingTransactionOutput_PayloadEnc {
+    type Root = SaplingTransactionOutput;
+    type Parent = SaplingTransactionOutput_SaplingTransactionCiphertext;
+
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.len_payload_enc.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.payload_enc.borrow_mut() = _io.read_bytes(*self_rc.len_payload_enc() as usize)?.into();
+        Ok(())
+    }
+}
+impl SaplingTransactionOutput_PayloadEnc {
+}
+impl SaplingTransactionOutput_PayloadEnc {
+    pub fn len_payload_enc(&self) -> Ref<i32> {
+        self.len_payload_enc.borrow()
+    }
+}
+impl SaplingTransactionOutput_PayloadEnc {
+    pub fn payload_enc(&self) -> Ref<Vec<u8>> {
+        self.payload_enc.borrow()
+    }
+}
+impl SaplingTransactionOutput_PayloadEnc {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

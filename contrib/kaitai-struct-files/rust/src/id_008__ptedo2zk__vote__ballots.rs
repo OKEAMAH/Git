@@ -1,47 +1,71 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
-#[derive(Default)]
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
+
+#[derive(Default, Debug, Clone)]
 pub struct Id008Ptedo2zkVoteBallots {
-    pub yay: i32,
-    pub nay: i32,
-    pub pass: i32,
+    pub _root: SharedType<Id008Ptedo2zkVoteBallots>,
+    pub _parent: SharedType<Id008Ptedo2zkVoteBallots>,
+    pub _self: SharedType<Self>,
+    yay: RefCell<i32>,
+    nay: RefCell<i32>,
+    pass: RefCell<i32>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for Id008Ptedo2zkVoteBallots {
+    type Root = Id008Ptedo2zkVoteBallots;
+    type Parent = Id008Ptedo2zkVoteBallots;
 
-impl KaitaiStruct for Id008Ptedo2zkVoteBallots {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.yay = self.stream.read_s4be()?;
-        self.nay = self.stream.read_s4be()?;
-        self.pass = self.stream.read_s4be()?;
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.yay.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.nay.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.pass.borrow_mut() = _io.read_s4be()?.into();
+        Ok(())
     }
 }
-
 impl Id008Ptedo2zkVoteBallots {
+}
+impl Id008Ptedo2zkVoteBallots {
+    pub fn yay(&self) -> Ref<i32> {
+        self.yay.borrow()
+    }
+}
+impl Id008Ptedo2zkVoteBallots {
+    pub fn nay(&self) -> Ref<i32> {
+        self.nay.borrow()
+    }
+}
+impl Id008Ptedo2zkVoteBallots {
+    pub fn pass(&self) -> Ref<i32> {
+        self.pass.borrow()
+    }
+}
+impl Id008Ptedo2zkVoteBallots {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }

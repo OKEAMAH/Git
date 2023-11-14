@@ -6,6 +6,8 @@ CPPS:=$(patsubst %.ksy,cpp/src/%.cpp,$(KSYS))
 
 all: $(HTMLS) $(RSS) $(JSS) $(CPPS)
 
+rust: $(RSS)
+
 doc/:
 	mkdir -p doc/
 
@@ -14,6 +16,8 @@ doc/%.html: %.ksy doc/
 
 rust/src/%.rs: %.ksy
 	kaitai-struct-compiler -t rust $< --outdir=rust/src/
+#	find rust/src/ -name '*.rs' -type f -exec sed -i.trash -e 's/Box<KaitaiStruct>/Box<dyn KaitaiStruct>/g' {} \;
+#	find rust/src/ -name '*.trash' -delete
 
 javascript/src/%.js: %.ksy
 	kaitai-struct-compiler -t javascript $< --outdir=javascript/src/

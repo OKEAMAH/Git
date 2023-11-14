@@ -1,77 +1,107 @@
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-use std::option::Option;
-use std::boxed::Box;
-use std::io::Result;
-use std::io::Cursor;
-use std::vec::Vec;
-use std::default::Default;
-use kaitai_struct::KaitaiStream;
-use kaitai_struct::KaitaiStruct;
+#![allow(unused_imports)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(irrefutable_let_patterns)]
+#![allow(unused_comparisons)]
+#![allow(arithmetic_overflow)]
+#![allow(overflowing_literals)]
 
-#[derive(Default)]
+extern crate kaitai;
+use kaitai::*;
+use std::convert::{TryFrom, TryInto};
+use std::cell::{Ref, Cell, RefCell};
+use std::rc::{Rc, Weak};
+
+#[derive(Default, Debug, Clone)]
 pub struct SignerMessagesDeterministicNonceHashResponse {
-    pub deterministicNonceHash: Box<SignerMessagesDeterministicNonceHashResponse__DeterministicNonceHash>,
+    pub _root: SharedType<SignerMessagesDeterministicNonceHashResponse>,
+    pub _parent: SharedType<SignerMessagesDeterministicNonceHashResponse>,
+    pub _self: SharedType<Self>,
+    deterministic_nonce_hash: RefCell<OptRc<SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash>>,
+    _io: RefCell<BytesReader>,
 }
+impl KStruct for SignerMessagesDeterministicNonceHashResponse {
+    type Root = SignerMessagesDeterministicNonceHashResponse;
+    type Parent = SignerMessagesDeterministicNonceHashResponse;
 
-impl KaitaiStruct for SignerMessagesDeterministicNonceHashResponse {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
-    }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.deterministicNonceHash = Box::new(SignerMessagesDeterministicNonceHashResponse__DeterministicNonceHash::new(self.stream, self, _root)?);
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        let t = Self::read_into::<_, SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash>(&*_io, Some(self_rc._root.clone()), Some(self_rc._self.clone()))?.into();
+        *self_rc.deterministic_nonce_hash.borrow_mut() = t;
+        Ok(())
     }
 }
-
 impl SignerMessagesDeterministicNonceHashResponse {
 }
-#[derive(Default)]
-pub struct SignerMessagesDeterministicNonceHashResponse__DeterministicNonceHash {
-    pub lenDeterministicNonceHash: i32,
-    pub deterministicNonceHash: Vec<u8>,
-}
-
-impl KaitaiStruct for SignerMessagesDeterministicNonceHashResponse__DeterministicNonceHash {
-    fn new<S: KaitaiStream>(stream: &mut S,
-                            _parent: &Option<Box<KaitaiStruct>>,
-                            _root: &Option<Box<KaitaiStruct>>)
-                            -> Result<Self>
-        where Self: Sized {
-        let mut s: Self = Default::default();
-
-        s.stream = stream;
-        s.read(stream, _parent, _root)?;
-
-        Ok(s)
+impl SignerMessagesDeterministicNonceHashResponse {
+    pub fn deterministic_nonce_hash(&self) -> Ref<OptRc<SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash>> {
+        self.deterministic_nonce_hash.borrow()
     }
-
-
-    fn read<S: KaitaiStream>(&mut self,
-                             stream: &mut S,
-                             _parent: &Option<Box<KaitaiStruct>>,
-                             _root: &Option<Box<KaitaiStruct>>)
-                             -> Result<()>
-        where Self: Sized {
-        self.lenDeterministicNonceHash = self.stream.read_s4be()?;
-        self.deterministicNonceHash = self.stream.read_bytes(self.len_deterministic_nonce_hash)?;
+}
+impl SignerMessagesDeterministicNonceHashResponse {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
     }
 }
 
-impl SignerMessagesDeterministicNonceHashResponse__DeterministicNonceHash {
+#[derive(Default, Debug, Clone)]
+pub struct SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash {
+    pub _root: SharedType<SignerMessagesDeterministicNonceHashResponse>,
+    pub _parent: SharedType<SignerMessagesDeterministicNonceHashResponse>,
+    pub _self: SharedType<Self>,
+    len_deterministic_nonce_hash: RefCell<i32>,
+    deterministic_nonce_hash: RefCell<Vec<u8>>,
+    _io: RefCell<BytesReader>,
+}
+impl KStruct for SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash {
+    type Root = SignerMessagesDeterministicNonceHashResponse;
+    type Parent = SignerMessagesDeterministicNonceHashResponse;
+
+    fn read<S: KStream>(
+        self_rc: &OptRc<Self>,
+        _io: &S,
+        _root: SharedType<Self::Root>,
+        _parent: SharedType<Self::Parent>,
+    ) -> KResult<()> {
+        *self_rc._io.borrow_mut() = _io.clone();
+        self_rc._root.set(_root.get());
+        self_rc._parent.set(_parent.get());
+        self_rc._self.set(Ok(self_rc.clone()));
+        let _rrc = self_rc._root.get_value().borrow().upgrade();
+        let _prc = self_rc._parent.get_value().borrow().upgrade();
+        let _r = _rrc.as_ref().unwrap();
+        *self_rc.len_deterministic_nonce_hash.borrow_mut() = _io.read_s4be()?.into();
+        *self_rc.deterministic_nonce_hash.borrow_mut() = _io.read_bytes(*self_rc.len_deterministic_nonce_hash() as usize)?.into();
+        Ok(())
+    }
+}
+impl SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash {
+}
+impl SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash {
+    pub fn len_deterministic_nonce_hash(&self) -> Ref<i32> {
+        self.len_deterministic_nonce_hash.borrow()
+    }
+}
+impl SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash {
+    pub fn deterministic_nonce_hash(&self) -> Ref<Vec<u8>> {
+        self.deterministic_nonce_hash.borrow()
+    }
+}
+impl SignerMessagesDeterministicNonceHashResponse_DeterministicNonceHash {
+    pub fn _io(&self) -> Ref<BytesReader> {
+        self._io.borrow()
+    }
 }
