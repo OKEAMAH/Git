@@ -47,6 +47,14 @@ module Events = struct
       ~level:Notice
       ("level", Data_encoding.int32)
 
+  let new_applied_block =
+    declare_1
+      ~section
+      ~name:"new_applied_block"
+      ~msg:"New applied block received ({level})"
+      ~level:Notice
+      ("level", Data_encoding.int32)
+
   let start_synchronization =
     declare_2
       ~section
@@ -69,6 +77,20 @@ module Events = struct
 end
 
 module Daemon = struct
+  (** [fair_lwt_stream_get push s1 s2] aims to get the value available
+      from [s1] and [s2] and [push] them to a stream, so that, all the
+      values push to that stream are interleaved to preserve some
+      fairness. *)
+  let fair_lwt_stream_get push s1 s2 =
+    let s1l = Lwt_stream.get_available s1 in
+    let s2l = Lwt_stream.get_available s2 in
+    match (s1l, s2l) with
+    | [], [] -> () (* assert false *)
+    | l1, l2 ->
+        Seq.iter
+          (fun v -> push (Some v))
+          (Seq.interleave (List.to_seq l1) (List.to_seq l2))
+
   (** [make_stream_daemon ~on_head ~head_stream] calls [on_head] on
       each newly received value from [head_stream].
 
@@ -88,6 +110,7 @@ module Daemon = struct
          tzresult
          Lwt.t) =
     let open Lwt_result_syntax in
+    let master_stream, push = Lwt_stream.create () in
     let* head_stream, head_stream_stopper = head_stream in
     let head_stream = Lwt_stream.map (fun v -> (`Head, v)) head_stream in
     let* applied_block_stream, applied_block_stream_stopper =
@@ -98,13 +121,24 @@ module Daemon = struct
         (fun (_, hash, header, _) -> (`Applied, (hash, header)))
         applied_block_stream
     in
-    let master_stream = Lwt_stream.choose [head_stream; applied_block_stream] in
-    let rec go () =
+    let rec stream_aggregator () =
+      let*! tik =
+        Lwt.choose
+          [Lwt_stream.peek head_stream; Lwt_stream.peek applied_block_stream]
+      in
+      match tik with
+      | None -> stream_aggregator ()
+      | Some _ ->
+          fair_lwt_stream_get push head_stream applied_block_stream ;
+          stream_aggregator ()
+    in
+    let _ = stream_aggregator () in
+    let rec stream_processor () =
       let*! tok = Lwt_stream.get master_stream in
       match tok with
       | None -> return_unit
-      | Some (`Head, element) ->
-          let*! r = on_head head_stream_stopper element in
+      | Some (`Head, v) ->
+          let*! r = on_head head_stream_stopper v in
           let*! () =
             match r with
             | Ok () -> Lwt.return_unit
@@ -112,9 +146,9 @@ module Daemon = struct
                 let*! () = Events.(emit daemon_error) trace in
                 Lwt.return_unit
           in
-          go ()
-      | Some (`Applied, element) ->
-          let*! r = on_applied_block applied_block_stream_stopper element in
+          stream_processor ()
+      | Some (`Applied, v) ->
+          let*! r = on_applied_block applied_block_stream_stopper v in
           let*! () =
             match r with
             | Ok () -> Lwt.return_unit
@@ -122,9 +156,9 @@ module Daemon = struct
                 let*! () = Events.(emit daemon_error) trace in
                 Lwt.return_unit
           in
-          go ()
+          stream_processor ()
     in
-    return (go ())
+    return (stream_processor ())
 end
 
 let init_store ~allow_testchains ~readonly parameters =
@@ -187,7 +221,7 @@ let handle_new_applied_block (dynamic_store : Store.t option ref) last_status
     _stopper (block_hash, (header : Tezos_base.Block_header.t)) =
   let open Lwt_result_syntax in
   let block_level = header.shell.level in
-  let*! () = Events.(emit new_head) block_level in
+  let*! () = Events.(emit new_applied_block) block_level in
   let* store =
     sync_store dynamic_store last_status parameters (block_hash, header)
   in
