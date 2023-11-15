@@ -31,7 +31,8 @@ open Alpha_context
 
     It is imperative that this is aligned with the protocol's implementation.
 *)
-module Arith_proof_format =
+module Arith_proof_format
+    (Context : Context.SMCONTEXT with type Context.Store.tree = Context.tree) =
   Context.Proof
     (struct
       include Sc_rollup.State_hash
@@ -45,12 +46,13 @@ module Arith_proof_format =
     end)
 
 module Impl : Pvm_sig.S = struct
-  module PVM = Sc_rollup.ArithPVM.Make (Arith_proof_format)
+  module Store = Context.IStore
+  module PVM = Sc_rollup.ArithPVM.Make (Arith_proof_format (Store))
   include PVM
 
   let kind = Sc_rollup.Kind.Example_arith
 
-  module State = Context.PVMState
+  module State = Store.PVMState
 
   module Inspect_durable_state = struct
     let lookup _state _keys =

@@ -24,8 +24,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Tezos_rpc
-
 (** This module defines subcontext type of the subdirectory and
     the way to project it from Node_context and a path prefix. *)
 module type PARAM = sig
@@ -35,7 +33,13 @@ module type PARAM = sig
 
   type subcontext
 
-  val context_of_prefix : context -> prefix -> subcontext tzresult Lwt.t
+  val context_of_prefix :
+    (module Context.SMCONTEXT
+       with type Context.Store.repo = 'repo
+        and type Context.Store.tree = 'tree) ->
+    context ->
+    prefix ->
+    subcontext tzresult Lwt.t
 end
 
 (** Parameter signature to use with {!Make_directory}, where the prefix is
@@ -51,7 +55,13 @@ end
 module Make_sub_directory (S : PARAM) : sig
   (** Register an endpoint with no parameters in the path. *)
   val register0 :
-    ([< Resto.meth], 'prefix, 'prefix, 'query, 'input, 'output) Service.t ->
+    ( [< Resto.meth],
+      'prefix,
+      'prefix,
+      'query,
+      'input,
+      'output )
+    Tezos_rpc.Service.t ->
     (S.subcontext -> 'query -> 'input -> 'output tzresult Lwt.t) ->
     unit
 
@@ -63,20 +73,31 @@ module Make_sub_directory (S : PARAM) : sig
       'query,
       'input,
       'output )
-    Service.t ->
+    Tezos_rpc.Service.t ->
     (S.subcontext -> 'param1 -> 'query -> 'input -> 'output tzresult Lwt.t) ->
     unit
 
   (** Register an endpoint that specifies how to process incoming queries and inputs;
       this function is intended for handling asynchronous contexts. *)
   val gen_register0 :
-    ([< Resto.meth], 'prefix, 'prefix, 'query, 'input, 'output) Service.t ->
+    ( [< Resto.meth],
+      'prefix,
+      'prefix,
+      'query,
+      'input,
+      'output )
+    Tezos_rpc.Service.t ->
     (S.subcontext -> 'query -> 'input -> 'output Tezos_rpc.Answer.t Lwt.t) ->
     unit
 
   (** Build sub-directory with registered endpoints with respect to
       Node_context. *)
-  val build_sub_directory : S.context -> S.prefix Tezos_rpc.Directory.t
+  val build_sub_directory :
+    (module Context.SMCONTEXT
+       with type Context.Store.repo = 'repo
+        and type Context.Store.tree = 'tree) ->
+    S.context ->
+    S.prefix Tezos_rpc.Directory.t
 end
 
 (** This module is a helper to register your endpoints and
@@ -91,5 +112,10 @@ module Make_directory (S : PARAM_PREFIX) : sig
 
   (** Build top-level directory with registered endpoints with respect to
       Node_context. *)
-  val build_directory : S.context -> unit Tezos_rpc.Directory.t
+  val build_directory :
+    (module Context.SMCONTEXT
+       with type Context.Store.repo = 'repo
+        and type Context.Store.tree = 'tree) ->
+    S.context ->
+    unit Tezos_rpc.Directory.t
 end

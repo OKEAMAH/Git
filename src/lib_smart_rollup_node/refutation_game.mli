@@ -28,14 +28,16 @@
 (** [play_opening_move node_ctxt conflict] injects the opening refutation
     game move for [conflict]. *)
 val play_opening_move :
-  [< `Read | `Write > `Read] Node_context.t ->
+  ([< `Read | `Write > `Read], 'repo) Node_context.t ->
   Octez_smart_rollup.Game.conflict ->
   (unit, tztrace) result Lwt.t
 
 (** [play head_block plugin node_ctxt ~self game opponent] injects the next move
     in the refutation [game] played by [self] and [opponent]. *)
 val play :
-  Node_context.rw ->
+  ('repo * 'tree) Context.tid ->
+  'repo Node_context.rw ->
+  'tree Interpreter.tick_state_cache ->
   self:Signature.public_key_hash ->
   Octez_smart_rollup.Game.t ->
   Signature.public_key_hash ->

@@ -43,7 +43,8 @@ module Lwt_result_option_syntax = struct
   let fail = Lwt_result_syntax.return_none
 end
 
-let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
+let executable_whitelist_update_message (type tree repo) proto_plugins
+    (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
   let open Lwt_result_option_syntax in
   let lcc = Reference.get node_ctxt.lcc in
@@ -65,8 +66,13 @@ let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
       ~bottom_outbox_level ~outbox_level state =
     if outbox_level < bottom_outbox_level then fail
     else
-      let* (module Plugin) =
-        Protocol_plugins.proto_plugin_for_level node_ctxt outbox_level
+      let* (module Plugin : Protocol_plugin_sig.S
+             with type Pvm.tree = tree
+              and type Pvm.repo = repo) =
+        Protocol_plugins.proto_plugin_for_level
+          proto_plugins
+          node_ctxt
+          outbox_level
       in
       let*! message_index =
         Plugin.Pvm.find_whitelist_update_output_index
@@ -121,8 +127,22 @@ let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
         fail
       else
         let* block_hash = Node_context.hash_of_level node_ctxt inbox_level in
-        let* ctxt = Node_context.checkout_context node_ctxt block_hash in
-        let*!* state = Context.PVMState.find ctxt in
+        let*? (module Plugin : Protocol_plugin_sig.S
+                with type Pvm.tree = tree
+                 and type Pvm.repo = repo) =
+          Protocol_plugins.proto_plugin_for_protocol
+            proto_plugins
+            node_ctxt.current_protocol.hash
+        in
+
+        let* ctxt =
+          Node_context.checkout_context
+            (module Plugin.Pvm.Store)
+            node_ctxt
+            block_hash
+        in
+
+        let*!* state = Plugin.Pvm.Store.PVMState.find ctxt in
         let bottom_outbox_level =
           Int32.(
             max
@@ -156,7 +176,8 @@ let execute_whitelist_update_message_aux (node_ctxt : _ Node_context.t)
   let* _hash = Injector.add_pending_operation outbox_message in
   return_unit
 
-let publish_execute_whitelist_update_message (node_ctxt : _ Node_context.t) =
+let publish_execute_whitelist_update_message proto_plugins
+    (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
   let operator = Node_context.get_operator node_ctxt Executing_outbox in
   match operator with
@@ -165,7 +186,7 @@ let publish_execute_whitelist_update_message (node_ctxt : _ Node_context.t) =
       return_unit
   | Some _ -> (
       let* cemented_commitment_and_proof =
-        executable_whitelist_update_message node_ctxt
+        executable_whitelist_update_message proto_plugins node_ctxt
       in
       let () =
         Reference.map

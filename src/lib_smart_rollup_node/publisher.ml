@@ -87,19 +87,28 @@ let sc_rollup_challenge_window node_ctxt =
 let next_commitment_level node_ctxt last_commitment_level =
   add_level last_commitment_level (sc_rollup_commitment_period node_ctxt)
 
-type state = Node_context.ro
+type 'repo state = 'repo Node_context.ro
 
 let tick_of_level (node_ctxt : _ Node_context.t) inbox_level =
   let open Lwt_result_syntax in
   let* block = Node_context.get_l2_block_by_level node_ctxt inbox_level in
   return (Sc_rollup_block.final_tick block)
 
-let build_commitment (module Plugin : Protocol_plugin_sig.S)
-    (node_ctxt : _ Node_context.t)
-    (prev_commitment : Octez_smart_rollup.Commitment.Hash.t)
-    ~prev_commitment_level ~inbox_level ctxt =
+let build_commitment :
+    type repo tree.
+    (module Pvm_plugin_sig.S
+       with type Store.Context.Store.repo = repo
+        and type Store.Context.Store.tree = tree) ->
+    (_, repo) Node_context.t ->
+    Octez_smart_rollup.Commitment.Hash.t ->
+    prev_commitment_level:int32 ->
+    inbox_level:int32 ->
+    (_, repo, tree) Context.context ->
+    Commitment.t tzresult Lwt.t =
+ fun plugin node_ctxt prev_commitment ~prev_commitment_level ~inbox_level ctxt ->
   let open Lwt_result_syntax in
-  let*! pvm_state = Context.PVMState.find ctxt in
+  let (module Plugin) = plugin in
+  let*! pvm_state = Plugin.Store.PVMState.find ctxt in
   let*? pvm_state =
     match pvm_state with
     | Some pvm_state -> Ok pvm_state
@@ -108,8 +117,8 @@ let build_commitment (module Plugin : Protocol_plugin_sig.S)
           "PVM state for commitment at level %ld is not available"
           inbox_level
   in
-  let*! compressed_state = Plugin.Pvm.state_hash node_ctxt.kind pvm_state in
-  let*! tick = Plugin.Pvm.get_tick node_ctxt.kind pvm_state in
+  let*! compressed_state = Plugin.state_hash node_ctxt.kind pvm_state in
+  let*! tick = Plugin.get_tick node_ctxt.kind pvm_state in
   let* prev_commitment_tick = tick_of_level node_ctxt prev_commitment_level in
   let distance = Z.sub tick prev_commitment_tick in
   let number_of_ticks = Z.to_int64 distance in
@@ -128,16 +137,22 @@ let build_commitment (module Plugin : Protocol_plugin_sig.S)
         compressed_state;
       }
 
-let genesis_commitment (module Plugin : Protocol_plugin_sig.S)
-    (node_ctxt : _ Node_context.t) ctxt =
+let genesis_commitment :
+    type repo tree.
+    (repo, tree) Pvm_plugin_sig.pvm_plugin ->
+    (_, repo) Node_context.t ->
+    (_, repo, tree) Context.context ->
+    Commitment.t tzresult Lwt.t =
+ fun plugin node_ctxt ctxt ->
   let open Lwt_result_syntax in
-  let*! pvm_state = Context.PVMState.find ctxt in
+  let (module Plugin) = plugin in
+  let*! pvm_state = Plugin.Store.PVMState.find ctxt in
   let*? pvm_state =
     match pvm_state with
     | Some pvm_state -> Ok pvm_state
     | None -> error_with "PVM state for genesis commitment is not available"
   in
-  let*! compressed_state = Plugin.Pvm.state_hash node_ctxt.kind pvm_state in
+  let*! compressed_state = Plugin.state_hash node_ctxt.kind pvm_state in
   let commitment =
     Octez_smart_rollup.Commitment.
       {
@@ -200,8 +215,8 @@ let create_commitment_if_necessary plugin (node_ctxt : _ Node_context.t)
       return_some commitment
     else return_none
 
-let process_head plugin (node_ctxt : _ Node_context.t) ~predecessor
-    Layer1.{level; header = _; _} ctxt =
+let process_head plugin (node_ctxt : 'repo Node_context.rw) ~predecessor
+    Layer1.{level; header = _; _} (ctxt : ('repo, 'tree) Context.rw) =
   let open Lwt_result_syntax in
   let current_level = level in
   let* commitment =
@@ -312,7 +327,7 @@ let inject_recover_bond (node_ctxt : _ Node_context.t)
   in
   return_unit
 
-let on_publish_commitments (node_ctxt : state) =
+let on_publish_commitments (node_ctxt : _ state) =
   let open Lwt_result_syntax in
   let* commitments = missing_commitments node_ctxt in
   List.iter_es (publish_commitment node_ctxt) commitments
@@ -424,15 +439,15 @@ let cement_commitment (node_ctxt : _ Node_context.t) commitment =
   in
   return_unit
 
-let on_cement_commitments (node_ctxt : state) =
+let on_cement_commitments (node_ctxt : _ state) =
   let open Lwt_result_syntax in
   let* cementable_commitments = cementable_commitments node_ctxt in
   List.iter_es (cement_commitment node_ctxt) cementable_commitments
 
-module Types = struct
-  type nonrec state = state
+module Types (Context : Context.SMCONTEXT) = struct
+  type nonrec state = Context.Context.Store.repo state
 
-  type parameters = {node_ctxt : Node_context.ro}
+  type parameters = {node_ctxt : Context.Context.Store.repo Node_context.ro}
 end
 
 module Name = struct
@@ -448,11 +463,21 @@ module Name = struct
   let equal () () = true
 end
 
-module Worker = Worker.MakeSingle (Name) (Request) (Types)
+module Worker (Context : Context.SMCONTEXT) =
+  Worker.MakeSingle (Name) (Request) (Types (Context))
 
-type worker = Worker.infinite Worker.queue Worker.t
+module Helper (Context : Context.SMCONTEXT) = struct
+  module Types = Types (Context)
+  module Worker = Worker (Context)
 
-module Handlers = struct
+  type worker = Worker.infinite Worker.queue Worker.t
+
+  let table = Worker.create_table Queue
+end
+
+module Handlers (Context : Context.SMCONTEXT) = struct
+  include Helper (Context)
+
   type self = worker
 
   let on_request :
@@ -491,67 +516,70 @@ module Handlers = struct
   let on_close _w = Lwt.return_unit
 end
 
-let table = Worker.create_table Queue
+module W (Context : Context.SMCONTEXT) = struct
+  module Handlers = Handlers (Context)
+  include Helper (Context)
 
-let worker_promise, worker_waker = Lwt.task ()
+  let worker_promise, worker_waker = Lwt.task ()
 
-let start node_ctxt =
-  let open Lwt_result_syntax in
-  let*! () = Commitment_event.starting () in
-  let node_ctxt = Node_context.readonly node_ctxt in
-  let+ worker = Worker.launch table () {node_ctxt} (module Handlers) in
-  Lwt.wakeup worker_waker worker
+  let start node_ctxt =
+    let open Lwt_result_syntax in
+    let*! () = Commitment_event.starting () in
+    let node_ctxt = Node_context.readonly (module Context) node_ctxt in
+    let+ worker = Worker.launch table () {node_ctxt} (module Handlers) in
+    Lwt.wakeup worker_waker worker
 
-let start_in_mode mode =
-  let open Configuration in
-  match mode with
-  | Maintenance | Operator | Bailout -> true
-  | Observer | Accuser | Batcher -> false
-  | Custom ops -> purpose_matches_mode (Custom ops) Operating
+  let start_in_mode mode =
+    let open Configuration in
+    match mode with
+    | Maintenance | Operator | Bailout -> true
+    | Observer | Accuser | Batcher -> false
+    | Custom ops -> purpose_matches_mode (Custom ops) Operating
 
-let init (node_ctxt : _ Node_context.t) =
-  let open Lwt_result_syntax in
-  match Lwt.state worker_promise with
-  | Lwt.Return _ ->
-      (* Worker already started, nothing to do. *)
-      return_unit
-  | Lwt.Fail exn ->
-      (* Worker crashed, not recoverable. *)
-      fail [Rollup_node_errors.No_publisher; Exn exn]
-  | Lwt.Sleep ->
-      (* Never started, start it. *)
-      if start_in_mode node_ctxt.config.mode then start node_ctxt
-      else return_unit
+  let init (node_ctxt : (_, Context.Context.Store.repo) Node_context.t) =
+    let open Lwt_result_syntax in
+    match Lwt.state worker_promise with
+    | Lwt.Return _ ->
+        (* Worker already started, nothing to do. *)
+        return_unit
+    | Lwt.Fail exn ->
+        (* Worker crashed, not recoverable. *)
+        fail [Rollup_node_errors.No_publisher; Exn exn]
+    | Lwt.Sleep ->
+        (* Never started, start it. *)
+        if start_in_mode node_ctxt.config.mode then start node_ctxt
+        else return_unit
 
-(* This is a publisher worker for a single scoru *)
-let worker =
-  let open Result_syntax in
-  lazy
-    (match Lwt.state worker_promise with
-    | Lwt.Return worker -> return worker
-    | Lwt.Fail exn -> fail (Error_monad.error_of_exn exn)
-    | Lwt.Sleep -> Error Rollup_node_errors.No_publisher)
+  (* This is a publisher worker for a single scoru *)
+  let worker =
+    let open Result_syntax in
+    lazy
+      (match Lwt.state worker_promise with
+      | Lwt.Return worker -> return worker
+      | Lwt.Fail exn -> fail (Error_monad.error_of_exn exn)
+      | Lwt.Sleep -> Error Rollup_node_errors.No_publisher)
 
-let worker_add_request ~request =
-  let open Lwt_result_syntax in
-  match Lazy.force worker with
-  | Ok w ->
-      let node_ctxt = Worker.state w in
-      (* Bailout does not publish any commitment it only cement them. *)
-      unless (Node_context.is_bailout node_ctxt && request = Request.Publish)
-      @@ fun () ->
-      let*! (_pushed : bool) = Worker.Queue.push_request w request in
-      return_unit
-  | Error Rollup_node_errors.No_publisher -> return_unit
-  | Error e -> tzfail e
+  let worker_add_request ~request =
+    let open Lwt_result_syntax in
+    match Lazy.force worker with
+    | Ok w ->
+        let node_ctxt = Worker.state w in
+        (* Bailout does not publish any commitment it only cement them. *)
+        unless (Node_context.is_bailout node_ctxt && request = Request.Publish)
+        @@ fun () ->
+        let*! (_pushed : bool) = Worker.Queue.push_request w request in
+        return_unit
+    | Error Rollup_node_errors.No_publisher -> return_unit
+    | Error e -> tzfail e
 
-let publish_commitments () = worker_add_request ~request:Request.Publish
+  let publish_commitments () = worker_add_request ~request:Request.Publish
 
-let cement_commitments () = worker_add_request ~request:Request.Cement
+  let cement_commitments () = worker_add_request ~request:Request.Cement
 
-let shutdown () =
-  match Lazy.force worker with
-  | Error _ ->
-      (* There is no publisher, nothing to do *)
-      Lwt.return_unit
-  | Ok w -> Worker.shutdown w
+  let shutdown () =
+    match Lazy.force worker with
+    | Error _ ->
+        (* There is no publisher, nothing to do *)
+        Lwt.return_unit
+    | Ok w -> Worker.shutdown w
+end

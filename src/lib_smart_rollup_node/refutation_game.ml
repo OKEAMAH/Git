@@ -80,11 +80,13 @@ let inject_next_move node_ctxt ~refutation ~opponent =
   in
   return_unit
 
-type pvm_intermediate_state =
+type 'tree pvm_intermediate_state =
   | Hash of State_hash.t
-  | Evaluated of Fuel.Accounted.t Pvm_plugin_sig.eval_state
+  | Evaluated of (Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state
 
-let new_dissection (module Plugin : Protocol_plugin_sig.S) ~opponent
+type ('repo, 'tree) proto_full = ('repo, 'tree) Protocol_plugin_sig.typed_full
+
+let new_dissection (type tree repo) (plugin : (repo, tree) proto_full) ~opponent
     ~default_number_of_sections node_ctxt last_level ok our_view =
   let open Lwt_result_syntax in
   let start_hash, start_tick, start_state =
@@ -99,6 +101,7 @@ let new_dissection (module Plugin : Protocol_plugin_sig.S) ~opponent
     Option.map (fun Pvm_plugin_sig.{state_hash; _} -> state_hash) our_state
   in
   let our_stop_chunk = Game.{state_hash = our_state_hash; tick = our_tick} in
+  let (module Plugin) = plugin in
   let* dissection =
     Plugin.Refutation_game_helpers.make_dissection
       (module Plugin)
@@ -122,7 +125,7 @@ let new_dissection (module Plugin : Protocol_plugin_sig.S) ~opponent
       dissection] traverses the current [dissection] and returns a move which
       performs a new dissection of the execution trace or provides a refutation
       proof to serve as the next move of the [game]. *)
-let generate_next_dissection (module Plugin : Protocol_plugin_sig.S)
+let generate_next_dissection (type tree repo) (plugin : (repo, tree) proto_full)
     ~default_number_of_sections node_ctxt ~opponent
     (game : Octez_smart_rollup.Game.t)
     (dissection : Octez_smart_rollup.Game.dissection_chunk list) =
@@ -141,10 +144,13 @@ let generate_next_dissection (module Plugin : Protocol_plugin_sig.S)
           | Hash _, _ -> None
           | Evaluated ok_state, _ -> Some ok_state
         in
+        let tick_state_cache = Interpreter.tick_state_cache () in
+        let (module Plugin) = plugin in
         let* our =
           Interpreter.state_of_tick
             (module Plugin)
             node_ctxt
+            tick_state_cache
             ?start_state
             ~tick
             game.inbox_level
@@ -165,7 +171,7 @@ let generate_next_dissection (module Plugin : Protocol_plugin_sig.S)
       let* ok, ko = traverse (Hash hash, tick) dissection in
       let* dissection =
         new_dissection
-          (module Plugin)
+          plugin
           ~opponent
           ~default_number_of_sections
           node_ctxt
@@ -186,17 +192,32 @@ let generate_next_dissection (module Plugin : Protocol_plugin_sig.S)
       tzfail
         Rollup_node_errors.Unreliable_tezos_node_returning_inconsistent_game
 
-let next_move (module Plugin : Protocol_plugin_sig.S) node_ctxt ~opponent
-    (game : Octez_smart_rollup.Game.t) =
+let next_move :
+    type repo tree.
+    (repo, tree) proto_full ->
+    repo Node_context.rw ->
+    tree Interpreter.tick_state_cache ->
+    opponent:Signature.public_key_hash ->
+    t ->
+    (refutation, tztrace) result Lwt.t =
+ fun plugin
+     node_ctxt
+     tick_state_cache
+     ~opponent
+     (game : Octez_smart_rollup.Game.t) ->
   let open Lwt_result_syntax in
+  let (module Plugin) = plugin in
+
   let final_move start_tick =
     let* start_state =
       Interpreter.state_of_tick
         (module Plugin)
         node_ctxt
+        tick_state_cache
         ~tick:start_tick
         game.inbox_level
     in
+
     match start_state with
     | None ->
         tzfail
@@ -216,7 +237,7 @@ let next_move (module Plugin : Protocol_plugin_sig.S) node_ctxt ~opponent
   | Dissecting {dissection; default_number_of_sections} ->
       let* choice, chosen_section_len, dissection =
         generate_next_dissection
-          (module Plugin)
+          plugin
           ~default_number_of_sections
           node_ctxt
           ~opponent
@@ -231,9 +252,12 @@ let next_move (module Plugin : Protocol_plugin_sig.S) node_ctxt ~opponent
       let choice = agreed_start_chunk.tick in
       final_move choice
 
-let play_next_move plugin node_ctxt game opponent =
+let play_next_move (type tree repo) plugin node_ctxt tick_state_cache game
+    opponent =
   let open Lwt_result_syntax in
-  let* refutation = next_move plugin node_ctxt ~opponent game in
+  let* refutation =
+    next_move plugin node_ctxt tick_state_cache ~opponent game
+  in
   inject_next_move node_ctxt ~refutation ~opponent
 
 let play_timeout (node_ctxt : _ Node_context.t) stakers =
@@ -248,14 +272,26 @@ let play_timeout (node_ctxt : _ Node_context.t) stakers =
   in
   return_unit
 
-let play node_ctxt ~self game opponent =
+let play :
+    type repo tree.
+    (repo * tree) Context.tid ->
+    repo Node_context.rw ->
+    tree Interpreter.tick_state_cache ->
+    self:Signature.public_key_hash ->
+    Octez_smart_rollup.Game.t ->
+    Signature.public_key_hash ->
+    (unit, tztrace) result Lwt.t =
+ fun tid node_ctxt tick_state_cache ~self game opponent ->
   let open Lwt_result_syntax in
   let index = make_index self opponent in
-  let* plugin = Protocol_plugins.last_proto_plugin node_ctxt in
+  let* (plugin : (repo, tree) Protocol_plugins.proto_plugin) =
+    Protocol_plugins.last_proto_plugin tid node_ctxt
+  in
+  let (module Plugin) = plugin in
   match turn ~self game index with
-  | Our_turn {opponent} -> play_next_move plugin node_ctxt game opponent
+  | Our_turn {opponent} ->
+      play_next_move plugin node_ctxt tick_state_cache game opponent
   | Their_turn ->
-      let module Plugin = (val plugin) in
       let* timeout_reached =
         Plugin.Refutation_game_helpers.timeout_reached node_ctxt ~self ~opponent
       in

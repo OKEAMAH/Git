@@ -25,39 +25,59 @@
 
 (** {2 Protocol registration logic} *)
 
-type proto_plugin = (module Protocol_plugin_sig.S)
+type ('repo, 'tree) proto_plugin = ('repo, 'tree) Protocol_plugin_sig.typed_full
+
+type 'a tid = 'a Context.tid
 
 (** Register a protocol plugin for a specific protocol to be used by the
     rollup node. *)
-val register : proto_plugin -> unit
+val register : ('repo, 'tree) proto_plugin -> ('repo * 'tree) tid
 
 (** Returns the list of registered protocols. *)
 val registered_protocols : unit -> Protocol_hash.t list
 
 (** {2 Using the correct protocol plugin} *)
 
+(* (\** Return the protocol plugin L1 helpers for a given protocol (or an error if not *)
+(*     supported). *\) *)
+(* val proto_helpers_for_protocol : *)
+(*   Protocol_hash.t -> (module Protocol_plugin_sig.LAYER1_HELPERS) tzresult *)
+
 (** Return the protocol plugin for a given protocol (or an error if not
     supported). *)
-val proto_plugin_for_protocol : Protocol_hash.t -> proto_plugin tzresult
+val proto_plugin_for_protocol :
+  ('repo * 'tree) tid -> Protocol_hash.t -> ('repo, 'tree) proto_plugin tzresult
 
 (** Return the protocol plugin for a given level (or an error if not
     supported). *)
 val proto_plugin_for_level :
-  _ Node_context.t -> int32 -> proto_plugin tzresult Lwt.t
+  ('repo * 'tree) tid ->
+  (_, 'repo) Node_context.t ->
+  int32 ->
+  ('repo, 'tree) proto_plugin tzresult Lwt.t
 
 (** Return the protocol plugin for a given level (or an error if not
     supported). *)
 val proto_plugin_for_level_with_store :
-  _ Store.t -> int32 -> proto_plugin tzresult Lwt.t
+  ('repo * 'tree) tid ->
+  _ Store.t ->
+  int32 ->
+  ('repo, 'tree) proto_plugin tzresult Lwt.t
 
 (** Return the protocol plugin for a given block (or an error if not
     supported). *)
 val proto_plugin_for_block :
-  _ Node_context.t -> Block_hash.t -> proto_plugin tzresult Lwt.t
+  ('repo * 'tree) tid ->
+  (_, 'repo) Node_context.t ->
+  Block_hash.t ->
+  ('repo, 'tree) proto_plugin tzresult Lwt.t
 
 (** Returns the plugin corresponding to the last protocol seen by the rollup
     node. *)
-val last_proto_plugin : _ Node_context.t -> proto_plugin tzresult Lwt.t
+val last_proto_plugin :
+  ('repo * 'tree) tid ->
+  (_, 'repo) Node_context.t ->
+  ('repo, 'tree) proto_plugin tzresult Lwt.t
 
 (** {2 Safe protocol specific constants}
 
@@ -67,18 +87,21 @@ val last_proto_plugin : _ Node_context.t -> proto_plugin tzresult Lwt.t
 
 (** Retrieve constants for a given protocol (values are cached). *)
 val get_constants_of_protocol :
-  _ Node_context.t ->
+  ('repo * 'tree) tid ->
+  (_, 'repo) Node_context.t ->
   Protocol_hash.t ->
   Rollup_constants.protocol_constants tzresult Lwt.t
 
 (** Retrieve constants for a given level (values are cached). *)
 val get_constants_of_level :
-  _ Node_context.t ->
+  ('repo * 'tree) tid ->
+  (_, 'repo) Node_context.t ->
   int32 ->
   Rollup_constants.protocol_constants tzresult Lwt.t
 
 (** Retrieve constants for a given block hash (values are cached). *)
 val get_constants_of_block_hash :
-  _ Node_context.t ->
+  ('repo * 'tree) tid ->
+  (_, 'repo) Node_context.t ->
   Block_hash.t ->
   Rollup_constants.protocol_constants tzresult Lwt.t

@@ -39,32 +39,34 @@ let get_head_level_opt node_ctxt =
   let+ res = Node_context.last_processed_head_opt node_ctxt in
   Option.map (fun Sc_rollup_block.{header = {level; _}; _} -> level) res
 
-let get_proto_plugin_of_level node_ctxt level =
+let get_proto_plugin_of_level proto_plugins node_ctxt level =
   let open Lwt_result_syntax in
   let* proto = Node_context.protocol_of_level node_ctxt level in
-  let*? plugin = Protocol_plugins.proto_plugin_for_protocol proto.protocol in
+  let*? plugin =
+    Protocol_plugins.proto_plugin_for_protocol proto_plugins proto.protocol
+  in
   return plugin
 
-module Global_directory = Make_directory (struct
+module Global_directory (Context : Context.SMCONTEXT) = Make_directory (struct
   include Rollup_node_services.Global
 
-  type context = Node_context.rw
+  type context = Context.Context.Store.repo Node_context.rw
 
-  type subcontext = Node_context.ro
+  type subcontext = Context.Context.Store.repo Node_context.ro
 
   let context_of_prefix node_ctxt () =
-    Lwt_result.return (Node_context.readonly node_ctxt)
+    Lwt_result.return (Node_context.readonly (module Context) node_ctxt)
 end)
 
-module Local_directory = Make_directory (struct
+module Local_directory (Context : Context.SMCONTEXT) = Make_directory (struct
   include Rollup_node_services.Local
 
-  type context = Node_context.rw
+  type context = Context.Context.Store.repo Node_context.rw
 
-  type subcontext = Node_context.ro
+  type subcontext = Context.Context.Store.repo Node_context.ro
 
   let context_of_prefix node_ctxt () =
-    Lwt_result.return (Node_context.readonly node_ctxt)
+    Lwt_result.return (Node_context.readonly (module Context) node_ctxt)
 end)
 
 let () =
@@ -343,20 +345,24 @@ let () =
 
   return status
 
-let top_directory (node_ctxt : _ Node_context.t) =
+let top_directory plugin (node_ctxt : (_, Context.repo) Node_context.t) =
   List.fold_left
     (fun dir f -> Tezos_rpc.Directory.merge dir (f node_ctxt))
     Tezos_rpc.Directory.empty
-    [Global_directory.build_directory; Local_directory.build_directory]
+    [
+      Global_directory.build_directory plugin;
+      Local_directory.build_directory plugin;
+    ]
 
-let directory node_ctxt =
+let directory plugin node_ctxt =
   let path =
     Tezos_rpc.Path.(
       open_root / "global" / "block" /: Rollup_node_services.Arg.block_id)
   in
+
   Tezos_rpc.Directory.register_dynamic_directory
     ~descr:"Dynamic protocol specific RPC directory for the rollup node"
-    (top_directory node_ctxt)
+    (top_directory plugin node_ctxt)
     path
     (fun ((), block_id) ->
       let open Lwt_syntax in

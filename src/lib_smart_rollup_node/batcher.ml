@@ -38,12 +38,12 @@ module Batched_messages = Hash_queue.Make (L2_message.Hash) (L2_batched_message)
 
 type status = Pending_batch | Batched of Injector.Inj_operation.hash
 
-type state = {
-  node_ctxt : Node_context.ro;
+type ('repo, 'tree) state = {
+  node_ctxt : 'repo Node_context.ro;
   messages : Message_queue.t;
   batched : Batched_messages.t;
-  mutable simulation_ctxt : Simulation.t option;
-  mutable plugin : (module Protocol_plugin_sig.S);
+  mutable simulation_ctxt : ('repo, 'tree) Simulation.t option;
+  mutable plugin : ('repo, 'tree) Protocol_plugin_sig.full;
 }
 
 let message_size s =
@@ -75,8 +75,9 @@ let inject_batch state (l2_messages : L2_message.t list) =
 
 let inject_batches state = List.iter_es (inject_batch state)
 
-let max_batch_size {node_ctxt; plugin; _} =
-  let module Plugin = (val plugin) in
+let max_batch_size (type tree repo)
+    {node_ctxt; plugin : (repo, tree) Protocol_plugin_sig.full; _} =
+  let (module Plugin) = plugin in
   Option.value
     node_ctxt.config.batcher.max_batch_size
     ~default:Plugin.Batcher_constants.protocol_max_batch_size
@@ -155,9 +156,12 @@ let produce_batches state ~only_full =
         to_remove ;
       return_unit
 
-let simulate state simulation_ctxt (messages : L2_message.t list) =
+let simulate (type tree repo) state simulation_ctxt
+    (messages : L2_message.t list) =
   let open Lwt_result_syntax in
-  let module Plugin = (val state.plugin) in
+  let (module Plugin) =
+    (state.plugin : (repo, tree) Protocol_plugin_sig.full)
+  in
   let*? ext_messages =
     List.map_e
       (fun m -> Plugin.Inbox.serialize_external_message (L2_message.content m))
@@ -168,9 +172,11 @@ let simulate state simulation_ctxt (messages : L2_message.t list) =
   in
   simulation_ctxt
 
-let on_register state (messages : string list) =
+let on_register (type tree repo) state (messages : string list) =
   let open Lwt_result_syntax in
-  let module Plugin = (val state.plugin) in
+  let (module Plugin) =
+    (state.plugin : (repo, tree) Protocol_plugin_sig.full)
+  in
   let max_size_msg =
     min
       (Plugin.Batcher_constants.message_size_limit
@@ -233,7 +239,11 @@ let on_new_head state head =
   (* Forget failing messages *)
   List.iter (Message_queue.remove state.messages) failing
 
-let init_batcher_state plugin node_ctxt =
+let init_batcher_state :
+    ('repo, 'tree) Protocol_plugin_sig.full ->
+    'repo Node_context.ro ->
+    ('repo, 'tree) state =
+ fun plugin node_ctxt ->
   {
     node_ctxt;
     messages = Message_queue.create 100_000 (* ~ 400MB *);
@@ -242,12 +252,14 @@ let init_batcher_state plugin node_ctxt =
     plugin;
   }
 
-module Types = struct
-  type nonrec state = state
+module Types (Context : Context.SMCONTEXT) = struct
+  open Context
+
+  type nonrec state = (Context.Store.repo, Context.Store.tree) state
 
   type parameters = {
-    node_ctxt : Node_context.ro;
-    plugin : (module Protocol_plugin_sig.S);
+    node_ctxt : Context.Store.repo Node_context.ro;
+    plugin : (Context.Store.repo, Context.Store.tree) Protocol_plugin_sig.full;
   }
 end
 
@@ -264,11 +276,21 @@ module Name = struct
   let equal () () = true
 end
 
-module Worker = Worker.MakeSingle (Name) (Request) (Types)
+module Worker (Context : Context.SMCONTEXT) =
+  Worker.MakeSingle (Name) (Request) (Types (Context))
 
-type worker = Worker.infinite Worker.queue Worker.t
+module Helper (Context : Context.SMCONTEXT) = struct
+  module Types = Types (Context)
+  module Worker = Worker (Context)
 
-module Handlers = struct
+  type worker = Worker.infinite Worker.queue Worker.t
+
+  let table = Worker.create_table Queue
+end
+
+module Handlers (Context : Context.SMCONTEXT) = struct
+  include Helper (Context)
+
   type self = worker
 
   let on_request :
@@ -284,9 +306,10 @@ module Handlers = struct
 
   type launch_error = error trace
 
-  let on_launch _w () Types.{node_ctxt; plugin} =
+  let on_launch _w () Types.{node_ctxt; plugin; _} =
     let open Lwt_result_syntax in
-    let state = init_batcher_state plugin node_ctxt in
+    let (module Plugin) = plugin in
+    let state = init_batcher_state (module Plugin) node_ctxt in
     return state
 
   let on_error (type a b) _w st (r : (a, b) Request.t) (errs : b) :
@@ -313,10 +336,6 @@ module Handlers = struct
   let on_close _w = Lwt.return_unit
 end
 
-let table = Worker.create_table Queue
-
-let worker_promise, worker_waker = Lwt.task ()
-
 let check_batcher_config (module Plugin : Protocol_plugin_sig.S)
     Configuration.{max_batch_size; _} =
   match max_batch_size with
@@ -326,105 +345,124 @@ let check_batcher_config (module Plugin : Protocol_plugin_sig.S)
         Plugin.Batcher_constants.protocol_max_batch_size
   | _ -> Ok ()
 
-let start plugin node_ctxt =
-  let open Lwt_result_syntax in
-  let*? () =
-    check_batcher_config plugin node_ctxt.Node_context.config.batcher
-  in
-  let node_ctxt = Node_context.readonly node_ctxt in
-  let+ worker = Worker.launch table () {node_ctxt; plugin} (module Handlers) in
-  Lwt.wakeup worker_waker worker
+module W (Context_plugin : Context.SMCONTEXT) = struct
+  module Handlers = Handlers (Context_plugin)
+  include Helper (Context_plugin)
 
-let start_in_mode mode =
-  let open Configuration in
-  match mode with
-  | Batcher | Operator -> true
-  | Observer | Accuser | Bailout | Maintenance -> false
-  | Custom ops -> purpose_matches_mode (Custom ops) Batching
+  let worker_promise, worker_waker = Lwt.task ()
 
-let init plugin (node_ctxt : _ Node_context.t) =
-  let open Lwt_result_syntax in
-  match Lwt.state worker_promise with
-  | Lwt.Return _ ->
-      (* Worker already started, nothing to do. *)
-      return_unit
-  | Lwt.Fail exn ->
-      (* Worker crashed, not recoverable. *)
-      fail [Rollup_node_errors.No_batcher; Exn exn]
-  | Lwt.Sleep ->
-      (* Never started, start it. *)
-      if start_in_mode node_ctxt.config.mode then start plugin node_ctxt
-      else return_unit
+  let start :
+      (module Protocol_plugin_sig.S) ->
+      (_, Context_plugin.Context.Store.repo) Node_context.t ->
+      unit tzresult Lwt.t =
+   fun plugin node_ctxt ->
+    let open Lwt_result_syntax in
+    let (module Plugin) = plugin in
+    let*? () =
+      check_batcher_config (module Plugin) node_ctxt.Node_context.config.batcher
+    in
 
-(* This is a batcher worker for a single scoru *)
-let worker =
-  lazy
-    (match Lwt.state worker_promise with
-    | Lwt.Return worker -> Ok worker
-    | Lwt.Fail exn -> Error (Error_monad.error_of_exn exn)
-    | Lwt.Sleep -> Error Rollup_node_errors.No_batcher)
+    let node_ctxt = Node_context.readonly (module Context_plugin) node_ctxt in
+    let+ worker =
+      Worker.launch
+        table
+        ()
+        {node_ctxt; plugin = (module Plugin)}
+        (module Handlers)
+    in
+    Lwt.wakeup worker_waker worker
 
-let active () =
-  match Lwt.state worker_promise with
-  | Lwt.Return _ -> true
-  | Lwt.Fail _ | Lwt.Sleep -> false
+  let start_in_mode mode =
+    let open Configuration in
+    match mode with
+    | Batcher | Operator -> true
+    | Observer | Accuser | Bailout | Maintenance -> false
+    | Custom ops -> purpose_matches_mode (Custom ops) Batching
 
-let find_message hash =
-  let open Result_syntax in
-  let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
-  let state = Worker.state w in
-  Message_queue.find_opt state.messages hash
+  let init plugin (node_ctxt : (_, 'repo) Node_context.t) =
+    let open Lwt_result_syntax in
+    match Lwt.state worker_promise with
+    | Lwt.Return _ ->
+        (* Worker already started, nothing to do. *)
+        return_unit
+    | Lwt.Fail exn ->
+        (* Worker crashed, not recoverable. *)
+        fail [Rollup_node_errors.No_batcher; Exn exn]
+    | Lwt.Sleep ->
+        (* Never started, start it. *)
+        if start_in_mode node_ctxt.config.mode then start plugin node_ctxt
+        else return_unit
 
-let get_queue () =
-  let open Result_syntax in
-  let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
-  let state = Worker.state w in
-  Message_queue.bindings state.messages
+  (* This is a batcher worker for a single scoru *)
+  let worker =
+    lazy
+      (match Lwt.state worker_promise with
+      | Lwt.Return worker -> Ok worker
+      | Lwt.Fail exn -> Error (Error_monad.error_of_exn exn)
+      | Lwt.Sleep -> Error Rollup_node_errors.No_batcher)
 
-let handle_request_error rq =
-  let open Lwt_syntax in
-  let* rq in
-  match rq with
-  | Ok res -> return_ok res
-  | Error (Worker.Request_error errs) -> Lwt.return_error errs
-  | Error (Closed None) -> Lwt.return_error [Worker_types.Terminated]
-  | Error (Closed (Some errs)) -> Lwt.return_error errs
-  | Error (Any exn) -> Lwt.return_error [Exn exn]
+  let active () =
+    match Lwt.state worker_promise with
+    | Lwt.Return _ -> true
+    | Lwt.Fail _ | Lwt.Sleep -> false
 
-let register_messages messages =
-  let open Lwt_result_syntax in
-  let* w = lwt_map_error TzTrace.make (Lwt.return (Lazy.force worker)) in
-  Worker.Queue.push_request_and_wait w (Request.Register messages)
-  |> handle_request_error
+  let find_message hash =
+    let open Result_syntax in
+    let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
+    let state = Worker.state w in
+    Message_queue.find_opt state.messages hash
 
-let new_head b =
-  let open Lwt_result_syntax in
-  match Lazy.force worker with
-  | Error Rollup_node_errors.No_batcher ->
-      (* There is no batcher, nothing to do *)
-      return_unit
-  | Error e -> tzfail e
-  | Ok w ->
-      Worker.Queue.push_request_and_wait w (Request.New_head b)
-      |> handle_request_error
+  let get_queue () =
+    let open Result_syntax in
+    let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
+    let state = Worker.state w in
+    Message_queue.bindings state.messages
 
-let shutdown () =
-  match Lazy.force worker with
-  | Error _ ->
-      (* There is no batcher, nothing to do *)
-      Lwt.return_unit
-  | Ok w -> Worker.shutdown w
+  let handle_request_error rq =
+    let open Lwt_syntax in
+    let* rq in
+    match rq with
+    | Ok res -> return_ok res
+    | Error (Worker.Request_error errs) -> Lwt.return_error errs
+    | Error (Closed None) -> Lwt.return_error [Worker_types.Terminated]
+    | Error (Closed (Some errs)) -> Lwt.return_error errs
+    | Error (Any exn) -> Lwt.return_error [Exn exn]
 
-let message_status state msg_hash =
-  match Message_queue.find_opt state.messages msg_hash with
-  | Some msg -> Some (Pending_batch, L2_message.content msg)
-  | None -> (
-      match Batched_messages.find_opt state.batched msg_hash with
-      | Some {content; l1_hash} -> Some (Batched l1_hash, content)
-      | None -> None)
+  let register_messages messages =
+    let open Lwt_result_syntax in
+    let* w = lwt_map_error TzTrace.make (Lwt.return (Lazy.force worker)) in
+    Worker.Queue.push_request_and_wait w (Request.Register messages)
+    |> handle_request_error
 
-let message_status msg_hash =
-  let open Result_syntax in
-  let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
-  let state = Worker.state w in
-  message_status state msg_hash
+  let new_head b =
+    let open Lwt_result_syntax in
+    match Lazy.force worker with
+    | Error Rollup_node_errors.No_batcher ->
+        (* There is no batcher, nothing to do *)
+        return_unit
+    | Error e -> tzfail e
+    | Ok w ->
+        Worker.Queue.push_request_and_wait w (Request.New_head b)
+        |> handle_request_error
+
+  let shutdown () =
+    match Lazy.force worker with
+    | Error _ ->
+        (* There is no batcher, nothing to do *)
+        Lwt.return_unit
+    | Ok w -> Worker.shutdown w
+
+  let message_status state msg_hash =
+    match Message_queue.find_opt state.messages msg_hash with
+    | Some msg -> Some (Pending_batch, L2_message.content msg)
+    | None -> (
+        match Batched_messages.find_opt state.batched msg_hash with
+        | Some {content; l1_hash} -> Some (Batched l1_hash, content)
+        | None -> None)
+
+  let message_status msg_hash =
+    let open Result_syntax in
+    let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
+    let state = Worker.state w in
+    message_status state msg_hash
+end

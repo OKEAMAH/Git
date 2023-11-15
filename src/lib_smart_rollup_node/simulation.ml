@@ -30,19 +30,21 @@ type info_per_level = {
   predecessor : Block_hash.t;
 }
 
-type t = {
-  node_ctxt : Node_context.ro;
-  ctxt : Context.ro;
+(** Type of the state for a simulation. *)
+type ('repo, 'tree) t = {
+  node_ctxt : 'repo Node_context.ro;
+  ctxt : ('repo, 'tree) Context.ro;
   inbox_level : int32;
-  state : Context.tree;
+  state : 'tree;
   reveal_map : string Utils.Reveal_hash_map.t option;
   nb_messages_inbox : int;
   level_position : level_position;
   info_per_level : info_per_level;
-  plugin : (module Protocol_plugin_sig.S);
+  plugin : ('repo, 'tree) Protocol_plugin_sig.full;
 }
 
-let simulate_info_per_level (node_ctxt : [`Read] Node_context.t) predecessor =
+let simulate_info_per_level (node_ctxt : ([`Read], _) Node_context.t)
+    predecessor =
   let open Lwt_result_syntax in
   let* pred_header =
     Layer1.fetch_tezos_shell_header node_ctxt.l1_ctxt predecessor
@@ -68,14 +70,36 @@ let set_simulation_kernel_log ?log_kernel_debug_file
   in
   return {node_ctxt with kernel_debug_logger; finaliser}
 
-let start_simulation node_ctxt ~reveal_map ?log_kernel_debug_file
-    (Layer1.{hash; level} as head) =
+let start_simulation :
+    type tree repo.
+    (repo, tree) Protocol_plugins.proto_plugin Protocol_hash.Table.t ->
+    ([`Read], repo) Node_context.t ->
+    reveal_map:'a ->
+    ?log_kernel_debug_file:string ->
+    Layer1.head ->
+    ('b, error trace) result Lwt.t =
+ fun proto_plugins
+     node_ctxt
+     ~reveal_map
+     ?log_kernel_debug_file
+     (Layer1.{hash; level} as head) ->
   let open Lwt_result_syntax in
+  let open Node_context in
+  let*? (module Plugin : Protocol_plugin_sig.S
+          with type Pvm.tree = tree
+           and type Pvm.repo = repo) =
+    Protocol_plugins.proto_plugin_for_protocol
+      proto_plugins
+      node_ctxt.current_protocol.hash
+  in
+
   let*! node_ctxt =
     set_simulation_kernel_log ?log_kernel_debug_file node_ctxt
   in
   let inbox_level = Int32.succ level in
-  let* plugin = Protocol_plugins.proto_plugin_for_level node_ctxt inbox_level in
+  let* (plugin : (repo, tree) Protocol_plugin_sig.full) =
+    Protocol_plugins.proto_plugin_for_level proto_plugins node_ctxt inbox_level
+  in
   let*? () =
     error_unless
       (level >= node_ctxt.Node_context.genesis_info.level)
@@ -86,12 +110,11 @@ let start_simulation node_ctxt ~reveal_map ?log_kernel_debug_file
     if level < first_inbox_level then
       (* This is before we have interpreted the boot sector, so we start
          with an empty context in genesis *)
-      return (Context.empty node_ctxt.context)
-    else Node_context.checkout_context node_ctxt hash
+      return (Plugin.Pvm.Store.Context.empty node_ctxt.context)
+    else Node_context.checkout_context (module Plugin.Pvm.Store) node_ctxt hash
   in
-  let* ctxt, state =
-    Interpreter.state_of_head (module (val plugin)) node_ctxt ctxt head
-  in
+  let (module P) = plugin in
+  let* ctxt, state = Interpreter.state_of_head (module P) node_ctxt ctxt head in
   let+ info_per_level = simulate_info_per_level node_ctxt hash in
   {
     node_ctxt;
@@ -140,7 +163,7 @@ let simulate_messages_no_checks
   let Pvm_plugin_sig.{state = {state; _}; num_ticks; num_messages; _} =
     Delayed_write_monad.ignore eval_result
   in
-  let*! ctxt = Context.PVMState.set ctxt state in
+  let*! ctxt = Pvm.Store.PVMState.set ctxt state in
   let nb_messages_inbox = nb_messages_inbox + num_messages in
   return ({sim with ctxt; state; nb_messages_inbox}, num_ticks)
 

@@ -31,7 +31,7 @@ open Alpha_context
 module type S = sig
   include
     Sc_rollup.PVM.S
-      with type context = Context.rw_index
+      with type context = Context.repo Context.rw_index
        and type state = Context.tree
        and type hash = Sc_rollup.State_hash.t
 
@@ -76,7 +76,8 @@ module type S = sig
     val empty : unit -> state
 
     (** [find context] returns the PVM state stored in the [context], if any. *)
-    val find : _ Context.t -> state option Lwt.t
+    val find :
+      (_, Context.repo, Context.tree) Context.context -> state option Lwt.t
 
     (** [lookup state path] returns the data stored for the path [path] in the
         PVM state [state].  *)
@@ -85,7 +86,10 @@ module type S = sig
     (** [set context state] saves the PVM state [state] in the context and
         returns the updated context. Note: [set] does not perform any write on
         disk, this information must be committed using {!val:Context.commit}. *)
-    val set : 'a Context.t -> state -> 'a Context.t Lwt.t
+    val set :
+      ('a, Context.repo, Context.tree) Context.context ->
+      state ->
+      ('a, Context.repo, Context.tree) Context.context Lwt.t
   end
 
   (** Inspect durable state using a more specialised way of reading the

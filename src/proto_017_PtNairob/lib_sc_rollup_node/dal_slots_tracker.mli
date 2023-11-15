@@ -38,7 +38,8 @@
       ones the rollup node will download, and stores the results in
       [Store.Dal_confirmed_slots].}
     }  *)
-val process_head : Node_context.rw -> Layer1.head -> unit tzresult Lwt.t
+val process_head :
+  Context.repo Node_context.rw -> Layer1.head -> unit tzresult Lwt.t
 
 (** [slots_history_of_hash node_ctxt block_hash] returns the DAL confirmed slots
    history at the end of the given [block_hash] validation. *)

@@ -23,6 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type 'tree tick_state_cache
+
+val tick_state_cache : unit -> 'a tick_state_cache
+
 (** [process_head plugin node_ctxt ctxt ~predecessor head (inbox, messages)]
     interprets the [messages] associated with a [head] (where [predecessor] is
     the predecessor of [head] in the L1 chain). This requires the [inbox] to be
@@ -32,32 +36,33 @@
     ticks taken by the PVM for the evaluation and [tick] is the tick reached by
     the PVM after the evaluation. *)
 val process_head :
-  (module Protocol_plugin_sig.PARTIAL) ->
-  Node_context.rw ->
-  'a Context.t ->
+  ('repo, 'tree) Protocol_plugin_sig.typed_partial ->
+  'repo Node_context.rw ->
+  ('a, 'repo, 'tree) Context.context ->
   predecessor:Layer1.header ->
   Layer1.header ->
   Octez_smart_rollup.Inbox.t * string list ->
-  ('a Context.t * int * int64 * Z.t) tzresult Lwt.t
+  (('a, 'repo, 'tree) Context.context * int * int64 * Z.t) tzresult Lwt.t
 
 (** [state_of_tick plugin node_ctxt ?start_state ~tick level] returns [Some
     (state, hash)] for a given [tick] if this [tick] happened before
     [level]. Otherwise, returns [None]. If provided, the evaluation is resumed
     from [start_state]. *)
 val state_of_tick :
-  (module Protocol_plugin_sig.PARTIAL) ->
-  _ Node_context.t ->
-  ?start_state:Fuel.Accounted.t Pvm_plugin_sig.eval_state ->
+  ('repo, 'tree) Protocol_plugin_sig.typed_partial ->
+  (_, 'repo) Node_context.t ->
+  'tree tick_state_cache ->
+  ?start_state:(Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state ->
   tick:Z.t ->
   int32 ->
-  Fuel.Accounted.t Pvm_plugin_sig.eval_state option tzresult Lwt.t
+  (Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state option tzresult Lwt.t
 
 (** [state_of_head plugin node_ctxt ctxt head] returns the state corresponding
     to the block [head], or the state at rollup genesis if the block is before
     the rollup origination. *)
 val state_of_head :
-  (module Protocol_plugin_sig.PARTIAL) ->
-  'a Node_context.t ->
-  'a Context.t ->
+  ('repo, 'tree) Protocol_plugin_sig.typed_partial ->
+  ('a, 'repo) Node_context.t ->
+  ('a, 'repo, 'tree) Context.context ->
   Layer1.head ->
-  ('a Context.t * Context.tree) tzresult Lwt.t
+  (('a, 'repo, 'tree) Context.context * 'tree) tzresult Lwt.t

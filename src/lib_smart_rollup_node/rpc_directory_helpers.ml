@@ -33,7 +33,13 @@ module type PARAM = sig
 
   type subcontext
 
-  val context_of_prefix : context -> prefix -> subcontext tzresult Lwt.t
+  val context_of_prefix :
+    (module Context.SMCONTEXT
+       with type Context.Store.repo = 'repo
+        and type Context.Store.tree = 'tree) ->
+    context ->
+    prefix ->
+    subcontext tzresult Lwt.t
 end
 
 module type PARAM_PREFIX = sig
@@ -64,10 +70,10 @@ module Make_sub_directory (S : PARAM) = struct
     let*? ctxt in
     f ctxt arg query input
 
-  let build_sub_directory node_ctxt =
+  let build_sub_directory pvm node_ctxt =
     !directory
     |> Tezos_rpc.Directory.map (fun prefix ->
-           context_of_prefix node_ctxt prefix)
+           context_of_prefix pvm node_ctxt prefix)
 
   let gen_register service f =
     directory := Tezos_rpc.Directory.gen_register !directory service f
@@ -84,6 +90,6 @@ module Make_directory (S : PARAM_PREFIX) = struct
 
   let of_subdirectory = Tezos_rpc.Directory.prefix S.prefix
 
-  let build_directory node_ctxt =
-    build_sub_directory node_ctxt |> Tezos_rpc.Directory.prefix S.prefix
+  let build_directory pvm node_ctxt =
+    build_sub_directory pvm node_ctxt |> Tezos_rpc.Directory.prefix S.prefix
 end

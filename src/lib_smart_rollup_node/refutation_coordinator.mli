@@ -22,18 +22,19 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-
-(** Component for managing refutation games.
+module W (Context_plugin : Context.SMCONTEXT) : sig
+  (** Component for managing refutation games.
     This module is implemented as a single worker in the rollup node,
     which takes care of processing new L1 heads, and coordinating
     the refutation game players. (See {!Refutation_player}).
 *)
 
-(** Initiatilize the refuation coordinator, if the rollup node mode
+  (** Initiatilize the refutation coordinator, if the rollup node mode
     supports it. *)
-val init : Node_context.rw -> unit tzresult Lwt.t
+  val init :
+    Context_plugin.Context.Store.repo Node_context.rw -> unit tzresult Lwt.t
 
-(** [process head] processes a new l1 head. This means that the coordinator
+  (** [process head] processes a new l1 head. This means that the coordinator
     will:
     {ol
       {li Gather all existing conflicts}
@@ -43,7 +44,8 @@ val init : Node_context.rw -> unit tzresult Lwt.t
       {li Make all players play a step in the refutation}
     }
 *)
-val process : Layer1.head -> unit tzresult Lwt.t
+  val process : Layer1.head -> unit tzresult Lwt.t
 
-(** Shutdown the refutation coordinator. *)
-val shutdown : unit -> unit Lwt.t
+  (** Shutdown the refutation coordinator. *)
+  val shutdown : unit -> unit Lwt.t
+end
