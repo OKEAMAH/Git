@@ -424,5 +424,17 @@ module Block = struct
               (req "commitment" Sc_rollup.Commitment.Hash.encoding)
               (req "proof" Encodings.hex_string))
         (path / "proofs" / "outbox")
+
+    let outbox_proof_post =
+      Tezos_rpc.Service.post_service
+        ~description:"Generate serialized output proof for some outbox message"
+        ~query:Tezos_rpc.Query.empty
+        ~input:Sc_rollup.output_encoding
+        ~output:
+          Data_encoding.(
+            obj2
+              (req "commitment" Sc_rollup.Commitment.Hash.encoding)
+              (req "proof" Encodings.hex_string))
+        (path / "proofs" / "outbox")
   end
 end

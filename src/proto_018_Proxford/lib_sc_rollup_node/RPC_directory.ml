@@ -271,6 +271,14 @@ let () =
   (Sc_rollup_proto_types.Commitment_hash.of_octez commitment, proof)
 
 let () =
+  Block_helpers_directory.register0
+    Sc_rollup_services.Block.Helpers.outbox_proof_post
+  @@ fun (node_ctxt, _block_hash) () output ->
+  let open Lwt_result_syntax in
+  let+ commitment, proof = Outbox.proof_of_output node_ctxt output in
+  (Sc_rollup_proto_types.Commitment_hash.of_octez commitment, proof)
+
+let () =
   Block_directory.register0 Sc_rollup_services.Block.simulate
   @@ fun (node_ctxt, block) () {messages; reveal_pages; insight_requests} ->
   simulate_messages node_ctxt block ~reveal_pages ~insight_requests messages
