@@ -3,7 +3,7 @@ module IntMap = Map.Make (Int)
 
 module Parameters = struct
   (** The parameters of Merkle Tree *)
-  let log_nb_cells = 4
+  let log_nb_cells = 3
 
   let nb_cells = 1 lsl log_nb_cells
 
@@ -13,13 +13,11 @@ module Parameters = struct
     assert (n <= log_nb_cells) ;
     (1 lsl n) * cell_size
 
-  let level_offset_file n =
-    assert (n <= log_nb_cells) ;
-    ((1 lsl n) - 1) * cell_size
-
   let level_offset n =
     assert (n <= log_nb_cells) ;
     (1 lsl n) - 1
+
+  let level_offset_file n = cell_size * level_offset n
 
   let hash input = Hacl_star.Hacl.Blake2b_32.hash input cell_size
 end
@@ -49,15 +47,18 @@ let sibling ~lvl index =
 (** Reads [len] bytes from descriptor [file_descr], storing them in
     byte sequence [buffer], starting at position [offset] in [file_descr].*)
 let read_file file_descr buffer ~offset ~len =
+  (* Printf.printf "\nroffset : %d\nrlen : %d\n" offset len ; *)
   assert (Bytes.length buffer = len) ;
   let i = Unix.lseek file_descr offset Unix.SEEK_SET in
   assert (i = offset) ;
   let i = Unix.read file_descr buffer 0 len in
+  (* Printf.printf "\ni = %d\n" i ; *)
   assert (i = len)
 
 (** Writes [len] bytes to descriptor [file_descr], taking them from
     byte sequence [buffer], starting at position [offset] in [file_descr].*)
 let write_file file_descr buffer ~offset ~len =
+  (* Printf.printf "\nwoffset : %d\nwlen : %d\n" offset len ; *)
   assert (Bytes.length buffer = len) ;
   let i = Unix.lseek file_descr offset Unix.SEEK_SET in
   assert (i = offset) ;
@@ -82,19 +83,49 @@ let commit_storage file_name (state : bytes array) =
       (Array.length lvl / 2)
       (fun i -> Bytes.cat lvl.(2 * i) lvl.((2 * i) + 1) |> hash)
   in
-  let tree = Array.init log_nb_cells (Fun.const [||]) in
-  tree.(log_nb_cells - 1) <- state ;
+  (* all layers + root *)
+  let tree = Array.init (log_nb_cells + 1) (Fun.const [||]) in
+  tree.(log_nb_cells) <- state ;
   let rec hash_all_lvls current_level =
     if current_level = 0 then ()
     else
       let () = tree.(current_level - 1) <- hash_lvl tree.(current_level) in
       hash_all_lvls (current_level - 1)
   in
-  hash_all_lvls (log_nb_cells - 1) ;
-  Array.iteri (fun i lvl -> write_level file_descr lvl i) tree
+  hash_all_lvls log_nb_cells ;
+  let to_write = Bytes.(concat empty Array.(to_list (concat (to_list tree)))) in
+  write_file file_descr to_write ~offset:0 ~len:(Bytes.length to_write)
 
-(** Returns [root; fst_lvl; snd_level] not in bytes. *)
-let read_storage _file_name = assert false
+(** Returns [[root]; [0; 1]; [00; 01; 10; 11]; …] in bytes. *)
+let read_storage file_name =
+  let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+  let buffer_lvls =
+    Array.init (log_nb_cells + 1) (fun i ->
+        ( level_offset_file i,
+          (1 lsl i) * cell_size,
+          Bytes.init (cell_size * (1 lsl i)) (Fun.const 'c') ))
+  in
+  Array.map
+    (fun (offset, len, buffer_lvl) ->
+      let b =
+        read_file file_descr buffer_lvl ~offset ~len ;
+        buffer_lvl
+      in
+      Array.init (len / cell_size) (fun i ->
+          Bytes.sub b (i * cell_size) cell_size))
+    buffer_lvls
+
+let print_storage file_name =
+  let storage = read_storage file_name in
+  Array.iteri
+    (fun i a ->
+      Printf.printf
+        "%d : [%s]\n"
+        i
+        (String.concat
+           ", "
+           Array.(to_list (map (fun x -> Hex.(show (of_bytes x))) a))))
+    storage
 
 let read_root file_name =
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
@@ -107,13 +138,19 @@ let create_diff _nb = assert false
 
 let update_one file_name index new_value =
   let index = index + level_offset log_nb_cells in
+  (* Printf.printf "\nlvl offset : %d" (level_offset log_nb_cells) ; *)
+  (* Printf.printf "\nindex : %d\n" index ; *)
   let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
   let siblings = Array.init log_nb_cells (fun _ -> (true, Bytes.empty)) in
-  let buffer = Bytes.create cell_size in
+  (* Printf.printf "\nlen sibling = %d" (Array.length siblings) ; *)
   (* from the leaves to the root *)
   let _ =
     Array.fold_left
       (fun (lvl, node) _ ->
+        Printf.printf "\nlvl  : %d" lvl ;
+        Printf.printf "\nnode : %d" node ;
+        Printf.printf "\nsibl : %d\n" (sibling ~lvl node) ;
+        let buffer = Bytes.create cell_size in
         read_file
           file_descr
           buffer
@@ -124,20 +161,37 @@ let update_one file_name index new_value =
       (log_nb_cells, index)
       siblings
   in
+  (* Printf.printf
+     "\nsiblings = [%s]"
+     (String.concat
+        ", "
+        Array.(
+          to_list (Array.map (fun (_, x) -> Hex.(show (of_bytes x))) siblings))) ; *)
   let _write =
+    let _write_new_value =
+      write_file file_descr new_value ~offset:(index * cell_size) ~len:cell_size
+    in
     Array.fold_left
       (fun (lvl, node_index, node_value) (is_left, sibling) ->
         let to_hash =
           if is_left then Bytes.cat node_value sibling
           else Bytes.cat sibling node_value
         in
-        let hash_node_value = hash to_hash in
+        let parent_index = parent ~lvl node_index in
+        let parent_value = hash to_hash in
+        Printf.printf "\nis_left : %b" is_left ;
+        Printf.printf "\nnode            : %s" Hex.(show (of_bytes node_value)) ;
+        Printf.printf "\nsibling         : %s" Hex.(show (of_bytes sibling)) ;
+        Printf.printf "\nparent          : %d" (parent ~lvl node_index) ;
+        Printf.printf
+          "\nhash_node_value : %s"
+          Hex.(show (of_bytes parent_value)) ;
         write_file
           file_descr
-          hash_node_value
-          ~offset:(node_index * cell_size)
+          parent_value
+          ~offset:(parent_index * cell_size)
           ~len:cell_size ;
-        (lvl - 1, parent ~lvl node_index, hash_node_value))
+        (lvl - 1, parent_index, parent_value))
       (log_nb_cells, index, new_value)
       siblings
   in
