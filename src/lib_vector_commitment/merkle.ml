@@ -1,3 +1,28 @@
+(*****************************************************************************)
+(*                                                                           *)
+(* MIT License                                                               *)
+(* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(*                                                                           *)
+(* Permission is hereby granted, free of charge, to any person obtaining a   *)
+(* copy of this software and associated documentation files (the "Software"),*)
+(* to deal in the Software without restriction, including without limitation *)
+(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
+(* and/or sell copies of the Software, and to permit persons to whom the     *)
+(* Software is furnished to do so, subject to the following conditions:      *)
+(*                                                                           *)
+(* The above copyright notice and this permission notice shall be included   *)
+(* in all copies or substantial portions of the Software.                    *)
+(*                                                                           *)
+(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
+(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
+(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
+(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
+(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
+(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
+(* DEALINGS IN THE SOFTWARE.                                                 *)
+(*                                                                           *)
+(*****************************************************************************)
+
 (* rt| 0 | 1 |00 |01 |10 | 11*)
 module IntMap = Map.Make (Int)
 
@@ -24,31 +49,35 @@ end
 
 open Parameters
 
-let random_bytes () = Bls.Scalar.(random () |> to_bytes)
+let random_bytes () = Kzg.Bls.Scalar.(random () |> to_bytes)
 
-let lvl_from_index index =
-  if index = 0 then 0 else Z.log2 (Z.of_int (index + 1))
+module Index = struct
+  let lvl_from_index index =
+    if index = 0 then 0 else Z.log2 (Z.of_int (index + 1))
 
-(* [index] is the index of the considerated node in the array (not considering the cell size)
-   [lvl] is the layer where the considerated node is *)
-let left_child index =
-  let lvl = lvl_from_index index in
-  assert (lvl <= log_nb_cells) ;
-  level_offset (lvl + 1) + ((index - level_offset lvl) * 2)
+  (* [index] is the index of the considerated node in the array (not considering the cell size)
+     [lvl] is the layer where the considerated node is *)
+  let left_child index =
+    let lvl = lvl_from_index index in
+    assert (lvl <= log_nb_cells) ;
+    level_offset (lvl + 1) + ((index - level_offset lvl) * 2)
 
-let right_child index =
-  let lvl = lvl_from_index index in
-  assert (lvl <= log_nb_cells) ;
-  level_offset (lvl + 1) + (((index - level_offset lvl) * 2) + 1)
+  let right_child index =
+    let lvl = lvl_from_index index in
+    assert (lvl <= log_nb_cells) ;
+    level_offset (lvl + 1) + (((index - level_offset lvl) * 2) + 1)
 
-let parent index =
-  let lvl = lvl_from_index index in
-  assert (lvl <= log_nb_cells) ;
-  level_offset (lvl - 1) + ((index - level_offset lvl) / 2)
+  let parent index =
+    let lvl = lvl_from_index index in
+    assert (lvl <= log_nb_cells) ;
+    level_offset (lvl - 1) + ((index - level_offset lvl) / 2)
 
-let is_left index = index mod 2 = 1
+  let is_left index = index mod 2 = 1
 
-let sibling index = if is_left index then index + 1 else index - 1
+  let sibling index = if is_left index then index + 1 else index - 1
+end
+
+open Index
 
 (** Reads [len] bytes from descriptor [file_descr], storing them in
     byte sequence [buffer], starting at position [offset] in [file_descr].*)

@@ -1643,6 +1643,23 @@ let octez_kzg =
       ]
     ~preprocess:[pps ppx_repr]
 
+let octez_vector_commitment =
+  octez_lib
+    "vector_commitment"
+    ~path:"src/lib_vector_commitment"
+    ~synopsis:"Toolbox for Verkle and Merkle trees"
+    ~deps:[octez_kzg; octez_bls12_381_polynomial |> open_]
+    ~preprocess:[pps ppx_repr]
+
+let _octez_vc_test =
+  private_exe
+    "main"
+    ~path:"src/lib_vector_commitment/test"
+    ~opam:"octez-libs"
+    ~modules:["main"; "test_verkle"; "test_merkle"]
+    ~bisect_ppx:No
+    ~deps:[qcheck_alcotest; octez_vector_commitment]
+
 let octez_plonk =
   octez_lib
     "plonk"
@@ -1712,8 +1729,6 @@ let _octez_plonk_test_helpers_main =
         "test_polynomial_protocol";
         "test_range_checks";
         "test_utils";
-        "test_verkle";
-        "test_merkle";
       ]
     ~bisect_ppx:No
     ~deps:
