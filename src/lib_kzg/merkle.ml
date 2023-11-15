@@ -3,7 +3,7 @@ module IntMap = Map.Make (Int)
 
 module Parameters = struct
   (** The parameters of Merkle Tree *)
-  let log_nb_cells = 3
+  let log_nb_cells = 4
 
   let nb_cells = 1 lsl log_nb_cells
 
@@ -26,7 +26,8 @@ open Parameters
 
 let random_bytes () = Bls.Scalar.(random () |> to_bytes)
 
-let lvl_from_index index = if index = 0 then 0 else Z.log2 (Z.of_int (index + 1))
+let lvl_from_index index =
+  if index = 0 then 0 else Z.log2 (Z.of_int (index + 1))
 
 (* [index] is the index of the considerated node in the array (not considering the cell size)
    [lvl] is the layer where the considerated node is *)
@@ -141,6 +142,9 @@ let read_root file_name =
 (** Generates a random diff for [nb] elements *)
 let create_diff nb =
   IntMap.of_seq (Seq.init nb (fun _ -> (Random.int nb_cells, random_bytes ())))
+(* IntMap.of_seq
+   (Seq.init nb (fun i ->
+        (i, Bls.(Scalar.of_int (nb_cells + 1) |> Scalar.to_bytes)))) *)
 
 let update_one file_name index new_value =
   let index = index + level_offset log_nb_cells in
@@ -212,52 +216,75 @@ module IntSet = Set.Make (struct
 end)
 
 let update_commit file_name (new_values : bytes IntMap.t) =
-  let new_values =
-    IntMap.fold
-      (fun k v acc -> IntMap.add (k + level_offset log_nb_cells) v acc)
-      new_values
-      IntMap.empty
-  in
-  let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
-  let get_to_read_write index =
+  if IntMap.is_empty new_values then ()
+  else
+    (* update the new_values (that have index in the leaves) with the index in the tree *)
+    let new_values =
+      IntMap.fold
+        (fun k v acc -> IntMap.add (k + level_offset log_nb_cells) v acc)
+        new_values
+        IntMap.empty
+    in
+    let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+    let get_to_read_write index =
+      let set_to_read = ref IntSet.empty in
+      let set_to_write = ref IntSet.empty in
+      let current_index = ref index in
+      for _lvl = log_nb_cells downto 1 do
+        set_to_read := IntSet.add (sibling !current_index) !set_to_read ;
+        set_to_write := IntSet.add !current_index !set_to_write ;
+        current_index := parent !current_index
+      done ;
+      (!set_to_read, !set_to_write)
+    in
     let set_to_read = ref IntSet.empty in
-    let set_to_write = ref IntSet.empty in
+    (* add the root to set_to_write *)
+    let set_to_write = ref IntSet.(add 0 empty) in
+    IntMap.iter
+      (fun index _ ->
+        let new_to_read, new_to_write = get_to_read_write index in
+        set_to_read := IntSet.union !set_to_read new_to_read ;
+        set_to_write := IntSet.union !set_to_write new_to_write)
+      new_values ;
+    let hashes = ref new_values in
+    (* ref (IntMap.mapi (fun k v -> (v, is_left k)) new_values) in *)
+    (* Remove what is updated from the set_to_read *)
+    set_to_read := IntSet.diff !set_to_read !set_to_write ;
+    (* Could be a fold on set_to_read *)
+    IntSet.iter
+      (fun i ->
+        let buffer = Bytes.create cell_size in
+        read_file file_descr buffer ~offset:(i * cell_size) ~len:cell_size ;
+        hashes := IntMap.add i buffer !hashes)
+      !set_to_read ;
 
-    let current_index = ref index in
-    for _lvl = log_nb_cells downto 1 do
-      set_to_read := IntSet.add (sibling !current_index) !set_to_read ;
-      set_to_write := IntSet.add !current_index !set_to_write ;
-      current_index := parent !current_index
-    done ;
-    (!set_to_read, !set_to_write)
-  in
-  let set_to_read = ref IntSet.empty in
-  let set_to_write = ref IntSet.empty in
-  IntMap.iter
-    (fun index _ ->
-      let new_to_read, new_to_write = get_to_read_write index in
-      set_to_read := IntSet.union !set_to_read new_to_read ;
-      set_to_write := IntSet.union !set_to_write new_to_write)
-    new_values ;
-  let hashes = ref new_values in
-  (* ref (IntMap.mapi (fun k v -> (v, is_left k)) new_values) in *)
-  let buffer = Bytes.create cell_size in
-  IntSet.iter
-    (fun i ->
-      read_file file_descr buffer ~offset:(i * cell_size) ~len:cell_size ;
-      hashes := IntMap.add i buffer !hashes)
-    !set_to_read ;
-
-  let write index =
-    let left_child = IntMap.find (left_child index) !hashes in
-    let right_child = IntMap.find (right_child index) !hashes in
-    let to_write = hash (Bytes.cat left_child right_child) in
-    hashes := IntMap.add index to_write !hashes ;
-    write_file file_descr to_write ~offset:(index * cell_size) ~len:cell_size
-  in
-  IntSet.iter write !set_to_write
+    let write index =
+      match IntMap.find_opt index new_values with
+      | Some new_value ->
+          hashes := IntMap.add index new_value !hashes ;
+          write_file
+            file_descr
+            new_value
+            ~offset:(index * cell_size)
+            ~len:cell_size
+      | None ->
+          let left_child = IntMap.find (left_child index) !hashes in
+          let right_child = IntMap.find (right_child index) !hashes in
+          let to_write = hash (Bytes.cat left_child right_child) in
+          hashes := IntMap.add index to_write !hashes ;
+          write_file
+            file_descr
+            to_write
+            ~offset:(index * cell_size)
+            ~len:cell_size
+    in
+    IntSet.iter write !set_to_write
 
 (* generates array for the leaves *)
 let generate_leaves () =
   (* we could hash the fr elements if we want a different hash function *)
   Array.init nb_cells (fun _ -> random_bytes ())
+(* Array.init nb_cells (fun i -> Bls.Scalar.(of_int i |> to_bytes)) *)
+
+let update_leaves leaves update =
+  IntMap.iter (fun i v -> leaves.(i) <- v) update
