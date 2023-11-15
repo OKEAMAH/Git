@@ -57,6 +57,8 @@ module type T = sig
 
   type dropbox
 
+  type prio_merge_queue
+
   (** An error returned when waiting for a message pushed to the worker.
       [Closed errs] is returned if the worker is terminated or has crashed. If the
       worker is terminated, [errs] is an empty list.
@@ -76,6 +78,14 @@ module type T = sig
           dropbox t -> any_request -> any_request option -> any_request option;
       }
         -> dropbox buffer_kind
+    | Prio_merge_queue : {
+        merge :
+          prio_merge_queue t ->
+          any_request ->
+          any_request option ->
+          any_request option;
+      }
+        -> prio_merge_queue buffer_kind
 
   and any_request = Any_request : _ Request.t -> any_request
 
@@ -203,6 +213,42 @@ module type T = sig
     (** Adds a message to the queue immediately. *)
     val push_request_now :
       infinite queue t -> ('a, 'request_error) Request.t -> unit
+  end
+
+  module Priority_merge_queue : sig
+    val push_high_priority_request_and_wait :
+      prio_merge_queue t ->
+      ('a, 'request_error) Request.t ->
+      ('a, 'request_error message_error) result Lwt.t
+
+    val push_low_priority_request_and_wait :
+      prio_merge_queue t ->
+      ('a, 'request_error) Request.t ->
+      ('a, 'request_error message_error) result Lwt.t
+
+    val push_high_priority_request_now :
+      prio_merge_queue t -> ('a, 'request_error) Request.t -> unit
+
+    val push_low_priority_request_now :
+      prio_merge_queue t -> ('a, 'request_error) Request.t -> unit
+
+    val push_high_priority_request :
+      prio_merge_queue t -> ('a, 'request_error) Request.t -> bool Lwt.t
+
+    val push_low_priority_request :
+      prio_merge_queue t -> ('a, 'request_error) Request.t -> bool Lwt.t
+
+    val put_mergeable_request :
+      prio_merge_queue t -> ('a, 'request_error) Request.t -> unit
+
+    val put_mergeable_request_and_wait :
+      prio_merge_queue t ->
+      ('a, 'request_error) Request.t ->
+      ('a, 'request_error message_error) result Lwt.t
+
+    val pending_requests : prio_merge_queue t -> (Ptime.t * Request.view) trace
+
+    val pending_requests_length : prio_merge_queue t -> int
   end
 
   (** Exports the canceler to allow cancellation of other tasks when this

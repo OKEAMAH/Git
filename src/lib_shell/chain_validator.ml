@@ -599,7 +599,7 @@ let on_notify_head w peer_id (hash, header) mempool =
   | Ok () -> (
       match !(nv.prevalidator) with
       | Some prevalidator ->
-          let* () =
+          let () =
             Prevalidator.notify_operations prevalidator peer_id mempool
           in
           return_ok_unit
