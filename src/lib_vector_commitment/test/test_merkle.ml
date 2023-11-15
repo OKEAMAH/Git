@@ -22,7 +22,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-open Vector_commitment.Merkle
+open Vector_commitment.Merkle.Internal
 
 let test_update_one () =
   let fd = "test_mt" in
@@ -69,7 +69,7 @@ let test_update update_size () =
   commit_storage fd leaves ;
   (* Printf.printf "\ninitial storage\n" ;
      print_storage fd ; *)
-  let update = create_diff (1 lsl update_size) in
+  let update = create_update (1 lsl update_size) in
   update_commit fd update ;
   (* Printf.printf "\nafter update_one\n" ;
      print_storage fd ; *)

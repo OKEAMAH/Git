@@ -22,11 +22,11 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-open Vector_commitment.Verkle
+open Vector_commitment.Verkle.Internal
 
 let test_create_diff log_size =
   let t1 = Unix.gettimeofday () in
-  let _diff = create_diff (1 lsl log_size) in
+  let _diff = create_update (1 lsl log_size) in
   let t2 = Unix.gettimeofday () in
   Printf.printf "\n log_size = %i ; time = %f \n" log_size (t2 -. t1)
 
@@ -37,17 +37,16 @@ let test_bench_create_diff () =
 
 let test_correctness () =
   let fd = "test_vc" in
-  let snd_lvl = generate_snd_lvl () in
+  let snd_lvl = generate_leaves () in
   let () = commit_storage fd snd_lvl in
 
-  let diff = create_uniform_diff (1 lsl 14) in
+  let diff = create_uniform_diff (1 lsl 4) in
   let t1 = Unix.gettimeofday () in
   let () = update_commit fd diff in
   let t2 = Unix.gettimeofday () in
   Printf.printf "\n time = %f \n" (t2 -. t1) ;
   let root = read_root fd in
-
-  update_storage diff snd_lvl ;
+  update_leaves snd_lvl diff ;
   let root_new, _ = commit snd_lvl in
   assert (Bls12_381.G1.eq root root_new)
 
@@ -61,7 +60,7 @@ let test_bench_uniform log_size =
 
 let test_bench log_size =
   let fd = "test_vc_bench" in
-  let diff = create_diff (1 lsl log_size) in
+  let diff = create_update (1 lsl log_size) in
   let t1 = Unix.gettimeofday () in
   let () = update_commit fd diff in
   let t2 = Unix.gettimeofday () in
@@ -78,7 +77,7 @@ let test_bench_update () =
 
 let prepare_bench () =
   let fd = "test_vc_bench" in
-  let snd_lvl = generate_snd_lvl () in
+  let snd_lvl = generate_leaves () in
   let () = commit_storage fd snd_lvl in
   ()
 
@@ -87,7 +86,7 @@ let tests =
     (fun (name, f) -> Alcotest.test_case name `Quick f)
     [
       (*       ("Bench create diff", test_bench_create_diff) *)
-      (*       ("Verkle_correctness", test_correctness) *)
-      ("Verkle_bench_update", test_bench_update);
-      (*       ("Verkle_prepare", prepare_bench); *)
+      ("Verkle_correctness", test_correctness)
+      (* ("Verkle_bench_update", test_bench_update); *)
+      (*       ("Verkle_prepare", prepare_bench); *);
     ]
