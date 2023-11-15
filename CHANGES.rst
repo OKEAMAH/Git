@@ -126,6 +126,9 @@ Smart Rollup node
 - Fix header in messages store to use predecessor hash to avoid missing pointer
   in case of reorganization and GC. (MR :gl:`!10847`)
 
+- New RPC POST ``/global/block/<block-id>/helpers/proofs/outbox`` to compute
+  outbox proofs using JSON messages. (MR :gl:`!10840`)
+
 Smart Rollup client
 -------------------
 
