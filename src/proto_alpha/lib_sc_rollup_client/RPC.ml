@@ -19,12 +19,12 @@ let get_state_value_command cctxt block key =
     {key}
     ()
 
-let get_outbox_proof cctxt serialized_output =
-  Block_services.(make_call Sc_rollup_services.Block.Helpers.outbox_proof)
+let get_outbox_proof cctxt output =
+  Block_services.(make_call Sc_rollup_services.Block.Helpers.outbox_proof_post)
     cctxt
     ((), `Head)
-    serialized_output
     ()
+    output
 
 let get_outbox_proof_simple cctxt outbox_level message_index =
   Block_services.(
