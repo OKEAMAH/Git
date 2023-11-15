@@ -67,7 +67,7 @@ pub struct TztTest<'a> {
     pub output: TestExpectation<'a>,
     pub amount: Option<i64>,
     pub chain_id: Option<ChainId>,
-    pub parameter: Option<Type>,
+    pub parameter: Option<Micheline<'a>>,
     pub self_addr: Option<AddressHash>,
 }
 
@@ -148,9 +148,7 @@ impl<'a> TryFrom<Vec<TztEntity<'a>>> for TztTest<'a> {
                     ))
                 })
                 .transpose()?,
-            parameter: m_parameter
-                .map(|v| parse_ty(&mut Ctx::default(), &v))
-                .transpose()?,
+            parameter: m_parameter,
             self_addr: m_self
                 .map(|v| {
                     Ok::<_, TcError>(
@@ -240,7 +238,7 @@ pub enum TztOutput<'a> {
 fn execute_tzt_test_code(
     code: Micheline,
     ctx: &mut Ctx,
-    parameter: Option<&Type>,
+    parameter: Option<Micheline>,
     input: Vec<(Type, TypedValue)>,
 ) -> Result<(FailingTypeStack, IStack), TestError> {
     // Build initial stacks (type and value) for running the test from the test input
@@ -249,13 +247,18 @@ fn execute_tzt_test_code(
 
     let mut t_stack: FailingTypeStack = FailingTypeStack::Ok(TopIsFirst::from(typs).0);
 
+    let entrypoints = parameter
+        .as_ref()
+        .map(|e| e.get_entrypoints(ctx))
+        .transpose()?;
+
     // Run the code and save the status of the
     // final result as a Result<(), TestError>.
     //
     // This value along with the test expectation
     // from the test file will be used to decide if
     // the test was a success or a fail.
-    let typechecked_code = typecheck_instruction(&code, ctx, parameter, &mut t_stack)?;
+    let typechecked_code = typecheck_instruction(&code, ctx, entrypoints.as_ref(), &mut t_stack)?;
     let mut i_stack: IStack = TopIsFirst::from(vals).0;
     typechecked_code.interpret(ctx, &mut i_stack)?;
     Ok((t_stack, i_stack))
@@ -271,7 +274,6 @@ pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
         chain_id: test.chain_id.unwrap_or(Ctx::default().chain_id),
         self_address: test.self_addr.unwrap_or(Ctx::default().self_address),
     };
-    let execution_result =
-        execute_tzt_test_code(test.code, &mut ctx, test.parameter.as_ref(), test.input);
+    let execution_result = execute_tzt_test_code(test.code, &mut ctx, test.parameter, test.input);
     check_expectation(&mut ctx, test.output, execution_result)
 }
