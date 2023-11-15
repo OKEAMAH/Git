@@ -5,9 +5,11 @@
 /*                                                                            */
 /******************************************************************************/
 
+use crate::ast::annotations::FieldAnnotation;
+
 use super::AddressError;
 
-#[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq, Hash)]
 pub struct Entrypoint(String);
 
 impl std::fmt::Display for Entrypoint {
@@ -76,6 +78,12 @@ impl TryFrom<&[u8]> for Entrypoint {
             }
             Ok(ep)
         }
+    }
+}
+
+impl From<FieldAnnotation<'_>> for Entrypoint {
+    fn from(x: FieldAnnotation<'_>) -> Self {
+        Entrypoint(x.as_str().to_owned())
     }
 }
 
