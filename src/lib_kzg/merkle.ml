@@ -24,6 +24,8 @@ end
 
 open Parameters
 
+let random_bytes () = Bls.Scalar.(random () |> to_bytes)
+
 let lvl_from_index index = if index = 0 then 0 else Z.(log2 (of_int index))
 
 (* [index] is the index of the considerated node in the array (not considering the cell size)
@@ -137,7 +139,8 @@ let read_root file_name =
   buffer_root
 
 (** Generates a random diff for [nb] elements *)
-let create_diff _nb = assert false
+let create_diff nb =
+  IntMap.of_seq (Seq.init nb (fun _ -> (Random.int nb_cells, random_bytes ())))
 
 let update_one file_name index new_value =
   let index = index + level_offset log_nb_cells in
@@ -152,12 +155,12 @@ let update_one file_name index new_value =
       (fun (lvl, node) _ ->
         Printf.printf "\nlvl  : %d" lvl ;
         Printf.printf "\nnode : %d" node ;
-        Printf.printf "\nsibl : %d\n" (sibling ~lvl node) ;
+        Printf.printf "\nsibl : %d\n" (sibling node) ;
         let buffer = Bytes.create cell_size in
         read_file
           file_descr
           buffer
-          ~offset:(sibling ~lvl node * cell_size)
+          ~offset:(sibling node * cell_size)
           ~len:cell_size ;
         siblings.(log_nb_cells - lvl) <- (is_left node, buffer) ;
         (lvl - 1, parent node))
@@ -200,13 +203,13 @@ let update_one file_name index new_value =
   in
   ()
 
-module My_int = struct
+(* we want to handle indexes in reverse order (to go from the leaves to the
+   root) ; that’s why we use int in reverse order *)
+module IntSet = Set.Make (struct
   type t = int
 
   let compare x y = Int.compare y x
-end
-
-module IntSet = Set.Make (My_int)
+end)
 
 let update_commit file_name (new_values : bytes IntMap.t) =
   let new_values =
@@ -222,7 +225,7 @@ let update_commit file_name (new_values : bytes IntMap.t) =
 
     let current_index = ref index in
     for lvl = log_nb_cells downto 1 do
-      set_to_read := IntSet.add (sibling ~lvl !current_index) !set_to_read ;
+      set_to_read := IntSet.add (sibling !current_index) !set_to_read ;
       set_to_write := IntSet.add !current_index !set_to_write ;
       current_index := parent !current_index
     done ;
@@ -252,13 +255,9 @@ let update_commit file_name (new_values : bytes IntMap.t) =
     hashes := IntMap.add index to_write !hashes ;
     write_file file_descr to_write ~offset:(index * cell_size) ~len:cell_size
   in
-  IntSet.iter write !set_to_write ;
-  ()
-
-(** Modifies the storage and recomputes the commitment according to [diff]. *)
-let update_commit _file_name _diff = assert false
+  IntSet.iter write !set_to_write
 
 (* generates array for the leaves *)
 let generate_leaves () =
   (* we could hash the fr elements if we want a different hash function *)
-  Array.init nb_cells (fun _ -> Bls.Scalar.(random () |> to_bytes))
+  Array.init nb_cells (fun _ -> random_bytes ())
