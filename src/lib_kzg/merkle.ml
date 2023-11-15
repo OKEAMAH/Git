@@ -26,7 +26,7 @@ open Parameters
 
 let random_bytes () = Bls.Scalar.(random () |> to_bytes)
 
-let lvl_from_index index = if index = 0 then 0 else Z.(log2 (of_int index))
+let lvl_from_index index = if index = 0 then 0 else Z.log2 (Z.of_int (index + 1))
 
 (* [index] is the index of the considerated node in the array (not considering the cell size)
    [lvl] is the layer where the considerated node is *)
@@ -224,7 +224,7 @@ let update_commit file_name (new_values : bytes IntMap.t) =
     let set_to_write = ref IntSet.empty in
 
     let current_index = ref index in
-    for lvl = log_nb_cells downto 1 do
+    for _lvl = log_nb_cells downto 1 do
       set_to_read := IntSet.add (sibling !current_index) !set_to_read ;
       set_to_write := IntSet.add !current_index !set_to_write ;
       current_index := parent !current_index
