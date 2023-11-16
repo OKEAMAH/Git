@@ -1,9 +1,23 @@
 meta:
   id: p2p_point__id
   endian: be
-  imports:
-  - p2p_point__id
 doc: ! 'Encoding id: p2p_point.id'
+types:
+  bytes_dyn_uint30:
+    seq:
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
+  uint30:
+    seq:
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
 seq:
 - id: p2p_point__id
-  type: p2p_point__id
+  type: bytes_dyn_uint30
+  doc: Identifier for a peer point
