@@ -94,9 +94,9 @@ let summary ~title ~description =
   | Some t, Some d -> Some (t ^ ": " ^ d)
 
 (* when an encoding has id [x],
-   then the attr for its size has id [size_id_of_id x].
+   then the attr for its size has id [len_id_of_id x].
    Kaitia recomment to use the [len_] prefix in this case. *)
-let size_id_of_id id = "len_" ^ id
+let len_id_of_id id = "len_" ^ id
 
 (* in kaitai-struct, some fields can be added to single attributes but not to a
    group of them. When we want to attach a field to a group of attributes, we
@@ -283,10 +283,10 @@ let rec seq_field_of_data_encoding0 :
       (state, [Ground.Attr.bytes ~id Dynamic30])
   | Dynamic_size {kind; encoding = {encoding = Check_size {limit; encoding}; _}}
     ->
-      let size_id = size_id_of_id id in
-      let size_attr =
+      let len_id = len_id_of_id id in
+      let len_attr =
         Helpers.merge_valid
-          (Ground.Attr.binary_length_kind ~id:size_id kind)
+          (Ground.Attr.binary_length_kind ~id:len_id kind)
           (ValidationMax (Ast.IntNum limit))
       in
       let state, attrs = seq_field_of_data_encoding state encoding id in
@@ -294,10 +294,10 @@ let rec seq_field_of_data_encoding0 :
         redirect
           state
           attrs
-          (fun attr -> {attr with size = Some (Ast.Name size_id)})
+          (fun attr -> {attr with size = Some (Ast.Name len_id)})
           id
       in
-      (state, [size_attr; attr])
+      (state, [len_attr; attr])
   | Padded (encoding, pad) ->
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let pad_attr =
@@ -348,18 +348,18 @@ let rec seq_field_of_data_encoding0 :
   | Union {kind = _; tag_size; tagged_cases = _; match_case = _; cases} ->
       seq_field_of_union state tag_size cases id
   | Dynamic_size {kind; encoding} ->
-      let size_id = size_id_of_id id in
-      let size_attr = Ground.Attr.binary_length_kind ~id:size_id kind in
+      let len_id = len_id_of_id id in
+      let len_attr = Ground.Attr.binary_length_kind ~id:len_id kind in
 
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let state, attr =
         redirect
           state
           attrs
-          (fun attr -> {attr with size = Some (Ast.Name size_id)})
+          (fun attr -> {attr with size = Some (Ast.Name len_id)})
           id
       in
-      (state, [size_attr; attr])
+      (state, [len_attr; attr])
   | Splitted {encoding; json_encoding = _; is_obj = _; is_tup = _} ->
       seq_field_of_data_encoding state encoding id
   | Describe {encoding; id; description; title} ->
