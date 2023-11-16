@@ -40,12 +40,6 @@ types:
     - id: case__3
       type: s8
       if: (amount_tag == amount_tag::case__3)
-  arbitrary:
-    seq:
-    - id: len_arbitrary
-      type: s4
-    - id: arbitrary
-      size: len_arbitrary
   arithmetic__pvm__with__proof:
     seq:
     - id: tree_proof
@@ -62,7 +56,9 @@ types:
   back_pointers_0:
     seq:
     - id: len_back_pointers
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: back_pointers
       type: back_pointers
       size: len_back_pointers
@@ -81,12 +77,6 @@ types:
       size: 32
     - id: ballot
       type: s1
-  batch:
-    seq:
-    - id: len_batch
-      type: s4
-    - id: batch
-      size: len_batch
   before:
     seq:
     - id: before_tag
@@ -105,7 +95,9 @@ types:
   bh1_0:
     seq:
     - id: len_bh1
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bh1
       type: bh1
       size: len_bh1
@@ -116,16 +108,20 @@ types:
   bh2_0:
     seq:
     - id: len_bh2
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: bh2
       type: bh2
       size: len_bh2
-  boot_sector:
+  bytes_dyn_uint30:
     seq:
-    - id: len_boot_sector
-      type: s4
-    - id: boot_sector
-      size: len_boot_sector
+    - id: len_bytes_dyn_uint30
+      type: u4
+      valid:
+        max: 1073741823
+    - id: bytes_dyn_uint30
+      size: len_bytes_dyn_uint30
   case__0:
     seq:
     - id: case__0_field0
@@ -146,7 +142,9 @@ types:
   case__0_field3_0:
     seq:
     - id: len_case__0_field3
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: case__0_field3
       type: case__0_field3
       size: len_case__0_field3
@@ -219,7 +217,7 @@ types:
       type: case__193_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
     - id: case__195
-      type: case__195
+      type: bytes_dyn_uint30
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__195)
     - id: case__224
       type: case__224
@@ -353,7 +351,9 @@ types:
   case__131_0:
     seq:
     - id: len_case__131
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: case__131
       type: case__131
       size: len_case__131
@@ -449,12 +449,6 @@ types:
     - id: case__193
       type: case__193
       size: len_case__193
-  case__195:
-    seq:
-    - id: len_case__195
-      type: s4
-    - id: case__195
-      size: len_case__195
   case__1_field3:
     seq:
     - id: case__1_field3_entries
@@ -463,7 +457,9 @@ types:
   case__1_field3_0:
     seq:
     - id: len_case__1_field3
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: case__1_field3
       type: case__1_field3
       size: len_case__1_field3
@@ -536,7 +532,7 @@ types:
       type: case__193_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
     - id: case__195
-      type: case__195
+      type: bytes_dyn_uint30
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__195)
     - id: case__224
       type: case__224
@@ -658,7 +654,9 @@ types:
   case__2_field3_0:
     seq:
     - id: len_case__2_field3
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: case__2_field3
       type: case__2_field3
       size: len_case__2_field3
@@ -731,7 +729,7 @@ types:
       type: case__193_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
     - id: case__195
-      type: case__195
+      type: bytes_dyn_uint30
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__195)
     - id: case__224
       type: case__224
@@ -765,7 +763,9 @@ types:
   case__3_field3_0:
     seq:
     - id: len_case__3_field3
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: case__3_field3
       type: case__3_field3
       size: len_case__3_field3
@@ -838,7 +838,7 @@ types:
       type: case__193_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
     - id: case__195
-      type: case__195
+      type: bytes_dyn_uint30
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__195)
     - id: case__224
       type: case__224
@@ -912,12 +912,6 @@ types:
 
 
         case__9_field1_field1'
-  code:
-    seq:
-    - id: len_code
-      type: s4
-    - id: code
-      size: len_code
   commitment:
     seq:
     - id: level
@@ -940,18 +934,6 @@ types:
       type: s4
     - id: number_of_ticks
       type: s4
-  content:
-    seq:
-    - id: len_content
-      type: s4
-    - id: content
-      size: len_content
-  contents:
-    seq:
-    - id: len_contents
-      type: s4
-    - id: contents
-      size: len_contents
   dal_publish_slot_header:
     seq:
     - id: source
@@ -1017,7 +999,9 @@ types:
   dissection_0:
     seq:
     - id: len_dissection
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: dissection
       type: dissection
       size: len_dissection
@@ -1073,12 +1057,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  entrypoint:
-    seq:
-    - id: len_entrypoint
-      type: s4
-    - id: entrypoint
-      size: len_entrypoint
   extender:
     seq:
     - id: length
@@ -1262,7 +1240,7 @@ types:
       type: increase_paid_storage
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::increase_paid_storage)
     - id: failing_noop
-      type: arbitrary
+      type: bytes_dyn_uint30
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::failing_noop)
     - id: register_global_constant
       type: register_global_constant
@@ -1326,16 +1304,14 @@ types:
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::sc_rollup_dal_slot_subscribe)
   id_014__ptkathma__rollup_address:
     seq:
-    - id: len_id_014__ptkathma__rollup_address
-      type: s4
     - id: id_014__ptkathma__rollup_address
-      size: len_id_014__ptkathma__rollup_address
+      type: bytes_dyn_uint30
   id_014__ptkathma__scripted__contracts:
     seq:
     - id: code
-      type: code
+      type: bytes_dyn_uint30
     - id: storage
-      type: storage
+      type: bytes_dyn_uint30
   id_014__ptkathma__tx_rollup_id:
     seq:
     - id: rollup_hash
@@ -1356,24 +1332,20 @@ types:
   inc_0:
     seq:
     - id: len_inc
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: inc
       type: inc
       size: len_inc
   inc_entries:
     seq:
     - id: index
-      type: s4
+      type: int31
     - id: content
       size: 32
     - id: back_pointers
       type: back_pointers_0
-  inclusion__proof:
-    seq:
-    - id: len_inclusion__proof
-      type: s4
-    - id: inclusion__proof
-      size: len_inclusion__proof
   increase_paid_storage:
     seq:
     - id: source
@@ -1439,7 +1411,9 @@ types:
   inode_values_0:
     seq:
     - id: len_inode_values
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: inode_values
       type: inode_values
       size: len_inode_values
@@ -1462,6 +1436,13 @@ types:
       type: inode_values_elt_field0_0
     - id: inode_values_elt_field1
       type: tree_encoding
+  int31:
+    seq:
+    - id: int31
+      type: s4
+      valid:
+        min: -1073741824
+        max: 1073741823
   level:
     seq:
     - id: rollup
@@ -1489,7 +1470,7 @@ types:
       type: u1
       enum: message_tag
     - id: batch
-      type: batch
+      type: bytes_dyn_uint30
       if: (message_tag == message_tag::batch)
     - id: deposit
       type: deposit
@@ -1502,22 +1483,16 @@ types:
   message_1:
     seq:
     - id: len_message
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: message
       type: message_0
       size: len_message
-  message_2:
-    seq:
-    - id: len_message
-      type: s4
-    - id: message
-      size: len_message
   message_entries:
     seq:
-    - id: len_message_elt
-      type: s4
     - id: message_elt
-      size: len_message_elt
+      type: bytes_dyn_uint30
   message_path:
     seq:
     - id: message_path_entries
@@ -1526,7 +1501,9 @@ types:
   message_path_0:
     seq:
     - id: len_message_path
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: message_path
       type: message_path
       size: len_message_path
@@ -1552,7 +1529,9 @@ types:
   message_result_path_0:
     seq:
     - id: len_message_result_path
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: message_result_path
       type: message_result_path
       size: len_message_result_path
@@ -1564,7 +1543,9 @@ types:
   message_result_path_2:
     seq:
     - id: len_message_result_path
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: message_result_path
       type: message_result_path_1
       size: len_message_result_path
@@ -1584,7 +1565,9 @@ types:
   messages_0:
     seq:
     - id: len_messages
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: messages
       type: messages
       size: len_messages
@@ -1625,7 +1608,9 @@ types:
   node_0:
     seq:
     - id: len_node
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: node
       type: node
       size: len_node
@@ -1651,7 +1636,7 @@ types:
   old_levels_messages:
     seq:
     - id: index
-      type: s4
+      type: int31
     - id: content
       size: 32
     - id: back_pointers
@@ -1659,7 +1644,7 @@ types:
   old_levels_messages_0:
     seq:
     - id: index
-      type: s4
+      type: int31
     - id: content
       size: 32
     - id: back_pointers
@@ -1671,7 +1656,9 @@ types:
   op1_0:
     seq:
     - id: len_op1
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: op1
       type: op1
       size: len_op1
@@ -1682,7 +1669,9 @@ types:
   op1_2:
     seq:
     - id: len_op1
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: op1
       type: op1_1
       size: len_op1
@@ -1693,7 +1682,9 @@ types:
   op2_0:
     seq:
     - id: len_op2
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: op2
       type: op2
       size: len_op2
@@ -1704,7 +1695,9 @@ types:
   op2_2:
     seq:
     - id: len_op2
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: op2
       type: op2_1
       size: len_op2
@@ -1745,19 +1738,7 @@ types:
       type: id_014__ptkathma__entrypoint
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
-      type: value
-  parameters_ty:
-    seq:
-    - id: len_parameters_ty
-      type: s4
-    - id: parameters_ty
-      size: len_parameters_ty
-  payload:
-    seq:
-    - id: len_payload
-      type: s4
-    - id: payload
-      size: len_payload
+      type: bytes_dyn_uint30
   predecessor:
     seq:
     - id: predecessor_tag
@@ -1800,7 +1781,9 @@ types:
   previous_message_result_path_0:
     seq:
     - id: len_previous_message_result_path
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: previous_message_result_path
       type: previous_message_result_path
       size: len_previous_message_result_path
@@ -1861,7 +1844,9 @@ types:
   proposals_0:
     seq:
     - id: len_proposals
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: proposals
       type: proposals
       size: len_proposals
@@ -1937,7 +1922,7 @@ types:
     - id: storage_limit
       type: n
     - id: value
-      type: value
+      type: bytes_dyn_uint30
   requested:
     seq:
     - id: requested_tag
@@ -2045,11 +2030,11 @@ types:
     - id: outbox_level
       type: s4
     - id: message_index
-      type: s4
+      type: int31
     - id: inclusion__proof
-      type: inclusion__proof
+      type: bytes_dyn_uint30
     - id: message
-      type: message_2
+      type: bytes_dyn_uint30
   sc_rollup_originate:
     seq:
     - id: source
@@ -2067,9 +2052,9 @@ types:
       type: u2
       enum: kind_tag
     - id: boot_sector
-      type: boot_sector
+      type: bytes_dyn_uint30
     - id: parameters_ty
-      type: parameters_ty
+      type: bytes_dyn_uint30
   sc_rollup_publish:
     seq:
     - id: source
@@ -2197,7 +2182,9 @@ types:
   skips_0:
     seq:
     - id: len_skips
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: skips
       type: skips
       size: len_skips
@@ -2230,14 +2217,16 @@ types:
   skips_elt_field1_0:
     seq:
     - id: len_skips_elt_field1
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: skips_elt_field1
       type: skips_elt_field1
       size: len_skips_elt_field1
   skips_elt_field1_entries:
     seq:
     - id: index
-      type: s4
+      type: int31
     - id: content
       size: 32
     - id: back_pointers
@@ -2255,7 +2244,7 @@ types:
     - id: index
       type: u1
     - id: header
-      type: s4
+      type: int31
   solution:
     seq:
     - id: solution_field0
@@ -2269,7 +2258,7 @@ types:
     - id: message_counter
       type: n
     - id: payload
-      type: payload
+      type: bytes_dyn_uint30
   some_0:
     seq:
     - id: skips
@@ -2288,7 +2277,9 @@ types:
   sparse_proof_0:
     seq:
     - id: len_sparse_proof
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: sparse_proof
       type: sparse_proof
       size: len_sparse_proof
@@ -2300,7 +2291,9 @@ types:
   sparse_proof_2:
     seq:
     - id: len_sparse_proof
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: sparse_proof
       type: sparse_proof_1
       size: len_sparse_proof
@@ -2336,24 +2329,6 @@ types:
     - id: proof
       type: proof_0
       if: (step_tag == step_tag::proof)
-  storage:
-    seq:
-    - id: len_storage
-      type: s4
-    - id: storage
-      size: len_storage
-  ticket_contents:
-    seq:
-    - id: len_ticket_contents
-      type: s4
-    - id: ticket_contents
-      size: len_ticket_contents
-  ticket_ty:
-    seq:
-    - id: len_ticket_ty
-      type: s4
-    - id: ticket_ty
-      size: len_ticket_ty
   tickets_info:
     seq:
     - id: tickets_info_entries
@@ -2362,16 +2337,18 @@ types:
   tickets_info_0:
     seq:
     - id: len_tickets_info
-      type: s4
+      type: u4
+      valid:
+        max: 1073741823
     - id: tickets_info
       type: tickets_info
       size: len_tickets_info
   tickets_info_entries:
     seq:
     - id: contents
-      type: contents
+      type: bytes_dyn_uint30
     - id: ty
-      type: ty
+      type: bytes_dyn_uint30
     - id: ticketer
       type: id_014__ptkathma__contract_id
       doc: ! >-
@@ -2422,9 +2399,9 @@ types:
     - id: storage_limit
       type: n
     - id: ticket_contents
-      type: ticket_contents
+      type: bytes_dyn_uint30
     - id: ticket_ty
-      type: ticket_ty
+      type: bytes_dyn_uint30
     - id: ticket_ticketer
       type: id_014__ptkathma__contract_id
       doc: ! >-
@@ -2438,14 +2415,14 @@ types:
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
-      type: entrypoint
+      type: bytes_dyn_uint30
   tree_encoding:
     seq:
     - id: tree_encoding_tag
       type: u1
       enum: tree_encoding_tag
     - id: value
-      type: value
+      type: bytes_dyn_uint30
       if: (tree_encoding_tag == tree_encoding_tag::value)
     - id: blinded_value
       size: 32
@@ -2515,7 +2492,7 @@ types:
     - id: context_hash
       size: 32
     - id: message_index
-      type: s4
+      type: int31
     - id: message_result_path
       type: message_result_path_2
     - id: tickets_info
@@ -2642,25 +2619,19 @@ types:
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
     - id: content
-      type: content
+      type: bytes_dyn_uint30
     - id: burn_limit_tag
       type: u1
       enum: bool
     - id: burn_limit
       type: id_014__ptkathma__mutez
       if: (burn_limit_tag == bool::true)
-  ty:
+  uint30:
     seq:
-    - id: len_ty
-      type: s4
-    - id: ty
-      size: len_ty
-  value:
-    seq:
-    - id: len_value
-      type: s4
-    - id: value
-      size: len_value
+    - id: uint30
+      type: u4
+      valid:
+        max: 1073741823
   wasm__2__0__0__pvm__with__proof:
     seq:
     - id: tree_proof
