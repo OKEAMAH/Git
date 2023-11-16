@@ -46,7 +46,7 @@ functor
 
     module Tree_Parameters = struct
       (** The parameters of Verkle Tree *)
-      let log_nb_cells = P.log_nb_leaves
+      let log_nb_cells = P.log_nb_cells
 
       (* the square root should be a power of two  *)
       let () = assert (log_nb_cells mod 2 = 0)

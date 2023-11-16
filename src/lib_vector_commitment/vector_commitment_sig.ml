@@ -24,9 +24,9 @@
 (*****************************************************************************)
 
 module type Parameters = sig
-  (** 2^[log_nb_leaves] is the number of elements in [leaves].
-       [log_nb_leaves] should be divisible by 2. *)
-  val log_nb_leaves : int
+  (** 2^[log_nb_cells] is the number of elements in [leaves].
+       [log_nb_cells] should be divisible by 2. *)
+  val log_nb_cells : int
 end
 
 module type Vector_commitment = sig

@@ -28,7 +28,7 @@ module Make_VC_test
 struct
   (* Parameters for functional correctness tests *)
   module Params_FC = struct
-    let log_nb_leaves = 8
+    let log_nb_cells = 8
   end
 
   module VC = Make_VC (Params_FC)
