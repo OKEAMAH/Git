@@ -92,10 +92,92 @@ let first_available_level ~data_dir store =
 let check_some hash what = function
   | Some x -> Ok x
   | None ->
-      error_with "Could not read %s at %a after export." what Block_hash.pp hash
+      error_with "Could not read %s at %a after import." what Block_hash.pp hash
+
+let check_block_data (store : _ Store.t) context hash =
+  let open Lwt_result_syntax in
+  let* b = Store.L2_blocks.read store.l2_blocks hash in
+  let*? _b, header = check_some hash "L2 block" b in
+  let* messages = Store.Messages.read store.messages header.inbox_witness in
+  let*? messages, _ = check_some hash "messages" messages in
+  let* inbox = Store.Inboxes.read store.inboxes header.inbox_hash in
+  let*? inbox, () = check_some hash "inbox" inbox in
+  let* commitment =
+    match header.commitment_hash with
+    | None -> return_none
+    | Some commitment_hash ->
+        let* commitment =
+          Store.Commitments.read store.commitments commitment_hash
+        in
+        let*? commitment, () = check_some hash "commitment" commitment in
+        return_some commitment
+  in
+  (* Ensure head context is available. *)
+  let*! head_ctxt = Context.checkout context header.context in
+  let*? head_ctxt = check_some hash "context" head_ctxt in
+  return (b, header, inbox, messages, commitment, head_ctxt)
+
+let check_block_data_consistency kind (store : _ Store.t) context hash =
+  let open Lwt_result_syntax in
+  let* _b, header, inbox, _messages, commitment, head_ctxt =
+    check_block_data store context hash
+  in
+  let* (module Plugin) =
+    Protocol_plugins.proto_plugin_for_level_with_store store header.level
+  in
+  let*! pvm_state = Context.PVMState.find head_ctxt in
+  let*? pvm_state = check_some hash "pvm_state" pvm_state in
+  let*! state_hash = Plugin.Pvm.state_hash kind pvm_state in
+  let* () =
+    match (commitment, header.commitment_hash) with
+    | None, None -> return_unit
+    | Some _, None | None, Some _ -> assert false
+    | Some commitment, Some commitment_hash ->
+        let hash_of_commitment = Commitment.hash commitment in
+        let*? () =
+          error_unless Commitment.Hash.(hash_of_commitment = commitment_hash)
+          @@ error_of_fmt
+               "Erroneous commitment %a for level %ld instead of %a."
+               Commitment.Hash.pp
+               hash_of_commitment
+               header.level
+               Commitment.Hash.pp
+               commitment_hash
+        in
+        let*? () =
+          error_unless State_hash.(state_hash = commitment.compressed_state)
+          @@ error_of_fmt
+               "Erroneous state hash %a for level %ld instead of %a."
+               State_hash.pp
+               state_hash
+               header.level
+               State_hash.pp
+               commitment.compressed_state
+        in
+        return_unit
+  in
+  let hash_of_inbox = Inbox.hash inbox in
+  let*? () =
+    error_unless Inbox.Hash.(hash_of_inbox = header.inbox_hash)
+    @@ error_of_fmt
+         "Erroneous inbox %a for level %ld instead of %a."
+         Inbox.Hash.pp
+         hash_of_inbox
+         header.level
+         Inbox.Hash.pp
+         header.inbox_hash
+  in
+  return header
+
+let check_block_data (store : _ Store.t) context hash =
+  let open Lwt_result_syntax in
+  let* _b, header, _inbox, _messages, _commitment, _head_ctxt =
+    check_block_data store context hash
+  in
+  return header
 
 let check_l2_chain ~message ~data_dir (store : _ Store.t) context
-    (head : Sc_rollup_block.t) =
+    (head : Sc_rollup_block.t) check_block =
   let open Lwt_result_syntax in
   let* first_available_level = first_available_level ~data_dir store in
   let blocks_to_check =
@@ -109,33 +191,15 @@ let check_l2_chain ~message ~data_dir (store : _ Store.t) context
       blocks_to_check
   in
   Progress_bar.Lwt.with_reporter progress_bar @@ fun count_progress ->
-  let rec check_block hash =
-    let* b = Store.L2_blocks.read store.l2_blocks hash in
-    let*? _b, header = check_some hash "L2 block" b in
-    let* messages = Store.Messages.read store.messages header.inbox_witness in
-    let*? _messages = check_some hash "messages" messages in
-    let* inbox = Store.Inboxes.read store.inboxes header.inbox_hash in
-    let*? _inbox = check_some hash "inbox" inbox in
-    let* () =
-      match header.commitment_hash with
-      | None -> return_unit
-      | Some commitment_hash ->
-          let* commitment =
-            Store.Commitments.read store.commitments commitment_hash
-          in
-          let*? _commitment = check_some hash "commitment" commitment in
-          return_unit
-    in
-    (* Ensure head context is available. *)
-    let*! head_ctxt = Context.checkout context header.context in
-    let*? _head_ctxt = check_some hash "context" head_ctxt in
+  let rec check_chain hash =
+    let* header = check_block store context hash in
     let*! () = count_progress 1 in
-    if header.level <= first_available_level then return_unit
-    else check_block header.predecessor
+    if header.Sc_rollup_block.level <= first_available_level then return_unit
+    else check_chain header.predecessor
   in
-  check_block head.header.block_hash
+  check_chain head.header.block_hash
 
-let post_import_checks ~message ~dest =
+let post_checks ~action ~message ~dest =
   let open Lwt_result_syntax in
   let store_dir = Configuration.default_storage_dir dest in
   let context_dir = Configuration.default_context_dir dest in
@@ -150,7 +214,18 @@ let post_import_checks ~message ~dest =
       store_dir
   in
   let* head = check_head store context in
-  let* () = check_l2_chain ~message ~data_dir:dest store context head in
+  let* check_block_data =
+    match action with
+    | `Export -> return check_block_data
+    | `Import _cctxt -> (
+        let* metadata = Metadata.read_metadata_file ~dir:dest in
+        match metadata with
+        | None -> failwith "No metadata (needs rollup kind)."
+        | Some {kind; _} -> return (check_block_data_consistency kind))
+  in
+  let* () =
+    check_l2_chain ~message ~data_dir:dest store context head check_block_data
+  in
   let*! () = Context.close context in
   let* () = Store.close store in
   return_unit
@@ -166,7 +241,7 @@ let post_export_checks ~snapshot_file =
       ~snapshot_file
       ~dest
   in
-  post_import_checks ~message:"Checking snapshot   " ~dest
+  post_checks ~action:`Export ~message:"Checking snapshot   " ~dest
 
 let operator_local_file_regexp =
   Re.Str.regexp "^storage/\\(commitments_published_at_level.*\\|lpc$\\)"
@@ -275,7 +350,7 @@ let pre_import_checks ~data_dir snapshot_metadata =
   in
   return_unit
 
-let import _cctxt ~data_dir ~snapshot_file =
+let import cctxt ~data_dir ~snapshot_file =
   let open Lwt_result_syntax in
   let*! () = Lwt_utils_unix.create_dir data_dir in
   let*! () = Event.acquiring_lock () in
@@ -291,4 +366,7 @@ let import _cctxt ~data_dir ~snapshot_file =
       ~snapshot_file
       ~dest:data_dir
   in
-  post_import_checks ~message:"Checking snapshot import" ~dest:data_dir
+  post_checks
+    ~action:(`Import cctxt)
+    ~message:"Checking snapshot import"
+    ~dest:data_dir
