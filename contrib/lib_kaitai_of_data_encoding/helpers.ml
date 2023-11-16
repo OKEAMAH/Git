@@ -86,7 +86,7 @@ let default_instance_spec ~id value =
       doc = default_doc_spec;
       descr =
         InstanceSpec.ValueInstanceSpec
-          {id; value; ifExpr = None; dataTypeOpt = None};
+          {id; value; ifExpr = None};
     }
 
 let usertype (c : ClassSpec.t) =

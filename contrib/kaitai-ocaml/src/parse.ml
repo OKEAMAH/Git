@@ -297,7 +297,7 @@ let instanceSpec id v =
   in
   let descr =
     InstanceSpec.ValueInstanceSpec
-      {value = expression value; id; ifExpr; dataTypeOpt = None}
+      {value = expression value; id; ifExpr}
   in
   InstanceSpec.{doc; descr}
 

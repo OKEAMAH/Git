@@ -86,7 +86,7 @@ let doc_spec DocSpec.{summary; refs} =
 
 let instanceSpec InstanceSpec.{doc; descr} =
   match descr with
-  | ValueInstanceSpec {value; ifExpr; id = _; dataTypeOpt = _} ->
+  | ValueInstanceSpec {value; ifExpr; id = _} ->
       let all = doc_spec doc in
       let all = ("value", scalar (Ast.to_string value)) :: all in
       let all =
