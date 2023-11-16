@@ -159,7 +159,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -174,7 +174,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -289,7 +289,7 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
-      type: s1
+      type: id_016__ptmumbai__liquidity_baking_toggle_vote
   id_016__ptmumbai__contract_id:
     seq:
     - id: id_016__ptmumbai__contract_id_tag
@@ -358,6 +358,19 @@ types:
     - id: preendorsement
       type: endorsement
       if: (id_016__ptmumbai__inlined__preendorsement__contents_tag == id_016__ptmumbai__inlined__preendorsement__contents_tag::preendorsement)
+  id_016__ptmumbai__liquidity_baking_toggle_vote:
+    seq:
+    - id: id_016__ptmumbai__liquidity_baking_toggle_vote
+      type: s1
+  id_016__ptmumbai__michelson__v1__primitives:
+    seq:
+    - id: id_016__ptmumbai__michelson__v1__primitives
+      type: u1
+      enum: id_016__ptmumbai__michelson__v1__primitives
+  id_016__ptmumbai__mutez:
+    seq:
+    - id: id_016__ptmumbai__mutez
+      type: n
   id_016__ptmumbai__operation__alpha__contents:
     seq:
     - id: id_016__ptmumbai__operation__alpha__contents_tag
@@ -495,6 +508,14 @@ types:
       type: bytes_dyn_uint30
     - id: storage
       type: bytes_dyn_uint30
+  id_016__ptmumbai__smart_rollup_address:
+    seq:
+    - id: smart_rollup_hash
+      size: 20
+  id_016__ptmumbai__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   inbox__proof:
     seq:
     - id: level
@@ -509,7 +530,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -657,9 +678,8 @@ types:
       type: sequence_
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_016__ptmumbai__michelson__v1__primitives
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_016__ptmumbai__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -828,7 +848,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -836,7 +856,7 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -937,15 +957,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_016__ptmumbai__michelson__v1__primitives
+      type: id_016__ptmumbai__michelson__v1__primitives
     - id: arg
       type: micheline__016__ptmumbai__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_016__ptmumbai__michelson__v1__primitives
+      type: id_016__ptmumbai__michelson__v1__primitives
     - id: arg
       type: micheline__016__ptmumbai__michelson_v1__expression
     - id: annots
@@ -953,8 +971,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_016__ptmumbai__michelson__v1__primitives
+      type: id_016__ptmumbai__michelson__v1__primitives
     - id: arg1
       type: micheline__016__ptmumbai__michelson_v1__expression
     - id: arg2
@@ -962,8 +979,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_016__ptmumbai__michelson__v1__primitives
+      type: id_016__ptmumbai__michelson__v1__primitives
     - id: arg1
       type: micheline__016__ptmumbai__michelson_v1__expression
     - id: arg2
@@ -973,8 +989,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_016__ptmumbai__michelson__v1__primitives
+      type: id_016__ptmumbai__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -982,8 +997,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_016__ptmumbai__michelson__v1__primitives
+      type: id_016__ptmumbai__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   private_pis:
@@ -1113,7 +1127,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1128,7 +1142,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1179,7 +1193,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1190,7 +1204,7 @@ types:
       type: u1
       enum: bool
     - id: limit
-      type: n
+      type: id_016__ptmumbai__mutez
       if: (limit_tag == bool::true)
   slot_header:
     seq:
@@ -1208,7 +1222,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1223,7 +1237,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1231,7 +1245,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__smart_rollup_address
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
@@ -1243,7 +1257,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1251,7 +1265,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__smart_rollup_address
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
@@ -1265,7 +1279,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1287,7 +1301,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1295,7 +1309,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__smart_rollup_address
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
@@ -1307,7 +1321,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1325,7 +1339,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1333,7 +1347,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__smart_rollup_address
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
@@ -1348,7 +1362,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1356,7 +1370,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__smart_rollup_address
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
         with sr1
@@ -1440,7 +1454,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1448,7 +1462,7 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: destination
       type: id_016__ptmumbai__contract_id
       doc: ! >-
@@ -1466,7 +1480,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1497,7 +1511,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1505,7 +1519,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1517,7 +1531,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1525,7 +1539,7 @@ types:
     - id: storage_limit
       type: n
     - id: tx_rollup
-      size: 20
+      type: id_016__ptmumbai__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1545,7 +1559,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1558,7 +1572,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1566,7 +1580,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1594,7 +1608,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1602,7 +1616,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1612,7 +1626,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1620,7 +1634,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_016__ptmumbai__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -1630,7 +1644,7 @@ types:
       type: u1
       enum: bool
     - id: burn_limit
-      type: n
+      type: id_016__ptmumbai__mutez
       if: (burn_limit_tag == bool::true)
   uint30:
     seq:
@@ -1654,7 +1668,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1683,7 +1697,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1704,7 +1718,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1721,7 +1735,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: id_016__ptmumbai__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1733,6 +1747,35 @@ types:
     - id: update
       type: update
 enums:
+  amount_tag:
+    0: case__0
+    1: case__1
+    2: case__2
+    3: case__3
+  bool:
+    0: false
+    255: true
+  circuits_info_elt_field1_tag:
+    0: public
+    1: private
+    2: fee
+  id_016__ptmumbai__contract_id__originated_tag:
+    1: originated
+  id_016__ptmumbai__contract_id_tag:
+    0: implicit
+    1: originated
+  id_016__ptmumbai__entrypoint_tag:
+    0: default
+    1: root
+    2: do
+    3: set_delegate
+    4: remove_delegate
+    5: deposit
+    255: named
+  id_016__ptmumbai__inlined__endorsement_mempool__contents_tag:
+    21: endorsement
+  id_016__ptmumbai__inlined__preendorsement__contents_tag:
+    20: preendorsement
   id_016__ptmumbai__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -2127,97 +2170,6 @@ enums:
     156:
       id: nat_
       doc: NAT
-  micheline__016__ptmumbai__michelson_v1__expression_tag:
-    0: int
-    1: string
-    2: sequence
-    3:
-      id: prim__no_args__no_annots
-      doc: Primitive with no arguments and no annotations
-    4:
-      id: prim__no_args__some_annots
-      doc: Primitive with no arguments and some annotations
-    5:
-      id: prim__1_arg__no_annots
-      doc: Primitive with one argument and no annotations
-    6:
-      id: prim__1_arg__some_annots
-      doc: Primitive with one argument and some annotations
-    7:
-      id: prim__2_args__no_annots
-      doc: Primitive with two arguments and no annotations
-    8:
-      id: prim__2_args__some_annots
-      doc: Primitive with two arguments and some annotations
-    9:
-      id: prim__generic
-      doc: Generic primitive (any number of args with or without annotations)
-    10: bytes
-  op_elt_field1_tag:
-    0: none
-    1: some
-  circuits_info_elt_field1_tag:
-    0: public
-    1: private
-    2: fee
-  reveal_proof_tag:
-    0: raw__data__proof
-    1: metadata__proof
-    2: dal__page__proof
-  input_proof_tag:
-    0: inbox__proof
-    1: reveal__proof
-    2: first__input
-  step_tag:
-    0: dissection
-    1: proof
-  refutation_tag:
-    0: start
-    1: move
-  pvm_kind:
-    0: arith
-    1: wasm_2_0_0
-  amount_tag:
-    0: case__0
-    1: case__1
-    2: case__2
-    3: case__3
-  message_tag:
-    0: batch
-    1: deposit
-  predecessor_tag:
-    0: none
-    1: some
-  id_016__ptmumbai__contract_id__originated_tag:
-    1: originated
-  id_016__ptmumbai__entrypoint_tag:
-    0: default
-    1: root
-    2: do
-    3: set_delegate
-    4: remove_delegate
-    5: deposit
-    255: named
-  id_016__ptmumbai__contract_id_tag:
-    0: implicit
-    1: originated
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
-  id_016__ptmumbai__inlined__preendorsement__contents_tag:
-    20: preendorsement
-  bool:
-    0: false
-    255: true
-  id_016__ptmumbai__inlined__endorsement_mempool__contents_tag:
-    21: endorsement
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
   id_016__ptmumbai__operation__alpha__contents_tag:
     1: seed_nonce_revelation
     2: double_endorsement_evidence
@@ -2261,6 +2213,68 @@ enums:
     250: zk_rollup_origination
     251: zk_rollup_publish
     252: zk_rollup_update
+  input_proof_tag:
+    0: inbox__proof
+    1: reveal__proof
+    2: first__input
+  message_tag:
+    0: batch
+    1: deposit
+  micheline__016__ptmumbai__michelson_v1__expression_tag:
+    0: int
+    1: string
+    2: sequence
+    3:
+      id: prim__no_args__no_annots
+      doc: Primitive with no arguments and no annotations
+    4:
+      id: prim__no_args__some_annots
+      doc: Primitive with no arguments and some annotations
+    5:
+      id: prim__1_arg__no_annots
+      doc: Primitive with one argument and no annotations
+    6:
+      id: prim__1_arg__some_annots
+      doc: Primitive with one argument and some annotations
+    7:
+      id: prim__2_args__no_annots
+      doc: Primitive with two arguments and no annotations
+    8:
+      id: prim__2_args__some_annots
+      doc: Primitive with two arguments and some annotations
+    9:
+      id: prim__generic
+      doc: Generic primitive (any number of args with or without annotations)
+    10: bytes
+  op_elt_field1_tag:
+    0: none
+    1: some
+  predecessor_tag:
+    0: none
+    1: some
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
+  pvm_kind:
+    0: arith
+    1: wasm_2_0_0
+  refutation_tag:
+    0: start
+    1: move
+  reveal_proof_tag:
+    0: raw__data__proof
+    1: metadata__proof
+    2: dal__page__proof
+  step_tag:
+    0: dissection
+    1: proof
 seq:
 - id: id_016__ptmumbai__operation__alpha__contents
   type: id_016__ptmumbai__operation__alpha__contents

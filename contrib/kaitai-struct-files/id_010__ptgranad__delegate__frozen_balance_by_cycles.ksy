@@ -13,10 +13,14 @@ types:
     - id: cycle
       type: s4
     - id: deposits
-      type: n
+      type: id_010__ptgranad__mutez
     - id: fees
-      type: n
+      type: id_010__ptgranad__mutez
     - id: rewards
+      type: id_010__ptgranad__mutez
+  id_010__ptgranad__mutez:
+    seq:
+    - id: id_010__ptgranad__mutez
       type: n
   n:
     seq:

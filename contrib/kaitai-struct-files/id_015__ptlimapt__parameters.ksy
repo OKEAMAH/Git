@@ -61,7 +61,7 @@ types:
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: amount
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: script
       type: id_015__ptlimapt__scripted__contracts
   bytes_dyn_uint30:
@@ -92,7 +92,7 @@ types:
       size: 20
       doc: blinded__public__key__hash
     - id: commitments_elt_field1
-      type: n
+      type: id_015__ptlimapt__mutez
       doc: id_015__ptlimapt__mutez
   dal_parametric:
     seq:
@@ -113,6 +113,10 @@ types:
       type: u1
     - id: page_size
       type: u2
+  id_015__ptlimapt__mutez:
+    seq:
+    - id: id_015__ptlimapt__mutez
+      type: n
   id_015__ptlimapt__scripted__contracts:
     seq:
     - id: code
@@ -181,7 +185,7 @@ types:
 
         signature__v0__public_key'
     - id: public_key_known_field1
-      type: n
+      type: id_015__ptlimapt__mutez
       doc: id_015__ptlimapt__mutez
   public_key_known_with_consensus_key:
     seq:
@@ -192,7 +196,7 @@ types:
 
         signature__v0__public_key'
     - id: public_key_known_with_consensus_key_field1
-      type: n
+      type: id_015__ptlimapt__mutez
       doc: id_015__ptlimapt__mutez
     - id: public_key_known_with_consensus_key_field2
       type: public_key
@@ -209,7 +213,7 @@ types:
 
         signature__v0__public_key'
     - id: public_key_known_with_delegate_field1
-      type: n
+      type: id_015__ptlimapt__mutez
       doc: id_015__ptlimapt__mutez
     - id: public_key_known_with_delegate_field2
       type: public_key_hash
@@ -226,7 +230,7 @@ types:
 
         signature__v0__public_key_hash'
     - id: public_key_unknown_field1
-      type: n
+      type: id_015__ptlimapt__mutez
       doc: id_015__ptlimapt__mutez
   public_key_unknown_with_delegate:
     seq:
@@ -237,7 +241,7 @@ types:
 
         signature__v0__public_key_hash'
     - id: public_key_unknown_with_delegate_field1
-      type: n
+      type: id_015__ptlimapt__mutez
       doc: id_015__ptlimapt__mutez
     - id: public_key_unknown_with_delegate_field2
       type: public_key_hash
@@ -268,6 +272,12 @@ enums:
   bool:
     0: false
     255: true
+  bootstrap_accounts_elt_tag:
+    0: public_key_known
+    1: public_key_unknown
+    2: public_key_known_with_delegate
+    3: public_key_unknown_with_delegate
+    4: public_key_known_with_consensus_key
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
@@ -276,12 +286,6 @@ enums:
     0: ed25519
     1: secp256k1
     2: p256
-  bootstrap_accounts_elt_tag:
-    0: public_key_known
-    1: public_key_unknown
-    2: public_key_known_with_delegate
-    3: public_key_unknown_with_delegate
-    4: public_key_known_with_consensus_key
 seq:
 - id: bootstrap_accounts
   type: bootstrap_accounts_
@@ -320,21 +324,21 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: minimal_stake
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: vdf_difficulty
   type: s8
 - id: seed_nonce_revelation_tip
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: origination_size
   type: int31
 - id: baking_reward_fixed_portion
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: baking_reward_bonus_per_slot
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: endorsing_reward_per_slot
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: cost_per_byte
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: hard_storage_limit_per_operation
   type: z
 - id: quorum_min
@@ -344,7 +348,7 @@ seq:
 - id: min_proposal_quorum
   type: s4
 - id: liquidity_baking_subsidy
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: liquidity_baking_toggle_ema_threshold
   type: s4
 - id: max_operations_time_to_live
@@ -364,7 +368,7 @@ seq:
 - id: frozen_deposits_percentage
   type: int31
 - id: double_baking_punishment
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
   type: minimal_participation_ratio
 - id: testnet_dictator_tag
@@ -398,7 +402,7 @@ seq:
 - id: tx_rollup_max_withdrawals_per_batch
   type: int31
 - id: tx_rollup_commitment_bond
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: tx_rollup_finality_period
   type: int31
 - id: tx_rollup_withdraw_period
@@ -429,7 +433,7 @@ seq:
 - id: sc_rollup_max_number_of_messages_per_commitment_period
   type: int31
 - id: sc_rollup_stake_amount
-  type: n
+  type: id_015__ptlimapt__mutez
 - id: sc_rollup_commitment_period_in_blocks
   type: int31
 - id: sc_rollup_max_lookahead_in_blocks

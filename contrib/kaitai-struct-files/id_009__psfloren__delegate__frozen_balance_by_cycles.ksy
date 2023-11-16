@@ -13,10 +13,14 @@ types:
     - id: cycle
       type: s4
     - id: deposit
-      type: n
+      type: id_009__psfloren__mutez
     - id: fees
-      type: n
+      type: id_009__psfloren__mutez
     - id: rewards
+      type: id_009__psfloren__mutez
+  id_009__psfloren__mutez:
+    seq:
+    - id: id_009__psfloren__mutez
       type: n
   n:
     seq:

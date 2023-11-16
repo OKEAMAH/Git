@@ -62,17 +62,17 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
 enums:
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
   alpha__contract_id_tag:
     0: implicit
     1: originated
   alpha__staker_tag:
     0: single
     1: shared
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
 seq:
 - id: alpha__staker
   type: alpha__staker

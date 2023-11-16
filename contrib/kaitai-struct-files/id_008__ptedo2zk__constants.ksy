@@ -20,7 +20,7 @@ types:
   baking_reward_per_endorsement_entries:
     seq:
     - id: id_008__ptedo2zk__mutez
-      type: n
+      type: id_008__ptedo2zk__mutez
   endorsement_reward:
     seq:
     - id: endorsement_reward_entries
@@ -35,6 +35,10 @@ types:
     - id: endorsement_reward
       type: endorsement_reward
       size: len_endorsement_reward
+  id_008__ptedo2zk__mutez:
+    seq:
+    - id: id_008__ptedo2zk__mutez
+      type: n
   int31:
     seq:
     - id: int31
@@ -117,23 +121,23 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: tokens_per_roll
-  type: n
+  type: id_008__ptedo2zk__mutez
 - id: michelson_maximum_type_size
   type: u2
 - id: seed_nonce_revelation_tip
-  type: n
+  type: id_008__ptedo2zk__mutez
 - id: origination_size
   type: int31
 - id: block_security_deposit
-  type: n
+  type: id_008__ptedo2zk__mutez
 - id: endorsement_security_deposit
-  type: n
+  type: id_008__ptedo2zk__mutez
 - id: baking_reward_per_endorsement
   type: baking_reward_per_endorsement_
 - id: endorsement_reward
   type: endorsement_reward_
 - id: cost_per_byte
-  type: n
+  type: id_008__ptedo2zk__mutez
 - id: hard_storage_limit_per_operation
   type: z
 - id: test_chain_duration

@@ -42,7 +42,7 @@ types:
   big_map:
     seq:
     - id: id
-      type: z
+      type: id_009__psfloren__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: diff
       type: diff
@@ -77,14 +77,14 @@ types:
   copy:
     seq:
     - id: source
-      type: z
+      type: id_009__psfloren__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: updates
       type: updates_
   copy_:
     seq:
     - id: source
-      type: z
+      type: id_009__psfloren__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: updates
       type: updates__
@@ -116,6 +116,10 @@ types:
     - id: alloc
       type: alloc_
       if: (diff_tag == diff_tag::alloc)
+  id_009__psfloren__big_map_id:
+    seq:
+    - id: id_009__psfloren__big_map_id
+      type: z
   id_009__psfloren__lazy_storage_diff:
     seq:
     - id: id_009__psfloren__lazy_storage_diff_entries
@@ -132,6 +136,15 @@ types:
     - id: sapling_state
       type: sapling_state
       if: (id_009__psfloren__lazy_storage_diff_elt_tag == id_009__psfloren__lazy_storage_diff_elt_tag::sapling_state)
+  id_009__psfloren__michelson__v1__primitives:
+    seq:
+    - id: id_009__psfloren__michelson__v1__primitives
+      type: u1
+      enum: id_009__psfloren__michelson__v1__primitives
+  id_009__psfloren__sapling_state_id:
+    seq:
+    - id: id_009__psfloren__sapling_state_id
+      type: z
   micheline__009__psfloren__michelson_v1__expression:
     seq:
     - id: micheline__009__psfloren__michelson_v1__expression_tag
@@ -147,9 +160,8 @@ types:
       type: sequence_
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_009__psfloren__michelson__v1__primitives
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_009__psfloren__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__009__psfloren__michelson_v1__expression_tag == micheline__009__psfloren__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -198,15 +210,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_009__psfloren__michelson__v1__primitives
+      type: id_009__psfloren__michelson__v1__primitives
     - id: arg
       type: micheline__009__psfloren__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_009__psfloren__michelson__v1__primitives
+      type: id_009__psfloren__michelson__v1__primitives
     - id: arg
       type: micheline__009__psfloren__michelson_v1__expression
     - id: annots
@@ -214,8 +224,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_009__psfloren__michelson__v1__primitives
+      type: id_009__psfloren__michelson__v1__primitives
     - id: arg1
       type: micheline__009__psfloren__michelson_v1__expression
     - id: arg2
@@ -223,8 +232,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_009__psfloren__michelson__v1__primitives
+      type: id_009__psfloren__michelson__v1__primitives
     - id: arg1
       type: micheline__009__psfloren__michelson_v1__expression
     - id: arg2
@@ -234,8 +242,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_009__psfloren__michelson__v1__primitives
+      type: id_009__psfloren__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -243,14 +250,13 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_009__psfloren__michelson__v1__primitives
+      type: id_009__psfloren__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   sapling_state:
     seq:
     - id: id
-      type: z
+      type: id_009__psfloren__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: diff
       type: diff_
@@ -327,6 +333,14 @@ enums:
   bool:
     0: false
     255: true
+  diff_tag:
+    0: update
+    1: remove
+    2: copy
+    3: alloc
+  id_009__psfloren__lazy_storage_diff_elt_tag:
+    0: big_map
+    1: sapling_state
   id_009__psfloren__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -711,14 +725,6 @@ enums:
       id: prim__generic
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
-  diff_tag:
-    0: update
-    1: remove
-    2: copy
-    3: alloc
-  id_009__psfloren__lazy_storage_diff_elt_tag:
-    0: big_map
-    1: sapling_state
 seq:
 - id: len_id_009__psfloren__lazy_storage_diff
   type: u4

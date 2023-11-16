@@ -35,6 +35,10 @@ types:
     - id: deposits
       type: rewards
       if: (id_011__pthangz2__operation_metadata__alpha__balance_tag == id_011__pthangz2__operation_metadata__alpha__balance_tag::deposits)
+  id_011__pthangz2__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_011__pthangz2__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_011__pthangz2__operation_metadata__alpha__balance_updates_entries
@@ -54,8 +58,12 @@ types:
     - id: id_011__pthangz2__operation_metadata__alpha__balance
       type: id_011__pthangz2__operation_metadata__alpha__balance
     - id: id_011__pthangz2__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_011__pthangz2__operation_metadata__alpha__balance_update
     - id: id_011__pthangz2__operation_metadata__alpha__update_origin
+      type: id_011__pthangz2__operation_metadata__alpha__update_origin
+  id_011__pthangz2__operation_metadata__alpha__update_origin:
+    seq:
+    - id: origin
       type: u1
       enum: origin_tag
   originated:
@@ -87,14 +95,6 @@ types:
     - id: cycle
       type: s4
 enums:
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
   id_011__pthangz2__contract_id_tag:
     0: implicit
     1: originated
@@ -103,6 +103,14 @@ enums:
     1: rewards
     2: fees
     3: deposits
+  origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_011__pthangz2__operation_metadata__alpha__balance_updates
   type: id_011__pthangz2__operation_metadata__alpha__balance_updates_

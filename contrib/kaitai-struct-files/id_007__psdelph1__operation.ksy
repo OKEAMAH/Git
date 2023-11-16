@@ -63,7 +63,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_007__psdelph1__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -153,6 +153,10 @@ types:
     - id: endorsement
       type: s4
       if: (id_007__psdelph1__inlined__endorsement__contents_tag == id_007__psdelph1__inlined__endorsement__contents_tag::endorsement)
+  id_007__psdelph1__mutez:
+    seq:
+    - id: id_007__psdelph1__mutez
+      type: n
   id_007__psdelph1__operation__alpha__contents:
     seq:
     - id: id_007__psdelph1__operation__alpha__contents_tag
@@ -264,7 +268,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_007__psdelph1__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -272,7 +276,7 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_007__psdelph1__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -350,7 +354,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_007__psdelph1__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -372,7 +376,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_007__psdelph1__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -380,7 +384,7 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_007__psdelph1__mutez
     - id: destination
       type: id_007__psdelph1__contract_id
       doc: ! >-
@@ -399,6 +403,12 @@ types:
       valid:
         max: 1073741823
 enums:
+  bool:
+    0: false
+    255: true
+  id_007__psdelph1__contract_id_tag:
+    0: implicit
+    1: originated
   id_007__psdelph1__entrypoint_tag:
     0: default
     1: root
@@ -406,20 +416,6 @@ enums:
     3: set_delegate
     4: remove_delegate
     255: named
-  id_007__psdelph1__contract_id_tag:
-    0: implicit
-    1: originated
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-  bool:
-    0: false
-    255: true
   id_007__psdelph1__inlined__endorsement__contents_tag:
     0: endorsement
   id_007__psdelph1__operation__alpha__contents_tag:
@@ -434,6 +430,14 @@ enums:
     108: transaction
     109: origination
     110: delegation
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_007__psdelph1__operation
   type: operation__shell_header

@@ -13,10 +13,14 @@ types:
     - id: cycle
       type: s4
     - id: deposit
-      type: n
+      type: id_006__pscartha__mutez
     - id: fees
-      type: n
+      type: id_006__pscartha__mutez
     - id: rewards
+      type: id_006__pscartha__mutez
+  id_006__pscartha__mutez:
+    seq:
+    - id: id_006__pscartha__mutez
       type: n
   n:
     seq:

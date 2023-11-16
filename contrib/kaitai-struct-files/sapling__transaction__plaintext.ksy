@@ -13,6 +13,10 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  sapling__wallet__diversifier:
+    seq:
+    - id: sapling__wallet__diversifier
+      size: 11
   uint30:
     seq:
     - id: uint30
@@ -21,7 +25,7 @@ types:
         max: 1073741823
 seq:
 - id: diversifier
-  size: 11
+  type: sapling__wallet__diversifier
 - id: amount
   type: s8
 - id: rcm

@@ -39,8 +39,7 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: per_block_votes
-      type: u1
-      enum: alpha__per_block_votes_tag
+      type: alpha__per_block_votes
   alpha__contract_id:
     seq:
     - id: alpha__contract_id_tag
@@ -109,6 +108,15 @@ types:
     - id: preattestation
       type: preattestation
       if: (alpha__inlined__preattestation__contents_tag == alpha__inlined__preattestation__contents_tag::preattestation)
+  alpha__michelson__v1__primitives:
+    seq:
+    - id: alpha__michelson__v1__primitives
+      type: u1
+      enum: alpha__michelson__v1__primitives
+  alpha__mutez:
+    seq:
+    - id: alpha__mutez
+      type: n
   alpha__operation__alpha__contents_or_signature_prefix:
     seq:
     - id: alpha__operation__alpha__contents_or_signature_prefix_tag
@@ -224,6 +232,11 @@ types:
       repeat: eos
     - id: signature_suffix
       size: 64
+  alpha__per_block_votes:
+    seq:
+    - id: alpha__per_block_votes_tag
+      type: u1
+      enum: alpha__per_block_votes_tag
   alpha__scripted__contracts:
     seq:
     - id: code
@@ -361,7 +374,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -376,7 +389,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -457,7 +470,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -540,9 +553,8 @@ types:
       type: sequence_
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: alpha__michelson__v1__primitives
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: alpha__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -711,7 +723,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -719,7 +731,7 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: alpha__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -802,15 +814,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg
       type: micheline__alpha__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg
       type: micheline__alpha__michelson_v1__expression
     - id: annots
@@ -818,8 +828,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg1
       type: micheline__alpha__michelson_v1__expression
     - id: arg2
@@ -827,8 +836,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg1
       type: micheline__alpha__michelson_v1__expression
     - id: arg2
@@ -838,8 +846,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -847,8 +854,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   private_pis:
@@ -978,7 +984,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -993,7 +999,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1052,7 +1058,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1067,7 +1073,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1082,7 +1088,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1101,7 +1107,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1127,7 +1133,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1144,7 +1150,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1162,7 +1168,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1182,7 +1188,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1241,7 +1247,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1249,7 +1255,7 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: alpha__mutez
     - id: destination
       type: alpha__contract_id
       doc: ! >-
@@ -1267,7 +1273,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1314,7 +1320,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1362,7 +1368,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1383,7 +1389,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1400,7 +1406,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: fee
-      type: n
+      type: alpha__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1412,6 +1418,27 @@ types:
     - id: update
       type: update
 enums:
+  alpha__contract_id__originated_tag:
+    1: originated
+  alpha__contract_id_tag:
+    0: implicit
+    1: originated
+  alpha__entrypoint_tag:
+    0: default
+    1: root
+    2: do
+    3: set_delegate
+    4: remove_delegate
+    5: deposit
+    6: stake
+    7: unstake
+    8: finalize_unstake
+    9: set_delegate_parameters
+    255: named
+  alpha__inlined__attestation_mempool__contents_tag:
+    21: attestation
+  alpha__inlined__preattestation__contents_tag:
+    20: preattestation
   alpha__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -1806,104 +1833,6 @@ enums:
     156:
       id: nat_
       doc: NAT
-  micheline__alpha__michelson_v1__expression_tag:
-    0: int
-    1: string
-    2: sequence
-    3:
-      id: prim__no_args__no_annots
-      doc: Primitive with no arguments and no annotations
-    4:
-      id: prim__no_args__some_annots
-      doc: Primitive with no arguments and some annotations
-    5:
-      id: prim__1_arg__no_annots
-      doc: Primitive with one argument and no annotations
-    6:
-      id: prim__1_arg__some_annots
-      doc: Primitive with one argument and some annotations
-    7:
-      id: prim__2_args__no_annots
-      doc: Primitive with two arguments and no annotations
-    8:
-      id: prim__2_args__some_annots
-      doc: Primitive with two arguments and some annotations
-    9:
-      id: prim__generic
-      doc: Generic primitive (any number of args with or without annotations)
-    10: bytes
-  op_elt_field1_tag:
-    0: none
-    1: some
-  circuits_info_elt_field1_tag:
-    0: public
-    1: private
-    2: fee
-  reveal_proof_tag:
-    0: raw__data__proof
-    1: metadata__proof
-    2: dal__page__proof
-    3: dal__parameters__proof
-  input_proof_tag:
-    0: inbox__proof
-    1: reveal__proof
-    2: first__input
-  step_tag:
-    0: dissection
-    1: proof
-  refutation_tag:
-    0: start
-    1: move
-  pvm_kind:
-    0: arith
-    1: wasm_2_0_0
-    2: riscv
-  alpha__contract_id__originated_tag:
-    1: originated
-  alpha__entrypoint_tag:
-    0: default
-    1: root
-    2: do
-    3: set_delegate
-    4: remove_delegate
-    5: deposit
-    6: stake
-    7: unstake
-    8: finalize_unstake
-    9: set_delegate_parameters
-    255: named
-  alpha__contract_id_tag:
-    0: implicit
-    1: originated
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
-  alpha__per_block_votes_tag:
-    0: case__0
-    1: case__1
-    2: case__2
-    4: case__4
-    5: case__5
-    6: case__6
-    8: case__8
-    9: case__9
-    10: case__10
-  alpha__inlined__attestation_mempool__contents_tag:
-    21: attestation
-  bool:
-    0: false
-    255: true
-  alpha__inlined__preattestation__contents_tag:
-    20: preattestation
-  bls_signature_prefix_tag:
-    3: bls_prefix
   alpha__operation__alpha__contents_or_signature_prefix_tag:
     1: seed_nonce_revelation
     2: double_attestation_evidence
@@ -1939,6 +1868,83 @@ enums:
     251: zk_rollup_publish
     252: zk_rollup_update
     255: signature_prefix
+  alpha__per_block_votes_tag:
+    0: case__0
+    1: case__1
+    2: case__2
+    4: case__4
+    5: case__5
+    6: case__6
+    8: case__8
+    9: case__9
+    10: case__10
+  bls_signature_prefix_tag:
+    3: bls_prefix
+  bool:
+    0: false
+    255: true
+  circuits_info_elt_field1_tag:
+    0: public
+    1: private
+    2: fee
+  input_proof_tag:
+    0: inbox__proof
+    1: reveal__proof
+    2: first__input
+  micheline__alpha__michelson_v1__expression_tag:
+    0: int
+    1: string
+    2: sequence
+    3:
+      id: prim__no_args__no_annots
+      doc: Primitive with no arguments and no annotations
+    4:
+      id: prim__no_args__some_annots
+      doc: Primitive with no arguments and some annotations
+    5:
+      id: prim__1_arg__no_annots
+      doc: Primitive with one argument and no annotations
+    6:
+      id: prim__1_arg__some_annots
+      doc: Primitive with one argument and some annotations
+    7:
+      id: prim__2_args__no_annots
+      doc: Primitive with two arguments and no annotations
+    8:
+      id: prim__2_args__some_annots
+      doc: Primitive with two arguments and some annotations
+    9:
+      id: prim__generic
+      doc: Generic primitive (any number of args with or without annotations)
+    10: bytes
+  op_elt_field1_tag:
+    0: none
+    1: some
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
+  pvm_kind:
+    0: arith
+    1: wasm_2_0_0
+    2: riscv
+  refutation_tag:
+    0: start
+    1: move
+  reveal_proof_tag:
+    0: raw__data__proof
+    1: metadata__proof
+    2: dal__page__proof
+    3: dal__parameters__proof
+  step_tag:
+    0: dissection
+    1: proof
 seq:
 - id: alpha__operation_with_legacy_attestation_name
   type: operation__shell_header

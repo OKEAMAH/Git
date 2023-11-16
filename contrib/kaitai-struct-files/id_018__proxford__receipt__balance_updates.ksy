@@ -61,6 +61,10 @@ types:
     - id: unstaked_deposits
       type: unstaked_deposits
       if: (id_018__proxford__operation_metadata__alpha__balance_tag == id_018__proxford__operation_metadata__alpha__balance_tag::unstaked_deposits)
+  id_018__proxford__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_018__proxford__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_018__proxford__operation_metadata__alpha__balance_updates_entries
@@ -80,8 +84,12 @@ types:
     - id: id_018__proxford__operation_metadata__alpha__balance
       type: id_018__proxford__operation_metadata__alpha__balance
     - id: id_018__proxford__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_018__proxford__operation_metadata__alpha__balance_update
     - id: id_018__proxford__operation_metadata__alpha__update_origin
+      type: id_018__proxford__operation_metadata__alpha__update_origin
+  id_018__proxford__operation_metadata__alpha__update_origin:
+    seq:
+    - id: origin
       type: u1
       enum: origin_tag
   id_018__proxford__staker:
@@ -151,24 +159,11 @@ types:
     - id: cycle
       type: s4
 enums:
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-    3: simulation
-  id_018__proxford__bond_id_tag:
-    1: smart_rollup_bond_id
   bool:
     0: false
     255: true
-  id_018__proxford__staker_tag:
-    0: single
-    1: shared
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
+  id_018__proxford__bond_id_tag:
+    1: smart_rollup_bond_id
   id_018__proxford__contract_id_tag:
     0: implicit
     1: originated
@@ -194,6 +189,19 @@ enums:
     24: smart_rollup_refutation_punishments
     25: smart_rollup_refutation_rewards
     26: unstaked_deposits
+  id_018__proxford__staker_tag:
+    0: single
+    1: shared
+  origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+    3: simulation
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
 seq:
 - id: id_018__proxford__operation_metadata__alpha__balance_updates
   type: id_018__proxford__operation_metadata__alpha__balance_updates_

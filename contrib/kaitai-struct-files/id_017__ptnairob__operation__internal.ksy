@@ -93,6 +93,15 @@ types:
     - id: named
       type: named_
       if: (id_017__ptnairob__entrypoint_tag == id_017__ptnairob__entrypoint_tag::named)
+  id_017__ptnairob__michelson__v1__primitives:
+    seq:
+    - id: id_017__ptnairob__michelson__v1__primitives
+      type: u1
+      enum: id_017__ptnairob__michelson__v1__primitives
+  id_017__ptnairob__mutez:
+    seq:
+    - id: id_017__ptnairob__mutez
+      type: n
   id_017__ptnairob__scripted__contracts:
     seq:
     - id: code
@@ -120,6 +129,10 @@ types:
     - id: zk_rollup
       type: zk_rollup
       if: (id_017__ptnairob__transaction_destination_tag == id_017__ptnairob__transaction_destination_tag::zk_rollup)
+  id_017__ptnairob__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   micheline__017__ptnairob__michelson_v1__expression:
     seq:
     - id: micheline__017__ptnairob__michelson_v1__expression_tag
@@ -135,9 +148,8 @@ types:
       type: sequence_
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_017__ptnairob__michelson__v1__primitives
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_017__ptnairob__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__017__ptnairob__michelson_v1__expression_tag == micheline__017__ptnairob__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -194,7 +206,7 @@ types:
   origination:
     seq:
     - id: balance
-      type: n
+      type: id_017__ptnairob__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -214,15 +226,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg
       type: micheline__017__ptnairob__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: annots
@@ -230,8 +240,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg1
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: arg2
@@ -239,8 +248,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: arg1
       type: micheline__017__ptnairob__michelson_v1__expression
     - id: arg2
@@ -250,8 +258,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -259,8 +266,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_017__ptnairob__michelson__v1__primitives
+      type: id_017__ptnairob__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   public_key_hash:
@@ -308,7 +314,7 @@ types:
   transaction:
     seq:
     - id: amount
-      type: n
+      type: id_017__ptnairob__mutez
     - id: destination
       type: id_017__ptnairob__transaction_destination
       doc: ! >-
@@ -325,7 +331,7 @@ types:
   tx_rollup:
     seq:
     - id: id_017__ptnairob__tx_rollup_id
-      size: 20
+      type: id_017__ptnairob__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -359,6 +365,22 @@ types:
       size: 1
       doc: This field is for padding, ignore
 enums:
+  bool:
+    0: false
+    255: true
+  id_017__ptnairob__apply_internal_results__alpha__operation_result_tag:
+    1: transaction
+    2: origination
+    3: delegation
+    4: event
+  id_017__ptnairob__entrypoint_tag:
+    0: default
+    1: root
+    2: do
+    3: set_delegate
+    4: remove_delegate
+    5: deposit
+    255: named
   id_017__ptnairob__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -753,6 +775,12 @@ enums:
     156:
       id: nat_
       doc: NAT
+  id_017__ptnairob__transaction_destination_tag:
+    0: implicit
+    1: originated
+    2: tx_rollup
+    3: smart_rollup
+    4: zk_rollup
   micheline__017__ptnairob__michelson_v1__expression_tag:
     0: int
     1: string
@@ -779,33 +807,11 @@ enums:
       id: prim__generic
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
-  id_017__ptnairob__entrypoint_tag:
-    0: default
-    1: root
-    2: do
-    3: set_delegate
-    4: remove_delegate
-    5: deposit
-    255: named
-  bool:
-    0: false
-    255: true
-  id_017__ptnairob__apply_internal_results__alpha__operation_result_tag:
-    1: transaction
-    2: origination
-    3: delegation
-    4: event
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
     2: p256
     3: bls
-  id_017__ptnairob__transaction_destination_tag:
-    0: implicit
-    1: originated
-    2: tx_rollup
-    3: smart_rollup
-    4: zk_rollup
 seq:
 - id: id_017__ptnairob__apply_internal_results__alpha__operation_result
   type: id_017__ptnairob__apply_internal_results__alpha__operation_result

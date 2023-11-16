@@ -2613,7 +2613,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2635,7 +2635,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2750,7 +2750,7 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
-      type: s1
+      type: id_015__ptlimapt__liquidity_baking_toggle_vote
   id_015__ptlimapt__contract_id:
     seq:
     - id: id_015__ptlimapt__contract_id_tag
@@ -2819,6 +2819,19 @@ types:
     - id: preendorsement
       type: endorsement
       if: (id_015__ptlimapt__inlined__preendorsement__contents_tag == id_015__ptlimapt__inlined__preendorsement__contents_tag::preendorsement)
+  id_015__ptlimapt__liquidity_baking_toggle_vote:
+    seq:
+    - id: id_015__ptlimapt__liquidity_baking_toggle_vote
+      type: s1
+  id_015__ptlimapt__michelson__v1__primitives:
+    seq:
+    - id: id_015__ptlimapt__michelson__v1__primitives
+      type: u1
+      enum: id_015__ptlimapt__michelson__v1__primitives
+  id_015__ptlimapt__mutez:
+    seq:
+    - id: id_015__ptlimapt__mutez
+      type: n
   id_015__ptlimapt__operation__alpha__contents:
     seq:
     - id: id_015__ptlimapt__operation__alpha__contents_tag
@@ -2950,12 +2963,20 @@ types:
     - id: zk_rollup_publish
       type: zk_rollup_publish
       if: (id_015__ptlimapt__operation__alpha__contents_tag == id_015__ptlimapt__operation__alpha__contents_tag::zk_rollup_publish)
+  id_015__ptlimapt__rollup_address:
+    seq:
+    - id: id_015__ptlimapt__rollup_address
+      type: bytes_dyn_uint30
   id_015__ptlimapt__scripted__contracts:
     seq:
     - id: code
       type: bytes_dyn_uint30
     - id: storage
       type: bytes_dyn_uint30
+  id_015__ptlimapt__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   inbox__proof:
     seq:
     - id: level
@@ -2970,7 +2991,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3531,9 +3552,8 @@ types:
       type: sequence_
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_015__ptlimapt__michelson__v1__primitives
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_015__ptlimapt__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__015__ptlimapt__michelson_v1__expression_tag == micheline__015__ptlimapt__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -3678,7 +3698,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3686,7 +3706,7 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -3758,15 +3778,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg
       type: micheline__015__ptlimapt__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: annots
@@ -3774,8 +3792,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg1
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: arg2
@@ -3783,8 +3800,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: arg1
       type: micheline__015__ptlimapt__michelson_v1__expression
     - id: arg2
@@ -3794,8 +3810,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -3803,8 +3818,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_015__ptlimapt__michelson__v1__primitives
+      type: id_015__ptlimapt__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   proof:
@@ -3935,7 +3949,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3950,7 +3964,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3974,7 +3988,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -3982,7 +3996,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -3994,7 +4008,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4002,7 +4016,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -4014,7 +4028,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4022,7 +4036,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -4034,7 +4048,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4042,7 +4056,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -4056,7 +4070,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4078,7 +4092,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4086,7 +4100,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -4098,7 +4112,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4113,7 +4127,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4121,7 +4135,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -4140,7 +4154,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4148,7 +4162,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -4184,7 +4198,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4195,7 +4209,7 @@ types:
       type: u1
       enum: bool
     - id: limit
-      type: n
+      type: id_015__ptlimapt__mutez
       if: (limit_tag == bool::true)
   slot:
     seq:
@@ -4277,7 +4291,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4285,7 +4299,7 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: destination
       type: id_015__ptlimapt__contract_id
       doc: ! >-
@@ -4303,7 +4317,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4759,7 +4773,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4767,7 +4781,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4779,7 +4793,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4787,7 +4801,7 @@ types:
     - id: storage_limit
       type: n
     - id: tx_rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4807,7 +4821,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4820,7 +4834,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4828,7 +4842,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4856,7 +4870,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4864,7 +4878,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4874,7 +4888,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4882,7 +4896,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -4892,7 +4906,7 @@ types:
       type: u1
       enum: bool
     - id: burn_limit
-      type: n
+      type: id_015__ptlimapt__mutez
       if: (burn_limit_tag == bool::true)
   uint30:
     seq:
@@ -4906,7 +4920,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4935,7 +4949,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4956,7 +4970,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_015__ptlimapt__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -4968,6 +4982,31 @@ types:
     - id: op
       type: op_
 enums:
+  amount_tag:
+    0: case__0
+    1: case__1
+    2: case__2
+    3: case__3
+  bool:
+    0: false
+    255: true
+  id_015__ptlimapt__contract_id__originated_tag:
+    1: originated
+  id_015__ptlimapt__contract_id_tag:
+    0: implicit
+    1: originated
+  id_015__ptlimapt__entrypoint_tag:
+    0: default
+    1: root
+    2: do
+    3: set_delegate
+    4: remove_delegate
+    5: deposit
+    255: named
+  id_015__ptlimapt__inlined__endorsement_mempool__contents_tag:
+    21: endorsement
+  id_015__ptlimapt__inlined__preendorsement__contents_tag:
+    20: preendorsement
   id_015__ptlimapt__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -5356,40 +5395,49 @@ enums:
     154:
       id: ticket_
       doc: TICKET
-  micheline__015__ptlimapt__michelson_v1__expression_tag:
-    0: int
-    1: string
-    2: sequence
-    3:
-      id: prim__no_args__no_annots
-      doc: Primitive with no arguments and no annotations
-    4:
-      id: prim__no_args__some_annots
-      doc: Primitive with no arguments and some annotations
-    5:
-      id: prim__1_arg__no_annots
-      doc: Primitive with one argument and no annotations
-    6:
-      id: prim__1_arg__some_annots
-      doc: Primitive with one argument and some annotations
-    7:
-      id: prim__2_args__no_annots
-      doc: Primitive with two arguments and no annotations
-    8:
-      id: prim__2_args__some_annots
-      doc: Primitive with two arguments and some annotations
-    9:
-      id: prim__generic
-      doc: Generic primitive (any number of args with or without annotations)
-    10: bytes
-  op_elt_field1_tag:
-    0: none
-    1: some
-  reveal_proof_tag:
-    0: raw__data__proof
-  input_proof_tag:
-    0: inbox__proof
-    1: reveal__proof
+  id_015__ptlimapt__operation__alpha__contents_tag:
+    1: seed_nonce_revelation
+    2: double_endorsement_evidence
+    3: double_baking_evidence
+    4: activate_account
+    5: proposals
+    6: ballot
+    7: double_preendorsement_evidence
+    8: vdf_revelation
+    9: drain_delegate
+    17: failing_noop
+    20: preendorsement
+    21: endorsement
+    22: dal_slot_availability
+    107: reveal
+    108: transaction
+    109: origination
+    110: delegation
+    111: register_global_constant
+    112: set_deposits_limit
+    113: increase_paid_storage
+    114: update_consensus_key
+    150: tx_rollup_origination
+    151: tx_rollup_submit_batch
+    152: tx_rollup_commit
+    153: tx_rollup_return_bond
+    154: tx_rollup_finalize_commitment
+    155: tx_rollup_remove_commitment
+    156: tx_rollup_rejection
+    157: tx_rollup_dispatch_tickets
+    158: transfer_ticket
+    200: sc_rollup_originate
+    201: sc_rollup_add_messages
+    202: sc_rollup_cement
+    203: sc_rollup_publish
+    204: sc_rollup_refute
+    205: sc_rollup_timeout
+    206: sc_rollup_execute_outbox_message
+    207: sc_rollup_recover_bond
+    208: sc_rollup_dal_slot_subscribe
+    230: dal_publish_slot_header
+    250: zk_rollup_origination
+    251: zk_rollup_publish
   inode_tree_tag:
     0: case__0
     1: case__1
@@ -5529,6 +5577,69 @@ enums:
     210: case__210
     211: case__211
     224: case__224
+  input_proof_tag:
+    0: inbox__proof
+    1: reveal__proof
+  message_tag:
+    0: batch
+    1: deposit
+  micheline__015__ptlimapt__michelson_v1__expression_tag:
+    0: int
+    1: string
+    2: sequence
+    3:
+      id: prim__no_args__no_annots
+      doc: Primitive with no arguments and no annotations
+    4:
+      id: prim__no_args__some_annots
+      doc: Primitive with no arguments and some annotations
+    5:
+      id: prim__1_arg__no_annots
+      doc: Primitive with one argument and no annotations
+    6:
+      id: prim__1_arg__some_annots
+      doc: Primitive with one argument and some annotations
+    7:
+      id: prim__2_args__no_annots
+      doc: Primitive with two arguments and no annotations
+    8:
+      id: prim__2_args__some_annots
+      doc: Primitive with two arguments and some annotations
+    9:
+      id: prim__generic
+      doc: Generic primitive (any number of args with or without annotations)
+    10: bytes
+  op_elt_field1_tag:
+    0: none
+    1: some
+  predecessor_tag:
+    0: none
+    1: some
+  proof_tag:
+    0: case__0
+    1: case__1
+    2: case__2
+    3: case__3
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+  pvm_kind:
+    0: arith_pvm_kind
+    1: wasm_2_0_0_pvm_kind
+  pvm_step_tag:
+    0: arithmetic__pvm__with__proof
+    1: wasm__2__0__0__pvm__with__proof
+    255: unencodable
+  reveal_proof_tag:
+    0: raw__data__proof
+  step_tag:
+    0: dissection
+    1: proof
   tree_encoding_tag:
     0: case__0
     1: case__1
@@ -5672,103 +5783,6 @@ enums:
     218: case__218
     219: case__219
     224: case__224
-  proof_tag:
-    0: case__0
-    1: case__1
-    2: case__2
-    3: case__3
-  pvm_step_tag:
-    0: arithmetic__pvm__with__proof
-    1: wasm__2__0__0__pvm__with__proof
-    255: unencodable
-  step_tag:
-    0: dissection
-    1: proof
-  pvm_kind:
-    0: arith_pvm_kind
-    1: wasm_2_0_0_pvm_kind
-  amount_tag:
-    0: case__0
-    1: case__1
-    2: case__2
-    3: case__3
-  message_tag:
-    0: batch
-    1: deposit
-  predecessor_tag:
-    0: none
-    1: some
-  id_015__ptlimapt__contract_id__originated_tag:
-    1: originated
-  id_015__ptlimapt__entrypoint_tag:
-    0: default
-    1: root
-    2: do
-    3: set_delegate
-    4: remove_delegate
-    5: deposit
-    255: named
-  id_015__ptlimapt__contract_id_tag:
-    0: implicit
-    1: originated
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-  id_015__ptlimapt__inlined__preendorsement__contents_tag:
-    20: preendorsement
-  bool:
-    0: false
-    255: true
-  id_015__ptlimapt__inlined__endorsement_mempool__contents_tag:
-    21: endorsement
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-  id_015__ptlimapt__operation__alpha__contents_tag:
-    1: seed_nonce_revelation
-    2: double_endorsement_evidence
-    3: double_baking_evidence
-    4: activate_account
-    5: proposals
-    6: ballot
-    7: double_preendorsement_evidence
-    8: vdf_revelation
-    9: drain_delegate
-    17: failing_noop
-    20: preendorsement
-    21: endorsement
-    22: dal_slot_availability
-    107: reveal
-    108: transaction
-    109: origination
-    110: delegation
-    111: register_global_constant
-    112: set_deposits_limit
-    113: increase_paid_storage
-    114: update_consensus_key
-    150: tx_rollup_origination
-    151: tx_rollup_submit_batch
-    152: tx_rollup_commit
-    153: tx_rollup_return_bond
-    154: tx_rollup_finalize_commitment
-    155: tx_rollup_remove_commitment
-    156: tx_rollup_rejection
-    157: tx_rollup_dispatch_tickets
-    158: transfer_ticket
-    200: sc_rollup_originate
-    201: sc_rollup_add_messages
-    202: sc_rollup_cement
-    203: sc_rollup_publish
-    204: sc_rollup_refute
-    205: sc_rollup_timeout
-    206: sc_rollup_execute_outbox_message
-    207: sc_rollup_recover_bond
-    208: sc_rollup_dal_slot_subscribe
-    230: dal_publish_slot_header
-    250: zk_rollup_origination
-    251: zk_rollup_publish
 seq:
 - id: id_015__ptlimapt__operation__alpha__contents
   type: id_015__ptlimapt__operation__alpha__contents

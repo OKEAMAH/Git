@@ -33,6 +33,10 @@ types:
     seq:
     - id: modules_elt
       type: bytes_dyn_uint30
+  protocol__environment_version:
+    seq:
+    - id: protocol__environment_version
+      type: u2
   uint30:
     seq:
     - id: uint30
@@ -55,7 +59,7 @@ seq:
   type: u1
   enum: bool
 - id: expected_env_version
-  type: u2
+  type: protocol__environment_version
   if: (expected_env_version_tag == bool::true)
 - id: modules
   type: modules_

@@ -18,13 +18,13 @@ types:
       type: u1
       enum: id_016__ptmumbai__bond_id_tag
     - id: tx_rollup_bond_id
-      size: 20
+      type: id_016__ptmumbai__tx_rollup_id
       if: (id_016__ptmumbai__bond_id_tag == id_016__ptmumbai__bond_id_tag::tx_rollup_bond_id)
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
     - id: smart_rollup_bond_id
-      size: 20
+      type: id_016__ptmumbai__smart_rollup_address
       if: (id_016__ptmumbai__bond_id_tag == id_016__ptmumbai__bond_id_tag::smart_rollup_bond_id)
       doc: ! >-
         A smart rollup address: A smart rollup is identified by a base58 address starting
@@ -65,6 +65,10 @@ types:
     - id: frozen_bonds
       type: frozen_bonds
       if: (id_016__ptmumbai__operation_metadata__alpha__balance_tag == id_016__ptmumbai__operation_metadata__alpha__balance_tag::frozen_bonds)
+  id_016__ptmumbai__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_016__ptmumbai__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_016__ptmumbai__operation_metadata__alpha__balance_updates_entries
@@ -84,10 +88,22 @@ types:
     - id: id_016__ptmumbai__operation_metadata__alpha__balance
       type: id_016__ptmumbai__operation_metadata__alpha__balance
     - id: id_016__ptmumbai__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_016__ptmumbai__operation_metadata__alpha__balance_update
     - id: id_016__ptmumbai__operation_metadata__alpha__update_origin
+      type: id_016__ptmumbai__operation_metadata__alpha__update_origin
+  id_016__ptmumbai__operation_metadata__alpha__update_origin:
+    seq:
+    - id: origin
       type: u1
       enum: origin_tag
+  id_016__ptmumbai__smart_rollup_address:
+    seq:
+    - id: smart_rollup_hash
+      size: 20
+  id_016__ptmumbai__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   lost_endorsing_rewards:
     seq:
     - id: delegate
@@ -124,22 +140,12 @@ types:
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
 enums:
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-    3: simulation
-  id_016__ptmumbai__bond_id_tag:
-    0: tx_rollup_bond_id
-    1: smart_rollup_bond_id
   bool:
     0: false
     255: true
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-    3: bls
+  id_016__ptmumbai__bond_id_tag:
+    0: tx_rollup_bond_id
+    1: smart_rollup_bond_id
   id_016__ptmumbai__contract_id_tag:
     0: implicit
     1: originated
@@ -167,6 +173,16 @@ enums:
     23: tx_rollup_rejection_punishments
     24: smart_rollup_refutation_punishments
     25: smart_rollup_refutation_rewards
+  origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+    3: simulation
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+    3: bls
 seq:
 - id: id_016__ptmumbai__operation_metadata__alpha__balance_updates
   type: id_016__ptmumbai__operation_metadata__alpha__balance_updates_

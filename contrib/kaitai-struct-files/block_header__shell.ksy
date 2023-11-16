@@ -31,10 +31,14 @@ types:
     - id: fitness
       type: fitness
       size: len_fitness
-  fitness_entries:
+  fitness__elem:
     seq:
     - id: fitness__elem
       type: bytes_dyn_uint30
+  fitness_entries:
+    seq:
+    - id: fitness__elem
+      type: fitness__elem
   uint30:
     seq:
     - id: uint30

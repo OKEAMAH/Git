@@ -20,7 +20,7 @@ types:
   baking_reward_per_endorsement_entries:
     seq:
     - id: id_007__psdelph1__mutez
-      type: n
+      type: id_007__psdelph1__mutez
   bootstrap_accounts:
     seq:
     - id: bootstrap_accounts_entries
@@ -66,7 +66,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: amount
-      type: n
+      type: id_007__psdelph1__mutez
     - id: script
       type: id_007__psdelph1__scripted__contracts
   bytes_dyn_uint30:
@@ -97,7 +97,7 @@ types:
       size: 20
       doc: blinded__public__key__hash
     - id: commitments_elt_field1
-      type: n
+      type: id_007__psdelph1__mutez
       doc: id_007__psdelph1__mutez
   endorsement_reward:
     seq:
@@ -113,6 +113,10 @@ types:
     - id: endorsement_reward
       type: endorsement_reward
       size: len_endorsement_reward
+  id_007__psdelph1__mutez:
+    seq:
+    - id: id_007__psdelph1__mutez
+      type: n
   id_007__psdelph1__scripted__contracts:
     seq:
     - id: code
@@ -175,7 +179,7 @@ types:
 
         signature__v0__public_key'
     - id: public_key_known_field1
-      type: n
+      type: id_007__psdelph1__mutez
       doc: id_007__psdelph1__mutez
   public_key_unknown:
     seq:
@@ -186,7 +190,7 @@ types:
 
         signature__v0__public_key_hash'
     - id: public_key_unknown_field1
-      type: n
+      type: id_007__psdelph1__mutez
       doc: id_007__psdelph1__mutez
   time_between_blocks:
     seq:
@@ -229,6 +233,9 @@ enums:
   bool:
     0: false
     255: true
+  bootstrap_accounts_elt_tag:
+    0: public_key_known
+    1: public_key_unknown
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
@@ -237,9 +244,6 @@ enums:
     0: ed25519
     1: secp256k1
     2: p256
-  bootstrap_accounts_elt_tag:
-    0: public_key_known
-    1: public_key_unknown
 seq:
 - id: bootstrap_accounts
   type: bootstrap_accounts_
@@ -280,23 +284,23 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: tokens_per_roll
-  type: n
+  type: id_007__psdelph1__mutez
 - id: michelson_maximum_type_size
   type: u2
 - id: seed_nonce_revelation_tip
-  type: n
+  type: id_007__psdelph1__mutez
 - id: origination_size
   type: int31
 - id: block_security_deposit
-  type: n
+  type: id_007__psdelph1__mutez
 - id: endorsement_security_deposit
-  type: n
+  type: id_007__psdelph1__mutez
 - id: baking_reward_per_endorsement
   type: baking_reward_per_endorsement_
 - id: endorsement_reward
   type: endorsement_reward_
 - id: cost_per_byte
-  type: n
+  type: id_007__psdelph1__mutez
 - id: hard_storage_limit_per_operation
   type: z
 - id: test_chain_duration

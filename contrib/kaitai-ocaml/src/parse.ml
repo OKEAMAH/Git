@@ -296,8 +296,7 @@ let instanceSpec id v =
     | Some e -> Some (expression e)
   in
   let descr =
-    InstanceSpec.ValueInstanceSpec
-      {value = expression value; id; ifExpr}
+    InstanceSpec.ValueInstanceSpec {value = expression value; id; ifExpr}
   in
   InstanceSpec.{doc; descr}
 

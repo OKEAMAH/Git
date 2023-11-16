@@ -103,6 +103,15 @@ types:
     - id: named
       type: named_
       if: (id_014__ptkathma__entrypoint_tag == id_014__ptkathma__entrypoint_tag::named)
+  id_014__ptkathma__michelson__v1__primitives:
+    seq:
+    - id: id_014__ptkathma__michelson__v1__primitives
+      type: u1
+      enum: id_014__ptkathma__michelson__v1__primitives
+  id_014__ptkathma__mutez:
+    seq:
+    - id: id_014__ptkathma__mutez
+      type: n
   id_014__ptkathma__scripted__contracts:
     seq:
     - id: code
@@ -127,6 +136,10 @@ types:
     - id: sc_rollup
       type: sc_rollup
       if: (id_014__ptkathma__transaction_destination_tag == id_014__ptkathma__transaction_destination_tag::sc_rollup)
+  id_014__ptkathma__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   micheline__014__ptkathma__michelson_v1__expression:
     seq:
     - id: micheline__014__ptkathma__michelson_v1__expression_tag
@@ -142,9 +155,8 @@ types:
       type: sequence_
       if: (micheline__014__ptkathma__michelson_v1__expression_tag == micheline__014__ptkathma__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_014__ptkathma__michelson__v1__primitives
       if: (micheline__014__ptkathma__michelson_v1__expression_tag == micheline__014__ptkathma__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_014__ptkathma__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__014__ptkathma__michelson_v1__expression_tag == micheline__014__ptkathma__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -201,7 +213,7 @@ types:
   origination:
     seq:
     - id: balance
-      type: n
+      type: id_014__ptkathma__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -221,15 +233,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_014__ptkathma__michelson__v1__primitives
+      type: id_014__ptkathma__michelson__v1__primitives
     - id: arg
       type: micheline__014__ptkathma__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_014__ptkathma__michelson__v1__primitives
+      type: id_014__ptkathma__michelson__v1__primitives
     - id: arg
       type: micheline__014__ptkathma__michelson_v1__expression
     - id: annots
@@ -237,8 +247,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_014__ptkathma__michelson__v1__primitives
+      type: id_014__ptkathma__michelson__v1__primitives
     - id: arg1
       type: micheline__014__ptkathma__michelson_v1__expression
     - id: arg2
@@ -246,8 +255,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_014__ptkathma__michelson__v1__primitives
+      type: id_014__ptkathma__michelson__v1__primitives
     - id: arg1
       type: micheline__014__ptkathma__michelson_v1__expression
     - id: arg2
@@ -257,8 +265,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_014__ptkathma__michelson__v1__primitives
+      type: id_014__ptkathma__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -266,8 +273,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_014__ptkathma__michelson__v1__primitives
+      type: id_014__ptkathma__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   public_key_hash:
@@ -312,7 +318,7 @@ types:
   transaction:
     seq:
     - id: amount
-      type: n
+      type: id_014__ptkathma__mutez
     - id: destination
       type: id_014__ptkathma__transaction_destination
       doc: ! >-
@@ -329,7 +335,7 @@ types:
   tx_rollup:
     seq:
     - id: id_014__ptkathma__tx_rollup_id
-      size: 20
+      type: id_014__ptkathma__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -356,6 +362,24 @@ types:
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
 enums:
+  bool:
+    0: false
+    255: true
+  id_014__ptkathma__apply_internal_results__alpha__operation_result_tag:
+    1: transaction
+    2: origination
+    3: delegation
+    4: event
+  id_014__ptkathma__contract_id_tag:
+    0: implicit
+    1: originated
+  id_014__ptkathma__entrypoint_tag:
+    0: default
+    1: root
+    2: do
+    3: set_delegate
+    4: remove_delegate
+    255: named
   id_014__ptkathma__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -735,6 +759,11 @@ enums:
     151:
       id: emit
       doc: EMIT
+  id_014__ptkathma__transaction_destination_tag:
+    0: implicit
+    1: originated
+    2: tx_rollup
+    3: sc_rollup
   micheline__014__ptkathma__michelson_v1__expression_tag:
     0: int
     1: string
@@ -761,33 +790,10 @@ enums:
       id: prim__generic
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
-  id_014__ptkathma__entrypoint_tag:
-    0: default
-    1: root
-    2: do
-    3: set_delegate
-    4: remove_delegate
-    255: named
-  bool:
-    0: false
-    255: true
-  id_014__ptkathma__transaction_destination_tag:
-    0: implicit
-    1: originated
-    2: tx_rollup
-    3: sc_rollup
-  id_014__ptkathma__apply_internal_results__alpha__operation_result_tag:
-    1: transaction
-    2: origination
-    3: delegation
-    4: event
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
     2: p256
-  id_014__ptkathma__contract_id_tag:
-    0: implicit
-    1: originated
 seq:
 - id: id_014__ptkathma__apply_internal_results__alpha__operation_result
   type: id_014__ptkathma__apply_internal_results__alpha__operation_result

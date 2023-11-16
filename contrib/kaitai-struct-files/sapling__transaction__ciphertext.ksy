@@ -13,6 +13,10 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  sapling__dh__epk:
+    seq:
+    - id: sapling__dh__epk
+      size: 32
   uint30:
     seq:
     - id: uint30
@@ -23,7 +27,7 @@ seq:
 - id: cv
   type: sapling__transaction__commitment_value
 - id: epk
-  size: 32
+  type: sapling__dh__epk
 - id: payload_enc
   type: bytes_dyn_uint30
 - id: nonce_enc

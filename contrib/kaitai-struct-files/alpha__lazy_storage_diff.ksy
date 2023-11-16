@@ -21,6 +21,10 @@ types:
       type: updates__
     - id: memo_size
       type: u2
+  alpha__big_map_id:
+    seq:
+    - id: alpha__big_map_id
+      type: z
   alpha__lazy_storage_diff:
     seq:
     - id: alpha__lazy_storage_diff_entries
@@ -37,6 +41,15 @@ types:
     - id: sapling_state
       type: sapling_state
       if: (alpha__lazy_storage_diff_elt_tag == alpha__lazy_storage_diff_elt_tag::sapling_state)
+  alpha__michelson__v1__primitives:
+    seq:
+    - id: alpha__michelson__v1__primitives
+      type: u1
+      enum: alpha__michelson__v1__primitives
+  alpha__sapling_state_id:
+    seq:
+    - id: alpha__sapling_state_id
+      type: z
   args:
     seq:
     - id: args_entries
@@ -58,7 +71,7 @@ types:
   big_map:
     seq:
     - id: id
-      type: z
+      type: alpha__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: diff
       type: diff
@@ -93,14 +106,14 @@ types:
   copy:
     seq:
     - id: source
-      type: z
+      type: alpha__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: updates
       type: updates_
   copy_:
     seq:
     - id: source
-      type: z
+      type: alpha__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: updates
       type: updates__
@@ -147,9 +160,8 @@ types:
       type: sequence_
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: alpha__michelson__v1__primitives
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: alpha__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -198,15 +210,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg
       type: micheline__alpha__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg
       type: micheline__alpha__michelson_v1__expression
     - id: annots
@@ -214,8 +224,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg1
       type: micheline__alpha__michelson_v1__expression
     - id: arg2
@@ -223,8 +232,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg1
       type: micheline__alpha__michelson_v1__expression
     - id: arg2
@@ -234,8 +242,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -243,14 +250,13 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   sapling_state:
     seq:
     - id: id
-      type: z
+      type: alpha__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: diff
       type: diff_
@@ -324,9 +330,9 @@ types:
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
 enums:
-  bool:
-    0: false
-    255: true
+  alpha__lazy_storage_diff_elt_tag:
+    0: big_map
+    1: sapling_state
   alpha__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -721,6 +727,14 @@ enums:
     156:
       id: nat_
       doc: NAT
+  bool:
+    0: false
+    255: true
+  diff_tag:
+    0: update
+    1: remove
+    2: copy
+    3: alloc
   micheline__alpha__michelson_v1__expression_tag:
     0: int
     1: string
@@ -747,14 +761,6 @@ enums:
       id: prim__generic
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
-  diff_tag:
-    0: update
-    1: remove
-    2: copy
-    3: alloc
-  alpha__lazy_storage_diff_elt_tag:
-    0: big_map
-    1: sapling_state
 seq:
 - id: len_alpha__lazy_storage_diff
   type: u4

@@ -35,6 +35,10 @@ types:
     - id: deposits
       type: rewards
       if: (id_006__pscartha__operation_metadata__alpha__balance_tag == id_006__pscartha__operation_metadata__alpha__balance_tag::deposits)
+  id_006__pscartha__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_006__pscartha__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_006__pscartha__operation_metadata__alpha__balance_updates_entries
@@ -54,7 +58,7 @@ types:
     - id: id_006__pscartha__operation_metadata__alpha__balance
       type: id_006__pscartha__operation_metadata__alpha__balance
     - id: id_006__pscartha__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_006__pscartha__operation_metadata__alpha__balance_update
   originated:
     seq:
     - id: contract_hash
@@ -84,10 +88,6 @@ types:
     - id: cycle
       type: s4
 enums:
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
   id_006__pscartha__contract_id_tag:
     0: implicit
     1: originated
@@ -96,6 +96,10 @@ enums:
     1: rewards
     2: fees
     3: deposits
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_006__pscartha__operation_metadata__alpha__balance_updates
   type: id_006__pscartha__operation_metadata__alpha__balance_updates_

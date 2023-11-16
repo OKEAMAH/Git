@@ -40,6 +40,10 @@ types:
     - id: named
       type: named_
       if: (id_006__pscartha__entrypoint_tag == id_006__pscartha__entrypoint_tag::named)
+  id_006__pscartha__mutez:
+    seq:
+    - id: id_006__pscartha__mutez
+      type: n
   id_006__pscartha__operation__alpha__internal_operation:
     seq:
     - id: source
@@ -106,7 +110,7 @@ types:
   origination:
     seq:
     - id: balance
-      type: n
+      type: id_006__pscartha__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -154,7 +158,7 @@ types:
   transaction:
     seq:
     - id: amount
-      type: n
+      type: id_006__pscartha__mutez
     - id: destination
       type: id_006__pscartha__contract_id
       doc: ! >-
@@ -173,6 +177,12 @@ types:
       valid:
         max: 1073741823
 enums:
+  bool:
+    0: false
+    255: true
+  id_006__pscartha__contract_id_tag:
+    0: implicit
+    1: originated
   id_006__pscartha__entrypoint_tag:
     0: default
     1: root
@@ -180,13 +190,6 @@ enums:
     3: set_delegate
     4: remove_delegate
     255: named
-  bool:
-    0: false
-    255: true
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
   id_006__pscartha__operation__alpha__internal_operation_tag:
     0: reveal
     1: transaction
@@ -196,9 +199,10 @@ enums:
     0: ed25519
     1: secp256k1
     2: p256
-  id_006__pscartha__contract_id_tag:
-    0: implicit
-    1: originated
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_006__pscartha__operation__alpha__internal_operation
   type: id_006__pscartha__operation__alpha__internal_operation

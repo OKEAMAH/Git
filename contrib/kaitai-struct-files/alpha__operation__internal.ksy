@@ -37,6 +37,15 @@ types:
     - id: named
       type: named_
       if: (alpha__entrypoint_tag == alpha__entrypoint_tag::named)
+  alpha__michelson__v1__primitives:
+    seq:
+    - id: alpha__michelson__v1__primitives
+      type: u1
+      enum: alpha__michelson__v1__primitives
+  alpha__mutez:
+    seq:
+    - id: alpha__mutez
+      type: n
   alpha__scripted__contracts:
     seq:
     - id: code
@@ -128,9 +137,8 @@ types:
       type: sequence_
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: alpha__michelson__v1__primitives
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: alpha__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -187,7 +195,7 @@ types:
   origination:
     seq:
     - id: balance
-      type: n
+      type: alpha__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -207,15 +215,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg
       type: micheline__alpha__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg
       type: micheline__alpha__michelson_v1__expression
     - id: annots
@@ -223,8 +229,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg1
       type: micheline__alpha__michelson_v1__expression
     - id: arg2
@@ -232,8 +237,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: arg1
       type: micheline__alpha__michelson_v1__expression
     - id: arg2
@@ -243,8 +247,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -252,8 +255,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: alpha__michelson__v1__primitives
+      type: alpha__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   public_key_hash:
@@ -301,7 +303,7 @@ types:
   transaction:
     seq:
     - id: amount
-      type: n
+      type: alpha__mutez
     - id: destination
       type: alpha__transaction_destination
       doc: ! >-
@@ -342,6 +344,23 @@ types:
       size: 1
       doc: This field is for padding, ignore
 enums:
+  alpha__apply_internal_results__alpha__operation_result_tag:
+    1: transaction
+    2: origination
+    3: delegation
+    4: event
+  alpha__entrypoint_tag:
+    0: default
+    1: root
+    2: do
+    3: set_delegate
+    4: remove_delegate
+    5: deposit
+    6: stake
+    7: unstake
+    8: finalize_unstake
+    9: set_delegate_parameters
+    255: named
   alpha__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -736,6 +755,14 @@ enums:
     156:
       id: nat_
       doc: NAT
+  alpha__transaction_destination_tag:
+    0: implicit
+    1: originated
+    3: smart_rollup
+    4: zk_rollup
+  bool:
+    0: false
+    255: true
   micheline__alpha__michelson_v1__expression_tag:
     0: int
     1: string
@@ -762,36 +789,11 @@ enums:
       id: prim__generic
       doc: Generic primitive (any number of args with or without annotations)
     10: bytes
-  alpha__entrypoint_tag:
-    0: default
-    1: root
-    2: do
-    3: set_delegate
-    4: remove_delegate
-    5: deposit
-    6: stake
-    7: unstake
-    8: finalize_unstake
-    9: set_delegate_parameters
-    255: named
-  bool:
-    0: false
-    255: true
-  alpha__apply_internal_results__alpha__operation_result_tag:
-    1: transaction
-    2: origination
-    3: delegation
-    4: event
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
     2: p256
     3: bls
-  alpha__transaction_destination_tag:
-    0: implicit
-    1: originated
-    3: smart_rollup
-    4: zk_rollup
 seq:
 - id: alpha__apply_internal_results__alpha__operation_result
   type: alpha__apply_internal_results__alpha__operation_result

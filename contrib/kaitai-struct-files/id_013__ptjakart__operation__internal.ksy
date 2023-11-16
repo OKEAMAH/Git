@@ -64,6 +64,10 @@ types:
     - id: named
       type: named_
       if: (id_013__ptjakart__entrypoint_tag == id_013__ptjakart__entrypoint_tag::named)
+  id_013__ptjakart__mutez:
+    seq:
+    - id: id_013__ptjakart__mutez
+      type: n
   id_013__ptjakart__scripted__contracts:
     seq:
     - id: code
@@ -85,6 +89,10 @@ types:
     - id: tx_rollup
       type: tx_rollup
       if: (id_013__ptjakart__transaction_destination_tag == id_013__ptjakart__transaction_destination_tag::tx_rollup)
+  id_013__ptjakart__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   n:
     seq:
     - id: n
@@ -120,7 +128,7 @@ types:
   origination:
     seq:
     - id: balance
-      type: n
+      type: id_013__ptjakart__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -154,7 +162,7 @@ types:
   transaction:
     seq:
     - id: amount
-      type: n
+      type: id_013__ptjakart__mutez
     - id: destination
       type: id_013__ptjakart__transaction_destination
       doc: ! >-
@@ -171,7 +179,7 @@ types:
   tx_rollup:
     seq:
     - id: id_013__ptjakart__tx_rollup_id
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -185,6 +193,16 @@ types:
       valid:
         max: 1073741823
 enums:
+  bool:
+    0: false
+    255: true
+  id_013__ptjakart__apply_results__alpha__internal_operation_result_tag:
+    1: transaction
+    2: origination
+    3: delegation
+  id_013__ptjakart__contract_id_tag:
+    0: implicit
+    1: originated
   id_013__ptjakart__entrypoint_tag:
     0: default
     1: root
@@ -192,24 +210,14 @@ enums:
     3: set_delegate
     4: remove_delegate
     255: named
-  bool:
-    0: false
-    255: true
   id_013__ptjakart__transaction_destination_tag:
     0: implicit
     1: originated
     2: tx_rollup
-  id_013__ptjakart__apply_results__alpha__internal_operation_result_tag:
-    1: transaction
-    2: origination
-    3: delegation
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
     2: p256
-  id_013__ptjakart__contract_id_tag:
-    0: implicit
-    1: originated
 seq:
 - id: id_013__ptjakart__apply_results__alpha__internal_operation_result
   type: id_013__ptjakart__apply_results__alpha__internal_operation_result

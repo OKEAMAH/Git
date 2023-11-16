@@ -45,6 +45,10 @@ types:
     - id: commitments
       size: 20
       if: (id_012__psithaca__operation_metadata__alpha__balance_tag == id_012__psithaca__operation_metadata__alpha__balance_tag::commitments)
+  id_012__psithaca__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_012__psithaca__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
@@ -64,8 +68,12 @@ types:
     - id: id_012__psithaca__operation_metadata__alpha__balance
       type: id_012__psithaca__operation_metadata__alpha__balance
     - id: id_012__psithaca__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_012__psithaca__operation_metadata__alpha__balance_update
     - id: id_012__psithaca__operation_metadata__alpha__update_origin
+      type: id_012__psithaca__operation_metadata__alpha__update_origin
+  id_012__psithaca__operation_metadata__alpha__update_origin:
+    seq:
+    - id: origin
       type: u1
       enum: origin_tag
   legacy_rewards:
@@ -108,18 +116,9 @@ types:
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-    3: simulation
   bool:
     0: false
     255: true
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
   id_012__psithaca__contract_id_tag:
     0: implicit
     1: originated
@@ -145,6 +144,15 @@ enums:
     18: invoice
     19: initial_commitments
     20: minted
+  origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+    3: simulation
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_012__psithaca__operation_metadata__alpha__balance_updates
   type: id_012__psithaca__operation_metadata__alpha__balance_updates_

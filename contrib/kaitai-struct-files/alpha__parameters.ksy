@@ -17,6 +17,10 @@ types:
       type: issuance_ratio_min
     - id: radius_dz
       type: issuance_ratio_min
+  alpha__mutez:
+    seq:
+    - id: alpha__mutez
+      type: n
   alpha__scripted__contracts:
     seq:
     - id: code
@@ -81,7 +85,7 @@ types:
       if: (delegate_tag == bool::true)
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: amount
-      type: n
+      type: alpha__mutez
     - id: script
       type: alpha__scripted__contracts
     - id: hash_tag
@@ -149,7 +153,7 @@ types:
       size: 20
       doc: blinded__public__key__hash
     - id: commitments_elt_field1
-      type: n
+      type: alpha__mutez
       doc: alpha__mutez
   dal_parametric:
     seq:
@@ -188,7 +192,7 @@ types:
   issuance_weights:
     seq:
     - id: base_total_issued_per_minute
-      type: n
+      type: alpha__mutez
     - id: baking_reward_fixed_portion_weight
       type: int31
     - id: baking_reward_bonus_weight
@@ -262,7 +266,7 @@ types:
 
         signature__public_key'
     - id: public_key_known_field1
-      type: n
+      type: alpha__mutez
       doc: alpha__mutez
   public_key_known_with_consensus_key:
     seq:
@@ -273,7 +277,7 @@ types:
 
         signature__public_key'
     - id: public_key_known_with_consensus_key_field1
-      type: n
+      type: alpha__mutez
       doc: alpha__mutez
     - id: public_key_known_with_consensus_key_field2
       type: public_key
@@ -290,7 +294,7 @@ types:
 
         signature__public_key'
     - id: public_key_known_with_delegate_field1
-      type: n
+      type: alpha__mutez
       doc: alpha__mutez
     - id: public_key_known_with_delegate_field2
       type: public_key_hash
@@ -307,7 +311,7 @@ types:
 
         signature__public_key_hash'
     - id: public_key_unknown_field1
-      type: n
+      type: alpha__mutez
       doc: alpha__mutez
   public_key_unknown_with_delegate:
     seq:
@@ -318,7 +322,7 @@ types:
 
         signature__public_key_hash'
     - id: public_key_unknown_with_delegate_field1
-      type: n
+      type: alpha__mutez
       doc: alpha__mutez
     - id: public_key_unknown_with_delegate_field2
       type: public_key_hash
@@ -375,13 +379,15 @@ types:
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
 enums:
-  pvm_kind:
-    0: arith
-    1: wasm_2_0_0
-    2: riscv
   bool:
     0: false
     255: true
+  bootstrap_accounts_elt_tag:
+    0: public_key_known
+    1: public_key_unknown
+    2: public_key_known_with_delegate
+    3: public_key_unknown_with_delegate
+    4: public_key_known_with_consensus_key
   public_key_hash_tag:
     0: ed25519
     1: secp256k1
@@ -392,12 +398,10 @@ enums:
     1: secp256k1
     2: p256
     3: bls
-  bootstrap_accounts_elt_tag:
-    0: public_key_known
-    1: public_key_unknown
-    2: public_key_known_with_delegate
-    3: public_key_unknown_with_delegate
-    4: public_key_known_with_consensus_key
+  pvm_kind:
+    0: arith
+    1: wasm_2_0_0
+    2: riscv
 seq:
 - id: bootstrap_accounts
   type: bootstrap_accounts_
@@ -438,9 +442,9 @@ seq:
 - id: proof_of_work_threshold
   type: s8
 - id: minimal_stake
-  type: n
+  type: alpha__mutez
 - id: minimal_frozen_stake
-  type: n
+  type: alpha__mutez
 - id: vdf_difficulty
   type: s8
 - id: origination_size
@@ -448,7 +452,7 @@ seq:
 - id: issuance_weights
   type: issuance_weights
 - id: cost_per_byte
-  type: n
+  type: alpha__mutez
 - id: hard_storage_limit_per_operation
   type: z
 - id: quorum_min
@@ -509,7 +513,7 @@ seq:
 - id: smart_rollup_challenge_window_in_blocks
   type: int31
 - id: smart_rollup_stake_amount
-  type: n
+  type: alpha__mutez
 - id: smart_rollup_commitment_period_in_blocks
   type: int31
 - id: smart_rollup_max_lookahead_in_blocks

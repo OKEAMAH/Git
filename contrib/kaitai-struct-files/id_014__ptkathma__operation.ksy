@@ -940,7 +940,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -962,7 +962,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1088,7 +1088,7 @@ types:
       size: 32
       if: (seed_nonce_hash_tag == bool::true)
     - id: liquidity_baking_toggle_vote
-      type: s1
+      type: id_014__ptkathma__liquidity_baking_toggle_vote
   id_014__ptkathma__contract_id:
     seq:
     - id: id_014__ptkathma__contract_id_tag
@@ -1157,6 +1157,14 @@ types:
     - id: preendorsement
       type: endorsement
       if: (id_014__ptkathma__inlined__preendorsement__contents_tag == id_014__ptkathma__inlined__preendorsement__contents_tag::preendorsement)
+  id_014__ptkathma__liquidity_baking_toggle_vote:
+    seq:
+    - id: id_014__ptkathma__liquidity_baking_toggle_vote
+      type: s1
+  id_014__ptkathma__mutez:
+    seq:
+    - id: id_014__ptkathma__mutez
+      type: n
   id_014__ptkathma__operation__alpha__contents:
     seq:
     - id: id_014__ptkathma__operation__alpha__contents_tag
@@ -1283,12 +1291,20 @@ types:
       repeat: eos
     - id: signature
       size: 64
+  id_014__ptkathma__rollup_address:
+    seq:
+    - id: id_014__ptkathma__rollup_address
+      type: bytes_dyn_uint30
   id_014__ptkathma__scripted__contracts:
     seq:
     - id: code
       type: bytes_dyn_uint30
     - id: storage
       type: bytes_dyn_uint30
+  id_014__ptkathma__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   inbox:
     seq:
     - id: inbox_tag
@@ -1317,7 +1333,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1614,7 +1630,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1622,7 +1638,7 @@ types:
     - id: storage_limit
       type: n
     - id: balance
-      type: n
+      type: id_014__ptkathma__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -1790,7 +1806,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1813,7 +1829,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1829,7 +1845,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1837,7 +1853,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1849,7 +1865,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1857,7 +1873,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1869,7 +1885,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1877,7 +1893,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1889,7 +1905,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1897,7 +1913,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1917,7 +1933,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1937,7 +1953,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1945,7 +1961,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1957,7 +1973,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1972,7 +1988,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -1980,7 +1996,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -1998,7 +2014,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2006,7 +2022,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -2037,7 +2053,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2048,7 +2064,7 @@ types:
       type: u1
       enum: bool
     - id: limit
-      type: n
+      type: id_014__ptkathma__mutez
       if: (limit_tag == bool::true)
   skips:
     seq:
@@ -2067,7 +2083,7 @@ types:
   skips_elt_field0:
     seq:
     - id: rollup
-      type: bytes_dyn_uint30
+      type: id_014__ptkathma__rollup_address
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
@@ -2233,7 +2249,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2241,7 +2257,7 @@ types:
     - id: storage_limit
       type: n
     - id: amount
-      type: n
+      type: id_014__ptkathma__mutez
     - id: destination
       type: id_014__ptkathma__contract_id
       doc: ! >-
@@ -2259,7 +2275,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2323,7 +2339,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2331,7 +2347,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_014__ptkathma__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -2343,7 +2359,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2351,7 +2367,7 @@ types:
     - id: storage_limit
       type: n
     - id: tx_rollup
-      size: 20
+      type: id_014__ptkathma__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -2371,7 +2387,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2384,7 +2400,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2392,7 +2408,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_014__ptkathma__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -2420,7 +2436,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2428,7 +2444,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_014__ptkathma__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -2438,7 +2454,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: fee
-      type: n
+      type: id_014__ptkathma__mutez
     - id: counter
       type: n
     - id: gas_limit
@@ -2446,7 +2462,7 @@ types:
     - id: storage_limit
       type: n
     - id: rollup
-      size: 20
+      type: id_014__ptkathma__tx_rollup_id
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
@@ -2456,7 +2472,7 @@ types:
       type: u1
       enum: bool
     - id: burn_limit
-      type: n
+      type: id_014__ptkathma__mutez
       if: (burn_limit_tag == bool::true)
   uint30:
     seq:
@@ -2478,52 +2494,21 @@ types:
       repeat-until: not (_.has_more).as<bool>
       if: has_tail.as<bool>
 enums:
-  inbox_tag:
-    0: none
-    1: some
-  requested_tag:
-    0: no_input_required
-    1: initial
-    2: first_after
-  given_tag:
-    0: none
-    1: some
-  inode_tree_tag:
-    0: blinded_inode
-    1: inode_values
-    2: inode_tree
-    3: inode_extender
-    4: none
-  proofs_tag:
-    0: sparse_proof
-    1: dense_proof
-  tree_encoding_tag:
-    0: value
-    1: blinded_value
-    2: node
-    3: blinded_node
-    4: inode
-    5: extender
-    6: none
   after_tag:
     0: value
     1: node
+  amount_tag:
+    0: case__0
+    1: case__1
+    2: case__2
+    3: case__3
   before_tag:
     0: value
     1: node
-  pvm_step_tag:
-    0: arithmetic__pvm__with__proof
-    1: wasm__2__0__0__pvm__with__proof
-  dissection_elt_field0_tag:
-    0: none
-    1: some
-  step_tag:
-    0: dissection
-    1: proof
-  kind_tag:
-    0: example_arith__smart__contract__rollup__kind
-    1: wasm__2__0__0__smart__contract__rollup__kind
-  case__3_field3_elt_tag:
+  bool:
+    0: false
+    255: true
+  case__0_field3_elt_tag:
     0: case__0
     1: case__1
     2: case__2
@@ -2551,6 +2536,15 @@ enums:
     225: case__225
     226: case__226
     227: case__227
+  case__129_elt_field1_tag:
+    0: case__0
+    1: case__1
+  case__130_elt_field1_tag:
+    0: case__0
+    1: case__1
+  case__131_elt_field1_tag:
+    0: case__0
+    1: case__1
   case__1_field3_elt_tag:
     0: case__0
     1: case__1
@@ -2607,16 +2601,7 @@ enums:
     225: case__225
     226: case__226
     227: case__227
-  case__131_elt_field1_tag:
-    0: case__0
-    1: case__1
-  case__130_elt_field1_tag:
-    0: case__0
-    1: case__1
-  case__129_elt_field1_tag:
-    0: case__0
-    1: case__1
-  case__0_field3_elt_tag:
+  case__3_field3_elt_tag:
     0: case__0
     1: case__1
     2: case__2
@@ -2644,23 +2629,16 @@ enums:
     225: case__225
     226: case__226
     227: case__227
-  proof_tag:
-    0: case__0
-    1: case__1
-    2: case__2
-    3: case__3
-  amount_tag:
-    0: case__0
-    1: case__1
-    2: case__2
-    3: case__3
-  message_tag:
-    0: batch
-    1: deposit
-  predecessor_tag:
+  dissection_elt_field0_tag:
+    0: none
+    1: some
+  given_tag:
     0: none
     1: some
   id_014__ptkathma__contract_id__originated_tag:
+    1: originated
+  id_014__ptkathma__contract_id_tag:
+    0: implicit
     1: originated
   id_014__ptkathma__entrypoint_tag:
     0: default
@@ -2669,24 +2647,10 @@ enums:
     3: set_delegate
     4: remove_delegate
     255: named
-  id_014__ptkathma__contract_id_tag:
-    0: implicit
-    1: originated
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
-  id_014__ptkathma__inlined__preendorsement__contents_tag:
-    20: preendorsement
-  bool:
-    0: false
-    255: true
   id_014__ptkathma__inlined__endorsement_mempool__contents_tag:
     21: endorsement
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
+  id_014__ptkathma__inlined__preendorsement__contents_tag:
+    20: preendorsement
   id_014__ptkathma__operation__alpha__contents_tag:
     1: seed_nonce_revelation
     2: double_endorsement_evidence
@@ -2726,6 +2690,58 @@ enums:
     207: sc_rollup_recover_bond
     208: sc_rollup_dal_slot_subscribe
     230: dal_publish_slot_header
+  inbox_tag:
+    0: none
+    1: some
+  inode_tree_tag:
+    0: blinded_inode
+    1: inode_values
+    2: inode_tree
+    3: inode_extender
+    4: none
+  kind_tag:
+    0: example_arith__smart__contract__rollup__kind
+    1: wasm__2__0__0__smart__contract__rollup__kind
+  message_tag:
+    0: batch
+    1: deposit
+  predecessor_tag:
+    0: none
+    1: some
+  proof_tag:
+    0: case__0
+    1: case__1
+    2: case__2
+    3: case__3
+  proofs_tag:
+    0: sparse_proof
+    1: dense_proof
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
+  pvm_step_tag:
+    0: arithmetic__pvm__with__proof
+    1: wasm__2__0__0__pvm__with__proof
+  requested_tag:
+    0: no_input_required
+    1: initial
+    2: first_after
+  step_tag:
+    0: dissection
+    1: proof
+  tree_encoding_tag:
+    0: value
+    1: blinded_value
+    2: node
+    3: blinded_node
+    4: inode
+    5: extender
+    6: none
 seq:
 - id: id_014__ptkathma__operation
   type: operation__shell_header

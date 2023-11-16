@@ -40,6 +40,10 @@ types:
     - id: named
       type: named_
       if: (id_011__pthangz2__entrypoint_tag == id_011__pthangz2__entrypoint_tag::named)
+  id_011__pthangz2__mutez:
+    seq:
+    - id: id_011__pthangz2__mutez
+      type: n
   id_011__pthangz2__operation__alpha__internal_operation:
     seq:
     - id: source
@@ -109,7 +113,7 @@ types:
   origination:
     seq:
     - id: balance
-      type: n
+      type: id_011__pthangz2__mutez
     - id: delegate_tag
       type: u1
       enum: bool
@@ -157,7 +161,7 @@ types:
   transaction:
     seq:
     - id: amount
-      type: n
+      type: id_011__pthangz2__mutez
     - id: destination
       type: id_011__pthangz2__contract_id
       doc: ! >-
@@ -176,6 +180,12 @@ types:
       valid:
         max: 1073741823
 enums:
+  bool:
+    0: false
+    255: true
+  id_011__pthangz2__contract_id_tag:
+    0: implicit
+    1: originated
   id_011__pthangz2__entrypoint_tag:
     0: default
     1: root
@@ -183,13 +193,6 @@ enums:
     3: set_delegate
     4: remove_delegate
     255: named
-  bool:
-    0: false
-    255: true
-  public_key_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
   id_011__pthangz2__operation__alpha__internal_operation_tag:
     0: reveal
     1: transaction
@@ -200,9 +203,10 @@ enums:
     0: ed25519
     1: secp256k1
     2: p256
-  id_011__pthangz2__contract_id_tag:
-    0: implicit
-    1: originated
+  public_key_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_011__pthangz2__operation__alpha__internal_operation
   type: id_011__pthangz2__operation__alpha__internal_operation

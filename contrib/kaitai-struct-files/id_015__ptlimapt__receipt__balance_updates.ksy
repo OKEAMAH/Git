@@ -26,13 +26,13 @@ types:
       type: u1
       enum: id_015__ptlimapt__bond_id_tag
     - id: tx_rollup_bond_id
-      size: 20
+      type: id_015__ptlimapt__tx_rollup_id
       if: (id_015__ptlimapt__bond_id_tag == id_015__ptlimapt__bond_id_tag::tx_rollup_bond_id)
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
         is a base58 tx rollup hash
     - id: sc_rollup_bond_id
-      type: bytes_dyn_uint30
+      type: id_015__ptlimapt__rollup_address
       if: (id_015__ptlimapt__bond_id_tag == id_015__ptlimapt__bond_id_tag::sc_rollup_bond_id)
       doc: ! >-
         A smart contract rollup address: A smart contract rollup is identified by
@@ -73,6 +73,10 @@ types:
     - id: frozen_bonds
       type: frozen_bonds
       if: (id_015__ptlimapt__operation_metadata__alpha__balance_tag == id_015__ptlimapt__operation_metadata__alpha__balance_tag::frozen_bonds)
+  id_015__ptlimapt__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_015__ptlimapt__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_015__ptlimapt__operation_metadata__alpha__balance_updates_entries
@@ -92,10 +96,22 @@ types:
     - id: id_015__ptlimapt__operation_metadata__alpha__balance
       type: id_015__ptlimapt__operation_metadata__alpha__balance
     - id: id_015__ptlimapt__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_015__ptlimapt__operation_metadata__alpha__balance_update
     - id: id_015__ptlimapt__operation_metadata__alpha__update_origin
+      type: id_015__ptlimapt__operation_metadata__alpha__update_origin
+  id_015__ptlimapt__operation_metadata__alpha__update_origin:
+    seq:
+    - id: origin
       type: u1
       enum: origin_tag
+  id_015__ptlimapt__rollup_address:
+    seq:
+    - id: id_015__ptlimapt__rollup_address
+      type: bytes_dyn_uint30
+  id_015__ptlimapt__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   lost_endorsing_rewards:
     seq:
     - id: delegate
@@ -135,21 +151,12 @@ types:
       valid:
         max: 1073741823
 enums:
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-    3: simulation
-  id_015__ptlimapt__bond_id_tag:
-    0: tx_rollup_bond_id
-    1: sc_rollup_bond_id
   bool:
     0: false
     255: true
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
+  id_015__ptlimapt__bond_id_tag:
+    0: tx_rollup_bond_id
+    1: sc_rollup_bond_id
   id_015__ptlimapt__contract_id_tag:
     0: implicit
     1: originated
@@ -177,6 +184,15 @@ enums:
     23: tx_rollup_rejection_punishments
     24: sc_rollup_refutation_punishments
     25: sc_rollup_refutation_rewards
+  origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+    3: simulation
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_015__ptlimapt__operation_metadata__alpha__balance_updates
   type: id_015__ptlimapt__operation_metadata__alpha__balance_updates_

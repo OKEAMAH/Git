@@ -29,6 +29,11 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  id_008__ptedo2zk__michelson__v1__primitives:
+    seq:
+    - id: id_008__ptedo2zk__michelson__v1__primitives
+      type: u1
+      enum: id_008__ptedo2zk__michelson__v1__primitives
   micheline__008__ptedo2zk__michelson_v1__expression:
     seq:
     - id: micheline__008__ptedo2zk__michelson_v1__expression_tag
@@ -44,9 +49,8 @@ types:
       type: sequence_
       if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
-      type: u1
+      type: id_008__ptedo2zk__michelson__v1__primitives
       if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::prim__no_args__no_annots)
-      enum: id_008__ptedo2zk__michelson__v1__primitives
     - id: prim__no_args__some_annots
       type: prim__no_args__some_annots
       if: (micheline__008__ptedo2zk__michelson_v1__expression_tag == micheline__008__ptedo2zk__michelson_v1__expression_tag::prim__no_args__some_annots)
@@ -77,15 +81,13 @@ types:
   prim__1_arg__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_008__ptedo2zk__michelson__v1__primitives
+      type: id_008__ptedo2zk__michelson__v1__primitives
     - id: arg
       type: micheline__008__ptedo2zk__michelson_v1__expression
   prim__1_arg__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_008__ptedo2zk__michelson__v1__primitives
+      type: id_008__ptedo2zk__michelson__v1__primitives
     - id: arg
       type: micheline__008__ptedo2zk__michelson_v1__expression
     - id: annots
@@ -93,8 +95,7 @@ types:
   prim__2_args__no_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_008__ptedo2zk__michelson__v1__primitives
+      type: id_008__ptedo2zk__michelson__v1__primitives
     - id: arg1
       type: micheline__008__ptedo2zk__michelson_v1__expression
     - id: arg2
@@ -102,8 +103,7 @@ types:
   prim__2_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_008__ptedo2zk__michelson__v1__primitives
+      type: id_008__ptedo2zk__michelson__v1__primitives
     - id: arg1
       type: micheline__008__ptedo2zk__michelson_v1__expression
     - id: arg2
@@ -113,8 +113,7 @@ types:
   prim__generic:
     seq:
     - id: prim
-      type: u1
-      enum: id_008__ptedo2zk__michelson__v1__primitives
+      type: id_008__ptedo2zk__michelson__v1__primitives
     - id: args
       type: args_
     - id: annots
@@ -122,8 +121,7 @@ types:
   prim__no_args__some_annots:
     seq:
     - id: prim
-      type: u1
-      enum: id_008__ptedo2zk__michelson__v1__primitives
+      type: id_008__ptedo2zk__michelson__v1__primitives
     - id: annots
       type: bytes_dyn_uint30
   sequence:

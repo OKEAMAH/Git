@@ -18,7 +18,7 @@ types:
       type: u1
       enum: id_013__ptjakart__bond_id_tag
     - id: tx_rollup_bond_id
-      size: 20
+      type: id_013__ptjakart__tx_rollup_id
       if: (id_013__ptjakart__bond_id_tag == id_013__ptjakart__bond_id_tag::tx_rollup_bond_id)
       doc: ! >-
         A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
@@ -59,6 +59,10 @@ types:
     - id: frozen_bonds
       type: frozen_bonds
       if: (id_013__ptjakart__operation_metadata__alpha__balance_tag == id_013__ptjakart__operation_metadata__alpha__balance_tag::frozen_bonds)
+  id_013__ptjakart__operation_metadata__alpha__balance_update:
+    seq:
+    - id: change
+      type: s8
   id_013__ptjakart__operation_metadata__alpha__balance_updates:
     seq:
     - id: id_013__ptjakart__operation_metadata__alpha__balance_updates_entries
@@ -78,10 +82,18 @@ types:
     - id: id_013__ptjakart__operation_metadata__alpha__balance
       type: id_013__ptjakart__operation_metadata__alpha__balance
     - id: id_013__ptjakart__operation_metadata__alpha__balance_update
-      type: s8
+      type: id_013__ptjakart__operation_metadata__alpha__balance_update
     - id: id_013__ptjakart__operation_metadata__alpha__update_origin
+      type: id_013__ptjakart__operation_metadata__alpha__update_origin
+  id_013__ptjakart__operation_metadata__alpha__update_origin:
+    seq:
+    - id: origin
       type: u1
       enum: origin_tag
+  id_013__ptjakart__tx_rollup_id:
+    seq:
+    - id: rollup_hash
+      size: 20
   lost_endorsing_rewards:
     seq:
     - id: delegate
@@ -115,20 +127,11 @@ types:
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
 enums:
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-    3: simulation
-  id_013__ptjakart__bond_id_tag:
-    0: tx_rollup_bond_id
   bool:
     0: false
     255: true
-  public_key_hash_tag:
-    0: ed25519
-    1: secp256k1
-    2: p256
+  id_013__ptjakart__bond_id_tag:
+    0: tx_rollup_bond_id
   id_013__ptjakart__contract_id_tag:
     0: implicit
     1: originated
@@ -154,6 +157,15 @@ enums:
     21: frozen_bonds
     22: tx_rollup_rejection_rewards
     23: tx_rollup_rejection_punishments
+  origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+    3: simulation
+  public_key_hash_tag:
+    0: ed25519
+    1: secp256k1
+    2: p256
 seq:
 - id: id_013__ptjakart__operation_metadata__alpha__balance_updates
   type: id_013__ptjakart__operation_metadata__alpha__balance_updates_

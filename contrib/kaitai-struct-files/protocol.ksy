@@ -41,6 +41,10 @@ types:
       if: (interface_tag == bool::true)
     - id: implementation
       type: bytes_dyn_uint30
+  protocol__environment_version:
+    seq:
+    - id: protocol__environment_version
+      type: u2
   uint30:
     seq:
     - id: uint30
@@ -53,6 +57,6 @@ enums:
     255: true
 seq:
 - id: expected_env_version
-  type: u2
+  type: protocol__environment_version
 - id: components
   type: components_
