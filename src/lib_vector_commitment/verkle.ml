@@ -286,105 +286,107 @@ functor
       List.map snd (List.of_seq (IntMap.to_seq map)) |> Array.of_list
 
     let apply_update ~file_name diff =
-      let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+      if IntMap.is_empty diff then ()
+      else
+        let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
 
-      let ec_of_diff diff =
-        (* TODO: Don't convert srs_lagrange to an OCaml list,
-           keep it as a C array and use a `get` function *)
-        let filtered_list =
-          List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
+        let ec_of_diff diff =
+          (* TODO: Don't convert srs_lagrange to an OCaml list,
+             keep it as a C array and use a `get` function *)
+          let filtered_list =
+            List.filteri (fun i _ -> IntMap.mem i diff) srs_lagrange
+          in
+          let to_pippinger_ec = filtered_list |> Array.of_list in
+          let to_pippinger_fr = map_to_array diff in
+          G1.pippenger to_pippinger_ec to_pippinger_fr
         in
-        let to_pippinger_ec = filtered_list |> Array.of_list in
-        let to_pippinger_fr = map_to_array diff in
-        G1.pippenger to_pippinger_ec to_pippinger_fr
-      in
-      (* Compute the EC diff for the fst lvl *)
-      let fst_lvl_diff_ec = IntMap.map ec_of_diff diff in
+        (* Compute the EC diff for the fst lvl *)
+        let fst_lvl_diff_ec = IntMap.map ec_of_diff diff in
 
-      (* Compute the Fr diff for the root *)
-      let root_diff_fr =
-        IntMap.mapi
-          (fun i _ ->
-            let buffer = Bytes.create fst_lvl_cell_size in
-            Utils.read_file
-              file_descr
-              buffer
-              ~offset:(get_offset_fst_lvl i)
-              ~len:fst_lvl_cell_size ;
-            let old_ec = G1.of_bytes_exn buffer in
-            let old_hash = hash_ec_to_fr old_ec in
-            let new_hash =
-              G1.add (IntMap.find i fst_lvl_diff_ec) old_ec |> hash_ec_to_fr
-            in
-            Scalar.sub new_hash old_hash)
-          diff
-      in
-      (* Compute the EC diff for the root *)
-      let root_diff = ec_of_diff root_diff_fr in
-
-      (* Compute the new root *)
-      let new_root =
-        let old_root = Bytes.create root_size in
-        Utils.read_file file_descr old_root ~offset:0 ~len:root_size ;
-        G1.(add (of_bytes_exn old_root) root_diff) |> G1.to_bytes
-      in
-
-      (* Compute the new first level *)
-      let new_fst_lvl =
-        let ec_buffer = Bytes.create fst_lvl_cell_size in
-        IntMap.mapi
-          (fun i ec_point ->
-            Utils.read_file
-              file_descr
-              ec_buffer
-              ~offset:(get_offset_fst_lvl i)
-              ~len:fst_lvl_cell_size ;
-            G1.(to_bytes (add (of_bytes_exn ec_buffer) ec_point)))
-          fst_lvl_diff_ec
-      in
-
-      (* Compute the new leaves *)
-      let new_leaves =
-        let fr_buffer = Bytes.create leaf_cell_size in
-        let snd_lvl_map fst snd_lvl_diff =
+        (* Compute the Fr diff for the root *)
+        let root_diff_fr =
           IntMap.mapi
-            (fun snd diff ->
-              let () =
-                Utils.read_file
-                  file_descr
-                  fr_buffer
-                  ~offset:(get_offset_snd_lvl fst snd)
-                  ~len:leaf_cell_size
+            (fun i _ ->
+              let buffer = Bytes.create fst_lvl_cell_size in
+              Utils.read_file
+                file_descr
+                buffer
+                ~offset:(get_offset_fst_lvl i)
+                ~len:fst_lvl_cell_size ;
+              let old_ec = G1.of_bytes_exn buffer in
+              let old_hash = hash_ec_to_fr old_ec in
+              let new_hash =
+                G1.add (IntMap.find i fst_lvl_diff_ec) old_ec |> hash_ec_to_fr
               in
-              Scalar.(to_bytes (of_bytes_exn fr_buffer + diff)))
-            snd_lvl_diff
+              Scalar.sub new_hash old_hash)
+            diff
         in
-        IntMap.mapi snd_lvl_map diff
-      in
+        (* Compute the EC diff for the root *)
+        let root_diff = ec_of_diff root_diff_fr in
 
-      (* Write the new root *)
-      Utils.write_file file_descr new_root ~offset:0 ~len:root_size ;
+        (* Compute the new root *)
+        let new_root =
+          let old_root = Bytes.create root_size in
+          Utils.read_file file_descr old_root ~offset:0 ~len:root_size ;
+          G1.(add (of_bytes_exn old_root) root_diff) |> G1.to_bytes
+        in
 
-      (* Write the new first level into file *)
-      let to_iter i bytes =
-        Utils.write_file
-          file_descr
-          bytes
-          ~offset:(get_offset_fst_lvl i)
-          ~len:fst_lvl_cell_size
-      in
-      IntMap.iter to_iter new_fst_lvl ;
+        (* Compute the new first level *)
+        let new_fst_lvl =
+          let ec_buffer = Bytes.create fst_lvl_cell_size in
+          IntMap.mapi
+            (fun i ec_point ->
+              Utils.read_file
+                file_descr
+                ec_buffer
+                ~offset:(get_offset_fst_lvl i)
+                ~len:fst_lvl_cell_size ;
+              G1.(to_bytes (add (of_bytes_exn ec_buffer) ec_point)))
+            fst_lvl_diff_ec
+        in
 
-      (* Write the new leaves into file *)
-      let snd_lvl_iter fst snd_lvl_to_write =
-        IntMap.iter
-          (fun snd to_write ->
-            Utils.write_file
-              file_descr
-              to_write
-              ~offset:(get_offset_snd_lvl fst snd)
-              ~len:leaf_cell_size)
-          snd_lvl_to_write
-      in
-      IntMap.iter snd_lvl_iter new_leaves
+        (* Compute the new leaves *)
+        let new_leaves =
+          let fr_buffer = Bytes.create leaf_cell_size in
+          let snd_lvl_map fst snd_lvl_diff =
+            IntMap.mapi
+              (fun snd diff ->
+                let () =
+                  Utils.read_file
+                    file_descr
+                    fr_buffer
+                    ~offset:(get_offset_snd_lvl fst snd)
+                    ~len:leaf_cell_size
+                in
+                Scalar.(to_bytes (of_bytes_exn fr_buffer + diff)))
+              snd_lvl_diff
+          in
+          IntMap.mapi snd_lvl_map diff
+        in
+
+        (* Write the new root *)
+        Utils.write_file file_descr new_root ~offset:0 ~len:root_size ;
+
+        (* Write the new first level into file *)
+        let to_iter i bytes =
+          Utils.write_file
+            file_descr
+            bytes
+            ~offset:(get_offset_fst_lvl i)
+            ~len:fst_lvl_cell_size
+        in
+        IntMap.iter to_iter new_fst_lvl ;
+
+        (* Write the new leaves into file *)
+        let snd_lvl_iter fst snd_lvl_to_write =
+          IntMap.iter
+            (fun snd to_write ->
+              Utils.write_file
+                file_descr
+                to_write
+                ~offset:(get_offset_snd_lvl fst snd)
+                ~len:leaf_cell_size)
+            snd_lvl_to_write
+        in
+        IntMap.iter snd_lvl_iter new_leaves
   end

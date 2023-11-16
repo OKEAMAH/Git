@@ -168,11 +168,13 @@ functor
 
     open Internal_test
 
+    (* TODO: don't rely on Bls.Scalar.random *)
+    (* We could also compute a hash of the fr elements
+       if we want to have support for a different digest_size.
+       For now, digest_size = 32 = Scalar.size_in_bytes *)
     let random_bytes () = Kzg.Bls.Scalar.(random () |> to_bytes)
 
-    let generate_leaves () =
-      (* we could hash the fr elements if we want a different hash function *)
-      Array.init nb_cells (fun _ -> random_bytes ())
+    let generate_leaves () = Array.init nb_cells (fun _ -> random_bytes ())
     (* Array.init nb_cells (fun i -> Bls.Scalar.(of_int i |> to_bytes)) *)
 
     let generate_update ~size =
@@ -262,8 +264,8 @@ functor
       in
       ()
 
-    (* we want to handle indices in reverse order (to go from the leaves to the
-       root) ; that’s why we use int in reverse order *)
+    (* We change the default order to the reverse one
+       to go from the leaves to the root. *)
     module IntSet = Set.Make (struct
       type t = int
 
@@ -273,7 +275,7 @@ functor
     let apply_update ~file_name (new_values : bytes IntMap.t) =
       if IntMap.is_empty new_values then ()
       else
-        (* update the new_values (that have index in the leaves) with the index in the tree *)
+        (* Update the new_values (that have index in the leaves) with the index in the tree *)
         let new_values =
           IntMap.fold
             (fun k v acc -> IntMap.add (k + level_offset log_nb_cells) v acc)
@@ -281,6 +283,7 @@ functor
             IntMap.empty
         in
         let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+
         let get_to_read_write index =
           let set_to_read = ref IntSet.empty in
           let set_to_write = ref IntSet.empty in
@@ -301,10 +304,10 @@ functor
             set_to_read := IntSet.union !set_to_read new_to_read ;
             set_to_write := IntSet.union !set_to_write new_to_write)
           new_values ;
-        let hashes = ref new_values in
-        (* ref (IntMap.mapi (fun k v -> (v, is_left k)) new_values) in *)
         (* Remove what is updated from the set_to_read *)
         set_to_read := IntSet.diff !set_to_read !set_to_write ;
+
+        let hashes = ref new_values in
         (* Could be a fold on set_to_read *)
         IntSet.iter
           (fun i ->
@@ -318,25 +321,21 @@ functor
           !set_to_read ;
 
         let write index =
-          match IntMap.find_opt index new_values with
-          | Some new_value ->
-              hashes := IntMap.add index new_value !hashes ;
-              Utils.write_file
-                file_descr
-                new_value
-                ~offset:(index * cell_size)
-                ~len:cell_size
-          | None ->
-              let left_child = IntMap.find (left_child index) !hashes in
-              let right_child = IntMap.find (right_child index) !hashes in
-              let to_write = hash (Bytes.cat left_child right_child) in
-              (* Here it's important that we go from the bottom level to the top one.*)
-              hashes := IntMap.add index to_write !hashes ;
-              Utils.write_file
-                file_descr
-                to_write
-                ~offset:(index * cell_size)
-                ~len:cell_size
+          let to_write =
+            match IntMap.find_opt index new_values with
+            | Some new_value -> new_value
+            | None ->
+                let left_child = IntMap.find (left_child index) !hashes in
+                let right_child = IntMap.find (right_child index) !hashes in
+                (* Here it's important that we go from the bottom level to the top one.*)
+                hash (Bytes.cat left_child right_child)
+          in
+          hashes := IntMap.add index to_write !hashes ;
+          Utils.write_file
+            file_descr
+            to_write
+            ~offset:(index * cell_size)
+            ~len:cell_size
         in
         IntSet.iter write !set_to_write
   end
