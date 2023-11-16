@@ -90,7 +90,7 @@ module type T = sig
     t ->
     config ->
     protocol_operation Shell_operation.operation ->
-    [ `Passed_prefilter of Prevalidator_pending_operations.priority
+    [ `Passed_prefilter of Prevalidator_pending_operations.prio
     | Prevalidator_classification.error_classification ]
     Lwt.t
 

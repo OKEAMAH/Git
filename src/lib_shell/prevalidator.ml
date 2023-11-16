@@ -392,7 +392,7 @@ module Make_s
        on an "harmless" field of [types_state_shell]: [operation_stream] *)
     Lwt_watcher.notify operation_stream (classification, op)
 
-  let pre_filter pv ~notifier parsed_op : [Pending_ops.priority | `Drop] Lwt.t =
+  let pre_filter pv ~notifier parsed_op : [Pending_ops.prio | `Drop] Lwt.t =
     let open Lwt_syntax in
     let+ v =
       Prevalidation_t.pre_filter pv.validation_state pv.config parsed_op
@@ -402,7 +402,7 @@ module Make_s
       ->
         handle_classification ~notifier pv.shell (parsed_op, errs) ;
         `Drop
-    | `Passed_prefilter priority -> (priority :> [Pending_ops.priority | `Drop])
+    | `Passed_prefilter priority -> (priority :> [Pending_ops.prio | `Drop])
 
   let set_mempool shell mempool =
     shell.mempool <- mempool ;
@@ -447,9 +447,10 @@ module Make_s
        operations whose classes are changed/impacted by this classification
        (eg. in case of operation replacement).
   *)
-  let classify_operation shell ~config ~validation_state mempool op :
+  let classify_operation shell ~config ~validation_state
+      ((advertisable_mempool, mempool) as mempools) priority op :
       (prevalidation_t
-      * Mempool.t
+      * (Mempool.t * Mempool.t)
       * (protocol_operation operation * Classification.classification) trace)
       Lwt.t =
     let open Lwt_syntax in
@@ -464,25 +465,30 @@ module Make_s
         replacements
     in
     let to_handle = (op, classification) :: to_replace in
-    let mempool =
+    let mempools =
       match classification with
-      | `Validated ->
+      | `Validated -> (
           Profiler.mark ["valid operation"] ;
-          Mempool.cons_valid op.hash mempool
+          match priority with
+          | `New _ | `Reclassified `High ->
+              ( Mempool.cons_valid op.hash advertisable_mempool,
+                Mempool.cons_valid op.hash mempool )
+          | `Reclassified `Medium | `Reclassified (`Low _) ->
+              (advertisable_mempool, Mempool.cons_valid op.hash mempool))
       | `Branch_refused _ ->
           Profiler.mark ["branch_refused operation"] ;
-          mempool
+          mempools
       | `Branch_delayed _ ->
           Profiler.mark ["branch_delayed operation"] ;
-          mempool
+          mempools
       | `Refused _ ->
           Profiler.mark ["refused operation"] ;
-          mempool
+          mempools
       | `Outdated _ ->
           Profiler.mark ["outdated operation"] ;
-          mempool
+          mempools
     in
-    return (v_state, mempool, to_handle)
+    return (v_state, mempools, to_handle)
 
   (* Classify pending operations into either:
      [Refused | Outdated | Branch_delayed | Branch_refused | Validated].
@@ -505,32 +511,42 @@ module Make_s
     let open Lwt_syntax in
     let* r =
       Pending_ops.fold_es
-        (fun prio oph op (acc_validation_state, acc_mempool, limit) ->
+        (fun prio oph op (acc_validation_state, acc_mempools, limit) ->
           if limit <= 0 then
             (* Using Error as an early-return mechanism *)
-            Lwt.return_error (acc_validation_state, acc_mempool)
+            Lwt.return_error (acc_validation_state, acc_mempools)
           else
             let section =
-              match prio with
-              | `High -> "classify consensus operation "
-              | `Medium -> "classify voting/anonymous operation"
-              | `Low _ -> "classify manager operation"
+              match priority with
+              | `New prio -> (
+                  match prio with
+                  | `High -> "classify new consensus operation "
+                  | `Medium -> "classify new voting/anonymous operation"
+                  | `Low _ -> "classify new manager operation")
+              | `Reclassified prio -> (
+                  match prio with
+                  | `High -> "classify old consensus operation "
+                  | `Medium -> "classify old voting/anonymous operation"
+                  | `Low _ -> "classify old manager operation")
             in
             Profiler.aggregate_s section @@ fun () ->
             shell.pending <- Pending_ops.remove oph shell.pending ;
-            let* new_validation_state, new_mempool, to_handle =
+            let* new_validation_state, new_mempools, to_handle =
               classify_operation
                 shell
                 ~config
                 ~validation_state:acc_validation_state
-                acc_mempool
+                acc_mempools
+                priority
                 op
             in
-            let+ () = Events.(emit operation_reclassified) oph in
+            let* () = Events.(emit operation_reclassified) oph in
             List.iter (handle_classification ~notifier shell) to_handle ;
-            Ok (new_validation_state, new_mempool, limit - 1))
+            Lwt.return_ok (new_validation_state, new_mempools, limit - 1))
         shell.pending
-        (state, Mempool.empty, shell.parameters.limits.operations_batch_size)
+        ( state,
+          (Mempool.empty, Mempool.empty),
+          shell.parameters.limits.operations_batch_size )
     in
     match r with
     | Error (state, advertised_mempool) ->
@@ -541,30 +557,27 @@ module Make_s
         Lwt.return (state, advertised_mempool)
     | Ok (state, advertised_mempool, _) -> Lwt.return (state, advertised_mempool)
 
-  let update_advertised_mempool_fields pv_shell delta_mempool =
+  let update_advertised_mempool_fields pv_shell
+      (advertisable_mempool, delta_mempool) =
     let open Lwt_syntax in
+    if not (Mempool.is_empty advertisable_mempool) then
+      (* We only advertise newly classified operations. *)
+      Profiler.aggregate_f "advertise mempool" (fun () ->
+          advertise pv_shell advertisable_mempool) ;
     if Mempool.is_empty delta_mempool then Lwt.return_unit
     else
-      Profiler.aggregate_s "advertise mempool" @@ fun () ->
-      (* We only advertise newly classified operations. *)
-      let mempool_to_advertise =
-        Mempool.{delta_mempool with known_valid = delta_mempool.known_valid}
-      in
-      let () =
-        Profiler.aggregate_f "advertise" @@ fun () ->
-        advertise pv_shell mempool_to_advertise
-      in
       let our_mempool =
-        let validated_hashes =
+        let known_valid =
           Profiler.aggregate_f "fold validated hashes" @@ fun () ->
-          Operation_hash.Set.(
-            fold add delta_mempool.known_valid pv_shell.mempool.known_valid)
+          Operation_hash.Set.union
+            delta_mempool.known_valid
+            pv_shell.mempool.known_valid
         in
         let pending =
           Profiler.aggregate_f "pending hashes" @@ fun () ->
           Pending_ops.hashes pv_shell.pending
         in
-        {Mempool.known_valid = validated_hashes; pending}
+        {Mempool.known_valid; pending}
       in
       let* _res =
         Profiler.aggregate_s "set mempool" @@ fun () ->
@@ -578,7 +591,7 @@ module Make_s
     if Pending_ops.is_empty pv.shell.pending then Lwt.return_unit
     else
       let* () = Events.(emit processing_operations) () in
-      let* validation_state, delta_mempool =
+      let* validation_state, delta_mempools =
         Profiler.aggregate_s "classify pending operations" @@ fun () ->
         classify_pending_operations
           ~notifier
@@ -587,7 +600,7 @@ module Make_s
           pv.validation_state
       in
       pv.validation_state <- validation_state ;
-      update_advertised_mempool_fields pv.shell delta_mempool
+      update_advertised_mempool_fields pv.shell delta_mempools
 
   (* This function fetches one operation through the
      [distributed_db]. On errors, we emit an event and proceed as
@@ -695,8 +708,11 @@ module Make_s
                 else (
                   (* TODO: https://gitlab.com/tezos/tezos/-/issues/1723
                      Should this have an influence on the peer's score ? *)
+                  (* The operation has never been handled by the prevalidator,
+                     we add it with a `New priority in the pending
+                     data-strutcure to be handled with higher priority *)
                   pv.shell.pending <-
-                    Pending_ops.add parsed_op prio pv.shell.pending ;
+                    Pending_ops.add parsed_op (`New prio) pv.shell.pending ;
                   return_ok_unit))
 
     let on_inject (pv : types_state) ~force op =
@@ -707,7 +723,7 @@ module Make_s
          - We don't want to call prefilter to get the priority.
          But, this may change in the future
       *)
-      let prio = `High in
+      let priority = `New `High in
       if already_handled ~origin:Events.Injected pv.shell oph then
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/1722
            Is this an error? *)
@@ -727,7 +743,7 @@ module Make_s
                 pv.shell.parameters.tools.chain_tools.inject_operation oph op
               in
               pv.shell.pending <-
-                Pending_ops.add parsed_op prio pv.shell.pending ;
+                Pending_ops.add parsed_op priority pv.shell.pending ;
               let*! () = Events.(emit operation_injected) oph in
               return_unit)
             else if
@@ -744,12 +760,13 @@ module Make_s
                 op.Operation.shell.branch
             else
               let notifier = mk_notifier pv.operation_stream in
-              let*! validation_state, delta_mempool, to_handle =
+              let*! validation_state, delta_mempools, to_handle =
                 classify_operation
                   pv.shell
                   ~config:pv.config
                   ~validation_state:pv.validation_state
-                  Mempool.empty
+                  (Mempool.empty, Mempool.empty)
+                  priority
                   parsed_op
               in
               let op_status =
@@ -779,7 +796,7 @@ module Make_s
                   (* Note that in this case, we may advertise an operation and bypass
                      the prioritirization strategy. *)
                   let*! v =
-                    update_advertised_mempool_fields pv.shell delta_mempool
+                    update_advertised_mempool_fields pv.shell delta_mempools
                   in
                   let*! () = Events.(emit operation_injected) oph in
                   return v
@@ -850,8 +867,7 @@ module Make_s
          does not exist for the moment. *)
       let*! new_pending_operations, nb_pending =
         Operation_hash.Map.fold_s
-          (fun _oph op (pending, nb_pending) ->
-            Profiler.aggregate_s "flushed operations" @@ fun () ->
+          (fun oph op (pending, nb_pending) ->
             let*! v =
               pre_filter pv ~notifier:(mk_notifier pv.operation_stream) op
             in
@@ -860,7 +876,12 @@ module Make_s
             | (`High | `Medium | `Low _) as prio ->
                 (* Here, an operation injected in this node with `High priority will
                    now get its approriate priority. *)
-                Lwt.return (Pending_ops.add op prio pending, nb_pending + 1))
+                let priority =
+                  (* If the operation has not been classified we set its priority to high *)
+                  if Pending_ops.mem oph pv.shell.pending then `New prio
+                  else `Reclassified prio
+                in
+                Lwt.return (Pending_ops.add op priority pending, nb_pending + 1))
           new_pending_operations
           (Pending_ops.empty, 0)
       in

@@ -84,13 +84,13 @@ let q_in_0_1 () =
 
 let priority_gen () : Prevalidator_pending_operations.priority QCheck2.Gen.t =
   let open QCheck2.Gen in
-  let* top_prio_value = oneofl [`High; `Medium; `Low] in
+  let* top_prio_value = oneofl [`New `High; `New `Medium; `New `Low] in
   match top_prio_value with
-  | `High -> pure `High
-  | `Medium -> pure `Medium
-  | `Low ->
+  | `New `High -> pure (`New `High)
+  | `New `Medium -> pure (`New `Medium)
+  | `New `Low ->
       let+ weights = small_list (q_in_0_1 ()) in
-      `Low weights
+      `New (`Low weights)
 
 (** [operation_with_hash_gen ?proto_gen ?block_hash_t ()] is a generator
     for parsable operations, i.e. values of type {!operation}.
