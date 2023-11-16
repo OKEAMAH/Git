@@ -6,4 +6,4 @@
  (libraries
   qcheck-alcotest
   octez-libs.vector_commitment)
- (modules main test_verkle test_merkle))
+ (modules main test_vc test_verkle test_merkle))

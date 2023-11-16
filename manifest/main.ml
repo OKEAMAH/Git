@@ -1656,7 +1656,7 @@ let _octez_vc_test =
     "main"
     ~path:"src/lib_vector_commitment/test"
     ~opam:"octez-libs"
-    ~modules:["main"; "test_verkle"; "test_merkle"]
+    ~modules:["main"; "test_vc"; "test_verkle"; "test_merkle"]
     ~bisect_ppx:No
     ~deps:[qcheck_alcotest; octez_vector_commitment]
 

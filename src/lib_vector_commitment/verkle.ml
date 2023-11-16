@@ -22,6 +22,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
 open Kzg.Bls
 module IntMap = Map.Make (Int)
 
@@ -32,13 +33,6 @@ snd_lvl array_size array of array_size of FR
 all of them are put in that order on disk
 *)
 
-(*
-module type Y = functor (A : ModuleA) ->
-  sig
-    include I with type t := A.t
-    val blah : A.t -> int
-  end
-*)
 module Make_Verkle_Tree : Vector_commitment_sig.Make_Vector_commitment =
 functor
   (P : Vector_commitment_sig.Parameters)
@@ -103,7 +97,6 @@ functor
       let random_vector () = Array.init arity (fun _i -> Scalar.random ()) in
       Array.init arity (fun _ -> random_vector ())
 
-    (** Generates a random diff for [size] elements *)
     let generate_update ~size =
       let nb = size in
       (* Gets a random index that does not belong to the diff *)
@@ -159,7 +152,6 @@ functor
 
     let serialize_root root = G1.to_bytes root
 
-    (** Writes in the file [root; fst_lvl; snd_level] in bytes. *)
     let create_tree ~file_name snd_lvl =
       let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
       let root, fst_lvl = commit snd_lvl in
@@ -368,9 +360,6 @@ functor
 
       let print_tree_memory _tree = failwith "todo"
 
-      let compare_root = Bls12_381.G1.eq
+      let equal_root = Bls12_381.G1.eq
     end
   end
-
-(* module Verkle : Vector_commitment_sig.Vector_commitment = *)
-(*   Internal *)
