@@ -322,9 +322,7 @@ functor
             Printf.printf
               "%d : [%s]\n"
               i
-              (String.concat
-                 ", "
-                 Array.(to_list (map (fun x -> Hex.(show (of_bytes x))) a))))
+              (String.concat ", " Array.(to_list (map Utils.hex_of_bytes a))))
           tree
 
       let print_tree ~file_name =
@@ -337,7 +335,7 @@ functor
       (*         let bytes_data = Bytes.concat Bytes.empty (Array.to_list data) in *)
       (*         Utils.write_file file_descr bytes_data ~offset ~len *)
 
-      let print_root root = Printf.printf "%s" Hex.(show (of_bytes root))
+      let print_root root = Printf.printf "%s" (Utils.hex_of_bytes root)
 
       let equal_root = Bytes.equal
     end

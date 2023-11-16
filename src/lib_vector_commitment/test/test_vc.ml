@@ -49,11 +49,7 @@ struct
     apply_update_leaves snd_lvl diff ;
     let tree_memory = create_tree_memory snd_lvl in
     let root_new = read_root_memory tree_memory in
-    Printf.printf "\n new_root: \n" ;
-    print_root root_new ;
-    Printf.printf "\n root: \n" ;
-    print_root root ;
-    Printf.printf "\n\n" ;
+    Unix.unlink file_name ;
     assert (equal_root root root_new)
 
   let tests =

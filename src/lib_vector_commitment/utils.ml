@@ -43,3 +43,5 @@ let write_file file_descr buffer ~offset ~len =
   assert (i = offset) ;
   let i = Unix.write file_descr buffer 0 len in
   assert (i = len)
+
+let hex_of_bytes x = Hex.(show (of_bytes x))
