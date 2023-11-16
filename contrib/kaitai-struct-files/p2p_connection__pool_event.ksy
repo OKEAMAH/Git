@@ -32,6 +32,14 @@ types:
     - id: identity_field1
       size: 16
       doc: crypto_box__public_key_hash
+  rejecting_request:
+    seq:
+    - id: point
+      type: p2p_point__id
+    - id: id_point
+      type: p2p_connection__id
+    - id: peer_id
+      size: 16
   request_rejected:
     seq:
     - id: point
@@ -96,7 +104,7 @@ seq:
   type: accepting_request
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::accepting_request)
 - id: rejecting_request
-  type: accepting_request
+  type: rejecting_request
   if: (p2p_connection__pool_event_tag == p2p_connection__pool_event_tag::rejecting_request)
 - id: request_rejected
   type: request_rejected

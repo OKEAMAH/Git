@@ -59,6 +59,12 @@ types:
     - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
+  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
   z:
     seq:
     - id: has_tail
@@ -170,7 +176,7 @@ seq:
 - id: double_baking_punishment
   type: id_014__ptkathma__mutez
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: minimal_participation_ratio
+  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
 - id: testnet_dictator_tag
   type: u1
   enum: bool

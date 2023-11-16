@@ -8,15 +8,15 @@ types:
     - id: issuance_ratio_min
       type: issuance_ratio_min
     - id: issuance_ratio_max
-      type: issuance_ratio_min
+      type: issuance_ratio_max
     - id: max_bonus
       type: s8
     - id: growth_rate
-      type: issuance_ratio_min
+      type: growth_rate
     - id: center_dz
-      type: issuance_ratio_min
+      type: center_dz
     - id: radius_dz
-      type: issuance_ratio_min
+      type: radius_dz
   alpha__mutez:
     seq:
     - id: alpha__mutez
@@ -32,7 +32,7 @@ types:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries
       repeat: eos
-  bootstrap_accounts_:
+  bootstrap_accounts_0:
     seq:
     - id: len_bootstrap_accounts
       type: u4
@@ -66,7 +66,7 @@ types:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
       repeat: eos
-  bootstrap_contracts_:
+  bootstrap_contracts_0:
     seq:
     - id: len_bootstrap_contracts
       type: u4
@@ -99,7 +99,7 @@ types:
     - id: bootstrap_smart_rollups_entries
       type: bootstrap_smart_rollups_entries
       repeat: eos
-  bootstrap_smart_rollups_:
+  bootstrap_smart_rollups_0:
     seq:
     - id: len_bootstrap_smart_rollups
       type: u4
@@ -123,7 +123,7 @@ types:
       type: u1
       enum: bool
     - id: whitelist
-      type: whitelist_
+      type: whitelist_0
       if: (whitelist_tag == bool::true)
   bytes_dyn_uint30:
     seq:
@@ -133,12 +133,18 @@ types:
         max: 1073741823
     - id: bytes_dyn_uint30
       size: len_bytes_dyn_uint30
+  center_dz:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   commitments:
     seq:
     - id: commitments_entries
       type: commitments_entries
       repeat: eos
-  commitments_:
+  commitments_0:
     seq:
     - id: len_commitments
       type: u4
@@ -176,6 +182,12 @@ types:
       type: int31
     - id: number_of_shards
       type: u2
+  growth_rate:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   int31:
     seq:
     - id: int31
@@ -183,6 +195,12 @@ types:
       valid:
         min: -1073741824
         max: 1073741823
+  issuance_ratio_max:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   issuance_ratio_min:
     seq:
     - id: numerator
@@ -330,6 +348,12 @@ types:
 
 
         signature__public_key_hash'
+  radius_dz:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   smart_rollup_reveal_activation_level:
     seq:
     - id: raw_data
@@ -351,7 +375,7 @@ types:
     - id: whitelist_entries
       type: whitelist_entries
       repeat: eos
-  whitelist_:
+  whitelist_0:
     seq:
     - id: len_whitelist
       type: u4
@@ -404,13 +428,13 @@ enums:
     2: riscv
 seq:
 - id: bootstrap_accounts
-  type: bootstrap_accounts_
+  type: bootstrap_accounts_0
 - id: bootstrap_contracts
-  type: bootstrap_contracts_
+  type: bootstrap_contracts_0
 - id: bootstrap_smart_rollups
-  type: bootstrap_smart_rollups_
+  type: bootstrap_smart_rollups_0
 - id: commitments
-  type: commitments_
+  type: commitments_0
 - id: security_deposit_ramp_up_cycles_tag
   type: u1
   enum: bool

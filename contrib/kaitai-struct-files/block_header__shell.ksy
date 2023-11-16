@@ -22,7 +22,7 @@ types:
     - id: fitness_entries
       type: fitness_entries
       repeat: eos
-  fitness_:
+  fitness_0:
     seq:
     - id: len_fitness
       type: u4
@@ -59,7 +59,7 @@ seq:
 - id: operations_hash
   size: 32
 - id: fitness
-  type: fitness_
+  type: fitness_0
   doc: ! >-
     Block fitness: The fitness, or score, of a block, that allow the Tezos to decide
     which chain is the best. A fitness value is a list of byte sequences. They are

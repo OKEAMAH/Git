@@ -8,7 +8,7 @@ types:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries
       repeat: eos
-  bootstrap_accounts_:
+  bootstrap_accounts_0:
     seq:
     - id: len_bootstrap_accounts
       type: u4
@@ -33,7 +33,7 @@ types:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
       repeat: eos
-  bootstrap_contracts_:
+  bootstrap_contracts_0:
     seq:
     - id: len_bootstrap_contracts
       type: u4
@@ -64,7 +64,7 @@ types:
     - id: commitments_entries
       type: commitments_entries
       repeat: eos
-  commitments_:
+  commitments_0:
     seq:
     - id: len_commitments
       type: u4
@@ -165,7 +165,7 @@ types:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries
       repeat: eos
-  time_between_blocks_:
+  time_between_blocks_0:
     seq:
     - id: len_time_between_blocks
       type: u4
@@ -214,11 +214,11 @@ enums:
     2: p256
 seq:
 - id: bootstrap_accounts
-  type: bootstrap_accounts_
+  type: bootstrap_accounts_0
 - id: bootstrap_contracts
-  type: bootstrap_contracts_
+  type: bootstrap_contracts_0
 - id: commitments
-  type: commitments_
+  type: commitments_0
 - id: security_deposit_ramp_up_cycles_tag
   type: u1
   enum: bool
@@ -242,7 +242,7 @@ seq:
 - id: blocks_per_voting_period
   type: s4
 - id: time_between_blocks
-  type: time_between_blocks_
+  type: time_between_blocks_0
 - id: endorsers_per_block
   type: u2
 - id: hard_gas_limit_per_operation

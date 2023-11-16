@@ -8,7 +8,7 @@ types:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries
       repeat: eos
-  bootstrap_accounts_:
+  bootstrap_accounts_0:
     seq:
     - id: len_bootstrap_accounts
       type: u4
@@ -33,7 +33,7 @@ types:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
       repeat: eos
-  bootstrap_contracts_:
+  bootstrap_contracts_0:
     seq:
     - id: len_bootstrap_contracts
       type: u4
@@ -68,7 +68,7 @@ types:
     - id: commitments_entries
       type: commitments_entries
       repeat: eos
-  commitments_:
+  commitments_0:
     seq:
     - id: len_commitments
       type: u4
@@ -170,6 +170,12 @@ types:
     - id: public_key_unknown_field1
       type: id_013__ptjakart__mutez
       doc: id_013__ptjakart__mutez
+  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
   uint30:
     seq:
     - id: uint30
@@ -206,11 +212,11 @@ enums:
     2: p256
 seq:
 - id: bootstrap_accounts
-  type: bootstrap_accounts_
+  type: bootstrap_accounts_0
 - id: bootstrap_contracts
-  type: bootstrap_contracts_
+  type: bootstrap_contracts_0
 - id: commitments
-  type: commitments_
+  type: commitments_0
 - id: security_deposit_ramp_up_cycles_tag
   type: u1
   enum: bool
@@ -286,7 +292,7 @@ seq:
 - id: double_baking_punishment
   type: id_013__ptjakart__mutez
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: minimal_participation_ratio
+  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
 - id: initial_seed_tag
   type: u1
   enum: bool

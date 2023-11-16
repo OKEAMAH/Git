@@ -38,7 +38,7 @@ types:
       type: u1
       enum: id_012__psithaca__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_012__psithaca__entrypoint_tag == id_012__psithaca__entrypoint_tag::named)
   id_012__psithaca__mutez:
     seq:
@@ -97,7 +97,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1

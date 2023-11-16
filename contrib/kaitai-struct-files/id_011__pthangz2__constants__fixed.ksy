@@ -8,7 +8,7 @@ types:
     - id: cache_layout_entries
       type: cache_layout_entries
       repeat: eos
-  cache_layout_:
+  cache_layout_0:
     seq:
     - id: len_cache_layout
       type: u4
@@ -46,6 +46,6 @@ seq:
 - id: max_allowed_global_constants_depth
   type: int31
 - id: cache_layout
-  type: cache_layout_
+  type: cache_layout_0
 - id: michelson_maximum_type_size
   type: u2

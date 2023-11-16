@@ -8,7 +8,7 @@ types:
     - id: args_entries
       type: args_entries
       repeat: eos
-  args_:
+  args_0:
     seq:
     - id: len_args
       type: u4
@@ -101,7 +101,7 @@ types:
       type: u1
       enum: id_014__ptkathma__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_014__ptkathma__entrypoint_tag == id_014__ptkathma__entrypoint_tag::named)
   id_014__ptkathma__michelson__v1__primitives:
     seq:
@@ -152,7 +152,7 @@ types:
       type: bytes_dyn_uint30
       if: (micheline__014__ptkathma__michelson_v1__expression_tag == micheline__014__ptkathma__michelson_v1__expression_tag::string)
     - id: sequence
-      type: sequence_
+      type: sequence_0
       if: (micheline__014__ptkathma__michelson_v1__expression_tag == micheline__014__ptkathma__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
       type: id_014__ptkathma__michelson__v1__primitives
@@ -194,7 +194,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1
@@ -267,7 +267,7 @@ types:
     - id: prim
       type: id_014__ptkathma__michelson__v1__primitives
     - id: args
-      type: args_
+      type: args_0
     - id: annots
       type: bytes_dyn_uint30
   prim__no_args__some_annots:
@@ -302,7 +302,7 @@ types:
     - id: sequence_entries
       type: sequence_entries
       repeat: eos
-  sequence_:
+  sequence_0:
     seq:
     - id: len_sequence
       type: u4

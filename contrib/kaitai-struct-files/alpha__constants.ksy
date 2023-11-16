@@ -8,19 +8,25 @@ types:
     - id: issuance_ratio_min
       type: issuance_ratio_min
     - id: issuance_ratio_max
-      type: issuance_ratio_min
+      type: issuance_ratio_max
     - id: max_bonus
       type: s8
     - id: growth_rate
-      type: issuance_ratio_min
+      type: growth_rate
     - id: center_dz
-      type: issuance_ratio_min
+      type: center_dz
     - id: radius_dz
-      type: issuance_ratio_min
+      type: radius_dz
   alpha__mutez:
     seq:
     - id: alpha__mutez
       type: n
+  center_dz:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   dal_parametric:
     seq:
     - id: feature_enable
@@ -42,6 +48,12 @@ types:
       type: int31
     - id: number_of_shards
       type: u2
+  growth_rate:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   int31:
     seq:
     - id: int31
@@ -49,6 +61,12 @@ types:
       valid:
         min: -1073741824
         max: 1073741823
+  issuance_ratio_max:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   issuance_ratio_min:
     seq:
     - id: numerator
@@ -106,6 +124,12 @@ types:
     - id: bls
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::bls)
+  radius_dz:
+    seq:
+    - id: numerator
+      type: z
+    - id: denominator
+      type: z
   smart_rollup_reveal_activation_level:
     seq:
     - id: raw_data

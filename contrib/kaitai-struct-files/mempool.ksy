@@ -12,7 +12,7 @@ types:
     - id: known_valid_entries
       type: known_valid_entries
       repeat: eos
-  known_valid_:
+  known_valid_0:
     seq:
     - id: len_known_valid
       type: u4
@@ -28,9 +28,9 @@ types:
   pending:
     seq:
     - id: pending_entries
-      type: known_valid_entries
+      type: pending_entries
       repeat: eos
-  pending_:
+  pending_0:
     seq:
     - id: len_pending
       type: u4
@@ -39,17 +39,21 @@ types:
     - id: pending
       type: pending
       size: len_pending
-  pending__:
+  pending_1:
     seq:
     - id: len_pending
       type: u4
       valid:
         max: 1073741823
     - id: pending
-      type: pending_
+      type: pending_0
       size: len_pending
+  pending_entries:
+    seq:
+    - id: operation_hash
+      size: 32
 seq:
 - id: known_valid
-  type: known_valid_
+  type: known_valid_0
 - id: pending
-  type: pending__
+  type: pending_1

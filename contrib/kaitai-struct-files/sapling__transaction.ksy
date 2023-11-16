@@ -25,7 +25,7 @@ types:
     - id: inputs_entries
       type: inputs_entries
       repeat: eos
-  inputs_:
+  inputs_0:
     seq:
     - id: len_inputs
       type: u4
@@ -43,7 +43,7 @@ types:
     - id: outputs_entries
       type: outputs_entries
       repeat: eos
-  outputs_:
+  outputs_0:
     seq:
     - id: len_outputs
       type: u4
@@ -64,9 +64,9 @@ types:
         max: 1073741823
 seq:
 - id: inputs
-  type: inputs_
+  type: inputs_0
 - id: outputs
-  type: outputs_
+  type: outputs_0
 - id: binding_sig
   type: sapling__transaction__binding_sig
 - id: balance

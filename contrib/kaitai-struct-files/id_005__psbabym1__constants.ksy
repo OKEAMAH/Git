@@ -31,7 +31,7 @@ types:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries
       repeat: eos
-  time_between_blocks_:
+  time_between_blocks_0:
     seq:
     - id: len_time_between_blocks
       type: u4
@@ -79,7 +79,7 @@ seq:
 - id: blocks_per_voting_period
   type: s4
 - id: time_between_blocks
-  type: time_between_blocks_
+  type: time_between_blocks_0
 - id: endorsers_per_block
   type: u2
 - id: hard_gas_limit_per_operation

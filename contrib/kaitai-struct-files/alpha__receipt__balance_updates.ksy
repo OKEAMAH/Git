@@ -102,7 +102,7 @@ types:
     - id: alpha__operation_metadata__alpha__balance_updates_entries
       type: alpha__operation_metadata__alpha__balance_updates_entries
       repeat: eos
-  alpha__operation_metadata__alpha__balance_updates_:
+  alpha__operation_metadata__alpha__balance_updates_0:
     seq:
     - id: len_alpha__operation_metadata__alpha__balance_updates
       type: u4
@@ -117,6 +117,10 @@ types:
       type: alpha__operation_metadata__alpha__balance_and_update
     - id: alpha__operation_metadata__alpha__update_origin
       type: alpha__operation_metadata__alpha__update_origin
+  alpha__operation_metadata__alpha__staking_abstract_quantity:
+    seq:
+    - id: change
+      type: s8
   alpha__operation_metadata__alpha__tez_balance_update:
     seq:
     - id: change
@@ -226,7 +230,7 @@ types:
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
     - id: alpha__operation_metadata__alpha__staking_abstract_quantity
-      type: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__staking_abstract_quantity
   staking_delegator_numerator:
     seq:
     - id: delegator
@@ -235,7 +239,7 @@ types:
         A contract handle: A contract notation as given to an RPC or inside scripts.
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: alpha__operation_metadata__alpha__staking_abstract_quantity
-      type: alpha__operation_metadata__alpha__tez_balance_update
+      type: alpha__operation_metadata__alpha__staking_abstract_quantity
   unstaked_deposits:
     seq:
     - id: staker
@@ -295,4 +299,4 @@ enums:
     3: bls
 seq:
 - id: alpha__operation_metadata__alpha__balance_updates
-  type: alpha__operation_metadata__alpha__balance_updates_
+  type: alpha__operation_metadata__alpha__balance_updates_0

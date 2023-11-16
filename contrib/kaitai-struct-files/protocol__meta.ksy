@@ -20,7 +20,7 @@ types:
     - id: modules_entries
       type: modules_entries
       repeat: eos
-  modules_:
+  modules_0:
     seq:
     - id: len_modules
       type: u4
@@ -62,5 +62,5 @@ seq:
   type: protocol__environment_version
   if: (expected_env_version_tag == bool::true)
 - id: modules
-  type: modules_
+  type: modules_0
   doc: Modules comprising the protocol

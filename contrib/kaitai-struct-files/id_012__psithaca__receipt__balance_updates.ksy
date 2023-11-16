@@ -30,14 +30,14 @@ types:
       type: legacy_rewards
       if: (id_012__psithaca__operation_metadata__alpha__balance_tag == id_012__psithaca__operation_metadata__alpha__balance_tag::legacy_rewards)
     - id: legacy_deposits
-      type: legacy_rewards
+      type: legacy_deposits
       if: (id_012__psithaca__operation_metadata__alpha__balance_tag == id_012__psithaca__operation_metadata__alpha__balance_tag::legacy_deposits)
     - id: deposits
       type: public_key_hash
       if: (id_012__psithaca__operation_metadata__alpha__balance_tag == id_012__psithaca__operation_metadata__alpha__balance_tag::deposits)
       doc: A Ed25519, Secp256k1, or P256 public key hash
     - id: legacy_fees
-      type: legacy_rewards
+      type: legacy_fees
       if: (id_012__psithaca__operation_metadata__alpha__balance_tag == id_012__psithaca__operation_metadata__alpha__balance_tag::legacy_fees)
     - id: lost_endorsing_rewards
       type: lost_endorsing_rewards
@@ -54,7 +54,7 @@ types:
     - id: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
       type: id_012__psithaca__operation_metadata__alpha__balance_updates_entries
       repeat: eos
-  id_012__psithaca__operation_metadata__alpha__balance_updates_:
+  id_012__psithaca__operation_metadata__alpha__balance_updates_0:
     seq:
     - id: len_id_012__psithaca__operation_metadata__alpha__balance_updates
       type: u4
@@ -76,6 +76,20 @@ types:
     - id: origin
       type: u1
       enum: origin_tag
+  legacy_deposits:
+    seq:
+    - id: delegate
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: cycle
+      type: s4
+  legacy_fees:
+    seq:
+    - id: delegate
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: cycle
+      type: s4
   legacy_rewards:
     seq:
     - id: delegate
@@ -155,4 +169,4 @@ enums:
     2: p256
 seq:
 - id: id_012__psithaca__operation_metadata__alpha__balance_updates
-  type: id_012__psithaca__operation_metadata__alpha__balance_updates_
+  type: id_012__psithaca__operation_metadata__alpha__balance_updates_0

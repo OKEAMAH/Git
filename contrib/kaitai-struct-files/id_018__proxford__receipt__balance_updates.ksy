@@ -70,7 +70,7 @@ types:
     - id: id_018__proxford__operation_metadata__alpha__balance_updates_entries
       type: id_018__proxford__operation_metadata__alpha__balance_updates_entries
       repeat: eos
-  id_018__proxford__operation_metadata__alpha__balance_updates_:
+  id_018__proxford__operation_metadata__alpha__balance_updates_0:
     seq:
     - id: len_id_018__proxford__operation_metadata__alpha__balance_updates
       type: u4
@@ -204,4 +204,4 @@ enums:
     3: bls
 seq:
 - id: id_018__proxford__operation_metadata__alpha__balance_updates
-  type: id_018__proxford__operation_metadata__alpha__balance_updates_
+  type: id_018__proxford__operation_metadata__alpha__balance_updates_0

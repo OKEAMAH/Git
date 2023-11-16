@@ -20,7 +20,7 @@ types:
     - id: components_entries
       type: components_entries
       repeat: eos
-  components_:
+  components_0:
     seq:
     - id: len_components
       type: u4
@@ -59,4 +59,4 @@ seq:
 - id: expected_env_version
   type: protocol__environment_version
 - id: components
-  type: components_
+  type: components_0

@@ -66,7 +66,7 @@ types:
       type: u1
       enum: alpha__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (alpha__entrypoint_tag == alpha__entrypoint_tag::named)
   alpha__inlined__endorsement:
     seq:
@@ -86,7 +86,7 @@ types:
       type: u1
       enum: alpha__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: preendorsement
+      type: endorsement_0
       if: (alpha__inlined__endorsement_mempool__contents_tag == alpha__inlined__endorsement_mempool__contents_tag::endorsement)
   alpha__inlined__preendorsement:
     seq:
@@ -106,7 +106,7 @@ types:
       type: u1
       enum: alpha__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: preendorsement
+      type: preendorsement_0
       if: (alpha__inlined__preendorsement__contents_tag == alpha__inlined__preendorsement__contents_tag::preendorsement)
   alpha__michelson__v1__primitives:
     seq:
@@ -126,7 +126,7 @@ types:
       type: preendorsement
       if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::preendorsement)
     - id: endorsement
-      type: preendorsement
+      type: endorsement
       if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::endorsement)
     - id: double_preendorsement_evidence
       type: double_preendorsement_evidence
@@ -150,7 +150,7 @@ types:
       type: activate_account
       if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals__
+      type: proposals_1
       if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -244,7 +244,7 @@ types:
     - id: args_entries
       type: args_entries
       repeat: eos
-  args_:
+  args_0:
     seq:
     - id: len_args
       type: u4
@@ -272,7 +272,7 @@ types:
     seq:
     - id: alpha__block_header__alpha__full_header
       type: alpha__block_header__alpha__full_header
-  bh1_:
+  bh1_0:
     seq:
     - id: len_bh1
       type: u4
@@ -283,12 +283,16 @@ types:
       size: len_bh1
   bh2:
     seq:
+    - id: alpha__block_header__alpha__full_header
+      type: alpha__block_header__alpha__full_header
+  bh2_0:
+    seq:
     - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
-      type: bh1
+      type: bh2
       size: len_bh2
   bytes_dyn_uint30:
     seq:
@@ -303,7 +307,7 @@ types:
     - id: circuits_info_entries
       type: circuits_info_entries
       repeat: eos
-  circuits_info_:
+  circuits_info_0:
     seq:
     - id: len_circuits_info
       type: u4
@@ -396,7 +400,7 @@ types:
     - id: dissection_entries
       type: dissection_entries
       repeat: eos
-  dissection_:
+  dissection_0:
     seq:
     - id: len_dissection
       type: u4
@@ -418,21 +422,21 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1_
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1___
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   drain_delegate:
     seq:
     - id: consensus_key
@@ -444,6 +448,26 @@ types:
     - id: destination
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   inbox__proof:
     seq:
     - id: level
@@ -477,7 +501,7 @@ types:
     - id: init_state_entries
       type: init_state_entries
       repeat: eos
-  init_state_:
+  init_state_0:
     seq:
     - id: len_init_state
       type: u4
@@ -513,7 +537,7 @@ types:
     - id: message_entries
       type: message_entries
       repeat: eos
-  message_:
+  message_0:
     seq:
     - id: len_message
       type: u4
@@ -538,7 +562,7 @@ types:
       type: bytes_dyn_uint30
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::string)
     - id: sequence
-      type: sequence_
+      type: sequence_0
       if: (micheline__alpha__michelson_v1__expression_tag == micheline__alpha__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
       type: alpha__michelson__v1__primitives
@@ -586,7 +610,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1
@@ -600,7 +624,7 @@ types:
     - id: new_state_entries
       type: new_state_entries
       repeat: eos
-  new_state_:
+  new_state_0:
     seq:
     - id: len_new_state
       type: u4
@@ -622,7 +646,7 @@ types:
     seq:
     - id: alpha__inlined__preendorsement
       type: alpha__inlined__preendorsement
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: u4
@@ -631,38 +655,46 @@ types:
     - id: op1
       type: op1
       size: len_op1
-  op1__:
+  op1_1:
     seq:
     - id: alpha__inlined__endorsement
       type: alpha__inlined__endorsement
-  op1___:
+  op1_2:
     seq:
     - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
-      type: op1__
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: u4
-      valid:
-        max: 1073741823
-    - id: op2
-      type: op1
-      size: len_op2
-  op2_:
+    - id: alpha__inlined__preendorsement
+      type: alpha__inlined__preendorsement
+  op2_0:
     seq:
     - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
-      type: op1__
+      type: op2
       size: len_op2
-  op_:
+  op2_1:
+    seq:
+    - id: alpha__inlined__endorsement
+      type: alpha__inlined__endorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op2_1
+      size: len_op2
+  op_0:
     seq:
     - id: len_op
       type: u4
@@ -683,7 +715,7 @@ types:
     - id: rollup_id
       size: 20
     - id: payload
-      type: payload_
+      type: payload_0
   op_elt_field1:
     seq:
     - id: op_elt_field1_tag
@@ -741,7 +773,7 @@ types:
     - id: payload_entries
       type: payload_entries
       repeat: eos
-  payload_:
+  payload_0:
     seq:
     - id: len_payload
       type: u4
@@ -759,7 +791,7 @@ types:
     - id: pending_pis_entries
       type: pending_pis_entries
       repeat: eos
-  pending_pis_:
+  pending_pis_0:
     seq:
     - id: len_pending_pis
       type: u4
@@ -771,7 +803,7 @@ types:
   pending_pis_elt_field1:
     seq:
     - id: new_state
-      type: new_state_
+      type: new_state_0
     - id: fee
       size: 32
     - id: exit_validity
@@ -784,6 +816,16 @@ types:
     - id: pending_pis_elt_field1
       type: pending_pis_elt_field1
   preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
     seq:
     - id: slot
       type: u2
@@ -836,7 +878,7 @@ types:
     - id: prim
       type: alpha__michelson__v1__primitives
     - id: args
-      type: args_
+      type: args_0
     - id: annots
       type: bytes_dyn_uint30
   prim__no_args__some_annots:
@@ -850,7 +892,7 @@ types:
     - id: private_pis_entries
       type: private_pis_entries
       repeat: eos
-  private_pis_:
+  private_pis_0:
     seq:
     - id: len_private_pis
       type: u4
@@ -862,7 +904,7 @@ types:
   private_pis_elt_field1:
     seq:
     - id: new_state
-      type: new_state_
+      type: new_state_0
     - id: fee
       size: 32
   private_pis_entries:
@@ -886,7 +928,7 @@ types:
     - id: proposals_entries
       type: proposals_entries
       repeat: eos
-  proposals_:
+  proposals_0:
     seq:
     - id: len_proposals
       type: u4
@@ -895,7 +937,7 @@ types:
     - id: proposals
       type: proposals
       size: len_proposals
-  proposals__:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
@@ -903,7 +945,7 @@ types:
     - id: period
       type: s4
     - id: proposals
-      type: proposals_
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
@@ -946,7 +988,7 @@ types:
     seq:
     - id: raw_data
       size-eos: true
-  raw_data_:
+  raw_data_0:
     seq:
     - id: len_raw_data
       type: u2
@@ -1003,7 +1045,7 @@ types:
       type: u1
       enum: reveal_proof_tag
     - id: raw__data__proof
-      type: raw_data_
+      type: raw_data_0
       if: (reveal_proof_tag == reveal_proof_tag::raw__data__proof)
     - id: dal__page__proof
       type: dal__page__proof
@@ -1019,7 +1061,7 @@ types:
     - id: sequence_entries
       type: sequence_entries
       repeat: eos
-  sequence_:
+  sequence_0:
     seq:
     - id: len_sequence
       type: u4
@@ -1054,7 +1096,7 @@ types:
     - id: storage_limit
       type: n
     - id: message
-      type: message_
+      type: message_0
   smart_rollup_cement:
     seq:
     - id: source
@@ -1113,7 +1155,7 @@ types:
       type: u1
       enum: bool
     - id: whitelist
-      type: whitelist_
+      type: whitelist_0
       if: (whitelist_tag == bool::true)
   smart_rollup_publish:
     seq:
@@ -1224,7 +1266,7 @@ types:
       type: u1
       enum: step_tag
     - id: dissection
-      type: dissection_
+      type: dissection_0
       if: (step_tag == step_tag::dissection)
     - id: proof
       type: proof
@@ -1295,11 +1337,11 @@ types:
   update:
     seq:
     - id: pending_pis
-      type: pending_pis_
+      type: pending_pis_0
     - id: private_pis
-      type: private_pis_
+      type: private_pis_0
     - id: fee_pi
-      type: new_state_
+      type: new_state_0
     - id: proof
       type: bytes_dyn_uint30
   update_consensus_key:
@@ -1323,7 +1365,7 @@ types:
     - id: whitelist_entries
       type: whitelist_entries
       repeat: eos
-  whitelist_:
+  whitelist_0:
     seq:
     - id: len_whitelist
       type: u4
@@ -1366,9 +1408,9 @@ types:
     - id: public_parameters
       type: bytes_dyn_uint30
     - id: circuits_info
-      type: circuits_info_
+      type: circuits_info_0
     - id: init_state
-      type: init_state_
+      type: init_state_0
     - id: nb_ops
       type: int31
   zk_rollup_publish:
@@ -1387,7 +1429,7 @@ types:
     - id: zk_rollup
       size: 20
     - id: op
-      type: op_
+      type: op_0
   zk_rollup_update:
     seq:
     - id: source

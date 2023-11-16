@@ -8,7 +8,7 @@ types:
     - id: baking_reward_per_endorsement_entries
       type: baking_reward_per_endorsement_entries
       repeat: eos
-  baking_reward_per_endorsement_:
+  baking_reward_per_endorsement_0:
     seq:
     - id: len_baking_reward_per_endorsement
       type: u4
@@ -26,7 +26,7 @@ types:
     - id: cache_layout_entries
       type: cache_layout_entries
       repeat: eos
-  cache_layout_:
+  cache_layout_0:
     seq:
     - id: len_cache_layout
       type: u4
@@ -42,9 +42,9 @@ types:
   endorsement_reward:
     seq:
     - id: endorsement_reward_entries
-      type: baking_reward_per_endorsement_entries
+      type: endorsement_reward_entries
       repeat: eos
-  endorsement_reward_:
+  endorsement_reward_0:
     seq:
     - id: len_endorsement_reward
       type: u4
@@ -53,6 +53,10 @@ types:
     - id: endorsement_reward
       type: endorsement_reward
       size: len_endorsement_reward
+  endorsement_reward_entries:
+    seq:
+    - id: id_011__pthangz2__mutez
+      type: id_011__pthangz2__mutez
   id_011__pthangz2__mutez:
     seq:
     - id: id_011__pthangz2__mutez
@@ -81,7 +85,7 @@ types:
     - id: time_between_blocks_entries
       type: time_between_blocks_entries
       repeat: eos
-  time_between_blocks_:
+  time_between_blocks_0:
     seq:
     - id: len_time_between_blocks
       type: u4
@@ -125,7 +129,7 @@ seq:
 - id: max_allowed_global_constants_depth
   type: int31
 - id: cache_layout
-  type: cache_layout_
+  type: cache_layout_0
 - id: michelson_maximum_type_size
   type: u2
 - id: preserved_cycles
@@ -139,7 +143,7 @@ seq:
 - id: blocks_per_voting_period
   type: s4
 - id: time_between_blocks
-  type: time_between_blocks_
+  type: time_between_blocks_0
 - id: endorsers_per_block
   type: u2
 - id: hard_gas_limit_per_operation
@@ -159,9 +163,9 @@ seq:
 - id: endorsement_security_deposit
   type: id_011__pthangz2__mutez
 - id: baking_reward_per_endorsement
-  type: baking_reward_per_endorsement_
+  type: baking_reward_per_endorsement_0
 - id: endorsement_reward
-  type: endorsement_reward_
+  type: endorsement_reward_0
 - id: cost_per_byte
   type: id_011__pthangz2__mutez
 - id: hard_storage_limit_per_operation

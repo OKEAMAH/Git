@@ -44,7 +44,7 @@ types:
     seq:
     - id: id_013__ptjakart__block_header__alpha__full_header
       type: id_013__ptjakart__block_header__alpha__full_header
-  bh1_:
+  bh1_0:
     seq:
     - id: len_bh1
       type: u4
@@ -55,12 +55,16 @@ types:
       size: len_bh1
   bh2:
     seq:
+    - id: id_013__ptjakart__block_header__alpha__full_header
+      type: id_013__ptjakart__block_header__alpha__full_header
+  bh2_0:
+    seq:
     - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
-      type: bh1
+      type: bh2
       size: len_bh2
   bytes_dyn_uint30:
     seq:
@@ -81,13 +85,13 @@ types:
       size: 32
       doc: context_hash
     - id: case__0_field3
-      type: case__0_field3_
+      type: case__0_field3_0
   case__0_field3:
     seq:
     - id: case__0_field3_entries
       type: case__0_field3_entries
       repeat: eos
-  case__0_field3_:
+  case__0_field3_0:
     seq:
     - id: len_case__0_field3
       type: u4
@@ -156,13 +160,13 @@ types:
       type: case__130_entries
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -190,7 +194,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__1_field3
-      type: case__1_field3_
+      type: case__1_field3_0
   case__10:
     seq:
     - id: case__10_field0
@@ -221,7 +225,7 @@ types:
     seq:
     - id: case__129_elt_field0
       size-eos: true
-  case__129_elt_field0_:
+  case__129_elt_field0_0:
     seq:
     - id: len_case__129_elt_field0
       type: u1
@@ -244,7 +248,7 @@ types:
   case__129_entries:
     seq:
     - id: case__129_elt_field0
-      type: case__129_elt_field0_
+      type: case__129_elt_field0_0
     - id: case__129_elt_field1
       type: case__129_elt_field1
   case__12_field1:
@@ -265,7 +269,7 @@ types:
     seq:
     - id: case__130_elt_field0
       size-eos: true
-  case__130_elt_field0_:
+  case__130_elt_field0_0:
     seq:
     - id: len_case__130_elt_field0
       type: u1
@@ -288,7 +292,7 @@ types:
   case__130_entries:
     seq:
     - id: case__130_elt_field0
-      type: case__130_elt_field0_
+      type: case__130_elt_field0_0
     - id: case__130_elt_field1
       type: case__130_elt_field1
   case__131:
@@ -296,7 +300,7 @@ types:
     - id: case__131_entries
       type: case__131_entries
       repeat: eos
-  case__131_:
+  case__131_0:
     seq:
     - id: len_case__131
       type: u4
@@ -309,7 +313,7 @@ types:
     seq:
     - id: case__131_elt_field0
       size-eos: true
-  case__131_elt_field0_:
+  case__131_elt_field0_0:
     seq:
     - id: len_case__131_elt_field0
       type: u1
@@ -332,7 +336,7 @@ types:
   case__131_entries:
     seq:
     - id: case__131_elt_field0
-      type: case__131_elt_field0_
+      type: case__131_elt_field0_0
     - id: case__131_elt_field1
       type: case__131_elt_field1
   case__13_field1:
@@ -375,7 +379,7 @@ types:
     seq:
     - id: case__192
       size-eos: true
-  case__192_:
+  case__192_0:
     seq:
     - id: len_case__192
       type: u1
@@ -388,7 +392,7 @@ types:
     seq:
     - id: case__193
       size-eos: true
-  case__193_:
+  case__193_0:
     seq:
     - id: len_case__193
       type: u2
@@ -402,7 +406,7 @@ types:
     - id: case__1_field3_entries
       type: case__1_field3_entries
       repeat: eos
-  case__1_field3_:
+  case__1_field3_0:
     seq:
     - id: len_case__1_field3
       type: u4
@@ -471,13 +475,13 @@ types:
       type: case__130_entries
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -505,13 +509,13 @@ types:
       size: 32
       doc: context_hash
     - id: case__2_field3
-      type: case__2_field3_
+      type: case__2_field3_0
   case__224:
     seq:
     - id: case__224_field0
       type: u1
     - id: case__224_field1
-      type: case__224_field1_
+      type: case__224_field1_0
     - id: case__224_field2
       size: 32
       doc: context_hash
@@ -519,7 +523,7 @@ types:
     seq:
     - id: case__224_field1
       size-eos: true
-  case__224_field1_:
+  case__224_field1_0:
     seq:
     - id: len_case__224_field1
       type: u1
@@ -533,7 +537,7 @@ types:
     - id: case__225_field0
       type: u2
     - id: case__225_field1
-      type: case__225_field1_
+      type: case__225_field1_0
     - id: case__225_field2
       size: 32
       doc: context_hash
@@ -541,7 +545,7 @@ types:
     seq:
     - id: case__225_field1
       size-eos: true
-  case__225_field1_:
+  case__225_field1_0:
     seq:
     - id: len_case__225_field1
       type: u1
@@ -555,7 +559,7 @@ types:
     - id: case__226_field0
       type: s4
     - id: case__226_field1
-      type: case__226_field1_
+      type: case__226_field1_0
     - id: case__226_field2
       size: 32
       doc: context_hash
@@ -563,7 +567,7 @@ types:
     seq:
     - id: case__226_field1
       size-eos: true
-  case__226_field1_:
+  case__226_field1_0:
     seq:
     - id: len_case__226_field1
       type: u1
@@ -577,7 +581,7 @@ types:
     - id: case__227_field0
       type: s8
     - id: case__227_field1
-      type: case__227_field1_
+      type: case__227_field1_0
     - id: case__227_field2
       size: 32
       doc: context_hash
@@ -585,7 +589,7 @@ types:
     seq:
     - id: case__227_field1
       size-eos: true
-  case__227_field1_:
+  case__227_field1_0:
     seq:
     - id: len_case__227_field1
       type: u1
@@ -599,7 +603,7 @@ types:
     - id: case__2_field3_entries
       type: case__2_field3_entries
       repeat: eos
-  case__2_field3_:
+  case__2_field3_0:
     seq:
     - id: len_case__2_field3
       type: u4
@@ -668,13 +672,13 @@ types:
       type: case__130_entries
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -702,13 +706,13 @@ types:
       size: 32
       doc: context_hash
     - id: case__3_field3
-      type: case__3_field3_
+      type: case__3_field3_0
   case__3_field3:
     seq:
     - id: case__3_field3_entries
       type: case__3_field3_entries
       repeat: eos
-  case__3_field3_:
+  case__3_field3_0:
     seq:
     - id: len_case__3_field3
       type: u4
@@ -777,13 +781,13 @@ types:
       type: case__130_entries
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -865,12 +869,12 @@ types:
     - id: level
       type: s4
     - id: messages
-      type: messages_
+      type: messages_0
     - id: predecessor
       type: predecessor
     - id: inbox_merkle_root
       size: 32
-  commitment_:
+  commitment_0:
     seq:
     - id: compressed_state
       size: 32
@@ -916,22 +920,32 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1_
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1___
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
     seq:
     - id: slot
       type: u2
@@ -987,7 +1001,7 @@ types:
       type: u1
       enum: id_013__ptjakart__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_013__ptjakart__entrypoint_tag == id_013__ptjakart__entrypoint_tag::named)
   id_013__ptjakart__inlined__endorsement:
     seq:
@@ -1007,7 +1021,7 @@ types:
       type: u1
       enum: id_013__ptjakart__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement
+      type: endorsement_0
       if: (id_013__ptjakart__inlined__endorsement_mempool__contents_tag == id_013__ptjakart__inlined__endorsement_mempool__contents_tag::endorsement)
   id_013__ptjakart__inlined__preendorsement:
     seq:
@@ -1027,7 +1041,7 @@ types:
       type: u1
       enum: id_013__ptjakart__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: endorsement
+      type: preendorsement_0
       if: (id_013__ptjakart__inlined__preendorsement__contents_tag == id_013__ptjakart__inlined__preendorsement__contents_tag::preendorsement)
   id_013__ptjakart__liquidity_baking_toggle_vote:
     seq:
@@ -1046,7 +1060,7 @@ types:
       type: endorsement
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::endorsement)
     - id: preendorsement
-      type: endorsement
+      type: preendorsement
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::preendorsement)
     - id: seed_nonce_revelation
       type: seed_nonce_revelation
@@ -1064,7 +1078,7 @@ types:
       type: activate_account
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals__
+      type: proposals_1
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -1103,10 +1117,10 @@ types:
       type: tx_rollup_return_bond
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::tx_rollup_return_bond)
     - id: tx_rollup_finalize_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_finalize_commitment
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::tx_rollup_finalize_commitment)
     - id: tx_rollup_remove_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_remove_commitment
       if: (id_013__ptjakart__operation__alpha__contents_tag == id_013__ptjakart__operation__alpha__contents_tag::tx_rollup_remove_commitment)
     - id: tx_rollup_rejection
       type: tx_rollup_rejection
@@ -1180,19 +1194,19 @@ types:
     - id: deposit
       type: deposit
       if: (message_tag == message_tag::deposit)
-  message_:
+  message_0:
     seq:
     - id: message_entries
       type: message_entries
       repeat: eos
-  message__:
+  message_1:
     seq:
     - id: len_message
       type: u4
       valid:
         max: 1073741823
     - id: message
-      type: message_
+      type: message_0
       size: len_message
   message_entries:
     seq:
@@ -1203,7 +1217,7 @@ types:
     - id: message_path_entries
       type: message_path_entries
       repeat: eos
-  message_path_:
+  message_path_0:
     seq:
     - id: len_message_path
       type: u4
@@ -1221,7 +1235,7 @@ types:
     - id: message_result_path_entries
       type: message_result_path_entries
       repeat: eos
-  message_result_path_:
+  message_result_path_0:
     seq:
     - id: len_message_result_path
       type: u4
@@ -1230,7 +1244,25 @@ types:
     - id: message_result_path
       type: message_result_path
       size: len_message_result_path
+  message_result_path_1:
+    seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries_0
+      repeat: eos
+  message_result_path_2:
+    seq:
+    - id: len_message_result_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message_result_path
+      type: message_result_path_1
+      size: len_message_result_path
   message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
+  message_result_path_entries_0:
     seq:
     - id: message_result_list_hash
       size: 32
@@ -1239,7 +1271,7 @@ types:
     - id: messages_entries
       type: messages_entries
       repeat: eos
-  messages_:
+  messages_0:
     seq:
     - id: len_messages
       type: u4
@@ -1268,7 +1300,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1
@@ -1281,7 +1313,7 @@ types:
     seq:
     - id: id_013__ptjakart__inlined__endorsement
       type: id_013__ptjakart__inlined__endorsement
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: u4
@@ -1290,36 +1322,44 @@ types:
     - id: op1
       type: op1
       size: len_op1
-  op1__:
+  op1_1:
     seq:
     - id: id_013__ptjakart__inlined__preendorsement
       type: id_013__ptjakart__inlined__preendorsement
-  op1___:
+  op1_2:
     seq:
     - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
-      type: op1__
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: u4
-      valid:
-        max: 1073741823
-    - id: op2
-      type: op1
-      size: len_op2
-  op2_:
+    - id: id_013__ptjakart__inlined__endorsement
+      type: id_013__ptjakart__inlined__endorsement
+  op2_0:
     seq:
     - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
-      type: op1__
+      type: op2
+      size: len_op2
+  op2_1:
+    seq:
+    - id: id_013__ptjakart__inlined__preendorsement
+      type: id_013__ptjakart__inlined__preendorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op2_1
       size: len_op2
   originated:
     seq:
@@ -1367,6 +1407,26 @@ types:
     - id: some
       size: 32
       if: (predecessor_tag == predecessor_tag::some)
+  preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   previous_message_result:
     seq:
     - id: context_hash
@@ -1376,9 +1436,9 @@ types:
   previous_message_result_path:
     seq:
     - id: previous_message_result_path_entries
-      type: message_result_path_entries
+      type: previous_message_result_path_entries
       repeat: eos
-  previous_message_result_path_:
+  previous_message_result_path_0:
     seq:
     - id: len_previous_message_result_path
       type: u4
@@ -1387,6 +1447,10 @@ types:
     - id: previous_message_result_path
       type: previous_message_result_path
       size: len_previous_message_result_path
+  previous_message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
   proof:
     seq:
     - id: proof_tag
@@ -1409,7 +1473,7 @@ types:
     - id: proposals_entries
       type: proposals_entries
       repeat: eos
-  proposals_:
+  proposals_0:
     seq:
     - id: len_proposals
       type: u4
@@ -1418,7 +1482,7 @@ types:
     - id: proposals
       type: proposals
       size: len_proposals
-  proposals__:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
@@ -1426,7 +1490,7 @@ types:
     - id: period
       type: s4
     - id: proposals
-      type: proposals_
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
@@ -1509,7 +1573,7 @@ types:
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: message
-      type: message__
+      type: message_1
   sc_rollup_cement:
     seq:
     - id: source
@@ -1567,7 +1631,7 @@ types:
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: commitment
-      type: commitment_
+      type: commitment_0
   seed_nonce_revelation:
     seq:
     - id: level
@@ -1598,7 +1662,7 @@ types:
     - id: tickets_info_entries
       type: tickets_info_entries
       repeat: eos
-  tickets_info_:
+  tickets_info_0:
     seq:
     - id: len_tickets_info
       type: u4
@@ -1737,9 +1801,27 @@ types:
     - id: message_index
       type: int31
     - id: message_result_path
-      type: message_result_path_
+      type: message_result_path_2
     - id: tickets_info
-      type: tickets_info_
+      type: tickets_info_0
+  tx_rollup_finalize_commitment:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_013__ptjakart__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_013__ptjakart__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
   tx_rollup_origination:
     seq:
     - id: source
@@ -1778,17 +1860,35 @@ types:
     - id: message_position
       type: n
     - id: message_path
-      type: message_path_
+      type: message_path_0
     - id: message_result_hash
       size: 32
     - id: message_result_path
-      type: message_result_path_
+      type: message_result_path_0
     - id: previous_message_result
       type: previous_message_result
     - id: previous_message_result_path
-      type: previous_message_result_path_
+      type: previous_message_result_path_0
     - id: proof
       type: proof
+  tx_rollup_remove_commitment:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_013__ptjakart__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_013__ptjakart__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
   tx_rollup_return_bond:
     seq:
     - id: source

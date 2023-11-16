@@ -53,7 +53,7 @@ types:
     - id: back_pointers_entries
       type: back_pointers_entries
       repeat: eos
-  back_pointers_:
+  back_pointers_0:
     seq:
     - id: len_back_pointers
       type: u4
@@ -92,7 +92,7 @@ types:
     seq:
     - id: id_014__ptkathma__block_header__alpha__full_header
       type: id_014__ptkathma__block_header__alpha__full_header
-  bh1_:
+  bh1_0:
     seq:
     - id: len_bh1
       type: u4
@@ -103,12 +103,16 @@ types:
       size: len_bh1
   bh2:
     seq:
+    - id: id_014__ptkathma__block_header__alpha__full_header
+      type: id_014__ptkathma__block_header__alpha__full_header
+  bh2_0:
+    seq:
     - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
-      type: bh1
+      type: bh2
       size: len_bh2
   bytes_dyn_uint30:
     seq:
@@ -129,13 +133,13 @@ types:
       size: 32
       doc: context_hash
     - id: case__0_field3
-      type: case__0_field3_
+      type: case__0_field3_0
   case__0_field3:
     seq:
     - id: case__0_field3_entries
       type: case__0_field3_entries
       repeat: eos
-  case__0_field3_:
+  case__0_field3_0:
     seq:
     - id: len_case__0_field3
       type: u4
@@ -204,13 +208,13 @@ types:
       type: case__130_entries
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__0_field3_elt_tag == case__0_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -238,7 +242,7 @@ types:
       size: 32
       doc: context_hash
     - id: case__1_field3
-      type: case__1_field3_
+      type: case__1_field3_0
   case__10:
     seq:
     - id: case__10_field0
@@ -269,7 +273,7 @@ types:
     seq:
     - id: case__129_elt_field0
       size-eos: true
-  case__129_elt_field0_:
+  case__129_elt_field0_0:
     seq:
     - id: len_case__129_elt_field0
       type: u1
@@ -292,7 +296,7 @@ types:
   case__129_entries:
     seq:
     - id: case__129_elt_field0
-      type: case__129_elt_field0_
+      type: case__129_elt_field0_0
     - id: case__129_elt_field1
       type: case__129_elt_field1
   case__12_field1:
@@ -313,7 +317,7 @@ types:
     seq:
     - id: case__130_elt_field0
       size-eos: true
-  case__130_elt_field0_:
+  case__130_elt_field0_0:
     seq:
     - id: len_case__130_elt_field0
       type: u1
@@ -336,7 +340,7 @@ types:
   case__130_entries:
     seq:
     - id: case__130_elt_field0
-      type: case__130_elt_field0_
+      type: case__130_elt_field0_0
     - id: case__130_elt_field1
       type: case__130_elt_field1
   case__131:
@@ -344,7 +348,7 @@ types:
     - id: case__131_entries
       type: case__131_entries
       repeat: eos
-  case__131_:
+  case__131_0:
     seq:
     - id: len_case__131
       type: u4
@@ -357,7 +361,7 @@ types:
     seq:
     - id: case__131_elt_field0
       size-eos: true
-  case__131_elt_field0_:
+  case__131_elt_field0_0:
     seq:
     - id: len_case__131_elt_field0
       type: u1
@@ -380,7 +384,7 @@ types:
   case__131_entries:
     seq:
     - id: case__131_elt_field0
-      type: case__131_elt_field0_
+      type: case__131_elt_field0_0
     - id: case__131_elt_field1
       type: case__131_elt_field1
   case__13_field1:
@@ -423,7 +427,7 @@ types:
     seq:
     - id: case__192
       size-eos: true
-  case__192_:
+  case__192_0:
     seq:
     - id: len_case__192
       type: u1
@@ -436,7 +440,7 @@ types:
     seq:
     - id: case__193
       size-eos: true
-  case__193_:
+  case__193_0:
     seq:
     - id: len_case__193
       type: u2
@@ -450,7 +454,7 @@ types:
     - id: case__1_field3_entries
       type: case__1_field3_entries
       repeat: eos
-  case__1_field3_:
+  case__1_field3_0:
     seq:
     - id: len_case__1_field3
       type: u4
@@ -519,13 +523,13 @@ types:
       type: case__130_entries
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -553,13 +557,13 @@ types:
       size: 32
       doc: context_hash
     - id: case__2_field3
-      type: case__2_field3_
+      type: case__2_field3_0
   case__224:
     seq:
     - id: case__224_field0
       type: u1
     - id: case__224_field1
-      type: case__224_field1_
+      type: case__224_field1_0
     - id: case__224_field2
       size: 32
       doc: context_hash
@@ -567,7 +571,7 @@ types:
     seq:
     - id: case__224_field1
       size-eos: true
-  case__224_field1_:
+  case__224_field1_0:
     seq:
     - id: len_case__224_field1
       type: u1
@@ -581,7 +585,7 @@ types:
     - id: case__225_field0
       type: u2
     - id: case__225_field1
-      type: case__225_field1_
+      type: case__225_field1_0
     - id: case__225_field2
       size: 32
       doc: context_hash
@@ -589,7 +593,7 @@ types:
     seq:
     - id: case__225_field1
       size-eos: true
-  case__225_field1_:
+  case__225_field1_0:
     seq:
     - id: len_case__225_field1
       type: u1
@@ -603,7 +607,7 @@ types:
     - id: case__226_field0
       type: s4
     - id: case__226_field1
-      type: case__226_field1_
+      type: case__226_field1_0
     - id: case__226_field2
       size: 32
       doc: context_hash
@@ -611,7 +615,7 @@ types:
     seq:
     - id: case__226_field1
       size-eos: true
-  case__226_field1_:
+  case__226_field1_0:
     seq:
     - id: len_case__226_field1
       type: u1
@@ -625,7 +629,7 @@ types:
     - id: case__227_field0
       type: s8
     - id: case__227_field1
-      type: case__227_field1_
+      type: case__227_field1_0
     - id: case__227_field2
       size: 32
       doc: context_hash
@@ -633,7 +637,7 @@ types:
     seq:
     - id: case__227_field1
       size-eos: true
-  case__227_field1_:
+  case__227_field1_0:
     seq:
     - id: len_case__227_field1
       type: u1
@@ -647,7 +651,7 @@ types:
     - id: case__2_field3_entries
       type: case__2_field3_entries
       repeat: eos
-  case__2_field3_:
+  case__2_field3_0:
     seq:
     - id: len_case__2_field3
       type: u4
@@ -716,13 +720,13 @@ types:
       type: case__130_entries
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -750,13 +754,13 @@ types:
       size: 32
       doc: context_hash
     - id: case__3_field3
-      type: case__3_field3_
+      type: case__3_field3_0
   case__3_field3:
     seq:
     - id: case__3_field3_entries
       type: case__3_field3_entries
       repeat: eos
-  case__3_field3_:
+  case__3_field3_0:
     seq:
     - id: len_case__3_field3
       type: u4
@@ -825,13 +829,13 @@ types:
       type: case__130_entries
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_
+      type: case__131_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_
+      type: case__192_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_
+      type: case__193_0
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -913,12 +917,12 @@ types:
     - id: level
       type: s4
     - id: messages
-      type: messages_
+      type: messages_0
     - id: predecessor
       type: predecessor
     - id: inbox_merkle_root
       size: 32
-  commitment_:
+  commitment_0:
     seq:
     - id: compressed_state
       size: 32
@@ -996,7 +1000,7 @@ types:
     - id: dissection_entries
       type: dissection_entries
       repeat: eos
-  dissection_:
+  dissection_0:
     seq:
     - id: len_dissection
       type: u4
@@ -1022,21 +1026,21 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1_
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1___
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   endorsement:
     seq:
     - id: slot
@@ -1047,6 +1051,24 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
+  endorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  extender:
+    seq:
+    - id: length
+      type: s8
+    - id: segment
+      type: segment_0
+    - id: proof
+      type: inode_tree
   first_after:
     seq:
     - id: first_after_field0
@@ -1115,7 +1137,7 @@ types:
       type: u1
       enum: id_014__ptkathma__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_014__ptkathma__entrypoint_tag == id_014__ptkathma__entrypoint_tag::named)
   id_014__ptkathma__inlined__endorsement:
     seq:
@@ -1135,7 +1157,7 @@ types:
       type: u1
       enum: id_014__ptkathma__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement
+      type: endorsement_0
       if: (id_014__ptkathma__inlined__endorsement_mempool__contents_tag == id_014__ptkathma__inlined__endorsement_mempool__contents_tag::endorsement)
   id_014__ptkathma__inlined__preendorsement:
     seq:
@@ -1155,7 +1177,7 @@ types:
       type: u1
       enum: id_014__ptkathma__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: endorsement
+      type: preendorsement_0
       if: (id_014__ptkathma__inlined__preendorsement__contents_tag == id_014__ptkathma__inlined__preendorsement__contents_tag::preendorsement)
   id_014__ptkathma__liquidity_baking_toggle_vote:
     seq:
@@ -1174,7 +1196,7 @@ types:
       type: endorsement
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::endorsement)
     - id: preendorsement
-      type: endorsement
+      type: preendorsement
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::preendorsement)
     - id: dal_slot_availability
       type: dal_slot_availability
@@ -1198,7 +1220,7 @@ types:
       type: activate_account
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals__
+      type: proposals_1
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -1240,10 +1262,10 @@ types:
       type: tx_rollup_return_bond
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_return_bond)
     - id: tx_rollup_finalize_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_finalize_commitment
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_finalize_commitment)
     - id: tx_rollup_remove_commitment
-      type: tx_rollup_return_bond
+      type: tx_rollup_remove_commitment
       if: (id_014__ptkathma__operation__alpha__contents_tag == id_014__ptkathma__operation__alpha__contents_tag::tx_rollup_remove_commitment)
     - id: tx_rollup_rejection
       type: tx_rollup_rejection
@@ -1311,14 +1333,14 @@ types:
       type: u1
       enum: inbox_tag
     - id: some
-      type: some_
+      type: some_0
       if: (inbox_tag == inbox_tag::some)
   inc:
     seq:
     - id: inc_entries
-      type: old_levels_messages
+      type: inc_entries
       repeat: eos
-  inc_:
+  inc_0:
     seq:
     - id: len_inc
       type: u4
@@ -1327,6 +1349,14 @@ types:
     - id: inc
       type: inc
       size: len_inc
+  inc_entries:
+    seq:
+    - id: index
+      type: int31
+    - id: content
+      size: 32
+    - id: back_pointers
+      type: back_pointers_0
   increase_paid_storage:
     seq:
     - id: source
@@ -1352,13 +1382,13 @@ types:
     - id: length
       type: s8
     - id: proofs
-      type: proofs_
+      type: proofs_0
   inode_extender:
     seq:
     - id: length
       type: s8
     - id: segment
-      type: segment_
+      type: segment_0
     - id: proof
       type: inode_tree
   inode_tree:
@@ -1367,7 +1397,7 @@ types:
       type: s8
     - id: proofs
       type: proofs
-  inode_tree_:
+  inode_tree_0:
     seq:
     - id: inode_tree_tag
       type: u1
@@ -1376,7 +1406,7 @@ types:
       size: 32
       if: (inode_tree_tag == inode_tree_tag::blinded_inode)
     - id: inode_values
-      type: inode_values_
+      type: inode_values_0
       if: (inode_tree_tag == inode_tree_tag::inode_values)
     - id: inode_tree
       type: inode_tree
@@ -1389,7 +1419,7 @@ types:
     - id: inode_values_entries
       type: inode_values_entries
       repeat: eos
-  inode_values_:
+  inode_values_0:
     seq:
     - id: len_inode_values
       type: u4
@@ -1402,7 +1432,7 @@ types:
     seq:
     - id: inode_values_elt_field0
       size-eos: true
-  inode_values_elt_field0_:
+  inode_values_elt_field0_0:
     seq:
     - id: len_inode_values_elt_field0
       type: u1
@@ -1414,7 +1444,7 @@ types:
   inode_values_entries:
     seq:
     - id: inode_values_elt_field0
-      type: inode_values_elt_field0_
+      type: inode_values_elt_field0_0
     - id: inode_values_elt_field1
       type: tree_encoding
   int31:
@@ -1424,6 +1454,27 @@ types:
       valid:
         min: -1073741824
         max: 1073741823
+  level:
+    seq:
+    - id: rollup
+      type: id_014__ptkathma__rollup_address
+      doc: ! >-
+        A smart contract rollup address: A smart contract rollup is identified by
+        a base58 address starting with scr1
+    - id: message_counter
+      type: n
+    - id: nb_available_messages
+      type: s8
+    - id: nb_messages_in_commitment_period
+      type: s8
+    - id: starting_level_of_current_commitment_period
+      type: s4
+    - id: level
+      type: s4
+    - id: current_messages_hash
+      size: 32
+    - id: old_levels_messages
+      type: old_levels_messages_0
   message:
     seq:
     - id: message_tag
@@ -1435,19 +1486,19 @@ types:
     - id: deposit
       type: deposit
       if: (message_tag == message_tag::deposit)
-  message_:
+  message_0:
     seq:
     - id: message_entries
       type: message_entries
       repeat: eos
-  message__:
+  message_1:
     seq:
     - id: len_message
       type: u4
       valid:
         max: 1073741823
     - id: message
-      type: message_
+      type: message_0
       size: len_message
   message_entries:
     seq:
@@ -1458,7 +1509,7 @@ types:
     - id: message_path_entries
       type: message_path_entries
       repeat: eos
-  message_path_:
+  message_path_0:
     seq:
     - id: len_message_path
       type: u4
@@ -1471,12 +1522,22 @@ types:
     seq:
     - id: inbox_list_hash
       size: 32
+  message_proof:
+    seq:
+    - id: version
+      type: s2
+    - id: before
+      type: before
+    - id: after
+      type: after
+    - id: state
+      type: tree_encoding
   message_result_path:
     seq:
     - id: message_result_path_entries
       type: message_result_path_entries
       repeat: eos
-  message_result_path_:
+  message_result_path_0:
     seq:
     - id: len_message_result_path
       type: u4
@@ -1485,7 +1546,25 @@ types:
     - id: message_result_path
       type: message_result_path
       size: len_message_result_path
+  message_result_path_1:
+    seq:
+    - id: message_result_path_entries
+      type: message_result_path_entries_0
+      repeat: eos
+  message_result_path_2:
+    seq:
+    - id: len_message_result_path
+      type: u4
+      valid:
+        max: 1073741823
+    - id: message_result_path
+      type: message_result_path_1
+      size: len_message_result_path
   message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
+  message_result_path_entries_0:
     seq:
     - id: message_result_list_hash
       size: 32
@@ -1494,7 +1573,7 @@ types:
     - id: messages_entries
       type: messages_entries
       repeat: eos
-  messages_:
+  messages_0:
     seq:
     - id: len_messages
       type: u4
@@ -1523,7 +1602,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1
@@ -1537,7 +1616,7 @@ types:
     - id: node_entries
       type: node_entries
       repeat: eos
-  node_:
+  node_0:
     seq:
     - id: len_node
       type: u4
@@ -1550,7 +1629,7 @@ types:
     seq:
     - id: node_elt_field0
       size-eos: true
-  node_elt_field0_:
+  node_elt_field0_0:
     seq:
     - id: len_node_elt_field0
       type: u1
@@ -1562,7 +1641,7 @@ types:
   node_entries:
     seq:
     - id: node_elt_field0
-      type: node_elt_field0_
+      type: node_elt_field0_0
     - id: node_elt_field1
       type: tree_encoding
   old_levels_messages:
@@ -1572,12 +1651,20 @@ types:
     - id: content
       size: 32
     - id: back_pointers
-      type: back_pointers_
+      type: back_pointers_0
+  old_levels_messages_0:
+    seq:
+    - id: index
+      type: int31
+    - id: content
+      size: 32
+    - id: back_pointers
+      type: back_pointers_0
   op1:
     seq:
     - id: id_014__ptkathma__inlined__endorsement
       type: id_014__ptkathma__inlined__endorsement
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: u4
@@ -1586,36 +1673,44 @@ types:
     - id: op1
       type: op1
       size: len_op1
-  op1__:
+  op1_1:
     seq:
     - id: id_014__ptkathma__inlined__preendorsement
       type: id_014__ptkathma__inlined__preendorsement
-  op1___:
+  op1_2:
     seq:
     - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
-      type: op1__
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: u4
-      valid:
-        max: 1073741823
-    - id: op2
-      type: op1
-      size: len_op2
-  op2_:
+    - id: id_014__ptkathma__inlined__endorsement
+      type: id_014__ptkathma__inlined__endorsement
+  op2_0:
     seq:
     - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
-      type: op1__
+      type: op2
+      size: len_op2
+  op2_1:
+    seq:
+    - id: id_014__ptkathma__inlined__preendorsement
+      type: id_014__ptkathma__inlined__preendorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op2_1
       size: len_op2
   originated:
     seq:
@@ -1663,6 +1758,26 @@ types:
     - id: some
       size: 32
       if: (predecessor_tag == predecessor_tag::some)
+  preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   previous_message_result:
     seq:
     - id: context_hash
@@ -1672,9 +1787,9 @@ types:
   previous_message_result_path:
     seq:
     - id: previous_message_result_path_entries
-      type: message_result_path_entries
+      type: previous_message_result_path_entries
       repeat: eos
-  previous_message_result_path_:
+  previous_message_result_path_0:
     seq:
     - id: len_previous_message_result_path
       type: u4
@@ -1683,6 +1798,10 @@ types:
     - id: previous_message_result_path
       type: previous_message_result_path
       size: len_previous_message_result_path
+  previous_message_result_path_entries:
+    seq:
+    - id: message_result_list_hash
+      size: 32
   proof:
     seq:
     - id: proof_tag
@@ -1700,7 +1819,7 @@ types:
     - id: case__3
       type: case__3
       if: (proof_tag == proof_tag::case__3)
-  proof_:
+  proof_0:
     seq:
     - id: pvm_step
       type: pvm_step
@@ -1712,18 +1831,18 @@ types:
       type: u1
       enum: proofs_tag
     - id: sparse_proof
-      type: sparse_proof_
+      type: sparse_proof_0
       if: (proofs_tag == proofs_tag::sparse_proof)
     - id: dense_proof
       type: dense_proof_entries
       if: (proofs_tag == proofs_tag::dense_proof)
-  proofs_:
+  proofs_0:
     seq:
     - id: proofs_tag
       type: u1
       enum: proofs_tag
     - id: sparse_proof
-      type: sparse_proof___
+      type: sparse_proof_2
       if: (proofs_tag == proofs_tag::sparse_proof)
     - id: dense_proof
       type: dense_proof_entries
@@ -1733,7 +1852,7 @@ types:
     - id: proposals_entries
       type: proposals_entries
       repeat: eos
-  proposals_:
+  proposals_0:
     seq:
     - id: len_proposals
       type: u4
@@ -1742,7 +1861,7 @@ types:
     - id: proposals
       type: proposals
       size: len_proposals
-  proposals__:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
@@ -1750,7 +1869,7 @@ types:
     - id: period
       type: s4
     - id: proposals
-      type: proposals_
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash
@@ -1792,7 +1911,7 @@ types:
       type: arithmetic__pvm__with__proof
       if: (pvm_step_tag == pvm_step_tag::arithmetic__pvm__with__proof)
     - id: wasm__2__0__0__pvm__with__proof
-      type: arithmetic__pvm__with__proof
+      type: wasm__2__0__0__pvm__with__proof
       if: (pvm_step_tag == pvm_step_tag::wasm__2__0__0__pvm__with__proof)
   refutation:
     seq:
@@ -1858,7 +1977,7 @@ types:
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: message
-      type: message__
+      type: message_1
   sc_rollup_cement:
     seq:
     - id: source
@@ -1966,7 +2085,7 @@ types:
         A smart contract rollup address: A smart contract rollup is identified by
         a base58 address starting with scr1
     - id: commitment
-      type: commitment_
+      type: commitment_0
   sc_rollup_recover_bond:
     seq:
     - id: source
@@ -2038,7 +2157,7 @@ types:
     seq:
     - id: segment
       size-eos: true
-  segment_:
+  segment_0:
     seq:
     - id: len_segment
       type: u1
@@ -2071,7 +2190,7 @@ types:
     - id: skips_entries
       type: skips_entries
       repeat: eos
-  skips_:
+  skips_0:
     seq:
     - id: len_skips
       type: u4
@@ -2104,9 +2223,9 @@ types:
   skips_elt_field1:
     seq:
     - id: skips_elt_field1_entries
-      type: old_levels_messages
+      type: skips_elt_field1_entries
       repeat: eos
-  skips_elt_field1_:
+  skips_elt_field1_0:
     seq:
     - id: len_skips_elt_field1
       type: u4
@@ -2115,12 +2234,20 @@ types:
     - id: skips_elt_field1
       type: skips_elt_field1
       size: len_skips_elt_field1
+  skips_elt_field1_entries:
+    seq:
+    - id: index
+      type: int31
+    - id: content
+      size: 32
+    - id: back_pointers
+      type: back_pointers_0
   skips_entries:
     seq:
     - id: skips_elt_field0
       type: skips_elt_field0
     - id: skips_elt_field1
-      type: skips_elt_field1_
+      type: skips_elt_field1_0
   slot:
     seq:
     - id: level
@@ -2143,22 +2270,22 @@ types:
       type: n
     - id: payload
       type: bytes_dyn_uint30
-  some_:
+  some_0:
     seq:
     - id: skips
-      type: skips_
+      type: skips_0
     - id: level
-      type: skips_elt_field0
+      type: level
     - id: inc
-      type: inc_
+      type: inc_0
     - id: message_proof
-      type: tree_proof
+      type: message_proof
   sparse_proof:
     seq:
     - id: sparse_proof_entries
       type: sparse_proof_entries
       repeat: eos
-  sparse_proof_:
+  sparse_proof_0:
     seq:
     - id: len_sparse_proof
       type: u4
@@ -2167,19 +2294,19 @@ types:
     - id: sparse_proof
       type: sparse_proof
       size: len_sparse_proof
-  sparse_proof__:
+  sparse_proof_1:
     seq:
     - id: sparse_proof_entries
-      type: sparse_proof_entries_
+      type: sparse_proof_entries_0
       repeat: eos
-  sparse_proof___:
+  sparse_proof_2:
     seq:
     - id: len_sparse_proof
       type: u4
       valid:
         max: 1073741823
     - id: sparse_proof
-      type: sparse_proof__
+      type: sparse_proof_1
       size: len_sparse_proof
   sparse_proof_entries:
     seq:
@@ -2187,12 +2314,12 @@ types:
       type: u1
     - id: sparse_proof_elt_field1
       type: inode_tree
-  sparse_proof_entries_:
+  sparse_proof_entries_0:
     seq:
     - id: sparse_proof_elt_field0
       type: u1
     - id: sparse_proof_elt_field1
-      type: inode_tree_
+      type: inode_tree_0
       doc: inode_tree
   stakers:
     seq:
@@ -2208,17 +2335,17 @@ types:
       type: u1
       enum: step_tag
     - id: dissection
-      type: dissection_
+      type: dissection_0
       if: (step_tag == step_tag::dissection)
     - id: proof
-      type: proof_
+      type: proof_0
       if: (step_tag == step_tag::proof)
   tickets_info:
     seq:
     - id: tickets_info_entries
       type: tickets_info_entries
       repeat: eos
-  tickets_info_:
+  tickets_info_0:
     seq:
     - id: len_tickets_info
       type: u4
@@ -2312,7 +2439,7 @@ types:
       size: 32
       if: (tree_encoding_tag == tree_encoding_tag::blinded_value)
     - id: node
-      type: node_
+      type: node_0
       if: (tree_encoding_tag == tree_encoding_tag::node)
     - id: blinded_node
       size: 32
@@ -2321,7 +2448,7 @@ types:
       type: inode
       if: (tree_encoding_tag == tree_encoding_tag::inode)
     - id: extender
-      type: inode_extender
+      type: extender
       if: (tree_encoding_tag == tree_encoding_tag::extender)
   tree_proof:
     seq:
@@ -2378,9 +2505,27 @@ types:
     - id: message_index
       type: int31
     - id: message_result_path
-      type: message_result_path_
+      type: message_result_path_2
     - id: tickets_info
-      type: tickets_info_
+      type: tickets_info_0
+  tx_rollup_finalize_commitment:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_014__ptkathma__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_014__ptkathma__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
   tx_rollup_origination:
     seq:
     - id: source
@@ -2419,17 +2564,35 @@ types:
     - id: message_position
       type: n
     - id: message_path
-      type: message_path_
+      type: message_path_0
     - id: message_result_hash
       size: 32
     - id: message_result_path
-      type: message_result_path_
+      type: message_result_path_0
     - id: previous_message_result
       type: previous_message_result
     - id: previous_message_result_path
-      type: previous_message_result_path_
+      type: previous_message_result_path_0
     - id: proof
       type: proof
+  tx_rollup_remove_commitment:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: fee
+      type: id_014__ptkathma__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: rollup
+      type: id_014__ptkathma__tx_rollup_id
+      doc: ! >-
+        A tx rollup handle: A tx rollup notation as given to an RPC or inside scripts,
+        is a base58 tx rollup hash
   tx_rollup_return_bond:
     seq:
     - id: source
@@ -2480,6 +2643,14 @@ types:
       type: u4
       valid:
         max: 1073741823
+  wasm__2__0__0__pvm__with__proof:
+    seq:
+    - id: tree_proof
+      type: tree_proof
+    - id: given
+      type: given
+    - id: requested
+      type: requested
   z:
     seq:
     - id: has_tail

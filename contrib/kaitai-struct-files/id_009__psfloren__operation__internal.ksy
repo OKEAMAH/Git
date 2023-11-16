@@ -38,7 +38,7 @@ types:
       type: u1
       enum: id_009__psfloren__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_009__psfloren__entrypoint_tag == id_009__psfloren__entrypoint_tag::named)
   id_009__psfloren__mutez:
     seq:
@@ -91,7 +91,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1

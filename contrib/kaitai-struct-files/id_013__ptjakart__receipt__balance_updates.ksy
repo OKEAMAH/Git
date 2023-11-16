@@ -68,7 +68,7 @@ types:
     - id: id_013__ptjakart__operation_metadata__alpha__balance_updates_entries
       type: id_013__ptjakart__operation_metadata__alpha__balance_updates_entries
       repeat: eos
-  id_013__ptjakart__operation_metadata__alpha__balance_updates_:
+  id_013__ptjakart__operation_metadata__alpha__balance_updates_0:
     seq:
     - id: len_id_013__ptjakart__operation_metadata__alpha__balance_updates
       type: u4
@@ -168,4 +168,4 @@ enums:
     2: p256
 seq:
 - id: id_013__ptjakart__operation_metadata__alpha__balance_updates
-  type: id_013__ptjakart__operation_metadata__alpha__balance_updates_
+  type: id_013__ptjakart__operation_metadata__alpha__balance_updates_0

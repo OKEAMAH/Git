@@ -55,19 +55,23 @@ let escape_id id =
     id ;
   Buffer.contents b
 
+let find_name state ~prefix =
+  if not (Hashtbl.mem state.types_rev prefix) then prefix
+  else
+    let rec loop i =
+      let candidate = Printf.sprintf "%s_%d" prefix i in
+      if Hashtbl.mem state.types_rev candidate then loop (succ i) else candidate
+    in
+    loop 0
+
 let new_type state id attrs =
   let name, typ = (id, Helpers.class_spec_of_attrs ~id attrs) in
   let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
   match Hashtbl.find_opt state.types typ with
-  | None ->
-      let rec find_name name =
-        if Hashtbl.mem state.types_rev name then find_name (name ^ "_")
-        else (name, typ)
-      in
-      find_name name
+  | None -> (find_name state ~prefix:name, typ)
   | Some id_prev ->
-      Hashtbl.replace state.types typ id_prev ;
-      (id_prev, typ)
+      if String.starts_with id_prev ~prefix:id then (id_prev, typ)
+      else (find_name state ~prefix:name, typ)
 
 let add_type state (name, typ) =
   let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
@@ -634,34 +638,9 @@ and seq_field_of_union :
         let state, attrs = seq_field_of_data_encoding state encoding case_id in
         match attrs with
         | [] -> (state, payload_attrs)
-        | [attr] ->
-            ( state,
-              {
-                attr with
-                id = case_id;
-                cond =
-                  {
-                    Helpers.cond_no_cond with
-                    ifExpr =
-                      Some
-                        (Compare
-                           {
-                             left = Name (id ^ "_tag");
-                             ops = Eq;
-                             right =
-                               EnumByLabel
-                                 {
-                                   enumName = tag_id;
-                                   label = case_id;
-                                   inType = Ast.empty_typeId;
-                                 };
-                           });
-                  };
-              }
-              :: payload_attrs )
         | _ :: _ as attrs ->
             let state, attr =
-              redirect
+              redirect_if_many
                 state
                 attrs
                 (fun attr ->

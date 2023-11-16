@@ -9,7 +9,7 @@ types:
     seq:
     - id: current_head
       type: block_header
-  current_head_:
+  current_head_0:
     seq:
     - id: len_current_head
       type: u4
@@ -24,7 +24,7 @@ types:
       size: 32
 seq:
 - id: current_head
-  type: current_head_
+  type: current_head_0
 - id: history
   type: history_entries
   repeat: eos

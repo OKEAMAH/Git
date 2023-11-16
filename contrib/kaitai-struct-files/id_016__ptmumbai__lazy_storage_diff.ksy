@@ -10,15 +10,15 @@ types:
   alloc:
     seq:
     - id: updates
-      type: updates_
+      type: updates_0
     - id: key_type
       type: micheline__016__ptmumbai__michelson_v1__expression
     - id: value_type
       type: micheline__016__ptmumbai__michelson_v1__expression
-  alloc_:
+  alloc_0:
     seq:
     - id: updates
-      type: updates__
+      type: updates_1
     - id: memo_size
       type: u2
   args:
@@ -26,7 +26,7 @@ types:
     - id: args_entries
       type: args_entries
       repeat: eos
-  args_:
+  args_0:
     seq:
     - id: len_args
       type: u4
@@ -59,7 +59,7 @@ types:
     - id: commitments_and_ciphertexts_entries
       type: commitments_and_ciphertexts_entries
       repeat: eos
-  commitments_and_ciphertexts_:
+  commitments_and_ciphertexts_0:
     seq:
     - id: len_commitments_and_ciphertexts
       type: u4
@@ -80,21 +80,21 @@ types:
       type: id_016__ptmumbai__big_map_id
       doc: ! 'Big map identifier: A big map identifier'
     - id: updates
-      type: updates_
-  copy_:
+      type: updates_0
+  copy_0:
     seq:
     - id: source
       type: id_016__ptmumbai__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: updates
-      type: updates__
+      type: updates_1
   diff:
     seq:
     - id: diff_tag
       type: u1
       enum: diff_tag
     - id: update
-      type: updates_
+      type: updates_0
       if: (diff_tag == diff_tag::update)
     - id: copy
       type: copy
@@ -102,19 +102,19 @@ types:
     - id: alloc
       type: alloc
       if: (diff_tag == diff_tag::alloc)
-  diff_:
+  diff_0:
     seq:
     - id: diff_tag
       type: u1
       enum: diff_tag
     - id: update
-      type: updates__
+      type: updates_1
       if: (diff_tag == diff_tag::update)
     - id: copy
-      type: copy_
+      type: copy_0
       if: (diff_tag == diff_tag::copy)
     - id: alloc
-      type: alloc_
+      type: alloc_0
       if: (diff_tag == diff_tag::alloc)
   id_016__ptmumbai__big_map_id:
     seq:
@@ -157,7 +157,7 @@ types:
       type: bytes_dyn_uint30
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::string)
     - id: sequence
-      type: sequence_
+      type: sequence_0
       if: (micheline__016__ptmumbai__michelson_v1__expression_tag == micheline__016__ptmumbai__michelson_v1__expression_tag::sequence)
     - id: prim__no_args__no_annots
       type: id_016__ptmumbai__michelson__v1__primitives
@@ -194,7 +194,7 @@ types:
     - id: nullifiers_entries
       type: nullifiers_entries
       repeat: eos
-  nullifiers_:
+  nullifiers_0:
     seq:
     - id: len_nullifiers
       type: u4
@@ -244,7 +244,7 @@ types:
     - id: prim
       type: id_016__ptmumbai__michelson__v1__primitives
     - id: args
-      type: args_
+      type: args_0
     - id: annots
       type: bytes_dyn_uint30
   prim__no_args__some_annots:
@@ -259,13 +259,13 @@ types:
       type: id_016__ptmumbai__sapling_state_id
       doc: ! 'Sapling state identifier: A sapling state identifier'
     - id: diff
-      type: diff_
+      type: diff_0
   sequence:
     seq:
     - id: sequence_entries
       type: sequence_entries
       repeat: eos
-  sequence_:
+  sequence_0:
     seq:
     - id: len_sequence
       type: u4
@@ -289,7 +289,7 @@ types:
     - id: updates_entries
       type: updates_entries
       repeat: eos
-  updates_:
+  updates_0:
     seq:
     - id: len_updates
       type: u4
@@ -298,12 +298,12 @@ types:
     - id: updates
       type: updates
       size: len_updates
-  updates__:
+  updates_1:
     seq:
     - id: commitments_and_ciphertexts
-      type: commitments_and_ciphertexts_
+      type: commitments_and_ciphertexts_0
     - id: nullifiers
-      type: nullifiers_
+      type: nullifiers_0
   updates_entries:
     seq:
     - id: key_hash

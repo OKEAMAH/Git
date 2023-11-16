@@ -8,7 +8,7 @@ types:
     - id: cache_layout_entries
       type: cache_layout_entries
       repeat: eos
-  cache_layout_:
+  cache_layout_0:
     seq:
     - id: len_cache_layout
       type: u4
@@ -27,7 +27,7 @@ types:
       type: u1
       enum: delegate_selection_tag
     - id: round_robin_over_delegates
-      type: round_robin_over_delegates_
+      type: round_robin_over_delegates_0
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   id_012__psithaca__mutez:
     seq:
@@ -72,12 +72,18 @@ types:
     - id: p256
       size: 33
       if: (public_key_tag == public_key_tag::p256)
+  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
   round_robin_over_delegates:
     seq:
     - id: round_robin_over_delegates_entries
       type: round_robin_over_delegates_entries
       repeat: eos
-  round_robin_over_delegates_:
+  round_robin_over_delegates_0:
     seq:
     - id: len_round_robin_over_delegates
       type: u4
@@ -144,7 +150,7 @@ seq:
 - id: max_allowed_global_constants_depth
   type: int31
 - id: cache_layout
-  type: cache_layout_
+  type: cache_layout_0
 - id: michelson_maximum_type_size
   type: u2
 - id: preserved_cycles
@@ -210,6 +216,6 @@ seq:
 - id: double_baking_punishment
   type: id_012__psithaca__mutez
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: minimal_participation_ratio
+  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
 - id: delegate_selection
   type: delegate_selection

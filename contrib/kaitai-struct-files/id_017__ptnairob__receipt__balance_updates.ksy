@@ -74,7 +74,7 @@ types:
     - id: id_017__ptnairob__operation_metadata__alpha__balance_updates_entries
       type: id_017__ptnairob__operation_metadata__alpha__balance_updates_entries
       repeat: eos
-  id_017__ptnairob__operation_metadata__alpha__balance_updates_:
+  id_017__ptnairob__operation_metadata__alpha__balance_updates_0:
     seq:
     - id: len_id_017__ptnairob__operation_metadata__alpha__balance_updates
       type: u4
@@ -185,4 +185,4 @@ enums:
     3: bls
 seq:
 - id: id_017__ptnairob__operation_metadata__alpha__balance_updates
-  type: id_017__ptnairob__operation_metadata__alpha__balance_updates_
+  type: id_017__ptnairob__operation_metadata__alpha__balance_updates_0

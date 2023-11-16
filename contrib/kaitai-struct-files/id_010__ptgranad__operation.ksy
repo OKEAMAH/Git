@@ -27,7 +27,7 @@ types:
     seq:
     - id: id_010__ptgranad__block_header__alpha__full_header
       type: id_010__ptgranad__block_header__alpha__full_header
-  bh1_:
+  bh1_0:
     seq:
     - id: len_bh1
       type: u4
@@ -38,12 +38,16 @@ types:
       size: len_bh1
   bh2:
     seq:
+    - id: id_010__ptgranad__block_header__alpha__full_header
+      type: id_010__ptgranad__block_header__alpha__full_header
+  bh2_0:
+    seq:
     - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
-      type: bh1
+      type: bh2
       size: len_bh2
   bytes_dyn_uint30:
     seq:
@@ -80,22 +84,22 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1_
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
     - id: slot
       type: u2
   endorsement:
     seq:
     - id: id_010__ptgranad__inlined__endorsement
       type: id_010__ptgranad__inlined__endorsement
-  endorsement_:
+  endorsement_0:
     seq:
     - id: len_endorsement
       type: u4
@@ -107,7 +111,7 @@ types:
   endorsement_with_slot:
     seq:
     - id: endorsement
-      type: endorsement_
+      type: endorsement_0
     - id: slot
       type: u2
   id_010__ptgranad__block_header__alpha__full_header:
@@ -155,7 +159,7 @@ types:
       type: u1
       enum: id_010__ptgranad__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_010__ptgranad__entrypoint_tag == id_010__ptgranad__entrypoint_tag::named)
   id_010__ptgranad__inlined__endorsement:
     seq:
@@ -205,7 +209,7 @@ types:
       type: activate_account
       if: (id_010__ptgranad__operation__alpha__contents_tag == id_010__ptgranad__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals__
+      type: proposals_1
       if: (id_010__ptgranad__operation__alpha__contents_tag == id_010__ptgranad__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -254,7 +258,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1
@@ -265,21 +269,29 @@ types:
       size: len_named
   op1:
     seq:
+    - id: id_010__ptgranad__inlined__endorsement
+      type: id_010__ptgranad__inlined__endorsement
+  op1_0:
+    seq:
     - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
-      type: endorsement
+      type: op1
       size: len_op1
   op2:
+    seq:
+    - id: id_010__ptgranad__inlined__endorsement
+      type: id_010__ptgranad__inlined__endorsement
+  op2_0:
     seq:
     - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
-      type: endorsement
+      type: op2
       size: len_op2
   originated:
     seq:
@@ -324,7 +336,7 @@ types:
     - id: proposals_entries
       type: proposals_entries
       repeat: eos
-  proposals_:
+  proposals_0:
     seq:
     - id: len_proposals
       type: u4
@@ -333,7 +345,7 @@ types:
     - id: proposals
       type: proposals
       size: len_proposals
-  proposals__:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
@@ -341,7 +353,7 @@ types:
     - id: period
       type: s4
     - id: proposals
-      type: proposals_
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash

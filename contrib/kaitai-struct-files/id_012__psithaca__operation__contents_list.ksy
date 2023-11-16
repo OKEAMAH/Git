@@ -27,7 +27,7 @@ types:
     seq:
     - id: id_012__psithaca__block_header__alpha__full_header
       type: id_012__psithaca__block_header__alpha__full_header
-  bh1_:
+  bh1_0:
     seq:
     - id: len_bh1
       type: u4
@@ -38,12 +38,16 @@ types:
       size: len_bh1
   bh2:
     seq:
+    - id: id_012__psithaca__block_header__alpha__full_header
+      type: id_012__psithaca__block_header__alpha__full_header
+  bh2_0:
+    seq:
     - id: len_bh2
       type: u4
       valid:
         max: 1073741823
     - id: bh2
-      type: bh1
+      type: bh2
       size: len_bh2
   bytes_dyn_uint30:
     seq:
@@ -76,22 +80,32 @@ types:
   double_baking_evidence:
     seq:
     - id: bh1
-      type: bh1_
+      type: bh1_0
     - id: bh2
-      type: bh2
+      type: bh2_0
   double_endorsement_evidence:
     seq:
     - id: op1
-      type: op1_
+      type: op1_0
     - id: op2
-      type: op2
+      type: op2_0
   double_preendorsement_evidence:
     seq:
     - id: op1
-      type: op1___
+      type: op1_2
     - id: op2
-      type: op2_
+      type: op2_2
   endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  endorsement_0:
     seq:
     - id: slot
       type: u2
@@ -148,7 +162,7 @@ types:
       type: u1
       enum: id_012__psithaca__entrypoint_tag
     - id: named
-      type: named_
+      type: named_0
       if: (id_012__psithaca__entrypoint_tag == id_012__psithaca__entrypoint_tag::named)
   id_012__psithaca__inlined__endorsement:
     seq:
@@ -168,7 +182,7 @@ types:
       type: u1
       enum: id_012__psithaca__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement
+      type: endorsement_0
       if: (id_012__psithaca__inlined__endorsement_mempool__contents_tag == id_012__psithaca__inlined__endorsement_mempool__contents_tag::endorsement)
   id_012__psithaca__inlined__preendorsement:
     seq:
@@ -188,7 +202,7 @@ types:
       type: u1
       enum: id_012__psithaca__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: endorsement
+      type: preendorsement_0
       if: (id_012__psithaca__inlined__preendorsement__contents_tag == id_012__psithaca__inlined__preendorsement__contents_tag::preendorsement)
   id_012__psithaca__mutez:
     seq:
@@ -203,7 +217,7 @@ types:
       type: endorsement
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::endorsement)
     - id: preendorsement
-      type: endorsement
+      type: preendorsement
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::preendorsement)
     - id: seed_nonce_revelation
       type: seed_nonce_revelation
@@ -221,7 +235,7 @@ types:
       type: activate_account
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::activate_account)
     - id: proposals
-      type: proposals__
+      type: proposals_1
       if: (id_012__psithaca__operation__alpha__contents_tag == id_012__psithaca__operation__alpha__contents_tag::proposals)
     - id: ballot
       type: ballot
@@ -273,7 +287,7 @@ types:
     seq:
     - id: named
       size-eos: true
-  named_:
+  named_0:
     seq:
     - id: len_named
       type: u1
@@ -286,7 +300,7 @@ types:
     seq:
     - id: id_012__psithaca__inlined__endorsement
       type: id_012__psithaca__inlined__endorsement
-  op1_:
+  op1_0:
     seq:
     - id: len_op1
       type: u4
@@ -295,36 +309,44 @@ types:
     - id: op1
       type: op1
       size: len_op1
-  op1__:
+  op1_1:
     seq:
     - id: id_012__psithaca__inlined__preendorsement
       type: id_012__psithaca__inlined__preendorsement
-  op1___:
+  op1_2:
     seq:
     - id: len_op1
       type: u4
       valid:
         max: 1073741823
     - id: op1
-      type: op1__
+      type: op1_1
       size: len_op1
   op2:
     seq:
-    - id: len_op2
-      type: u4
-      valid:
-        max: 1073741823
-    - id: op2
-      type: op1
-      size: len_op2
-  op2_:
+    - id: id_012__psithaca__inlined__endorsement
+      type: id_012__psithaca__inlined__endorsement
+  op2_0:
     seq:
     - id: len_op2
       type: u4
       valid:
         max: 1073741823
     - id: op2
-      type: op1__
+      type: op2
+      size: len_op2
+  op2_1:
+    seq:
+    - id: id_012__psithaca__inlined__preendorsement
+      type: id_012__psithaca__inlined__preendorsement
+  op2_2:
+    seq:
+    - id: len_op2
+      type: u4
+      valid:
+        max: 1073741823
+    - id: op2
+      type: op2_1
       size: len_op2
   originated:
     seq:
@@ -364,12 +386,32 @@ types:
       doc: ! 'entrypoint: Named entrypoint to a Michelson smart contract'
     - id: value
       type: bytes_dyn_uint30
+  preendorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
+  preendorsement_0:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   proposals:
     seq:
     - id: proposals_entries
       type: proposals_entries
       repeat: eos
-  proposals_:
+  proposals_0:
     seq:
     - id: len_proposals
       type: u4
@@ -378,7 +420,7 @@ types:
     - id: proposals
       type: proposals
       size: len_proposals
-  proposals__:
+  proposals_1:
     seq:
     - id: source
       type: public_key_hash
@@ -386,7 +428,7 @@ types:
     - id: period
       type: s4
     - id: proposals
-      type: proposals_
+      type: proposals_0
   proposals_entries:
     seq:
     - id: protocol_hash

@@ -8,7 +8,7 @@ types:
     - id: bootstrap_accounts_entries
       type: bootstrap_accounts_entries
       repeat: eos
-  bootstrap_accounts_:
+  bootstrap_accounts_0:
     seq:
     - id: len_bootstrap_accounts
       type: u4
@@ -33,7 +33,7 @@ types:
     - id: bootstrap_contracts_entries
       type: bootstrap_contracts_entries
       repeat: eos
-  bootstrap_contracts_:
+  bootstrap_contracts_0:
     seq:
     - id: len_bootstrap_contracts
       type: u4
@@ -68,7 +68,7 @@ types:
     - id: commitments_entries
       type: commitments_entries
       repeat: eos
-  commitments_:
+  commitments_0:
     seq:
     - id: len_commitments
       type: u4
@@ -91,7 +91,7 @@ types:
       type: u1
       enum: delegate_selection_tag
     - id: round_robin_over_delegates
-      type: round_robin_over_delegates_
+      type: round_robin_over_delegates_0
       if: (delegate_selection_tag == delegate_selection_tag::round_robin_over_delegates)
   id_012__psithaca__mutez:
     seq:
@@ -178,12 +178,18 @@ types:
     - id: public_key_unknown_field1
       type: id_012__psithaca__mutez
       doc: id_012__psithaca__mutez
+  ratio_of_frozen_deposits_slashed_per_double_endorsement:
+    seq:
+    - id: numerator
+      type: u2
+    - id: denominator
+      type: u2
   round_robin_over_delegates:
     seq:
     - id: round_robin_over_delegates_entries
       type: round_robin_over_delegates_entries
       repeat: eos
-  round_robin_over_delegates_:
+  round_robin_over_delegates_0:
     seq:
     - id: len_round_robin_over_delegates
       type: u4
@@ -250,11 +256,11 @@ enums:
     2: p256
 seq:
 - id: bootstrap_accounts
-  type: bootstrap_accounts_
+  type: bootstrap_accounts_0
 - id: bootstrap_contracts
-  type: bootstrap_contracts_
+  type: bootstrap_contracts_0
 - id: commitments
-  type: commitments_
+  type: commitments_0
 - id: security_deposit_ramp_up_cycles_tag
   type: u1
   enum: bool
@@ -330,6 +336,6 @@ seq:
 - id: double_baking_punishment
   type: id_012__psithaca__mutez
 - id: ratio_of_frozen_deposits_slashed_per_double_endorsement
-  type: minimal_participation_ratio
+  type: ratio_of_frozen_deposits_slashed_per_double_endorsement
 - id: delegate_selection
   type: delegate_selection

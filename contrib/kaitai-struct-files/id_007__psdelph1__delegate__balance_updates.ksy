@@ -3,6 +3,20 @@ meta:
   endian: be
 doc: ! 'Encoding id: 007-PsDELPH1.delegate.balance_updates'
 types:
+  deposits:
+    seq:
+    - id: delegate
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: cycle
+      type: s4
+  fees:
+    seq:
+    - id: delegate
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, or P256 public key hash
+    - id: cycle
+      type: s4
   id_007__psdelph1__contract_id:
     seq:
     - id: id_007__psdelph1__contract_id_tag
@@ -30,10 +44,10 @@ types:
       type: rewards
       if: (id_007__psdelph1__operation_metadata__alpha__balance_tag == id_007__psdelph1__operation_metadata__alpha__balance_tag::rewards)
     - id: fees
-      type: rewards
+      type: fees
       if: (id_007__psdelph1__operation_metadata__alpha__balance_tag == id_007__psdelph1__operation_metadata__alpha__balance_tag::fees)
     - id: deposits
-      type: rewards
+      type: deposits
       if: (id_007__psdelph1__operation_metadata__alpha__balance_tag == id_007__psdelph1__operation_metadata__alpha__balance_tag::deposits)
   id_007__psdelph1__operation_metadata__alpha__balance_update:
     seq:
@@ -44,7 +58,7 @@ types:
     - id: id_007__psdelph1__operation_metadata__alpha__balance_updates_entries
       type: id_007__psdelph1__operation_metadata__alpha__balance_updates_entries
       repeat: eos
-  id_007__psdelph1__operation_metadata__alpha__balance_updates_:
+  id_007__psdelph1__operation_metadata__alpha__balance_updates_0:
     seq:
     - id: len_id_007__psdelph1__operation_metadata__alpha__balance_updates
       type: u4
@@ -102,4 +116,4 @@ enums:
     2: p256
 seq:
 - id: id_007__psdelph1__operation_metadata__alpha__balance_updates
-  type: id_007__psdelph1__operation_metadata__alpha__balance_updates_
+  type: id_007__psdelph1__operation_metadata__alpha__balance_updates_0
