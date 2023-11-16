@@ -307,35 +307,37 @@ functor
         (* Remove what is updated from the set_to_read *)
         set_to_read := IntSet.diff !set_to_read !set_to_write ;
 
-        let hashes = ref new_values in
-        (* Could be a fold on set_to_read *)
-        IntSet.iter
-          (fun i ->
-            let buffer = Bytes.create cell_size in
-            Utils.read_file
-              file_descr
-              buffer
-              ~offset:(i * cell_size)
-              ~len:cell_size ;
-            hashes := IntMap.add i buffer !hashes)
-          !set_to_read ;
+        let hashes =
+          IntSet.fold
+            (fun i hashes ->
+              let buffer = Bytes.create cell_size in
+              Utils.read_file
+                file_descr
+                buffer
+                ~offset:(i * cell_size)
+                ~len:cell_size ;
+              IntMap.add i buffer hashes)
+            !set_to_read
+            new_values
+        in
 
-        let write index =
+        let write index hashes =
           let to_write =
             match IntMap.find_opt index new_values with
             | Some new_value -> new_value
             | None ->
-                let left_child = IntMap.find (left_child index) !hashes in
-                let right_child = IntMap.find (right_child index) !hashes in
+                let left_child = IntMap.find (left_child index) hashes in
+                let right_child = IntMap.find (right_child index) hashes in
                 (* Here it's important that we go from the bottom level to the top one.*)
                 hash (Bytes.cat left_child right_child)
           in
-          hashes := IntMap.add index to_write !hashes ;
           Utils.write_file
             file_descr
             to_write
             ~offset:(index * cell_size)
-            ~len:cell_size
+            ~len:cell_size ;
+          IntMap.add index to_write hashes
         in
-        IntSet.iter write !set_to_write
+        let _hashes = IntSet.fold write !set_to_write hashes in
+        ()
   end
