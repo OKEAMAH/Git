@@ -18,8 +18,8 @@ hex = "0.4"
 num-bigint = "0.3"
 num-traits = "0.2.8"
 
-tezos_data_encoding = "0.5"
-tezos_crypto_rs = { version = "0.5", default-features = false }
+tezos_data_encoding = { git = "https://github.com/victor-dumitrescu/tezedge.git"}
+tezos_crypto_rs = { git = "https://github.com/victor-dumitrescu/tezedge.git", default-features = false}
 
 # Adding these to 'dev_dependencies' causes the rand feature in crypto to be enabled
 # on wasm builds, when building the entire workspace.

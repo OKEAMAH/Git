@@ -1396,7 +1396,6 @@ source = "git+https://github.com/victor-dumitrescu/tezedge.git#b5da6d1a5b78be231
 dependencies = [
  "anyhow",
  "base58",
- "blst",
  "byteorder 1.4.3",
  "cryptoxide",
  "ed25519-dalek",
