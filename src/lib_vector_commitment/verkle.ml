@@ -360,6 +360,8 @@ functor
 
       let print_tree_memory _tree = failwith "todo"
 
+      let print_root _root = failwith "todo"
+
       let equal_root = Bls12_381.G1.eq
     end
   end

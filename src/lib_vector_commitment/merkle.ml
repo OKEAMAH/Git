@@ -103,8 +103,7 @@ functor
        (Seq.init nb (fun i ->
             (i, Bls.(Scalar.of_int (nb_cells + 1) |> Scalar.to_bytes)))) *)
 
-    let create_tree ~file_name (state : bytes array) =
-      let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+    let create_tree_internal (leaves : bytes array) =
       let hash_lvl lvl =
         Array.init
           (Array.length lvl / 2)
@@ -112,7 +111,7 @@ functor
       in
       (* all layers + root *)
       let tree = Array.init (log_nb_cells + 1) (Fun.const [||]) in
-      tree.(log_nb_cells) <- state ;
+      tree.(log_nb_cells) <- leaves ;
       let rec hash_all_lvls current_level =
         if current_level = 0 then ()
         else
@@ -120,6 +119,11 @@ functor
           hash_all_lvls (current_level - 1)
       in
       hash_all_lvls log_nb_cells ;
+      tree
+
+    let create_tree ~file_name (leaves : bytes array) =
+      let file_descr = Unix.openfile file_name [O_CREAT; O_RDWR] 0o640 in
+      let tree = create_tree_internal leaves in
       let to_write =
         Bytes.(concat empty Array.(to_list (concat (to_list tree))))
       in
@@ -280,7 +284,7 @@ functor
 
       type root = bytes
 
-      let create_tree_memory _leaves = assert false
+      let create_tree_memory = create_tree_internal
 
       let apply_update_leaves leaves update =
         IntMap.iter (fun i v -> leaves.(i) <- v) update
@@ -332,6 +336,8 @@ functor
       (*         let len = Array.length data * cell_size in *)
       (*         let bytes_data = Bytes.concat Bytes.empty (Array.to_list data) in *)
       (*         Utils.write_file file_descr bytes_data ~offset ~len *)
+
+      let print_root root = Printf.printf "%s" Hex.(show (of_bytes root))
 
       let equal_root = Bytes.equal
     end

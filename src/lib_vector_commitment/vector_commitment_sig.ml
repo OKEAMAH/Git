@@ -83,6 +83,9 @@ module type Vector_commitment = sig
     (** Prints a tree. *)
     val print_tree_memory : tree -> unit
 
+    (** Prints a root. *)
+    val print_root : root -> unit
+
     val equal_root : root -> root -> bool
   end
 end

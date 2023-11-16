@@ -41,14 +41,19 @@ struct
     let () = create_tree ~file_name snd_lvl in
 
     let diff = generate_update ~size:(1 lsl 4) in
-    let t1 = Unix.gettimeofday () in
+    (*     let t1 = Unix.gettimeofday () in *)
     let () = apply_update ~file_name diff in
-    let t2 = Unix.gettimeofday () in
-    Printf.printf "\n time = %f \n" (t2 -. t1) ;
+    (*     let t2 = Unix.gettimeofday () in *)
+    (*     Printf.printf "\n time = %f \n" (t2 -. t1) ; *)
     let root = read_root ~file_name in
     apply_update_leaves snd_lvl diff ;
     let tree_memory = create_tree_memory snd_lvl in
     let root_new = read_root_memory tree_memory in
+    Printf.printf "\n new_root: \n" ;
+    print_root root_new ;
+    Printf.printf "\n root: \n" ;
+    print_root root ;
+    Printf.printf "\n\n" ;
     assert (equal_root root root_new)
 
   let tests =
