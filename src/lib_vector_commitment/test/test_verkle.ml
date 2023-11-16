@@ -22,71 +22,59 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-open Vector_commitment.Verkle.Internal
 
-let test_create_diff log_size =
-  let t1 = Unix.gettimeofday () in
-  let _diff = create_update (1 lsl log_size) in
-  let t2 = Unix.gettimeofday () in
-  Printf.printf "\n log_size = %i ; time = %f \n" log_size (t2 -. t1)
+module Params = struct
+  let log_nb_leaves = 8
+end
 
-let test_bench_create_diff () =
-  for i = 12 to 20 do
-    test_create_diff i
-  done
+module VT = Vector_commitment.Verkle.Make_Verkle_Tree (Params)
+open VT
+open VT.Internal_test
 
 let test_correctness () =
-  let fd = "test_vc" in
+  let file_name = "test_vc" in
   let snd_lvl = generate_leaves () in
-  let () = commit_storage fd snd_lvl in
+  let () = create_tree ~file_name snd_lvl in
 
-  let diff = create_uniform_diff (1 lsl 4) in
+  let diff = generate_update ~size:(1 lsl 4) in
   let t1 = Unix.gettimeofday () in
-  let () = update_commit fd diff in
+  let () = apply_update ~file_name diff in
   let t2 = Unix.gettimeofday () in
   Printf.printf "\n time = %f \n" (t2 -. t1) ;
-  let root = read_root fd in
-  update_leaves snd_lvl diff ;
-  let root_new, _ = commit snd_lvl in
-  assert (Bls12_381.G1.eq root root_new)
+  let root = read_root ~file_name in
+  apply_update_leaves snd_lvl diff ;
+  let tree_memory = create_tree_memory snd_lvl in
+  let root_new = read_root_memory tree_memory in
+  assert (compare_root root root_new)
 
-let test_bench_uniform log_size =
-  let fd = "test_vc_bench" in
-  let diff = create_uniform_diff (1 lsl log_size) in
-  let t1 = Unix.gettimeofday () in
-  let () = update_commit fd diff in
-  let t2 = Unix.gettimeofday () in
-  Printf.printf "\n UNIFORM log_size = %d ; time = %f \n" log_size (t2 -. t1)
+(* let prepare_bench () = *)
+(*   let file_name = "test_vc_bench" in *)
+(*   let snd_lvl = generate_leaves () in *)
+(*   let () = commit_storage fd snd_lvl in *)
+(*   () *)
 
-let test_bench log_size =
-  let fd = "test_vc_bench" in
-  let diff = create_update (1 lsl log_size) in
-  let t1 = Unix.gettimeofday () in
-  let () = update_commit fd diff in
-  let t2 = Unix.gettimeofday () in
-  Printf.printf "\n RANDOM log_size = %d ; time = %f \n" log_size (t2 -. t1)
+(* let test_bench log_size = *)
+(*   let fd = "test_vc_bench" in *)
+(*   let diff = create_update (1 lsl log_size) in *)
+(*   let t1 = Unix.gettimeofday () in *)
+(*   let () = update_commit fd diff in *)
+(*   let t2 = Unix.gettimeofday () in *)
+(*   Printf.printf "\n RANDOM log_size = %d ; time = %f \n" log_size (t2 -. t1) *)
 
-let test_bench_update () =
-  (*   for _i = 1 to 5 do *)
-  (*     test_bench 18 ; *)
-  (*     test_bench_uniform 18 *)
-  (*   done *)
-  for i = 16 to 18 do
-    test_bench i
-  done
-
-let prepare_bench () =
-  let fd = "test_vc_bench" in
-  let snd_lvl = generate_leaves () in
-  let () = commit_storage fd snd_lvl in
-  ()
+(* let test_bench_update () = *)
+(*   (\*   for _i = 1 to 5 do *\) *)
+(*   (\*     test_bench 18 ; *\) *)
+(*   (\*     test_bench_uniform 18 *\) *)
+(*   (\*   done *\) *)
+(*   for i = 16 to 18 do *)
+(*     test_bench i *)
+(*   done *)
 
 let tests =
   List.map
     (fun (name, f) -> Alcotest.test_case name `Quick f)
     [
-      (*       ("Bench create diff", test_bench_create_diff) *)
       ("Verkle_correctness", test_correctness)
       (* ("Verkle_bench_update", test_bench_update); *)
-      (*       ("Verkle_prepare", prepare_bench); *);
+      (* ("Verkle_prepare", prepare_bench); *);
     ]

@@ -367,6 +367,8 @@ functor
       let print_tree ~file_name:_ = failwith "todo"
 
       let print_tree_memory _tree = failwith "todo"
+
+      let compare_root = Bls12_381.G1.eq
     end
   end
 
