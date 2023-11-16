@@ -21,6 +21,7 @@
         "Misbehaviour",
         "Ratio_repr",
         "Int_percentage",
+        "Uint63",
 
 
         "Michelson_v1_primitives",
