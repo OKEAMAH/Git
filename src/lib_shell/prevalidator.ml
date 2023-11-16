@@ -27,6 +27,38 @@
 (** Minimal delay between two mempool advertisements *)
 let advertisement_delay = 0.1
 
+let cpt = ref 1
+
+let cpt_req = ref 0
+
+type req =
+  | RFlush
+  | RNotify
+  | RLeftover
+  | RInjectP
+  | RInjectE
+  | RInjectO
+  | RArrivedE
+  | RArrivedP
+  | RArrivedO
+  | RAdvertise
+  | RBan
+
+let last_request = ref RFlush
+
+let s_req = function
+  | RFlush -> "Flush"
+  | RNotify -> "Notify"
+  | RLeftover -> "Leftover"
+  | RInjectE -> "Inject endo"
+  | RInjectP -> "Inject preendo"
+  | RInjectO -> "Inject other"
+  | RArrivedE -> "Arrived endo"
+  | RArrivedP -> "Arrived preendo"
+  | RArrivedO -> "Arrived other"
+  | RAdvertise -> "Advertise"
+  | RBan -> "Ban"
+
 module Profiler = (val Profiler.wrap Shell_profiling.mempool_profiler)
 
 (** Argument that will be provided to {!Worker.MakeGroup} to create
@@ -1307,12 +1339,42 @@ module Make
   module Handlers = struct
     type self = worker
 
+    let to_req (type a b) (req : (a, b) Request.t) : req =
+      match req with
+      | Request.Flush _ -> RFlush
+      | Notify _ -> RNotify
+      | Leftover -> RLeftover
+      | Inject {op; _} -> (
+          match Char.code (Bytes.get op.proto 0) with
+          | 0x14 -> RInjectP
+          | 0x15 -> RInjectE
+          | _ -> RInjectO)
+      | Arrived (_, op) -> (
+          match Char.code (Bytes.get op.proto 0) with
+          | 0x14 -> RArrivedP
+          | 0x15 -> RArrivedE
+          | _ -> RArrivedO)
+      | Advertise -> RAdvertise
+      | Ban _ -> RBan
+
     let on_request :
         type r request_error.
         worker ->
         (r, request_error) Request.t ->
         (r, request_error) result Lwt.t =
      fun w request ->
+      let rreq = to_req request in
+      if !last_request = rreq then incr cpt_req
+      else (
+        Format.kasprintf
+          Profiler.stamp
+          "#%d: %s - %d"
+          !cpt
+          (s_req !last_request)
+          !cpt_req ;
+        incr cpt ;
+        last_request := rreq ;
+        cpt_req := 1) ;
       let open Lwt_result_syntax in
       Prometheus.Counter.inc_one metrics.worker_counters.worker_request_count ;
       let pv = Worker.state w in
@@ -1334,6 +1396,7 @@ module Make
       match request with
       | Request.Flush (hash, event, live_blocks, live_operations) ->
           Profiler.stop () ;
+          cpt := 1 ;
           let bh = Block_hash.to_b58check hash in
           Format.kasprintf Profiler.record "%s" bh ;
           Requests.on_advertise pv.shell ;
