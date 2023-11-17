@@ -138,7 +138,7 @@ let redirect_if_many :
     state * AttrSpec.t =
  fun state attrs fattr id ->
   match attrs with
-  | [] -> failwith "Not supported (empty redirect)"
+  | [] -> failwith "redirect_if_many: empty list not supported"
   | [attr] -> (state, {(fattr attr) with id})
   | _ :: _ :: _ as attrs -> redirect state attrs fattr id
 
@@ -350,7 +350,6 @@ let rec seq_field_of_data_encoding0 :
   | Dynamic_size {kind; encoding} ->
       let len_id = len_id_of_id id in
       let len_attr = Ground.Attr.binary_length_kind ~id:len_id kind in
-
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let state, attr =
         redirect
@@ -390,10 +389,7 @@ let rec seq_field_of_data_encoding0 :
           [
             {
               (Helpers.default_attr_spec ~id) with
-              dataType =
-                (* We don't have the full type, we just put a dummy with the correct
-                   [id] which is all that gets printed *)
-                ComplexDataType (UserType name);
+              dataType = ComplexDataType (UserType name);
             };
           ] )
       else
@@ -491,7 +487,6 @@ and seq_field_of_tups :
     type a.
     state -> Helpers.tid_gen -> a DataEncoding.desc -> state * AttrSpec.t list =
  fun state tid_gen d ->
-  (* TODO? add indices in the path? *)
   match d with
   | Tup {encoding = Tup _ as e; json_encoding = _} ->
       seq_field_of_tups state tid_gen e

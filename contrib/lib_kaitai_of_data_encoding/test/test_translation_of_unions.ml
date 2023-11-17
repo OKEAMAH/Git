@@ -206,4 +206,5 @@ let%expect_test "test union with structures inside" =
       if: (more_union_tag == more_union_tag::b)
     - id: c
       type: c
-      if: (more_union_tag == more_union_tag::c) |}]
+      if: (more_union_tag == more_union_tag::c)
+  |}]

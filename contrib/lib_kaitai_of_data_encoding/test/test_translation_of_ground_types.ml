@@ -170,7 +170,8 @@ let%expect_test "test int31 translation" =
             max: 1073741823
     seq:
     - id: ground_int31
-      type: int31 |}]
+      type: int31
+  |}]
 
 let%expect_test "test float translation" =
   let s =

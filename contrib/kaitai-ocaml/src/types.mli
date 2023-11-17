@@ -249,6 +249,11 @@ module DataType : sig
   and complex_data_type =
     | StructType
     | UserType of string
+      (* Note that in Kaitai's reference implementation, the [UserType]
+         AST node carries a [ClassSpec]. However, for our use case, we
+         only need the [UserType]'s [id]. So we use the simpler [string]
+         payload which avoids the mutual recursion of [DataType] and
+         [ClassSpec]. *)
     | ArrayType of array_type
 
   and switch_type = {

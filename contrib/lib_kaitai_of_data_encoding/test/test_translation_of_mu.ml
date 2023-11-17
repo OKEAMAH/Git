@@ -114,13 +114,13 @@ let%expect_test "test more mu" =
           type: u1
           enum: bool
         - id: branches
-          type: branches_
+          type: branches_0
       branches:
         seq:
         - id: branches_entries
           type: branches_entries
           repeat: eos
-      branches_:
+      branches_0:
         seq:
         - id: len_branches
           type: u4

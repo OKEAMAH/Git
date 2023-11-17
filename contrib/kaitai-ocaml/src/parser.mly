@@ -7,6 +7,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* Original implementation at
+https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/exprlang/Expressions.scala *)
+
 open Types
 
 %}

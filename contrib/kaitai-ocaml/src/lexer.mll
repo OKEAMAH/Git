@@ -8,8 +8,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Parser
+(* Original implementation at
+https://github.com/kaitai-io/kaitai_struct_compiler/blob/master/shared/src/main/scala/io/kaitai/struct/exprlang/Lexical.scala *)
 
+open Parser
 let kw =
  let l =
    [ "and", AND
@@ -32,9 +34,9 @@ let decimal_literal =
 let hex_digit =
   ['0'-'9' 'A'-'F' 'a'-'f']
 let hex_literal =
-  '0' ['x' 'X'] ['0'-'9' 'A'-'F' 'a'-'f']['0'-'9' 'A'-'F' 'a'-'f' '_']*
+  '0' ['x' 'X'] hex_digit (hex_digit | '_')*
 let oct_literal =
-  '0' ['o' 'O'] ['0'-'7'] ['0'-'7' '_']*
+  '0' ['o' 'O'] octal_digit (octal_digit | '_')*
 let bin_literal =
   '0' ['b' 'B'] ['0'-'1'] ['0'-'1' '_']*
 let int_literal =

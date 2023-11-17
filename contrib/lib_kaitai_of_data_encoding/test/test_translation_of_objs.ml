@@ -204,27 +204,28 @@ let%expect_test "test nested object translation" =
   print_endline (Kaitai.Print.print s) ;
   [%expect
     {|
-    meta:
-      id: nested_objects
-      endian: be
-    doc: ! 'Encoding id: nested_objects'
-    types:
-      bytes_dyn_uint30:
-        seq:
-        - id: len_bytes_dyn_uint30
-          type: u4
-          valid:
-            max: 1073741823
-        - id: bytes_dyn_uint30
-          size: len_bytes_dyn_uint30
-      uint30:
-        seq:
-        - id: uint30
-          type: u4
-          valid:
-            max: 1073741823
-    seq:
-    - id: replaced_protocol
-      type: bytes_dyn_uint30
-    - id: replacement_protocol
-      type: bytes_dyn_uint30 |}]
+  meta:
+    id: nested_objects
+    endian: be
+  doc: ! 'Encoding id: nested_objects'
+  types:
+    bytes_dyn_uint30:
+      seq:
+      - id: len_bytes_dyn_uint30
+        type: u4
+        valid:
+          max: 1073741823
+      - id: bytes_dyn_uint30
+        size: len_bytes_dyn_uint30
+    uint30:
+      seq:
+      - id: uint30
+        type: u4
+        valid:
+          max: 1073741823
+  seq:
+  - id: replaced_protocol
+    type: bytes_dyn_uint30
+  - id: replacement_protocol
+    type: bytes_dyn_uint30
+  |}]

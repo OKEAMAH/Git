@@ -13,7 +13,7 @@ open Yaml
 
 let empty_doc = DocSpec.{summary = None; refs = []}
 
-let mapping = function `O m -> m | _ -> raise (Error "mapping")
+let mapping = function `O m -> m | _ -> raise (Error "Expecting yaml mapping")
 
 let scalar = function
   | `Scalar {value; _} -> value
@@ -22,11 +22,11 @@ let scalar = function
 let bool = function
   | `Scalar {value = "true"; _} -> true
   | `Scalar {value = "false"; _} -> false
-  | _ -> raise (Error "bool")
+  | _ -> raise (Error "Expecting yaml bool")
 
 let sequence = function
   | `A (m : Yaml.sequence) -> m.s_members
-  | _ -> raise (Error "sequence")
+  | _ -> raise (Error "Expecting yaml sequence")
 
 let find_key_opt (m : Yaml.mapping) x : Yaml.yaml option =
   List.find_map
@@ -93,97 +93,73 @@ let expression : _ -> Ast.t = function
           s
           (Printexc.to_string e) ;
         Raw s)
-  | _ -> Ast.Str "TODO"
-
-let map : DataType.t -> string = function
-  | NumericType (Int_type (Int1Type {signed = false})) -> "u1"
-  | NumericType (Int_type (Int1Type {signed = true})) -> "s1"
-  | NumericType (Int_type (IntMultiType {signed; width; endian})) ->
-      String.concat
-        ""
-        [
-          (match signed with true -> "s" | false -> "u");
-          (match width with W1 -> "1" | W2 -> "2" | W4 -> "4" | W8 -> "8");
-          (match endian with None -> "" | Some `BE -> "be" | Some `LE -> "le");
-        ]
-  | NumericType (Float_type (FloatMultiType {width; endian})) ->
-      String.concat
-        ""
-        [
-          "f";
-          (match width with W1 -> "1" | W2 -> "2" | W4 -> "4" | W8 -> "8");
-          (match endian with None -> "" | Some `BE -> "be" | Some `LE -> "le");
-        ]
-  | BooleanType (BitsType1 _bit_endian) -> "b1"
-  | NumericType (Int_type (BitsType {width; bit_endian})) ->
-      String.concat
-        ""
-        [
-          "b";
-          string_of_int width;
-          (match bit_endian with
-          | BigBitEndian -> "be"
-          | LittleBitEndian -> "le");
-        ]
-  | _ -> assert false
+  | _ -> raise (Error "expression is not a scalar")
 
 let dataType x _extra : DataType.t =
+  let exception Not_builtin in
   match x with
   | `Scalar _ as x -> (
-      let s = scalar x in
-      let s', endian =
-        if String.ends_with s ~suffix:"be" then
-          (String.sub s 0 (String.length s - 2), Some `BE)
-        else if String.ends_with s ~suffix:"le" then
-          (String.sub s 0 (String.length s - 2), Some `LE)
-        else (s, None)
-      in
-      let maybeint =
-        try Some (int_of_string (String.sub s' 1 (String.length s' - 1)))
-        with _ -> None
-      in
-      let w_of_int : _ -> DataType.int_width = function
-        | 1 -> W1
-        | 2 -> W2
-        | 4 -> W4
-        | 8 -> W8
-        | _ -> raise Not_found
-      in
-      match (String.get s' 0, maybeint, endian) with
-      | 'u', Some 1, None -> NumericType (Int_type (Int1Type {signed = false}))
-      | 's', Some 1, None -> NumericType (Int_type (Int1Type {signed = true}))
-      | 'u', Some i, _ ->
-          NumericType
-            (Int_type
-               (IntMultiType {signed = false; width = w_of_int i; endian}))
-      | 's', Some i, _ ->
-          NumericType
-            (Int_type (IntMultiType {signed = true; width = w_of_int i; endian}))
-      | 'f', Some i, _ ->
-          NumericType (Float_type (FloatMultiType {width = w_of_int i; endian}))
-      | 'b', Some 1, None -> BooleanType (BitsType1 BigBitEndian)
-      | 'b', Some i, _ ->
-          NumericType
-            (Int_type
-               (BitsType
-                  {
-                    width = i;
-                    bit_endian =
-                      (match endian with
-                      | Some `BE | None -> BigBitEndian
-                      | Some `LE -> LittleBitEndian);
-                  }))
-      | _, None, _ | _, Some _, _ ->
-          let s = scalar x in
-          if
-            String.for_all
-              (function
-                | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> true
-                | _ -> false)
-              s
-          then ComplexDataType (UserType s)
-          else Raw s)
-  | _ -> assert false
+      let raw_s = scalar x in
+      try
+        let prefix, endian =
+          if String.ends_with raw_s ~suffix:"be" then
+            (String.sub raw_s 0 (String.length raw_s - 2), Some `BE)
+          else if String.ends_with raw_s ~suffix:"le" then
+            (String.sub raw_s 0 (String.length raw_s - 2), Some `LE)
+          else (raw_s, None)
+        in
+        if String.equal prefix "" then raise Not_builtin ;
+        let start = String.get prefix 0 in
+        let size =
+          match
+            int_of_string_opt (String.sub prefix 1 (String.length prefix - 1))
+          with
+          | None -> raise Not_builtin
+          | Some i -> i
+        in
+        let w_of_int : _ -> DataType.int_width = function
+          | 1 -> W1
+          | 2 -> W2
+          | 4 -> W4
+          | 8 -> W8
+          | _ -> raise Not_builtin
+        in
+        match (start, size, endian) with
+        | 'u', 1, None -> NumericType (Int_type (Int1Type {signed = false}))
+        | 's', 1, None -> NumericType (Int_type (Int1Type {signed = true}))
+        | 'u', i, _ ->
+            NumericType
+              (Int_type
+                 (IntMultiType {signed = false; width = w_of_int i; endian}))
+        | 's', i, _ ->
+            NumericType
+              (Int_type
+                 (IntMultiType {signed = true; width = w_of_int i; endian}))
+        | 'f', i, _ ->
+            NumericType
+              (Float_type (FloatMultiType {width = w_of_int i; endian}))
+        | 'b', 1, None -> BooleanType (BitsType1 BigBitEndian)
+        | 'b', i, _ ->
+            NumericType
+              (Int_type
+                 (BitsType
+                    {
+                      width = i;
+                      bit_endian =
+                        (match endian with
+                        | Some `BE | None -> BigBitEndian
+                        | Some `LE -> LittleBitEndian);
+                    }))
+        | _, _, _ -> raise Not_builtin
+      with Not_builtin ->
+        if
+          String.for_all
+            (function
+              | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' -> true | _ -> false)
+            raw_s
+        then ComplexDataType (UserType raw_s)
+        else Raw raw_s)
+  | _ -> raise (Error "datatype not a scalar")
 
 let seq x =
   let m = mapping x in
@@ -192,7 +168,8 @@ let seq x =
     match find_key_opt m "type" with
     | None -> (
         match (find_key_opt m "size-eos", find_key_opt m "size") with
-        | None, None -> assert false
+        | None, None -> raise (Error "not type, no size, no size-eos")
+        | Some _, Some _ -> raise (Error "Cannot define both size and size-eos")
         | None, Some size ->
             DataType.BytesType
               (BytesLimitType
@@ -203,9 +180,9 @@ let seq x =
                    padRight = None;
                    process = None;
                  })
-        | Some b, (Some _ (* FIXME *) | None) ->
+        | Some b, None ->
             let b = bool b in
-            assert b ;
+            if not b then raise (Error "size-eos: false") ;
             DataType.BytesType
               (BytesEosType
                  {
@@ -227,12 +204,14 @@ let seq x =
     | None -> cond
     | Some v -> (
         match scalar v with
-        | "expr" ->
-            let e = find_key m "repeat-expr" in
-            {cond with repeat = RepeatExpr (expression e)}
-        | "until" ->
-            let e = find_key m "repeat-until" in
-            {cond with repeat = RepeatUntil (expression e)}
+        | "expr" -> (
+            match find_key_opt m "repeat-expr" with
+            | Some e -> {cond with repeat = RepeatExpr (expression e)}
+            | None -> raise (Error "repeat:expr no repeat-expr"))
+        | "until" -> (
+            match find_key_opt m "repeat-until" with
+            | Some e -> {cond with repeat = RepeatUntil (expression e)}
+            | None -> raise (Error "repeat:until no repeat-until"))
         | "eos" -> {cond with repeat = RepeatEos}
         | invalid ->
             raise
@@ -273,7 +252,7 @@ let seq x =
                  {min = expression min; max = expression max})
         | `O {m_members = [(`Scalar {value = "expr"; _}, e)]; _} ->
             Some (ValidationSpec.ValidationExpr (expression e))
-        | _ -> assert false)
+        | _ -> raise (Error "unknown valid layout"))
   in
   let size =
     match find_key_opt m "size" with

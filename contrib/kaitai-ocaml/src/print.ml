@@ -190,10 +190,29 @@ let seq_spec seq = sequence (List.concat_map attr_spec seq)
 let spec_if_non_empty name args f =
   match args with [] -> [] | _ :: _ -> [(name, f args)]
 
-let rec to_yaml toplevel (t : ClassSpec.t) =
+let id_only_meta = function
+  | MetaSpec.
+      {
+        isOpaque = false;
+        id = Some _ | None;
+        (* [`Be] is the default value *)
+        endian = None | Some `BE;
+        bitEndian = None;
+        encoding = None;
+        forceDebug = false;
+        opaqueTypes = None;
+        zeroCopySubstream = None;
+        imports = [];
+      } ->
+      true
+  | _ -> false
+
+let rec to_yaml ~toplevel (t : ClassSpec.t) =
   mapping_flatten
     [
-      (if toplevel then [("meta", metaSpec t.meta)] else []);
+      (if toplevel then [("meta", metaSpec t.meta)]
+      else if id_only_meta t.meta then []
+      else [("meta", metaSpec t.meta)]);
       doc_spec t.doc;
       spec_if_non_empty "types" t.types types_spec;
       spec_if_non_empty "instances" t.instances instances_spec;
@@ -202,13 +221,11 @@ let rec to_yaml toplevel (t : ClassSpec.t) =
     ]
 
 and types_spec types =
-  mapping (types |> List.map (fun (k, v) -> (k, to_yaml false v)))
+  mapping (types |> List.map (fun (k, v) -> (k, to_yaml ~toplevel:false v)))
 
 let to_string t =
-  let y = to_yaml true t in
-  match Yaml.yaml_to_string ~len:(65535 * 8) y with
-  | Ok x -> x
-  | Error (`Msg m) -> failwith m
+  let y = to_yaml ~toplevel:true t in
+  match Yaml.yaml_to_string ~len:(65535 * 8) y with Ok x -> x | Error (`Msg m) -> failwith m
 
 let print_diff difftool a b =
   let a_str = Sexplib.Sexp.to_string_hum (Types.ClassSpec.sexp_of_t a) in
