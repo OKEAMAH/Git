@@ -447,10 +447,11 @@ module Make_s
        operations whose classes are changed/impacted by this classification
        (eg. in case of operation replacement).
   *)
-  let classify_operation shell ~config ~validation_state
-      ((advertisable_mempool, mempool) as mempools) priority op :
+  let classify_operation shell ~config ~validation_state new_mempool all_mempool
+      priority op :
       (prevalidation_t
-      * (Mempool.t * Mempool.t)
+      * Mempool.t
+      * Mempool.t
       * (protocol_operation operation * Classification.classification) trace)
       Lwt.t =
     let open Lwt_syntax in
@@ -465,30 +466,31 @@ module Make_s
         replacements
     in
     let to_handle = (op, classification) :: to_replace in
-    let mempools =
+    let new_mempool, all_mempool =
       match classification with
       | `Validated -> (
           Profiler.mark ["valid operation"] ;
           match priority with
-          | `New _ | `Reclassified `High ->
-              ( Mempool.cons_valid op.hash advertisable_mempool,
-                Mempool.cons_valid op.hash mempool )
-          | `Reclassified `Medium | `Reclassified (`Low _) ->
-              (advertisable_mempool, Mempool.cons_valid op.hash mempool))
+          | `New _ ->
+              ( Mempool.cons_valid op.hash new_mempool,
+                Mempool.cons_valid op.hash all_mempool )
+          | `Reclassified `Medium | `Reclassified (`Low _) | `Reclassified `High
+            ->
+              (new_mempool, Mempool.cons_valid op.hash all_mempool))
       | `Branch_refused _ ->
           Profiler.mark ["branch_refused operation"] ;
-          mempools
+          (new_mempool, all_mempool)
       | `Branch_delayed _ ->
           Profiler.mark ["branch_delayed operation"] ;
-          mempools
+          (new_mempool, all_mempool)
       | `Refused _ ->
           Profiler.mark ["refused operation"] ;
-          mempools
+          (new_mempool, all_mempool)
       | `Outdated _ ->
           Profiler.mark ["outdated operation"] ;
-          mempools
+          (new_mempool, all_mempool)
     in
-    return (v_state, mempools, to_handle)
+    return (v_state, new_mempool, all_mempool, to_handle)
 
   (* Classify pending operations into either:
      [Refused | Outdated | Branch_delayed | Branch_refused | Validated].
@@ -511,10 +513,13 @@ module Make_s
     let open Lwt_syntax in
     let* r =
       Pending_ops.fold_es
-        (fun prio oph op (acc_validation_state, acc_mempools, limit) ->
+        (fun priority
+             oph
+             op
+             (acc_validation_state, new_mempool, all_mempool, limit) ->
           if limit <= 0 then
             (* Using Error as an early-return mechanism *)
-            Lwt.return_error (acc_validation_state, acc_mempools)
+            Lwt.return_error (acc_validation_state, new_mempool, all_mempool)
           else
             let section =
               match priority with
@@ -531,46 +536,49 @@ module Make_s
             in
             Profiler.aggregate_s section @@ fun () ->
             shell.pending <- Pending_ops.remove oph shell.pending ;
-            let* new_validation_state, new_mempools, to_handle =
+            let* new_validation_state, new_mempool, all_mempool, to_handle =
               classify_operation
                 shell
                 ~config
                 ~validation_state:acc_validation_state
-                acc_mempools
+                new_mempool
+                all_mempool
                 priority
                 op
             in
             let* () = Events.(emit operation_reclassified) oph in
             List.iter (handle_classification ~notifier shell) to_handle ;
-            Lwt.return_ok (new_validation_state, new_mempools, limit - 1))
+            Lwt.return_ok
+              (new_validation_state, new_mempool, all_mempool, limit - 1))
         shell.pending
         ( state,
-          (Mempool.empty, Mempool.empty),
+          Mempool.empty,
+          Mempool.empty,
           shell.parameters.limits.operations_batch_size )
     in
     match r with
-    | Error (state, advertised_mempool) ->
+    | Error (state, new_mempool, all_mempool) ->
         (* Early return after iteration limit was reached *)
         let* (_was_pushed : bool) =
           shell.worker.push_request Request.Leftover
         in
-        Lwt.return (state, advertised_mempool)
-    | Ok (state, advertised_mempool, _) -> Lwt.return (state, advertised_mempool)
+        Lwt.return (state, new_mempool, all_mempool)
+    | Ok (state, new_mempool, all_mempool, _) ->
+        Lwt.return (state, new_mempool, all_mempool)
 
-  let update_advertised_mempool_fields pv_shell
-      (advertisable_mempool, delta_mempool) =
+  let update_advertised_mempool_fields pv_shell new_mempool all_mempool =
     let open Lwt_syntax in
-    if not (Mempool.is_empty advertisable_mempool) then
+    if not (Mempool.is_empty new_mempool) then
       (* We only advertise newly classified operations. *)
       Profiler.aggregate_f "advertise mempool" (fun () ->
-          advertise pv_shell advertisable_mempool) ;
-    if Mempool.is_empty delta_mempool then Lwt.return_unit
+          advertise pv_shell new_mempool) ;
+    if Mempool.is_empty all_mempool then Lwt.return_unit
     else
       let our_mempool =
         let known_valid =
           Profiler.aggregate_f "fold validated hashes" @@ fun () ->
           Operation_hash.Set.union
-            delta_mempool.known_valid
+            all_mempool.known_valid
             pv_shell.mempool.known_valid
         in
         let pending =
@@ -591,7 +599,7 @@ module Make_s
     if Pending_ops.is_empty pv.shell.pending then Lwt.return_unit
     else
       let* () = Events.(emit processing_operations) () in
-      let* validation_state, delta_mempools =
+      let* validation_state, new_mempool, all_mempool =
         Profiler.aggregate_s "classify pending operations" @@ fun () ->
         classify_pending_operations
           ~notifier
@@ -600,7 +608,7 @@ module Make_s
           pv.validation_state
       in
       pv.validation_state <- validation_state ;
-      update_advertised_mempool_fields pv.shell delta_mempools
+      update_advertised_mempool_fields pv.shell new_mempool all_mempool
 
   (* This function fetches one operation through the
      [distributed_db]. On errors, we emit an event and proceed as
@@ -760,12 +768,13 @@ module Make_s
                 op.Operation.shell.branch
             else
               let notifier = mk_notifier pv.operation_stream in
-              let*! validation_state, delta_mempools, to_handle =
+              let*! validation_state, new_mempool, all_mempool, to_handle =
                 classify_operation
                   pv.shell
                   ~config:pv.config
                   ~validation_state:pv.validation_state
-                  (Mempool.empty, Mempool.empty)
+                  Mempool.empty
+                  Mempool.empty
                   priority
                   parsed_op
               in
@@ -796,7 +805,10 @@ module Make_s
                   (* Note that in this case, we may advertise an operation and bypass
                      the prioritirization strategy. *)
                   let*! v =
-                    update_advertised_mempool_fields pv.shell delta_mempools
+                    update_advertised_mempool_fields
+                      pv.shell
+                      new_mempool
+                      all_mempool
                   in
                   let*! () = Events.(emit operation_injected) oph in
                   return v
