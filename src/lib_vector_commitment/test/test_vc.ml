@@ -152,26 +152,29 @@ struct
     let open VC in
     let file_name = "test_vc_bench" in
     let diff = generate_update ~size:(1 lsl log_size_update) in
-    let () =
-      Time.bench_test_function
-        ~nb_rep:10
-        (fun () ->
-          Time.time "apply_update" (fun () -> apply_update ~file_name diff))
-        ()
-    in
-    Printf.printf "-----------------------------"
+    Time.bench_test_function
+      ~nb_rep:10
+      (fun () ->
+        Time.time "apply_update" (fun () -> apply_update ~file_name diff))
+      ()
 
   let test_bench_update () =
-    for i = 5 to 8 do
-      test_bench 10 i
+    let log_nb_bits = 20 in
+    for log_size_update = 16 to 18 do
+      Printf.printf
+        "\n log_nb_bits %d ; log_size_update = %d \n"
+        log_nb_bits
+        log_size_update ;
+      test_bench log_nb_bits log_size_update ;
+      Printf.printf "-----------------------------"
     done
 
   let tests =
     List.map
       (fun (name, f) -> Alcotest.test_case name `Quick f)
       [
-        (* ("VC_correctness", test_correctness) ; *)
-        (*         ("VC_prepare", prepare_bench 10); *)
-        ("VC_bench", test_bench_update);
+        ("VC_correctness", test_correctness);
+        (*         ("VC_prepare", prepare_bench 20); *)
+        (* ("VC_bench", test_bench_update); *)
       ]
 end
