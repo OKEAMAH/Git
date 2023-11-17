@@ -406,7 +406,7 @@ and _ manager_operation =
   | Auth_source : {
       auth_source : Signature.Public_key_hash.t;
       auth_signature : Signature.t;
-      txs : _ contents_list;
+      txs : _ Kind.manager contents_list;
     }
       -> Kind.auth_source manager_operation
 
@@ -565,9 +565,9 @@ module Encoding = struct
 
   type _ nonrec_case = Case
 
-  type _ rec_case =
-    | Rec_case  (** These tags can not be used yet for operations. *)
+  type _ rec_case = Rec_case
 
+  (** These tags can not be used yet for operations. *)
   let reserved_tag t =
     (* These tags are reserved for future extensions: [fd] - [ff]. *)
     Compare.Int.(t >= 0xfd)
@@ -590,7 +590,7 @@ module Encoding = struct
 
   module Manager_operations = struct
     type 'kind case =
-      | MCase :  {
+      | MCase : {
           tag : int;
           name : string;
           encoding : 'a Data_encoding.t;
@@ -599,14 +599,8 @@ module Encoding = struct
           inj : 'a -> 'kind manager_operation;
         }
           -> 'kind nonrec_case case
-      | MCase_rec : 'a 'kind. {
-          tag : int;
-          name : string;
-          encoding : packed_contents_list Data_encoding.t -> 'a Data_encoding.t;
-          select : packed_manager_operation -> 'kind manager_operation option;
-          proj : 'kind manager_operation -> 'a;
-          inj : 'a -> 'kind manager_operation;
-        }
+      | MCase_rec :
+          (packed_contents_list encoding -> 'kind nonrec_case case)
           -> 'kind rec_case case
 
     let reveal_case =
@@ -1012,31 +1006,33 @@ module Encoding = struct
 
     let auth_source_case =
       MCase_rec
-        {
-          tag = auth_source_tag;
-          name = "auth_source";
-          encoding =
-            (fun e ->
-              obj3
-                (req "auth_source" Signature.Public_key_hash.encoding)
-                (req "auth_signature" (dynamic_size Signature.encoding))
-                (req "txs" (dynamic_size e)));
-          select =
-            (function
-            | Manager (Auth_source _ as op) ->
-                Some (op : Kind.auth_source manager_operation)
-            | _ -> None);
-          proj =
-            (function
-            | Auth_source {auth_source; auth_signature; txs} ->
-                (auth_source, auth_signature, Contents_list txs));
-          inj =
-            (fun (auth_source, auth_signature, Contents_list txs) ->
-              Auth_source {auth_source; auth_signature; txs});
-        }
+        (fun e ->
+          MCase
+            {
+              tag = auth_source_tag;
+              name = "auth_source";
+              encoding =
+                obj3
+                  (req "auth_source" Signature.Public_key_hash.encoding)
+                  (req "auth_signature" (dynamic_size Signature.encoding))
+                  (req "txs" (dynamic_size e));
+              select =
+                (function
+                | Manager (Auth_source _ as op) ->
+                    Some (op : Kind.auth_source manager_operation)
+                | _ -> None);
+              proj =
+                (function
+                | Auth_source {auth_source; auth_signature; txs} ->
+                    (auth_source, auth_signature, Contents_list txs));
+              inj =
+                (function
+                | auth_source, auth_signature, Contents_list (Cons _ as txs) ->
+                    Auth_source {auth_source; auth_signature; txs}
+                | _auth_source, _auth_signature, Contents_list (Single _) ->
+                    failwith "todo");
+            })
   end
-
-
 
   type 'b case =
     | Case : {
@@ -1048,15 +1044,9 @@ module Encoding = struct
         inj : 'a -> 'b contents;
       }
         -> 'b nonrec_case case
-    | Case_rec :  {
-        tag : int;
-        name : string;
-        encoding : packed_contents_list Data_encoding.t -> 'a Data_encoding.t;
-        select : packed_contents -> 'b contents option;
-        proj : 'b contents -> 'a;
-        inj : 'a -> 'b contents;
-      }
-        -> 'a rec_case case
+    | Case_rec :
+        (packed_contents_list Data_encoding.t -> 'b nonrec_case case)
+        -> 'b rec_case case
 
   let preendorsement_case =
     Case
@@ -1501,27 +1491,27 @@ module Encoding = struct
       (Manager_operations.MCase_rec mcase :
         kind rec_case Manager_operations.case) =
     Case_rec
-      {
-        tag;
-        name = mcase.name;
-        encoding =
-              (fun  e ->
-                let enc = mcase.encoding e in
-                let res = merge_objs manager_encoding enc in 
-                res);
-        select =
-          (function
-          | Contents (Manager_operation ({operation; _} as op)) -> (
-              match mcase.select (Manager operation) with
-              | None -> None
-              | Some operation -> Some (Manager_operation {op with operation}))
-          | _ -> None);
-        proj =
-          (function
-          | Manager_operation {operation; _} as op ->
-              (extract op, mcase.proj operation));
-        inj = (fun (op, contents) -> rebuild op (mcase.inj contents));
-      }
+      (fun e ->
+        let (MCase mcase) = mcase e in
+        Case
+          {
+            tag;
+            name = mcase.name;
+            encoding = merge_objs manager_encoding mcase.encoding;
+            select =
+              (function
+              | Contents (Manager_operation ({operation; _} as op)) -> (
+                  match mcase.select (Manager operation) with
+                  | None -> None
+                  | Some operation ->
+                      Some (Manager_operation {op with operation}))
+              | _ -> None);
+            proj =
+              (function
+              | Manager_operation {operation; _} as op ->
+                  (extract op, mcase.proj operation));
+            inj = (fun (op, contents) -> rebuild op (mcase.inj contents));
+          })
 
   let reveal_case = make_manager_case 107 Manager_operations.reveal_case
 
@@ -1609,6 +1599,9 @@ module Encoding = struct
       zk_rollup_operation_update_tag
       Manager_operations.zk_rollup_update_case
 
+  let auth_source_case =
+    make_manager_case_rec auth_source_tag Manager_operations.auth_source_case
+
   type packed_case = PCase : 'b case -> packed_case
 
   let common_cases =
@@ -1642,6 +1635,7 @@ module Encoding = struct
       PCase zk_rollup_origination_case;
       PCase zk_rollup_publish_case;
       PCase zk_rollup_update_case;
+      PCase auth_source_case;
     ]
 
   let contents_cases =
@@ -1654,39 +1648,57 @@ module Encoding = struct
     :: PCase double_preendorsement_evidence_case
     :: PCase double_endorsement_evidence_case :: common_cases
 
-  let contents_encoding =
-    let make (PCase (Case {tag; name; encoding; select; proj; inj})) =
-      assert (not @@ reserved_tag tag) ;
-      case
-        (Tag tag)
-        name
-        encoding
-        (fun o -> match select o with None -> None | Some o -> Some (proj o))
-        (fun x -> Contents (inj x))
+  let contents_encoding recurse =
+    let rec make = function
+      | PCase (Case {tag; name; encoding; select; proj; inj}) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            encoding
+            (fun o ->
+              match select o with None -> None | Some o -> Some (proj o))
+            (fun x -> Contents (inj x))
+      | PCase (Case_rec f) -> make (PCase (f recurse))
     in
     def "operation.alpha.contents" @@ union (List.map make contents_cases)
 
-  let contents_encoding_with_legacy_attestation_name =
-    let make (PCase (Case {tag; name; encoding; select; proj; inj})) =
-      assert (not @@ reserved_tag tag) ;
-      case
-        (Tag tag)
-        name
-        encoding
-        (fun o -> match select o with None -> None | Some o -> Some (proj o))
-        (fun x -> Contents (inj x))
+  let contents_encoding_with_legacy_attestation_name recurse =
+    let rec make = function
+      | PCase (Case {tag; name; encoding; select; proj; inj}) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            encoding
+            (fun o ->
+              match select o with None -> None | Some o -> Some (proj o))
+            (fun x -> Contents (inj x))
+      | PCase (Case_rec f) -> make (PCase (f recurse))
     in
+
     def "operation_with_legacy_attestation_name.alpha.contents"
     @@ union (List.map make contents_cases_with_legacy_attestation_name)
 
   let contents_list_encoding =
-    conv_with_guard to_list of_list_internal (Variable.list contents_encoding)
+    mu "contents_list" (fun self ->
+        conv_with_guard
+          to_list
+          of_list_internal
+          (Variable.list (contents_encoding self)))
 
   let contents_list_encoding_with_legacy_attestation_name =
-    conv_with_guard
-      to_list
-      of_list_internal
-      (Variable.list contents_encoding_with_legacy_attestation_name)
+    mu "contents_list_with_legacy_attestation_name" (fun self ->
+        conv_with_guard
+          to_list
+          of_list_internal
+          (Variable.list (contents_encoding_with_legacy_attestation_name self)))
+
+  let contents_encoding = contents_encoding contents_list_encoding
+
+  let contents_encoding_with_legacy_attestation_name =
+    contents_encoding_with_legacy_attestation_name
+      contents_list_encoding_with_legacy_attestation_name
 
   let protocol_data_json_encoding =
     conv
@@ -1715,17 +1727,20 @@ module Encoding = struct
     | Signature_prefix of Signature.prefix
 
   let contents_or_signature_prefix_encoding =
-    let make_contents (PCase (Case {tag; name; encoding; select; proj; inj})) =
-      assert (not @@ reserved_tag tag) ;
-      case
-        (Tag tag)
-        name
-        encoding
-        (function
-          | Actual_contents o -> (
-              match select o with None -> None | Some o -> Some (proj o))
-          | _ -> None)
-        (fun x -> Actual_contents (Contents (inj x)))
+    let rec make_contents = function
+      | PCase (Case {tag; name; encoding; select; proj; inj}) ->
+          assert (not @@ reserved_tag tag) ;
+          case
+            (Tag tag)
+            name
+            encoding
+            (function
+              | Actual_contents o -> (
+                  match select o with None -> None | Some o -> Some (proj o))
+              | _ -> None)
+            (fun x -> Actual_contents (Contents (inj x)))
+      | PCase (Case_rec f) -> make_contents (PCase (f contents_list_encoding))
+      (* TODO ???? *)
     in
     def "operation.alpha.contents_or_signature_prefix"
     @@ union

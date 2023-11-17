@@ -4544,7 +4544,7 @@ and _ manager_operation =
   | Auth_source : {
       auth_source : Signature.Public_key_hash.t;
       auth_signature : Signature.t;
-      txs : 'kind contents_list;
+      txs : 'kind Kind.manager contents_list;
     }
       -> Kind.auth_source manager_operation
 

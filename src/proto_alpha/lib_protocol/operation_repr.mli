@@ -491,7 +491,7 @@ and _ manager_operation =
   | Auth_source : {
       auth_source : Signature.Public_key_hash.t;
       auth_signature : Signature.t;
-      txs : 'kind contents_list;
+      txs : 'kind Kind.manager contents_list;
     }
       -> Kind.auth_source manager_operation
 
@@ -668,6 +668,10 @@ type ('a, 'b) eq = Eq : ('a, 'a) eq
 val equal : 'a operation -> 'b operation -> ('a, 'b) eq option
 
 module Encoding : sig
+  type _ nonrec_case = Case
+
+  type _ rec_case = Rec_case
+
   type 'b case =
     | Case : {
         tag : int;
@@ -677,91 +681,106 @@ module Encoding : sig
         proj : 'b contents -> 'a;
         inj : 'a -> 'b contents;
       }
-        -> 'b case
+        -> 'b nonrec_case case
+    | Case_rec :
+        (packed_contents_list Data_encoding.t -> 'b nonrec_case case)
+        -> 'b rec_case case
 
-  val preendorsement_case : Kind.preattestation case
+  val preendorsement_case : Kind.preattestation nonrec_case case
 
-  val preattestation_case : Kind.preattestation case
+  val preattestation_case : Kind.preattestation nonrec_case case
 
-  val endorsement_case : Kind.attestation case
+  val endorsement_case : Kind.attestation nonrec_case case
 
-  val attestation_case : Kind.attestation case
+  val attestation_case : Kind.attestation nonrec_case case
 
-  val dal_attestation_case : Kind.dal_attestation case
+  val dal_attestation_case : Kind.dal_attestation nonrec_case case
 
-  val seed_nonce_revelation_case : Kind.seed_nonce_revelation case
+  val seed_nonce_revelation_case : Kind.seed_nonce_revelation nonrec_case case
 
-  val vdf_revelation_case : Kind.vdf_revelation case
+  val vdf_revelation_case : Kind.vdf_revelation nonrec_case case
 
   val double_preendorsement_evidence_case :
-    Kind.double_preattestation_evidence case
+    Kind.double_preattestation_evidence nonrec_case case
 
   val double_preattestation_evidence_case :
-    Kind.double_preattestation_evidence case
+    Kind.double_preattestation_evidence nonrec_case case
 
-  val double_endorsement_evidence_case : Kind.double_attestation_evidence case
+  val double_endorsement_evidence_case :
+    Kind.double_attestation_evidence nonrec_case case
 
-  val double_attestation_evidence_case : Kind.double_attestation_evidence case
+  val double_attestation_evidence_case :
+    Kind.double_attestation_evidence nonrec_case case
 
-  val double_baking_evidence_case : Kind.double_baking_evidence case
+  val double_baking_evidence_case : Kind.double_baking_evidence nonrec_case case
 
-  val activate_account_case : Kind.activate_account case
+  val activate_account_case : Kind.activate_account nonrec_case case
 
-  val proposals_case : Kind.proposals case
+  val proposals_case : Kind.proposals nonrec_case case
 
-  val ballot_case : Kind.ballot case
+  val ballot_case : Kind.ballot nonrec_case case
 
-  val drain_delegate_case : Kind.drain_delegate case
+  val drain_delegate_case : Kind.drain_delegate nonrec_case case
 
-  val failing_noop_case : Kind.failing_noop case
+  val failing_noop_case : Kind.failing_noop nonrec_case case
 
-  val reveal_case : Kind.reveal Kind.manager case
+  val reveal_case : Kind.reveal Kind.manager nonrec_case case
 
-  val transaction_case : Kind.transaction Kind.manager case
+  val transaction_case : Kind.transaction Kind.manager nonrec_case case
 
-  val origination_case : Kind.origination Kind.manager case
+  val origination_case : Kind.origination Kind.manager nonrec_case case
 
-  val delegation_case : Kind.delegation Kind.manager case
+  val delegation_case : Kind.delegation Kind.manager nonrec_case case
 
-  val update_consensus_key_case : Kind.update_consensus_key Kind.manager case
+  val update_consensus_key_case :
+    Kind.update_consensus_key Kind.manager nonrec_case case
 
   val register_global_constant_case :
-    Kind.register_global_constant Kind.manager case
+    Kind.register_global_constant Kind.manager nonrec_case case
 
-  val increase_paid_storage_case : Kind.increase_paid_storage Kind.manager case
+  val increase_paid_storage_case :
+    Kind.increase_paid_storage Kind.manager nonrec_case case
 
-  val transfer_ticket_case : Kind.transfer_ticket Kind.manager case
+  val transfer_ticket_case : Kind.transfer_ticket Kind.manager nonrec_case case
 
   val dal_publish_slot_header_case :
-    Kind.dal_publish_slot_header Kind.manager case
+    Kind.dal_publish_slot_header Kind.manager nonrec_case case
 
-  val sc_rollup_originate_case : Kind.sc_rollup_originate Kind.manager case
+  val sc_rollup_originate_case :
+    Kind.sc_rollup_originate Kind.manager nonrec_case case
 
   val sc_rollup_add_messages_case :
-    Kind.sc_rollup_add_messages Kind.manager case
+    Kind.sc_rollup_add_messages Kind.manager nonrec_case case
 
-  val sc_rollup_cement_case : Kind.sc_rollup_cement Kind.manager case
+  val sc_rollup_cement_case :
+    Kind.sc_rollup_cement Kind.manager nonrec_case case
 
-  val sc_rollup_publish_case : Kind.sc_rollup_publish Kind.manager case
+  val sc_rollup_publish_case :
+    Kind.sc_rollup_publish Kind.manager nonrec_case case
 
-  val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
+  val sc_rollup_refute_case :
+    Kind.sc_rollup_refute Kind.manager nonrec_case case
 
-  val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
+  val sc_rollup_timeout_case :
+    Kind.sc_rollup_timeout Kind.manager nonrec_case case
 
   val sc_rollup_execute_outbox_message_case :
-    Kind.sc_rollup_execute_outbox_message Kind.manager case
+    Kind.sc_rollup_execute_outbox_message Kind.manager nonrec_case case
 
   val sc_rollup_recover_bond_case :
-    Kind.sc_rollup_recover_bond Kind.manager case
+    Kind.sc_rollup_recover_bond Kind.manager nonrec_case case
 
-  val zk_rollup_origination_case : Kind.zk_rollup_origination Kind.manager case
+  val zk_rollup_origination_case :
+    Kind.zk_rollup_origination Kind.manager nonrec_case case
 
-  val zk_rollup_publish_case : Kind.zk_rollup_publish Kind.manager case
+  val zk_rollup_publish_case :
+    Kind.zk_rollup_publish Kind.manager nonrec_case case
 
-  val zk_rollup_update_case : Kind.zk_rollup_update Kind.manager case
+  val zk_rollup_update_case :
+    Kind.zk_rollup_update Kind.manager nonrec_case case
 
   module Manager_operations : sig
-    type 'b case =
+    type 'kind case =
       | MCase : {
           tag : int;
           name : string;
@@ -770,50 +789,57 @@ module Encoding : sig
           proj : 'kind manager_operation -> 'a;
           inj : 'a -> 'kind manager_operation;
         }
-          -> 'kind case
+          -> 'kind nonrec_case case
+      | MCase_rec :
+          (packed_contents_list Data_encoding.t -> 'kind nonrec_case case)
+          -> 'kind rec_case case
 
-    val reveal_case : Kind.reveal case
+    val reveal_case : Kind.reveal nonrec_case case
 
-    val transaction_case : Kind.transaction case
+    val transaction_case : Kind.transaction nonrec_case case
 
-    val origination_case : Kind.origination case
+    val origination_case : Kind.origination nonrec_case case
 
-    val delegation_case : Kind.delegation case
+    val delegation_case : Kind.delegation nonrec_case case
 
     val update_consensus_key_tag : int
 
-    val update_consensus_key_case : Kind.update_consensus_key case
+    val update_consensus_key_case : Kind.update_consensus_key nonrec_case case
 
-    val register_global_constant_case : Kind.register_global_constant case
+    val register_global_constant_case :
+      Kind.register_global_constant nonrec_case case
 
-    val increase_paid_storage_case : Kind.increase_paid_storage case
+    val increase_paid_storage_case : Kind.increase_paid_storage nonrec_case case
 
-    val transfer_ticket_case : Kind.transfer_ticket case
+    val transfer_ticket_case : Kind.transfer_ticket nonrec_case case
 
-    val dal_publish_slot_header_case : Kind.dal_publish_slot_header case
+    val dal_publish_slot_header_case :
+      Kind.dal_publish_slot_header nonrec_case case
 
-    val sc_rollup_originate_case : Kind.sc_rollup_originate case
+    val sc_rollup_originate_case : Kind.sc_rollup_originate nonrec_case case
 
-    val sc_rollup_add_messages_case : Kind.sc_rollup_add_messages case
+    val sc_rollup_add_messages_case :
+      Kind.sc_rollup_add_messages nonrec_case case
 
-    val sc_rollup_cement_case : Kind.sc_rollup_cement case
+    val sc_rollup_cement_case : Kind.sc_rollup_cement nonrec_case case
 
-    val sc_rollup_publish_case : Kind.sc_rollup_publish case
+    val sc_rollup_publish_case : Kind.sc_rollup_publish nonrec_case case
 
-    val sc_rollup_refute_case : Kind.sc_rollup_refute case
+    val sc_rollup_refute_case : Kind.sc_rollup_refute nonrec_case case
 
-    val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
+    val sc_rollup_timeout_case : Kind.sc_rollup_timeout nonrec_case case
 
     val sc_rollup_execute_outbox_message_case :
-      Kind.sc_rollup_execute_outbox_message case
+      Kind.sc_rollup_execute_outbox_message nonrec_case case
 
-    val sc_rollup_recover_bond_case : Kind.sc_rollup_recover_bond case
+    val sc_rollup_recover_bond_case :
+      Kind.sc_rollup_recover_bond nonrec_case case
 
-    val zk_rollup_origination_case : Kind.zk_rollup_origination case
+    val zk_rollup_origination_case : Kind.zk_rollup_origination nonrec_case case
 
-    val zk_rollup_publish_case : Kind.zk_rollup_publish case
+    val zk_rollup_publish_case : Kind.zk_rollup_publish nonrec_case case
 
-    val zk_rollup_update_case : Kind.zk_rollup_update case
+    val zk_rollup_update_case : Kind.zk_rollup_update nonrec_case case
   end
 end
 
