@@ -102,12 +102,29 @@ let same_as_layer_1 node_ctxt head_hash inbox =
     (Octez_smart_rollup.Inbox.equal layer1_inbox inbox)
     (Sc_rollup_node_errors.Inconsistent_inbox {layer1_inbox; inbox})
 
+let deserialize_messages messages =
+  Environment.wrap_tzresult
+  @@ List.map_e
+       (fun msg ->
+         Sc_rollup.Inbox_message.(deserialize @@ unsafe_of_string msg))
+       messages
+
+let serialize_messages messages =
+  List.map_e
+    (fun msg ->
+      let open Result_syntax in
+      let+ msg = Sc_rollup.Inbox_message.serialize msg in
+      Sc_rollup.Inbox_message.unsafe_to_string msg)
+    messages
+
 let add_messages ~is_first_block ~predecessor_timestamp ~predecessor inbox
     messages =
   let open Lwt_result_syntax in
   let no_history = Sc_rollup.Inbox.History.empty ~capacity:0L in
+  let*? messages = deserialize_messages messages in
+  let inbox = Sc_rollup_proto_types.Inbox.of_octez inbox in
   lift
-  @@ let*? ( messages_history,
+  @@ let*? ( _messages_history,
              _no_history,
              inbox,
              witness,
@@ -123,11 +140,47 @@ let add_messages ~is_first_block ~predecessor_timestamp ~predecessor inbox
      let witness_hash =
        Sc_rollup.Inbox_merkelized_payload_hashes.hash witness
      in
-     return
-       ( messages_history,
-         witness_hash,
-         inbox,
-         messages_with_protocol_internal_messages )
+     let inbox = Sc_rollup_proto_types.Inbox.to_octez inbox in
+     let witness_hash =
+       Sc_rollup_proto_types.Merkelized_payload_hashes_hash.to_octez
+         witness_hash
+     in
+     Metrics.Inbox.Stats.set
+       messages_with_protocol_internal_messages
+       ~is_internal:(function
+         | Sc_rollup.Inbox_message.Internal _ -> true
+         | External _ -> false) ;
+     let*? messages_with_protocol_internal_messages =
+       serialize_messages messages_with_protocol_internal_messages
+     in
+     return (inbox, witness_hash, messages_with_protocol_internal_messages)
+
+let add_all_messages inbox messages =
+  let open Lwt_result_syntax in
+  match List.map Sc_rollup.Inbox_message.unsafe_of_string messages with
+  | [] -> assert false
+  | first :: messages ->
+      let inbox = Sc_rollup_proto_types.Inbox.of_octez inbox in
+      let witness =
+        Sc_rollup.Inbox_merkelized_payload_hashes.genesis_no_history first
+      in
+      (* Remove EoL *)
+      let messages =
+        match List.rev messages with
+        | _ :: messages -> List.rev messages
+        | [] -> assert false
+      in
+      let*? witness =
+        Environment.wrap_tzresult
+        @@ Sc_rollup.Inbox.add_messages_no_history messages witness
+      in
+      let inbox =
+        (* Adds EoL and archives inbox *)
+        Sc_rollup.Inbox.finalize_inbox_level_no_history inbox witness
+      in
+      let witness_hash = Sc_rollup.Inbox.current_witness inbox in
+      let inbox = Sc_rollup_proto_types.Inbox.to_octez inbox in
+      return (inbox, witness_hash)
 
 let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
     ~(predecessor : Layer1.header) (head : Layer1.header) messages =
@@ -139,38 +192,13 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
   let predecessor_timestamp = predecessor.header.timestamp in
   let inbox_metrics = Metrics.Inbox.metrics in
   Prometheus.Gauge.set inbox_metrics.head_inbox_level @@ Int32.to_float level ;
-  let inbox = Sc_rollup_proto_types.Inbox.of_octez inbox in
-  let*? messages =
-    Environment.wrap_tzresult
-    @@ List.map_e
-         (fun msg ->
-           Sc_rollup.Inbox_message.(deserialize @@ unsafe_of_string msg))
-         messages
-  in
-  let* ( _messages_history,
-         witness_hash,
-         inbox,
-         messages_with_protocol_internal_messages ) =
+  let* inbox, witness_hash, messages_with_protocol_internal_messages =
     add_messages
       ~is_first_block
       ~predecessor_timestamp
       ~predecessor:predecessor.hash
       inbox
       messages
-  in
-  Metrics.Inbox.Stats.set
-    messages_with_protocol_internal_messages
-    ~is_internal:(function
-      | Sc_rollup.Inbox_message.Internal _ -> true
-      | External _ -> false) ;
-  let*? messages_with_protocol_internal_messages =
-    Environment.wrap_tzresult
-    @@ List.map_e
-         (fun msg ->
-           let open Result_syntax in
-           let+ msg = Sc_rollup.Inbox_message.serialize msg in
-           Sc_rollup.Inbox_message.unsafe_to_string msg)
-         messages_with_protocol_internal_messages
   in
   let* () =
     Node_context.save_messages
@@ -179,11 +207,7 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
       ~predecessor:predecessor.hash
       messages_with_protocol_internal_messages
   in
-  let inbox = Sc_rollup_proto_types.Inbox.to_octez inbox in
   let* inbox_hash = Node_context.save_inbox node_ctxt inbox in
-  let witness_hash =
-    Sc_rollup_proto_types.Merkelized_payload_hashes_hash.to_octez witness_hash
-  in
   return
     (inbox_hash, inbox, witness_hash, messages_with_protocol_internal_messages)
 

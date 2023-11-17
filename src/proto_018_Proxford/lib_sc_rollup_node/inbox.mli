@@ -34,7 +34,6 @@
 *)
 
 open Protocol.Alpha_context
-open Sc_rollup
 
 (** [process_head node_ctxt ~predecessor head operations] changes the state of
     the inbox to react to [head] (where [predecessor] is the predecessor of
@@ -54,21 +53,13 @@ val process_head :
 (** [start ()] initializes the inbox to track the messages being published. *)
 val start : unit -> unit Lwt.t
 
-(** [add_messages ~is_first_block ~predecessor_timestamp
-    ~predecessor inbox messages] adds [messages] to the [inbox] using
+(** [add_all_messages ~ inbox messages] adds [messages] (which must contain
+    protocol messages) to the [inbox] using
     {!Sc_rollup.Inbox.add_all_messages}. *)
-val add_messages :
-  is_first_block:bool ->
-  predecessor_timestamp:Timestamp.time ->
-  predecessor:Block_hash.t ->
-  Inbox.t ->
-  Inbox_message.t list ->
-  (Inbox_merkelized_payload_hashes.History.t
-  * Inbox_merkelized_payload_hashes.Hash.t
-  * Inbox.t
-  * Inbox_message.t list)
-  tzresult
-  Lwt.t
+val add_all_messages :
+  Octez_smart_rollup.Inbox.t ->
+  string list ->
+  (Octez_smart_rollup.Inbox.t * Merkelized_payload_hashes_hash.t) tzresult Lwt.t
 
 (** [payloads_history_of_messages ~is_first_block ~predecessor
     ~predecessor_timestamp messages] builds the payloads history for

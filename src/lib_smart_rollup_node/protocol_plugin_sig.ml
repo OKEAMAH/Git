@@ -67,6 +67,15 @@ module type INBOX = sig
     tzresult
     Lwt.t
 
+  (** [add_all_messages ~ inbox messages] adds [messages] (which must contain
+      protocol messages) to the [inbox] using
+      {!Sc_rollup.Inbox.add_all_messages}. *)
+  val add_all_messages :
+    Octez_smart_rollup.Inbox.t ->
+    string list ->
+    (Octez_smart_rollup.Inbox.t * Merkelized_payload_hashes_hash.t) tzresult
+    Lwt.t
+
   (** [same_as_layer_1 node_ctxt block node_inbox] ensures that the rollup node
       agrees with the L1 node that inbox for [block] is [node_inbox]. *)
   val same_as_layer_1 :
