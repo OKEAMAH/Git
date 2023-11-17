@@ -158,8 +158,8 @@ functor
           tree
 
       let print_tree ~file_name =
-        let storage = read_tree ~file_name in
-        print_tree_memory storage
+        let tree = read_tree ~file_name in
+        print_tree_memory tree
 
       let print_root root = Printf.printf "%s" (Utils.hex_of_bytes root)
 
@@ -196,7 +196,7 @@ functor
         ~offset:0
         ~len:(Bytes.length to_write)
 
-    (* keep it for benchmarking *)
+    (* keep this function for benchmarking *)
     let _apply_single_update ~file_name index new_value =
       let index = index + level_offset log_nb_cells in
       (* Printf.printf "\nlvl offset : %d" (level_offset log_nb_cells) ; *)
@@ -275,7 +275,8 @@ functor
     let apply_update ~file_name (new_values : bytes IntMap.t) =
       if IntMap.is_empty new_values then ()
       else
-        (* Update the new_values (that have index in the leaves) with the index in the tree *)
+        (* Update the new_values (that have an index in the leaves)
+           with the index in the tree *)
         let new_values =
           IntMap.fold
             (fun k v acc -> IntMap.add (k + level_offset log_nb_cells) v acc)
@@ -321,6 +322,7 @@ functor
             new_values
         in
 
+        let nb_hashes = ref 0 in
         let write index hashes =
           let to_write =
             match IntMap.find_opt index new_values with
@@ -329,6 +331,7 @@ functor
                 let left_child = IntMap.find (left_child index) hashes in
                 let right_child = IntMap.find (right_child index) hashes in
                 (* Here it's important that we go from the bottom level to the top one.*)
+                nb_hashes := !nb_hashes + 1 ;
                 hash (Bytes.cat left_child right_child)
           in
           Utils.write_file
@@ -339,5 +342,7 @@ functor
           IntMap.add index to_write hashes
         in
         let _hashes = IntSet.fold write !set_to_write hashes in
+        (* to compare w/ theoretical benches *)
+        Printf.printf "\n nb_hashes = %d \n" !nb_hashes ;
         ()
   end
