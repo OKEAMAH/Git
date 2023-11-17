@@ -109,7 +109,7 @@ type ro = [`Read] t
 (** [get_operator cctxt purpose] returns the public key hash for the operator
     who has purpose [purpose], if any.
 *)
-val get_operator : _ t -> Purpose.t -> Signature.Public_key_hash.t option
+val get_operator : _ t -> 'a Purpose.t -> 'a Purpose.operator option
 
 (** [is_operator cctxt pkh] returns [true] if the public key hash [pkh] is an
     operator for the node (for any purpose). *)
@@ -170,6 +170,12 @@ val init :
 
 (** Closes the store, context and Layer 1 monitor. *)
 val close : _ t -> unit tzresult Lwt.t
+
+(** The path for the lockfile used in block processing. *)
+val processing_lockfile_path : data_dir:string -> string
+
+(** The path for the lockfile used in garbage collection. *)
+val gc_lockfile_path : data_dir:string -> string
 
 (** [checkout_context node_ctxt block_hash] returns the context at block
     [block_hash]. *)
@@ -401,13 +407,13 @@ val find_messages :
 val get_num_messages :
   _ t -> Merkelized_payload_hashes_hash.t -> int tzresult Lwt.t
 
-(** [save_messages t payloads_hash ~block_hash messages] associates the list of
+(** [save_messages t payloads_hash ~predecessor messages] associates the list of
     [messages] to the [payloads_hash]. The payload hash must be computed by
     calling, e.g. {!Sc_rollup.Inbox.add_all_messages}. *)
 val save_messages :
   rw ->
   Merkelized_payload_hashes_hash.t ->
-  block_hash:Block_hash.t ->
+  predecessor:Block_hash.t ->
   string list ->
   unit tzresult Lwt.t
 

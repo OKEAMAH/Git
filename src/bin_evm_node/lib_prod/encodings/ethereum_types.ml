@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -163,27 +164,29 @@ let decode_hash bytes = Hash (decode_hex bytes)
 type transaction_log = {
   address : address;
   topics : hash list;
-  data : hash;
-  blockNumber : quantity;
-  transactionHash : hash;
-  transactionIndex : quantity;
-  blockHash : block_hash;
-  logIndex : quantity;
-  removed : bool;
+  data : hex;
+  blockNumber : quantity option;
+  transactionHash : hash option;
+  transactionIndex : quantity option;
+  blockHash : block_hash option;
+  logIndex : quantity option;
+  removed : bool option;
 }
 
 let transaction_log_body_from_rlp = function
-  | Rlp.List [Value address; List topics; Value data] ->
+  | Rlp.List [List [Value address; List topics; Value data]; Value index] ->
       ( decode_address address,
         List.map
           (function
             | Rlp.Value bytes -> decode_hash bytes
             | _ -> raise (Invalid_argument "Expected hash representing topic"))
           topics,
-        decode_hash data )
+        decode_hex data,
+        decode_number index )
   | _ ->
       raise
-        (Invalid_argument "Expected list of 3 elements representing log body")
+        (Invalid_argument
+           "Expected list of 2 elements representing an indexed log body")
 
 let transaction_log_encoding =
   let open Data_encoding in
@@ -231,13 +234,13 @@ let transaction_log_encoding =
     (obj9
        (req "address" address_encoding)
        (req "topics" (list hash_encoding))
-       (req "data" hash_encoding)
-       (req "blockNumber" quantity_encoding)
-       (req "transactionHash" hash_encoding)
-       (req "transactionIndex" quantity_encoding)
-       (req "blockHash" block_hash_encoding)
-       (req "logIndex" quantity_encoding)
-       (req "removed" bool))
+       (req "data" hex_encoding)
+       (req "blockNumber" (option quantity_encoding))
+       (req "transactionHash" (option hash_encoding))
+       (req "transactionIndex" (option quantity_encoding))
+       (req "blockHash" (option block_hash_encoding))
+       (req "logIndex" (option quantity_encoding))
+       (req "removed" (option bool)))
 
 type transaction_receipt = {
   transactionHash : hash;
@@ -256,14 +259,13 @@ type transaction_receipt = {
   contractAddress : address option;
 }
 
-let transaction_receipt_from_rlp bytes =
+let transaction_receipt_from_rlp block_hash bytes =
   match Rlp.decode bytes with
   | Ok
       (Rlp.List
         [
           Value hash;
           Value index;
-          Value block_hash;
           Value block_number;
           Value from;
           Value to_;
@@ -278,7 +280,6 @@ let transaction_receipt_from_rlp bytes =
         ]) ->
       let hash = decode_hash hash in
       let index = decode_number index in
-      let block_hash = decode_block_hash block_hash in
       let block_number = decode_number block_number in
       let from = decode_address from in
       let to_ = if to_ = Bytes.empty then None else Some (decode_address to_) in
@@ -291,18 +292,18 @@ let transaction_receipt_from_rlp bytes =
       in
       let logs_body = List.map transaction_log_body_from_rlp logs in
       let logs_objects =
-        List.mapi
-          (fun i (address, topics, data) ->
+        List.map
+          (fun (address, topics, data, logIndex) ->
             {
               address;
               topics;
               data;
-              blockHash = block_hash;
-              blockNumber = block_number;
-              transactionHash = hash;
-              transactionIndex = index;
-              logIndex = quantity_of_z (Z.of_int i);
-              removed = false;
+              blockHash = Some block_hash;
+              blockNumber = Some block_number;
+              transactionHash = Some hash;
+              transactionIndex = Some index;
+              logIndex = Some logIndex;
+              removed = Some false;
             })
           logs_body
       in
@@ -328,7 +329,7 @@ let transaction_receipt_from_rlp bytes =
   | _ ->
       raise
         (Invalid_argument
-           "Expected a RlpList of 14 elements in transaction receipt")
+           "Expected a RlpList of 13 elements in transaction receipt")
 
 let transaction_receipt_encoding =
   let open Data_encoding in
@@ -406,8 +407,8 @@ let transaction_receipt_encoding =
           (req "contractAddress" (option address_encoding))))
 
 type transaction_object = {
-  blockHash : block_hash option;
-  blockNumber : quantity option;
+  blockHash : block_hash;
+  blockNumber : quantity;
   from : address;
   gas : quantity;
   gasPrice : quantity;
@@ -423,12 +424,11 @@ type transaction_object = {
   s : hash;
 }
 
-let transaction_object_from_rlp bytes =
+let transaction_object_from_rlp block_hash bytes =
   match Rlp.decode bytes with
   | Ok
       (Rlp.List
         [
-          Value block_hash;
           Value block_number;
           Value from;
           Value gas_used;
@@ -443,9 +443,7 @@ let transaction_object_from_rlp bytes =
           Value r;
           Value s;
         ]) ->
-      let block_hash = decode_block_hash block_hash in
       let block_number = decode_number block_number in
-
       let from = decode_address from in
       let gas = decode_number gas_used in
       let gas_price = decode_number gas_price in
@@ -459,8 +457,8 @@ let transaction_object_from_rlp bytes =
       let r = decode_hash r in
       let s = decode_hash s in
       {
-        blockHash = Some block_hash;
-        blockNumber = Some block_number;
+        blockHash = block_hash;
+        blockNumber = block_number;
         from;
         gas;
         gasPrice = gas_price;
@@ -474,7 +472,7 @@ let transaction_object_from_rlp bytes =
         r;
         s;
       }
-  | _ -> raise (Invalid_argument "Expected a List of 14 elements")
+  | _ -> raise (Invalid_argument "Expected a List of 13 elements")
 
 let transaction_object_encoding =
   let open Data_encoding in
@@ -535,8 +533,8 @@ let transaction_object_encoding =
       })
     (merge_objs
        (obj10
-          (req "blockHash" (option block_hash_encoding))
-          (req "blockNumber" (option quantity_encoding))
+          (req "blockHash" block_hash_encoding)
+          (req "blockNumber" quantity_encoding)
           (req "from" address_encoding)
           (req "gas" quantity_encoding)
           (req "gasPrice" quantity_encoding)
@@ -575,19 +573,19 @@ let block_transactions_encoding =
 
 (** Ethereum block hash representation from RPCs. *)
 type block = {
-  number : block_height option;
-  hash : block_hash option;
+  number : block_height;
+  hash : block_hash;
   parent : block_hash;
   nonce : hex;
   sha3Uncles : hash;
-  logsBloom : hex option;
+  logsBloom : hex;
   transactionRoot : hash;
   stateRoot : hash;
   receiptRoot : hash;
   miner : hex;
   difficulty : quantity;
   totalDifficulty : quantity;
-  extraData : string;
+  extraData : hex;
   size : quantity;
   gasLimit : quantity;
   gasUsed : quantity;
@@ -604,6 +602,10 @@ let decode_list decoder list =
       | List _ -> raise (Invalid_argument "Expected a list of atomic data"))
     list
 
+let decode_option ~default decoder bytes =
+  (if bytes = Bytes.empty then None else Some (decoder bytes))
+  |> Option.value ~default
+
 let block_from_rlp bytes =
   match Rlp.decode bytes with
   | Ok
@@ -612,40 +614,88 @@ let block_from_rlp bytes =
           Value number;
           Value hash;
           Value parent_hash;
+          Value logsBloom;
+          Value transactionRoot;
+          Value stateRoot;
+          Value receiptRoot;
+          Value miner;
+          Value extraData;
+          Value gasLimit;
           List transactions;
-          Value gas_used;
+          Value gasUsed;
           Value timestamp;
         ]) ->
       let (Qty number) = decode_number number in
       let hash = decode_block_hash hash in
-      let parent_hash = decode_block_hash parent_hash in
+      let parent = decode_block_hash parent_hash in
+      let logsBloom =
+        decode_option ~default:(Hex (String.make 512 'a')) decode_hex logsBloom
+      in
+      (* Post merge: this field is now used for the "fee recipient". We don't
+         have that, potentially this could be the sequencer. *)
+      let miner =
+        decode_option
+          ~default:(Hex "0000000000000000000000000000000000000000")
+          decode_hex
+          miner
+      in
+      let transactionRoot =
+        decode_option
+          ~default:(Hash (Hex (String.make 64 'a')))
+          decode_hash
+          transactionRoot
+      in
+      let stateRoot =
+        decode_option
+          ~default:(Hash (Hex (String.make 64 'a')))
+          decode_hash
+          stateRoot
+      in
+      let receiptRoot =
+        decode_option
+          ~default:(Hash (Hex (String.make 64 'a')))
+          decode_hash
+          receiptRoot
+      in
+      let extraData = decode_option ~default:(Hex "") decode_hex extraData in
+      let gasLimit =
+        decode_option ~default:(Qty Z.zero) decode_number gasLimit
+      in
       let transactions = TxHash (decode_list decode_hash transactions) in
-      let gas_used = decode_number gas_used in
+      let gasUsed = decode_number gasUsed in
       let timestamp = decode_number timestamp in
       {
-        number = Some (Block_height number);
-        hash = Some hash;
-        parent = parent_hash;
-        nonce = Hex (String.make 16 'a');
-        sha3Uncles = Hash (Hex (String.make 64 'a'));
-        logsBloom = Some (Hex (String.make 512 'a'));
-        transactionRoot = Hash (Hex (String.make 64 'a'));
-        stateRoot = Hash (Hex (String.make 64 'a'));
-        receiptRoot = Hash (Hex (String.make 64 'a'));
-        (* We need the following dummy value otherwise eth-cli will complain
-           that miner's address is not a valid Ethereum address. *)
-        miner = Hex "6471A723296395CF1Dcc568941AFFd7A390f94CE";
+        number = Block_height number;
+        hash;
+        parent;
+        (* Post merge: always 0. *)
+        nonce = Hex "0000000000000000";
+        (* Post merge: uncles are always empty, therefore this is the "empty"
+           hash of these uncles. *)
+        sha3Uncles =
+          Hash
+            (Hex
+               "1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347");
+        logsBloom;
+        transactionRoot;
+        stateRoot;
+        receiptRoot;
+        miner;
+        (* Post merge: always zero. *)
         difficulty = Qty Z.zero;
+        (* Post merge: sum of difficulty will always be zero because difficulty
+           has and will always be zero. *)
         totalDifficulty = Qty Z.zero;
-        extraData = "";
+        extraData;
         size = Qty (Z.of_int (Bytes.length bytes));
-        gasLimit = Qty Z.zero;
-        gasUsed = gas_used;
+        gasLimit;
+        gasUsed;
         timestamp;
         transactions;
+        (* Post merge: always empty. *)
         uncles = [];
       }
-  | _ -> raise (Invalid_argument "Expected a List of 6 elements")
+  | _ -> raise (Invalid_argument "Expected a List of 13 elements")
 
 let block_encoding =
   let open Data_encoding in
@@ -732,12 +782,12 @@ let block_encoding =
       })
     (merge_objs
        (obj10
-          (req "number" (option block_height_encoding))
-          (req "hash" (option block_hash_encoding))
+          (req "number" block_height_encoding)
+          (req "hash" block_hash_encoding)
           (req "parentHash" block_hash_encoding)
           (req "nonce" hex_encoding)
           (req "sha3Uncles" hash_encoding)
-          (req "logsBloom" (option hex_encoding))
+          (req "logsBloom" hex_encoding)
           (req "transactionsRoot" hash_encoding)
           (req "stateRoot" hash_encoding)
           (req "receiptsRoot" hash_encoding)
@@ -745,7 +795,7 @@ let block_encoding =
        (obj9
           (req "difficulty" quantity_encoding)
           (req "totalDifficulty" quantity_encoding)
-          (req "extraData" string)
+          (req "extraData" hex_encoding)
           (req "size" quantity_encoding)
           (req "gasLimit" quantity_encoding)
           (req "gasUsed" quantity_encoding)
@@ -920,3 +970,159 @@ let txpool_encoding =
 let hash_raw_tx str =
   str |> Bytes.of_string |> Tezos_crypto.Hacl.Hash.Keccak_256.digest
   |> Bytes.to_string
+
+(** [transaction_nonce raw_tx] returns the nonce of a given raw transaction. *)
+let transaction_nonce raw_tx =
+  let open Result_syntax in
+  let bytes = hex_to_bytes raw_tx in
+  if String.starts_with ~prefix:"01" bytes then
+    (* eip 2930*)
+    match bytes |> String.to_bytes |> Rlp.decode with
+    | Ok (Rlp.List [_; Value nonce; _; _; _; _; _; _; _])
+    | Ok (Rlp.List [_; Value nonce; _; _; _; _; _; _; _; _; _; _]) ->
+        let+ nonce = Rlp.decode_z nonce in
+        Qty nonce
+    | _ -> tzfail (Rlp.Rlp_decoding_error "Expected a list of 9 or 12 elements")
+  else if String.starts_with ~prefix:"02" bytes then
+    (* eip 1559*)
+    match bytes |> String.to_bytes |> Rlp.decode with
+    | Ok (Rlp.List [_; Value nonce; _; _; _; _; _; _])
+    | Ok (Rlp.List [_; Value nonce; _; _; _; _; _; _; _; _; _]) ->
+        let+ nonce = Rlp.decode_z nonce in
+        Qty nonce
+    | _ -> tzfail (Rlp.Rlp_decoding_error "Expected a list of 8 or 11 elements")
+  else
+    (* Legacy *)
+    match bytes |> String.to_bytes |> Rlp.decode with
+    | Ok (Rlp.List [Value nonce; _; _; _; _; _; _; _; _]) ->
+        let+ nonce = Rlp.decode_z nonce in
+        Qty nonce
+    | _ -> tzfail (Rlp.Rlp_decoding_error "Expected a list of 9 elements")
+
+(** [transaction_gas_price base_fee raw_tx] returns the maximum gas price the
+    user can pay for the tx. *)
+let transaction_gas_price base_fee raw_tx =
+  let open Result_syntax in
+  let bytes = hex_to_bytes raw_tx in
+  if String.starts_with ~prefix:"01" bytes then
+    (* eip 2930*)
+    match bytes |> String.to_bytes |> Rlp.decode with
+    | Ok (Rlp.List [_; _; Value gas_price; _; _; _; _; _; _])
+    | Ok (Rlp.List [_; _; Value gas_price; _; _; _; _; _; _; _; _; _]) ->
+        let* gas_price = Rlp.decode_z gas_price in
+        return gas_price
+    | _ -> tzfail (Rlp.Rlp_decoding_error "Expected a list of 9 or 12 elements")
+  else if String.starts_with ~prefix:"02" bytes then
+    (* eip 1559*)
+    match bytes |> String.to_bytes |> Rlp.decode with
+    | Ok
+        (Rlp.List
+          [
+            _;
+            _;
+            Value max_priority_fee_per_gas;
+            Value max_fee_per_gas;
+            _;
+            _;
+            _;
+            _;
+          ])
+    | Ok
+        (Rlp.List
+          [
+            _;
+            _;
+            Value max_priority_fee_per_gas;
+            Value max_fee_per_gas;
+            _;
+            _;
+            _;
+            _;
+            _;
+            _;
+            _;
+          ]) ->
+        let* max_priority_fee_per_gas = Rlp.decode_z max_priority_fee_per_gas in
+        let* max_fee_per_gas = Rlp.decode_z max_fee_per_gas in
+        return Z.(min max_fee_per_gas (add base_fee max_priority_fee_per_gas))
+    | _ -> tzfail (Rlp.Rlp_decoding_error "Expected a list of 8 or 11 elements")
+  else
+    (* Legacy *)
+    match bytes |> String.to_bytes |> Rlp.decode with
+    | Ok (Rlp.List [_; Value gas_price; _; _; _; _; _; _; _]) ->
+        let* gas_price = Rlp.decode_z gas_price in
+        return gas_price
+    | _ -> tzfail (Rlp.Rlp_decoding_error "Expected a list of 9")
+
+(* Event filter, see
+   https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_getlogs *)
+type filter_topic = One of hash | Or of hash list
+
+let filter_topic_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        ~title:"one"
+        (Tag 0)
+        hash_encoding
+        (function One hash -> Some hash | _ -> None)
+        (fun hash -> One hash);
+      case
+        ~title:"or"
+        (Tag 1)
+        (list hash_encoding)
+        (function Or l -> Some l | _ -> None)
+        (fun l -> Or l);
+    ]
+
+type filter = {
+  from_block : block_param option;
+  to_block : block_param option;
+  address : address option;
+  topics : filter_topic option list option;
+  block_hash : block_hash option;
+}
+
+let filter_encoding =
+  let open Data_encoding in
+  conv
+    (fun {from_block; to_block; address; topics; block_hash} ->
+      (from_block, to_block, address, topics, block_hash))
+    (fun (from_block, to_block, address, topics, block_hash) ->
+      {from_block; to_block; address; topics; block_hash})
+    (obj5
+       (opt "fromBlock" block_param_encoding)
+       (opt "toBlock" block_param_encoding)
+       (opt "address" address_encoding)
+       (opt "topics" (list @@ option filter_topic_encoding))
+       (opt "blockHash" block_hash_encoding))
+
+type filter_changes =
+  | Block_filter of block_hash
+  | Pending_transaction_filter of hash
+  | Log of transaction_log
+
+let filter_changes_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        ~title:"block"
+        (Tag 0)
+        block_hash_encoding
+        (function Block_filter hash -> Some hash | _ -> None)
+        (fun hash -> Block_filter hash);
+      case
+        ~title:"pending_transaction"
+        (Tag 1)
+        hash_encoding
+        (function Pending_transaction_filter hash -> Some hash | _ -> None)
+        (fun hash -> Pending_transaction_filter hash);
+      case
+        ~title:"log"
+        (Tag 2)
+        transaction_log_encoding
+        (function Log f -> Some f | _ -> None)
+        (fun f -> Log f);
+    ]

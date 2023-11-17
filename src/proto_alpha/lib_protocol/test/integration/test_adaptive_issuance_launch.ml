@@ -128,10 +128,24 @@ let test_launch threshold expected_vote_duration () =
         default_constants.adaptive_issuance with
         launch_ema_threshold = threshold;
         activation_vote_enable = true;
+        autostaking_enable = false;
+      }
+    in
+    let cost_per_byte = Tez.zero in
+    let issuance_weights =
+      {
+        Default_parameters.constants_test.issuance_weights with
+        base_total_issued_per_minute = Tez.zero;
       }
     in
     let consensus_threshold = 0 in
-    {default_constants with consensus_threshold; adaptive_issuance}
+    {
+      default_constants with
+      consensus_threshold;
+      adaptive_issuance;
+      issuance_weights;
+      cost_per_byte;
+    }
   in
   let preserved_cycles = constants.preserved_cycles in
   let* block, delegate = Context.init_with_constants1 constants in
@@ -230,7 +244,7 @@ let test_launch threshold expected_vote_duration () =
      threshold is reached. *)
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
 
-  let* block =
+  let* block, _ =
     Block.bake_while_with_metadata
       ~adaptive_issuance_vote:Per_block_vote_on
       (fun _block metadata ->
@@ -410,7 +424,7 @@ let test_does_not_launch_without_feature_flag threshold vote_duration () =
   (* Bake many more blocks voting in favor of the activation until the
      EMA threshold is reached. *)
   let* () = assert_is_not_yet_set_to_launch ~loc:__LOC__ block in
-  let* block =
+  let* block, _ =
     Block.bake_while_with_metadata
       ~adaptive_issuance_vote:Per_block_vote_on
       (fun _block metadata ->

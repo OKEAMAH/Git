@@ -38,6 +38,11 @@ open Alpha_context
 (****************************************************************)
 (*                  Utility functions                           *)
 (****************************************************************)
+let autostaking_disabled =
+  {
+    Default_parameters.constants_test.adaptive_issuance with
+    autostaking_enable = false;
+  }
 
 let block_fork b =
   let open Lwt_result_syntax in
@@ -149,12 +154,17 @@ let test_valid_double_attestation_evidence () =
       frozen_deposits_right_after
       frozen_deposits_before
   in
-  let* blk_eoc =
-    Block.bake_until_cycle_end ~policy:(By_account baker) blk_final
+  let* blk_eoc, metadata, _ =
+    Block.bake_until_cycle_end_with_metadata
+      ~policy:(By_account baker)
+      blk_final
   in
+  let metadata = Option.value_f ~default:(fun () -> assert false) metadata in
+  let autostaked = Block.autostaked delegate metadata in
   let* frozen_deposits_after =
     Context.Delegate.current_frozen_deposits (B blk_eoc) delegate
   in
+  let frozen_deposits_after = Test_tez.(frozen_deposits_after -! autostaked) in
   let p =
     constants.percentage_of_frozen_deposits_slashed_per_double_attestation
   in
@@ -272,9 +282,24 @@ let test_two_double_attestation_evidences_leadsto_no_bake () =
   let operation =
     double_attestation (B blk_with_evidence1) attestation_3 attestation_4
   in
-  let* blk_with_evidence2 =
-    Block.bake ~policy:(By_account baker) ~operation blk_3
+  let* blk_with_evidence2, (_blk_metadata, operations_recpts) =
+    Block.bake_with_metadata ~policy:(By_account baker) ~operation blk_3
   in
+  let rcpt =
+    List.find
+      (fun (rcpt : operation_receipt) ->
+        match rcpt with
+        | Operation_metadata
+            {
+              contents =
+                Apply_results.Single_result
+                  (Apply_results.Double_attestation_evidence_result rslt);
+            } ->
+            rslt.forbidden_delegate = Some delegate
+        | _ -> false)
+      operations_recpts
+  in
+  let* _ = Assert.get_some ~loc:__LOC__ rcpt in
   (* Check that the frozen deposits haven't changed yet. *)
   let* frozen_deposits_right_after =
     Context.Delegate.current_frozen_deposits (B blk_with_evidence2) delegate
@@ -298,20 +323,44 @@ let test_two_double_attestation_evidences_leadsto_no_bake () =
     Assert.proto_error_with_info ~loc:__LOC__ b "Zero frozen deposits"
   in
   (* Check that all frozen deposits have been slashed at the end of the cycle. *)
-  let* b =
-    Block.bake_until_cycle_end ~policy:(By_account baker) blk_with_evidence2
+  let* b, metadata, _ =
+    Block.bake_until_cycle_end_with_metadata
+      ~policy:(By_account baker)
+      blk_with_evidence2
   in
+  let metadata = Option.value_f ~default:(fun () -> assert false) metadata in
+  let autostaked = Block.autostaked delegate metadata in
   let* frozen_deposits_after =
     Context.Delegate.current_frozen_deposits (B b) delegate
   in
-  Assert.equal_tez ~loc:__LOC__ Tez.zero frozen_deposits_after
+  let frozen_deposits_after = Test_tez.(frozen_deposits_after -! autostaked) in
+  let* base_reward = Context.get_baking_reward_fixed_portion (B genesis) in
+  let* to_liquid =
+    Adaptive_issuance_helpers.portion_of_rewards_to_liquid_for_cycle
+      ~policy:(By_account baker)
+      (B b)
+      (Block.current_cycle blk_with_evidence2)
+      delegate
+      base_reward
+  in
+  (* [delegate] baked one block. The block rewards for that block should be all
+     that's left *)
+  Assert.equal_tez
+    ~loc:__LOC__
+    Test_tez.(base_reward -! to_liquid)
+    frozen_deposits_after
 
 (** Say a delegate double-attests twice in a cycle,
     and say the 2 evidences are included in different (valid) cycles.
     Then the delegate is forbidden and can no longer bake. *)
 let test_two_double_attestation_evidences_staggered () =
   let open Lwt_result_syntax in
-  let* genesis, _contracts = Context.init2 ~consensus_threshold:0 () in
+  let* genesis, _contracts =
+    Context.init2
+      ~consensus_threshold:0
+      ~adaptive_issuance:autostaking_disabled
+      ()
+  in
   let* blk_1, blk_2 = block_fork genesis in
   let* blk_a = Block.bake blk_1 in
   let* blk_b = Block.bake blk_2 in
@@ -346,8 +395,10 @@ let test_two_double_attestation_evidences_staggered () =
   let* blk_with_stake =
     Block.bake ~policy:(By_account baker) ~operation blk_with_evidence1
   in
-  let* blk_new_cycle =
-    Block.bake_until_cycle_end ~policy:(By_account baker) blk_with_stake
+  let* blk_new_cycle, _metadata, _ =
+    Block.bake_until_cycle_end_with_metadata
+      ~policy:(By_account baker)
+      blk_with_stake
   in
   let* blk_with_evidence2 =
     Block.bake
@@ -385,7 +436,12 @@ let test_two_double_attestation_evidences_staggered () =
     is forbidden and can no longer bake. *)
 let test_two_double_attestation_evidences_consecutive_cycles () =
   let open Lwt_result_syntax in
-  let* genesis, _contracts = Context.init2 ~consensus_threshold:0 () in
+  let* genesis, _contracts =
+    Context.init2
+      ~consensus_threshold:0
+      ~adaptive_issuance:autostaking_disabled
+      ()
+  in
   let* blk_1, blk_2 = block_fork genesis in
   let* blk_a = Block.bake blk_1 in
   let* blk_b = Block.bake blk_2 in
@@ -643,6 +699,11 @@ let test_freeze_more_with_low_balance =
         percentage_of_frozen_deposits_slashed_per_double_attestation =
           (* enforce that percentage is 50% in the test's params. *)
           Int_percentage.p50;
+        adaptive_issuance =
+          {
+            Default_parameters.constants_test.adaptive_issuance with
+            autostaking_enable = false;
+          };
       }
     in
     let* genesis, (c1, c2) = Context.init_with_constants2 constants in

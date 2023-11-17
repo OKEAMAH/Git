@@ -5,7 +5,6 @@
 // SPDX-License-Identifier: MIT
 
 use crate::apply::{TransactionObjectInfo, TransactionReceiptInfo};
-use crate::current_timestamp;
 use crate::error::Error;
 use crate::error::TransferError::CumulativeGasUsedOverflow;
 use crate::inbox::Transaction;
@@ -21,10 +20,12 @@ use std::collections::VecDeque;
 use tezos_ethereum::block::{BlockConstants, L2Block};
 use tezos_ethereum::rlp_helpers::*;
 use tezos_ethereum::transaction::{
-    TransactionObject, TransactionReceipt, TransactionStatus, TransactionType,
-    TRANSACTION_HASH_SIZE,
+    IndexedLog, TransactionObject, TransactionReceipt, TransactionStatus,
+    TransactionType, TRANSACTION_HASH_SIZE,
 };
 use tezos_ethereum::Bloom;
+use tezos_evm_logging::{log, Level::*};
+use tezos_smart_rollup_encoding::timestamp::Timestamp;
 use tezos_smart_rollup_host::path::RefPath;
 use tezos_smart_rollup_host::runtime::Runtime;
 
@@ -47,12 +48,17 @@ pub struct BlockInProgress {
     pub parent_hash: H256,
     /// Cumulative number of ticks used
     pub estimated_ticks: u64,
+    /// logs bloom filter
     pub logs_bloom: Bloom,
+    /// offset for the first log of the next transaction
+    pub logs_offset: u64,
+    /// Timestamp
+    pub timestamp: Timestamp,
 }
 
 impl Encodable for BlockInProgress {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream.begin_list(8);
+        stream.begin_list(10);
         stream.append(&self.number);
         append_queue(stream, &self.tx_queue);
         append_txs(stream, &self.valid_txs);
@@ -61,6 +67,8 @@ impl Encodable for BlockInProgress {
         stream.append(&self.gas_price);
         stream.append(&self.parent_hash);
         stream.append(&self.logs_bloom);
+        stream.append(&self.logs_offset);
+        append_timestamp(stream, self.timestamp);
     }
 }
 
@@ -83,7 +91,7 @@ impl Decodable for BlockInProgress {
         if !decoder.is_list() {
             return Err(DecoderError::RlpExpectedToBeList);
         }
-        if decoder.item_count()? != 8 {
+        if decoder.item_count()? != 10 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
 
@@ -97,6 +105,8 @@ impl Decodable for BlockInProgress {
         let gas_price: U256 = decode_field(&next(&mut it)?, "gas_price")?;
         let parent_hash: H256 = decode_field(&next(&mut it)?, "parent_hash")?;
         let logs_bloom: Bloom = decode_field(&next(&mut it)?, "logs_bloom")?;
+        let logs_offset: u64 = decode_field(&next(&mut it)?, "logs_offset")?;
+        let timestamp = decode_timestamp(&next(&mut it)?)?;
         let estimated_ticks: u64 = 0;
         let bip = Self {
             number,
@@ -108,6 +118,8 @@ impl Decodable for BlockInProgress {
             parent_hash,
             estimated_ticks,
             logs_bloom,
+            logs_offset,
+            timestamp,
         };
         Ok(bip)
     }
@@ -150,6 +162,7 @@ impl BlockInProgress {
         gas_price: U256,
         transactions: VecDeque<Transaction>,
         estimated_ticks: u64,
+        timestamp: Timestamp,
     ) -> Self {
         Self {
             number,
@@ -161,6 +174,8 @@ impl BlockInProgress {
             parent_hash,
             estimated_ticks,
             logs_bloom: Bloom::default(),
+            logs_offset: 0,
+            timestamp,
         }
     }
 
@@ -171,7 +186,14 @@ impl BlockInProgress {
         gas_price: U256,
         transactions: VecDeque<Transaction>,
     ) -> BlockInProgress {
-        Self::new_with_ticks(number, H256::zero(), gas_price, transactions, 0u64)
+        Self::new_with_ticks(
+            number,
+            H256::zero(),
+            gas_price,
+            transactions,
+            0u64,
+            Timestamp::from(0i64),
+        )
     }
 
     pub fn from_queue_element(
@@ -191,6 +213,7 @@ impl BlockInProgress {
                     constants.gas_price,
                     ring,
                     tick_counter,
+                    proposal.timestamp,
                 )
             }
             crate::blueprint::QueueElement::BlockInProgress(mut bip) => {
@@ -230,6 +253,12 @@ impl BlockInProgress {
         // make receipt
         let receipt = self.make_receipt(receipt_info);
         let receipt_bloom_size: u64 = tick_model::bloom_size(&receipt.logs).try_into()?;
+        log!(
+            host,
+            Debug,
+            "[Benchmarking] bloom size: {}",
+            receipt_bloom_size
+        );
         // extend BIP's logs bloom
         self.logs_bloom.accrue_bloom(&receipt.logs_bloom);
 
@@ -265,26 +294,22 @@ impl BlockInProgress {
         self,
         host: &mut Host,
     ) -> Result<L2Block, anyhow::Error> {
-        let timestamp = current_timestamp(host);
         let state_root = Self::safe_store_get_hash(host, Some(EVM_ACCOUNTS_PATH))?;
         let receipts_root =
             Self::safe_store_get_hash(host, Some(EVM_TRANSACTIONS_RECEIPTS))?;
         let transactions_root =
             Self::safe_store_get_hash(host, Some(EVM_TRANSACTIONS_OBJECTS))?;
-        let new_block = L2Block {
-            timestamp,
-            gas_used: self.cumulative_gas,
-            ..L2Block::new(
-                self.number,
-                self.valid_txs,
-                timestamp,
-                self.parent_hash,
-                self.logs_bloom,
-                transactions_root,
-                state_root,
-                receipts_root,
-            )
-        };
+        let new_block = L2Block::new(
+            self.number,
+            self.valid_txs,
+            self.timestamp,
+            self.parent_hash,
+            self.logs_bloom,
+            transactions_root,
+            state_root,
+            receipts_root,
+            self.cumulative_gas,
+        );
         storage::store_current_block(host, &new_block)
             .context("Failed to store the current block")?;
         Ok(new_block)
@@ -308,7 +333,7 @@ impl BlockInProgress {
     }
 
     pub fn make_receipt(
-        &self,
+        &mut self,
         receipt_info: TransactionReceiptInfo,
     ) -> TransactionReceipt {
         let TransactionReceiptInfo {
@@ -320,33 +345,45 @@ impl BlockInProgress {
             ..
         } = receipt_info;
 
-        let &Self {
+        let &mut Self {
             number: block_number,
             gas_price: effective_gas_price,
             cumulative_gas,
+            logs_offset,
             ..
         } = self;
 
         match execution_outcome {
-            Some(outcome) => TransactionReceipt {
-                hash,
-                index,
-                block_number,
-                from,
-                to,
-                cumulative_gas_used: cumulative_gas,
-                effective_gas_price,
-                gas_used: U256::from(outcome.gas_used),
-                contract_address: outcome.new_address,
-                logs_bloom: TransactionReceipt::logs_to_bloom(&outcome.logs),
-                logs: outcome.logs,
-                type_: TransactionType::Legacy,
-                status: if outcome.is_success {
-                    TransactionStatus::Success
-                } else {
-                    TransactionStatus::Failure
-                },
-            },
+            Some(outcome) => {
+                let log_iter = outcome.logs.into_iter();
+                let logs: Vec<IndexedLog> = log_iter
+                    .enumerate()
+                    .map(|(i, log)| IndexedLog {
+                        log,
+                        index: i as u64 + logs_offset,
+                    })
+                    .collect();
+                self.logs_offset += logs.len() as u64;
+                TransactionReceipt {
+                    hash,
+                    index,
+                    block_number,
+                    from,
+                    to,
+                    cumulative_gas_used: cumulative_gas,
+                    effective_gas_price,
+                    gas_used: U256::from(outcome.gas_used),
+                    contract_address: outcome.new_address,
+                    logs_bloom: TransactionReceipt::logs_to_bloom(&logs),
+                    logs,
+                    type_: TransactionType::Legacy,
+                    status: if outcome.is_success {
+                        TransactionStatus::Success
+                    } else {
+                        TransactionStatus::Failure
+                    },
+                }
+            }
             None => TransactionReceipt {
                 hash,
                 index,
@@ -395,6 +432,7 @@ mod tests {
         tx_signature::TxSignature,
         Bloom,
     };
+    use tezos_smart_rollup_encoding::timestamp::Timestamp;
 
     fn new_sig_unsafe(v: u64, r: H256, s: H256) -> TxSignature {
         TxSignature::new(U256::from(v), r, s).unwrap()
@@ -451,10 +489,13 @@ mod tests {
             parent_hash: H256::from([5; 32]),
             estimated_ticks: 99,
             logs_bloom: Bloom::default(),
+            logs_offset: 33,
+            timestamp: Timestamp::from(0i64),
         };
 
         let encoded = bip.rlp_bytes();
-        let expected = "f902542af8e6f871a00101010101010101010101010101010101010101010101010101010101010101f84e01b84bf84901010180018026a00101010101010101010101010101010101010101010101010101010101010101a00101010101010101010101010101010101010101010101010101010101010101f871a00808080808080808080808080808080808080808080808080808080808080808f84e01b84bf84908080880088034a00808080808080808080808080808080808080808080808080808080808080808a00808080808080808080808080808080808080808080808080808080808080808f842a00202020202020202020202020202020202020202020202020202020202020202a00909090909090909090909090909090909090909090909090909090909090909030405a00505050505050505050505050505050505050505050505050505050505050505b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+        let expected = "f9025e2af8e6f871a00101010101010101010101010101010101010101010101010101010101010101f84e01b84bf84901010180018026a00101010101010101010101010101010101010101010101010101010101010101a00101010101010101010101010101010101010101010101010101010101010101f871a00808080808080808080808080808080808080808080808080808080808080808f84e01b84bf84908080880088034a00808080808080808080808080808080808080808080808080808080808080808a00808080808080808080808080808080808080808080808080808080808080808f842a00202020202020202020202020202020202020202020202020202020202020202a00909090909090909090909090909090909090909090909090909090909090909030405a00505050505050505050505050505050505050505050505050505050505050505b901000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000021880000000000000000";
+
         assert_eq!(hex::encode(encoded), expected);
 
         let bytes = hex::decode(expected).expect("Should be valid hex string");
@@ -482,10 +523,13 @@ mod tests {
             parent_hash: H256::from([5; 32]),
             estimated_ticks: 99,
             logs_bloom: Bloom::default(),
+            logs_offset: 0,
+            timestamp: Timestamp::from(0i64),
         };
 
         let encoded = bip.rlp_bytes();
-        let expected = "f901e82af87af83ba00101010101010101010101010101010101010101010101010101010101010101d902d70101940101010101010101010101010101010101010101f83ba00808080808080808080808080808080808080808080808080808080808080808d902d70808940808080808080808080808080808080808080808f842a00202020202020202020202020202020202020202020202020202020202020202a00909090909090909090909090909090909090909090909090909090909090909030405a00505050505050505050505050505050505050505050505050505050505050505b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+        let expected = "f901f22af87af83ba00101010101010101010101010101010101010101010101010101010101010101d902d70101940101010101010101010101010101010101010101f83ba00808080808080808080808080808080808080808080808080808080808080808d902d70808940808080808080808080808080808080808080808f842a00202020202020202020202020202020202020202020202020202020202020202a00909090909090909090909090909090909090909090909090909090909090909030405a00505050505050505050505050505050505050505050505050505050505050505b901000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080880000000000000000";
+
         assert_eq!(hex::encode(encoded), expected);
 
         let bytes = hex::decode(expected).expect("Should be valid hex string");
@@ -513,10 +557,13 @@ mod tests {
             parent_hash: H256::from([5; 32]),
             estimated_ticks: 99,
             logs_bloom: Bloom::default(),
+            logs_offset: 4,
+            timestamp: Timestamp::from(0i64),
         };
 
         let encoded = bip.rlp_bytes();
-        let expected = "f9021e2af8b0f871a00101010101010101010101010101010101010101010101010101010101010101f84e01b84bf84901010180018026a00101010101010101010101010101010101010101010101010101010101010101a00101010101010101010101010101010101010101010101010101010101010101f83ba00808080808080808080808080808080808080808080808080808080808080808d902d70808940808080808080808080808080808080808080808f842a00202020202020202020202020202020202020202020202020202020202020202a00909090909090909090909090909090909090909090909090909090909090909030405a00505050505050505050505050505050505050505050505050505050505050505b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+        let expected = "f902282af8b0f871a00101010101010101010101010101010101010101010101010101010101010101f84e01b84bf84901010180018026a00101010101010101010101010101010101010101010101010101010101010101a00101010101010101010101010101010101010101010101010101010101010101f83ba00808080808080808080808080808080808080808080808080808080808080808d902d70808940808080808080808080808080808080808080808f842a00202020202020202020202020202020202020202020202020202020202020202a00909090909090909090909090909090909090909090909090909090909090909030405a00505050505050505050505050505050505050505050505050505050505050505b901000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004880000000000000000";
+
         assert_eq!(hex::encode(encoded), expected);
 
         let bytes = hex::decode(expected).expect("Should be valid hex string");

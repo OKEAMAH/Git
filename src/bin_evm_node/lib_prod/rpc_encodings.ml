@@ -208,20 +208,6 @@ module Kernel_version = MethodMaker (struct
   let method_ = "tez_kernelVersion"
 end)
 
-module Upgrade_nonce = MethodMaker (struct
-  type method_
-
-  type input = unit
-
-  type output = int32
-
-  let input_encoding = Data_encoding.unit
-
-  let output_encoding = Data_encoding.int32
-
-  let method_ = "tez_upgradeNonce"
-end)
-
 module Network_id = MethodMaker (struct
   type method_
 
@@ -278,6 +264,23 @@ module Get_balance = MethodMaker (struct
   let output_encoding = quantity_encoding
 
   let method_ = "eth_getBalance"
+end)
+
+module Get_storage_at = MethodMaker (struct
+  open Ethereum_types
+
+  type method_
+
+  type input = address * quantity * block_param
+
+  type output = hex
+
+  let input_encoding =
+    Data_encoding.tup3 address_encoding quantity_encoding block_param_encoding
+
+  let output_encoding = hex_encoding
+
+  let method_ = "eth_getStorageAt"
 end)
 
 module Block_number = MethodMaker (struct
@@ -590,11 +593,28 @@ module Get_estimate_gas = MethodMaker (struct
 
   type method_
 
-  type input = call
+  type input = call * block_param
 
   type output = quantity
 
-  let input_encoding = Data_encoding.tup1 call_encoding
+  let input_encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"full_parameters"
+          (Tag 0)
+          (tup2 call_encoding block_param_encoding)
+          (fun (call, block_param) -> Some (call, block_param))
+          (fun (call, block_param) -> (call, block_param));
+        (* eth-cli doesn't put the block parameter. *)
+        case
+          ~title:"only_call_parameter"
+          (Tag 1)
+          (tup1 call_encoding)
+          (fun (call, _) -> Some call)
+          (fun call -> (call, Latest));
+      ]
 
   let output_encoding = quantity_encoding
 
@@ -647,14 +667,30 @@ module Web3_sha3 = MethodMaker (struct
   let method_ = "web3_sha3"
 end)
 
+module Get_logs = MethodMaker (struct
+  open Ethereum_types
+
+  type method_
+
+  type input = filter
+
+  type output = filter_changes list
+
+  let input_encoding = Data_encoding.tup1 filter_encoding
+
+  let output_encoding = Data_encoding.list filter_changes_encoding
+
+  let method_ = "eth_getLogs"
+end)
+
 let methods : (module METHOD) list =
   [
     (module Kernel_version);
-    (module Upgrade_nonce);
     (module Network_id);
     (module Chain_id);
     (module Accounts);
     (module Get_balance);
+    (module Get_storage_at);
     (module Block_number);
     (module Get_block_by_number);
     (module Get_block_by_hash);
@@ -663,6 +699,7 @@ let methods : (module METHOD) list =
     (module Get_transaction_count);
     (module Get_block_transaction_count_by_hash);
     (module Get_block_transaction_count_by_number);
+    (module Get_logs);
     (module Get_uncle_count_by_block_hash);
     (module Get_uncle_count_by_block_number);
     (module Get_transaction_receipt);

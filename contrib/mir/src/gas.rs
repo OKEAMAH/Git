@@ -139,7 +139,10 @@ pub mod interpret_cost {
     pub const GT: u32 = 10;
     pub const IF: u32 = 10;
     pub const IF_NONE: u32 = 10;
+    pub const IF_CONS: u32 = 10;
+    pub const IF_LEFT: u32 = 10;
     pub const LOOP: u32 = 10;
+    pub const ITER: u32 = 20;
     pub const SWAP: u32 = 10;
     pub const INT_NAT: u32 = 10;
     pub const PUSH: u32 = 10;
@@ -152,6 +155,7 @@ pub mod interpret_cost {
     pub const SOME: u32 = 10;
     pub const AMOUNT: u32 = 10;
     pub const NIL: u32 = 10;
+    pub const CONS: u32 = 15;
 
     pub const INTERPRET_RET: u32 = 15; // corresponds to KNil in the Tezos protocol
     pub const LOOP_ENTER: u32 = 10; // corresponds to KLoop_in in the Tezos protocol

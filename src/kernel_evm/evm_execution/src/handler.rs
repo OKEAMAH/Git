@@ -12,10 +12,10 @@ use crate::account_storage::{
     account_path, AccountStorageError, EthereumAccount, EthereumAccountStorage,
     CODE_HASH_DEFAULT,
 };
-use crate::storage;
 use crate::transaction::TransactionContext;
 use crate::EthereumError;
 use crate::PrecompileSet;
+use crate::{storage, tick_model_opcodes};
 use alloc::borrow::Cow;
 use alloc::rc::Rc;
 use core::cmp::min;
@@ -172,13 +172,35 @@ mod benchmarks {
 
     // The start section for the opcodes expects a single byte which is the
     // current opcode.
-    static mut START_SECTION_MSG: [u8; 35] = *b"__wasm_debugger__::start_section(\0)";
+    static mut START_OPCODE_SECTION_MSG: [u8; 35] =
+        *b"__wasm_debugger__::start_section(\0)";
+
+    // The start section for the precompiles expects the address of the
+    // contract (20 bytes) and the size of the data (4 bytes).
+    static mut START_PRECOMPILE_SECTION_MSG: [u8; 58] =
+        *b"__wasm_debugger__::start_section(\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0)";
 
     #[inline(always)]
-    pub fn start_section<Host: Runtime>(host: &mut Host, opcode: &Opcode) {
+    pub fn start_opcode_section<Host: Runtime>(host: &mut Host, opcode: &Opcode) {
         unsafe {
-            START_SECTION_MSG[33] = opcode.as_u8();
-            host.write_debug(core::str::from_utf8_unchecked(&START_SECTION_MSG));
+            START_OPCODE_SECTION_MSG[33] = opcode.as_u8();
+            host.write_debug(core::str::from_utf8_unchecked(&START_OPCODE_SECTION_MSG));
+        }
+    }
+
+    #[inline(always)]
+    pub fn start_precompile_section<Host: Runtime>(
+        host: &mut Host,
+        address: H160,
+        input: &Vec<u8>,
+    ) {
+        unsafe {
+            START_PRECOMPILE_SECTION_MSG[33..53].copy_from_slice(&address.as_bytes());
+            START_PRECOMPILE_SECTION_MSG[53..57]
+                .copy_from_slice(&input.len().to_be_bytes());
+            host.write_debug(core::str::from_utf8_unchecked(
+                &START_PRECOMPILE_SECTION_MSG,
+            ));
         }
     }
 
@@ -188,28 +210,31 @@ mod benchmarks {
     //   continues to the next opcode (`STEP_CONTINUE`) or stops for a given
     //   reason, this reason being encoded in a byte. These values are described
     //   at the beginning of the `benchmarks` module.
-    static mut END_SECTION_MSG: [u8; 41] =
+    static mut END_OPCODE_SECTION_MSG: [u8; 41] =
         *b"__wasm_debugger__::end_section(\0\0\0\0\0\0\0\0\0)";
 
+    static mut END_PRECOMPILE_SECTION_MSG: [u8; 32] =
+        *b"__wasm_debugger__::end_section()";
+
     #[inline(always)]
-    pub fn end_section<Host: Runtime, T>(
+    pub fn end_opcode_section<Host: Runtime, T>(
         host: &mut Host,
         gas: u64,
         step_result: &Result<(), Capture<ExitReason, T>>,
     ) {
         unsafe {
-            END_SECTION_MSG[31..39].copy_from_slice(&gas.to_le_bytes());
-            END_SECTION_MSG[39] = step_exit_reason(step_result);
-            host.write_debug(core::str::from_utf8_unchecked(&END_SECTION_MSG));
+            END_OPCODE_SECTION_MSG[31..39].copy_from_slice(&gas.to_le_bytes());
+            END_OPCODE_SECTION_MSG[39] = step_exit_reason(step_result);
+            host.write_debug(core::str::from_utf8_unchecked(&END_OPCODE_SECTION_MSG));
         }
     }
-}
 
-/// This function is a placeholder that will be replaced by the real tick model
-/// function.
-fn ticks_per_gas(_opcode: &Opcode, gas: u64) -> u64 {
-    // This value is a placeholder.
-    gas * 2000
+    #[inline(always)]
+    pub fn end_precompile_section<Host: Runtime>(host: &mut Host) {
+        unsafe {
+            host.write_debug(core::str::from_utf8_unchecked(&END_PRECOMPILE_SECTION_MSG));
+        }
+    }
 }
 
 /// The implementation of the SputnikVM [Handler] trait
@@ -230,10 +255,10 @@ pub struct EvmHandler<'a, Host: Runtime> {
     /// progress
     transaction_data: Vec<TransactionLayerData<'a>>,
     /// Estimated number of ticks remaining for the current run
-    ticks_allocated: u64,
+    pub ticks_allocated: u64,
     /// Estimated ticks spent for the execution of the current transaction,
     /// according to the ticks per gas per opcode model
-    estimated_ticks_used: u64,
+    pub estimated_ticks_used: u64,
 }
 
 impl<'a, Host: Runtime> EvmHandler<'a, Host> {
@@ -377,10 +402,9 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         match gas_limit {
             Some(gas_limit) => {
                 let amount = U256::from(gas_limit) * self.block.gas_price;
-
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "{:?} pays {:?} for transaction",
                     caller,
                     amount
@@ -403,10 +427,9 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         match unused_gas {
             Some(unused_gas) => {
                 let amount = U256::from(unused_gas) * self.block.gas_price;
-
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "{:?} refunded {:?} for transaction",
                     caller,
                     amount
@@ -426,7 +449,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         opcode: &Opcode,
         gas: u64,
     ) -> Result<(), EthereumError> {
-        self.estimated_ticks_used += ticks_per_gas(opcode, gas);
+        self.estimated_ticks_used += tick_model_opcodes::ticks(opcode, gas);
         if self.estimated_ticks_used > self.ticks_allocated {
             Err(EthereumError::OutOfTicks)
         } else {
@@ -452,7 +475,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
             #[cfg(feature = "benchmark")]
             if let Some(opcode) = opcode {
-                benchmarks::start_section(self.host, &opcode);
+                benchmarks::start_opcode_section(self.host, &opcode);
             }
 
             // For now, these variables capturing the gas one will be marked
@@ -470,7 +493,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 let gas = gas_after - gas_before;
                 self.account_for_ticks(&opcode, gas)?;
                 #[cfg(feature = "benchmark")]
-                benchmarks::end_section(self.host, gas, &step_result);
+                benchmarks::end_opcode_section(self.host, gas, &step_result);
             };
 
             match step_result {
@@ -521,7 +544,14 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         to: H160,
         value: U256,
     ) -> Result<ExitReason, EthereumError> {
-        log!(self.host, Info, "Executing a transfer");
+        log!(
+            self.host,
+            Debug,
+            "Executing a transfer from {} to {} of {}",
+            from,
+            to,
+            value
+        );
 
         // TODO let transfers cost gas
         // issue: https://gitlab.com/tezos/tezos/-/issues/5118
@@ -540,7 +570,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             } else {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "Transaction failure - balance underflow on account {:?} - withdraw {:?}",
                     from_account,
                     value
@@ -551,7 +581,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 )))
             }
         } else {
-            log!(self.host, Info, "'from' account {:?} is empty", from);
+            log!(self.host, Debug, "'from' account {:?} is empty", from);
             // Accounts of zero balance by default, so this must be
             // an underflow.
             Ok(ExitReason::Error(ExitError::OutOfFund))
@@ -575,7 +605,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         initial_code: Vec<u8>,
         create_opcode: bool,
     ) -> Result<CreateOutcome, EthereumError> {
-        log!(self.host, Info, "Executing a contract create");
+        log!(self.host, Debug, "Executing a contract create");
 
         let address = self.create_address(scheme);
 
@@ -603,7 +633,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         if let Err(error) = self.execute_transfer(caller, address, value) {
             log!(
                 self.host,
-                Info,
+                Debug,
                 "Failed transfer for create, funds: {:?}, from: {:?}, to: {:?}",
                 value,
                 caller,
@@ -661,13 +691,14 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     ) -> Result<CreateOutcome, EthereumError> {
         log!(
             self.host,
-            Info,
-            "Executing contract call at depth: {}",
+            Debug,
+            "Executing contract call on contract {} at depth: {}",
+            address,
             self.evm_account_storage.stack_depth()
         );
 
         if self.evm_account_storage.stack_depth() > self.config.stack_limit {
-            log!(self.host, Info, "Execution beyond the call limit of 1024");
+            log!(self.host, Debug, "Execution beyond the call limit of 1024");
 
             return Ok((
                 ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::CallTooDeep)),
@@ -709,19 +740,26 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 }
             }
         }
+        #[cfg(feature = "benchmark")]
+        benchmarks::start_precompile_section(self.host, address, &input);
 
-        if let Some(precompile_result) = self.precompiles.execute(
+        let precompile_execution_result = self.precompiles.execute(
             self,
             address,
             &input,
             &transaction_context.context,
             self.is_static(),
             transfer,
-        ) {
+        );
+
+        #[cfg(feature = "benchmark")]
+        benchmarks::end_precompile_section(self.host);
+
+        if let Some(precompile_result) = precompile_execution_result {
             match precompile_result {
                 Ok(mut outcome) => {
                     self.add_withdrawals(&mut outcome.withdrawals)?;
-
+                    self.estimated_ticks_used += outcome.estimated_ticks;
                     Ok((outcome.exit_status, None, outcome.output))
                 }
                 Err(err) => Err(err),
@@ -879,7 +917,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         } else {
             log!(
                 self.host,
-                Info,
+                Debug,
                 "Failed to get account path for EVM handler get_original_account"
             );
             None
@@ -898,7 +936,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             Err(err) => {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "Failed to increment nonce for account {:?}",
                     address
                 );
@@ -936,7 +974,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     /// contract selfdestruct completion, ie, when contract selfdestructs takes final
     /// effect.
     fn delete_contract(&mut self, address: H160) -> Result<(), EthereumError> {
-        log!(self.host, Info, "Deleting contract at {:?}", address);
+        log!(self.host, Debug, "Deleting contract at {:?}", address);
 
         self.evm_account_storage
             .delete(
@@ -962,7 +1000,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         gas_limit: Option<u64>,
     ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
-
         log!(
             self.host,
             Debug,
@@ -1007,7 +1044,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         result: Vec<u8>,
     ) -> Result<ExecutionOutcome, EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
-
         log!(
             self.host,
             Debug,
@@ -1069,7 +1105,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         &mut self,
     ) -> Result<ExecutionOutcome, EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
-
         log!(
             self.host,
             Debug,
@@ -1125,12 +1160,12 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         execution_result: Result<CreateOutcome, EthereumError>,
     ) -> Result<ExecutionOutcome, EthereumError> {
         match execution_result {
-            Ok((ExitReason::Succeed(r), new_address, result)) => {
+            Ok((ExitReason::Succeed(_r), new_address, result)) => {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "The initial transaction ended with success: {:?}",
-                    r
+                    _r
                 );
 
                 self.commit_initial_transaction(new_address, result)
@@ -1138,12 +1173,12 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             Ok((ExitReason::Revert(ExitRevert::Reverted), _, _)) => {
                 self.rollback_initial_transaction()
             }
-            Ok((ExitReason::Error(error), _, _)) => {
+            Ok((ExitReason::Error(_error), _, _)) => {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "The initial transaction ended with an error: {:?}",
-                    error
+                    _error
                 );
 
                 self.rollback_initial_transaction()
@@ -1152,12 +1187,12 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 self.rollback_initial_transaction()?;
                 Err(EthereumError::WrappedError(cow_str))
             }
-            Ok((ExitReason::Fatal(fatal_error), _, _)) => {
+            Ok((ExitReason::Fatal(_fatal_error), _, _)) => {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "The initial transaction ended with a fatal error: {:?}",
-                    fatal_error
+                    _fatal_error
                 );
 
                 self.rollback_initial_transaction()
@@ -1165,7 +1200,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             Err(err) => {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "The initial transaction ended with an Ethereum error: {:?}",
                     err
                 );
@@ -1183,11 +1218,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         gas_limit: Option<u64>,
     ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
-
         log!(
             self.host,
             Debug,
-            "Begin transaction at transaction depth: {}",
+            "Begin transaction from {} at transaction depth: {}",
+            self.origin(),
             current_depth
         );
 
@@ -1313,18 +1348,18 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         execution_result: Result<CreateOutcome, EthereumError>,
         promote_error: bool,
     ) -> Capture<CreateOutcome, T> {
-        if let Ok((ref r @ ExitReason::Succeed(_), _, _)) = execution_result {
+        if let Ok((ref _r @ ExitReason::Succeed(_), _, _)) = execution_result {
             log!(
                 self.host,
-                Info,
+                Debug,
                 "Intermediate transaction ended with: {:?}",
-                r
+                _r
             );
 
             if let Err(err) = self.commit_inter_transaction() {
                 log!(
                     self.host,
-                    Info,
+                    Debug,
                     "Committing intermediate transaction caused an error: {:?}",
                     err
                 );
@@ -1332,7 +1367,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 return Capture::Exit((ethereum_error_to_exit_reason(err), None, vec![]));
             }
         } else if let Ok((ExitReason::Revert(_), _, _)) = execution_result {
-            log!(self.host, Info, "Intermediate transaction reverted");
+            log!(self.host, Debug, "Intermediate transaction reverted");
 
             if let Err(err) = self.rollback_inter_transaction(true) {
                 log!(
@@ -1622,7 +1657,7 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
 
         match self.end_inter_transaction(result, true) {
             Capture::Exit((reason, _, value)) => {
-                log!(self.host, Info, "Call ended with reason: {:?}", reason);
+                log!(self.host, Debug, "Call ended with reason: {:?}", reason);
                 Capture::Exit((reason, value))
             }
             Capture::Trap(x) => Capture::Trap(x),

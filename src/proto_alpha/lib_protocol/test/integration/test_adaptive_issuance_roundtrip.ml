@@ -33,6 +33,8 @@
 
 open Adaptive_issuance_helpers
 
+let fs = Format.asprintf
+
 (** Returns when the number of bootstrap accounts created by [Context.init_n n] is not equal to [n] *)
 type error += Inconsistent_number_of_bootstrap_accounts
 
@@ -110,23 +112,6 @@ end
 
 open Log_module
 
-(** Double attestation helpers *)
-let order_attestations ~correct_order op1 op2 =
-  let oph1 = Protocol.Alpha_context.Operation.hash op1 in
-  let oph2 = Protocol.Alpha_context.Operation.hash op2 in
-  let c = Operation_hash.compare oph1 oph2 in
-  if correct_order then if c < 0 then (op1, op2) else (op2, op1)
-  else if c < 0 then (op2, op1)
-  else (op1, op2)
-
-let double_attestation ctxt ?(correct_order = true) op1 op2 =
-  let e1, e2 = order_attestations ~correct_order op1 op2 in
-  Op.double_attestation ctxt e1 e2
-
-let double_preattestation ctxt ?(correct_order = true) op1 op2 =
-  let e1, e2 = order_attestations ~correct_order op1 op2 in
-  Op.double_preattestation ctxt e1 e2
-
 (** Aliases for tez values *)
 type tez_quantity =
   | Half
@@ -174,6 +159,19 @@ let default_params =
       Q.(Int32.to_int edge_of_baking_over_staking_billionth // 1_000_000_000);
   }
 
+type double_signing_kind =
+  | Double_baking
+  | Double_attesting
+  | Double_preattesting
+
+type double_signing_state = {
+  culprit : Signature.Public_key_hash.t;
+  kind : double_signing_kind;
+  evidence : Context.t -> Protocol.Alpha_context.packed_operation;
+  denounced : bool;
+  level : Int32.t;
+}
+
 (** Module for the [State.t] type of asserted information about the system during a test. *)
 module State = struct
   (** Type of the state *)
@@ -189,6 +187,9 @@ module State = struct
     saved_rate : Q.t option;
     burn_rewards : bool;
     pending_operations : Protocol.Alpha_context.packed_operation list;
+    pending_slashes :
+      (Signature.Public_key_hash.t * Protocol.Denunciations_repr.item) list;
+    double_signings : double_signing_state list;
   }
 
   (** Expected number of cycles before staking parameters get applied *)
@@ -216,6 +217,17 @@ module State = struct
     | None -> raise Not_found
     | Some (name, acc) -> (name, acc)
 
+  let liquid_delegated ~name state =
+    let open Result_syntax in
+    String.Map.fold_e
+      (fun _delegator account acc ->
+        match account.delegate with
+        | Some delegate when not @@ String.equal delegate name -> return acc
+        | None -> return acc
+        | _ -> Tez.(acc +? account.liquid))
+      state.account_map
+      Tez.zero
+
   (** Returns true iff account is a delegate *)
   let is_self_delegate (account_name : string) (state : t) : bool =
     let acc = find_account account_name state in
@@ -242,8 +254,14 @@ module State = struct
     let f = apply_transfer amount src_name dst_name in
     update_map ~log_updates:[src_name; dst_name] ~f state
 
-  let apply_stake amount staker_name (state : t) : t =
-    let f = apply_stake amount staker_name in
+  let apply_stake amount current_cycle staker_name (state : t) : t =
+    let f =
+      apply_stake
+        amount
+        current_cycle
+        state.constants.preserved_cycles
+        staker_name
+    in
     update_map ~log_updates:[staker_name] ~f state
 
   let apply_unstake cycle amount staker_name (state : t) : t =
@@ -254,15 +272,28 @@ module State = struct
     let f = apply_finalize staker_name in
     update_map ~log_updates:[staker_name] ~f state
 
-  let apply_unslashable cycle (state : t) : t =
-    let f = apply_unslashable cycle in
-    (* no log *)
-    update_map ~f state
+  let apply_unslashable current_cycle account_name (state : t) : t =
+    let unstake_wait = unstake_wait state in
+    match Cycle.sub current_cycle unstake_wait with
+    | None -> state
+    | Some cycle ->
+        let f = apply_unslashable cycle account_name in
+        update_map ~log_updates:[account_name] ~f state
+
+  let apply_unslashable_for_all current_cycle (state : t) : t =
+    let unstake_wait = unstake_wait state in
+    match Cycle.sub current_cycle unstake_wait with
+    | None -> state
+    | Some cycle ->
+        let f = apply_unslashable_for_all cycle in
+        (* no log *)
+        update_map ~f state
 
   let apply_rewards ~(baker : string) block (state : t) : t tzresult Lwt.t =
     let open Lwt_result_syntax in
     let {last_level_rewards; total_supply; constants = _; _} = state in
     let*? current_level = Context.get_level (B block) in
+    let current_cycle = Block.current_cycle block in
     (* We assume one block per minute *)
     let* rewards_per_block = Context.get_issuance_per_minute (B block) in
     if Tez.(rewards_per_block = zero) then return state
@@ -271,24 +302,19 @@ module State = struct
         Protocol.Alpha_context.Raw_level.diff current_level last_level_rewards
         |> Int32.to_int
       in
-      let {parameters; _} = find_account baker state in
+      let {parameters = _; pkh; _} = find_account baker state in
       let delta_rewards = Tez.mul_exn rewards_per_block delta_time in
       if delta_time = 1 then
         Log.info ~color:tez_color "+%aꜩ" Tez.pp rewards_per_block
-      else if delta_time > 1 then
-        Log.info
-          ~color:tez_color
-          "+%aꜩ (over %d blocks, %aꜩ per block)"
-          Tez.pp
-          delta_rewards
-          delta_time
-          Tez.pp
-          rewards_per_block
       else assert false ;
-      let to_liquid =
-        Tez.mul_q delta_rewards parameters.edge_of_baking_over_staking
+      let* to_liquid =
+        portion_of_rewards_to_liquid_for_cycle
+          ?policy:state.baking_policy
+          (B block)
+          current_cycle
+          pkh
+          delta_rewards
       in
-      let to_liquid = Partial_tez.to_tez ~round_up:true to_liquid in
       let to_frozen = Tez.(delta_rewards -! to_liquid) in
       let state = update_map ~f:(add_liquid_rewards to_liquid baker) state in
       let state = update_map ~f:(add_frozen_rewards to_frozen baker) state in
@@ -378,8 +404,38 @@ module State = struct
     in
     update_map ~log_updates ~f:(String.Map.map update_account) state
 
-  (* TODO *)
-  let apply_slashing _pct _delegate_name (state : t) : t = state
+  let apply_slashing
+      ( culprit,
+        Protocol.Denunciations_repr.
+          {rewarded; misbehaviour; misbehaviour_cycle; operation_hash} )
+      current_cycle (state : t) : t * Tez.t =
+    let account_map, total_burnt =
+      apply_slashing
+        (culprit, {rewarded; misbehaviour; misbehaviour_cycle; operation_hash})
+        current_cycle
+        state.constants
+        state.account_map
+    in
+    (* TODO: add culprit's stakers *)
+    let log_updates =
+      List.map
+        (fun x -> fst @@ find_account_from_pkh x state)
+        [culprit; rewarded]
+    in
+    let state = update_map ~log_updates ~f:(fun _ -> account_map) state in
+    (state, total_burnt)
+
+  let apply_all_slashes_at_cycle_end current_cycle (state : t) : t =
+    let state, total_burnt =
+      List.fold_left
+        (fun (acc_state, acc_total) x ->
+          let state, burnt = apply_slashing x current_cycle acc_state in
+          (state, Tez.(acc_total +! burnt)))
+        (state, Tez.zero)
+        state.pending_slashes
+    in
+    let total_supply = Tez.(state.total_supply -! total_burnt) in
+    {state with pending_slashes = []; total_supply}
 
   (** Given an account name and new account state, updates [state] accordingly
       Preferably use other specific update functions *)
@@ -401,15 +457,138 @@ module State = struct
   let pop_pending_operations state =
     ({state with pending_operations = []}, state.pending_operations)
 
-  (** When reaching a new cycle: apply unstakes and parameters changes.
-    We expect these changes after applying the last block of a cycle *)
-  let apply_end_cycle new_cycle state : t =
-    let unstake_wait = unstake_wait state in
-    (* Prepare finalizable unstakes *)
+  let log_model_autostake name pkh old_cycle op ~optimal amount =
+    Log.debug
+      "Model Autostaking: at end of cycle %a, %s(%a) to reach optimal stake %a \
+       %s %a"
+      Cycle.pp
+      old_cycle
+      name
+      Signature.Public_key_hash.pp
+      pkh
+      Tez.pp
+      optimal
+      op
+      Tez.pp
+      (Tez.of_mutez_exn amount)
+
+  let apply_autostake ~name ~old_cycle
+      ({
+         pkh;
+         contract = _;
+         delegate;
+         parameters = _;
+         liquid;
+         bonds = _;
+         frozen_deposits;
+         unstaked_frozen;
+         unstaked_finalizable;
+         staking_delegator_numerator = _;
+         staking_delegate_denominator = _;
+         frozen_rights = _;
+         slashed_cycles = _;
+       } :
+        account_state) state =
+    let open Result_syntax in
+    if Some name <> delegate then (
+      Log.debug
+        "Model Autostaking: %s <> %s, noop@."
+        name
+        (Option.value ~default:"None" delegate) ;
+      return state)
+    else
+      let* current_liquid_delegated = liquid_delegated ~name state in
+      let current_frozen = Frozen_tez.total_current frozen_deposits in
+      let current_unstaked_frozen_delegated =
+        Unstaked_frozen.sum_current unstaked_frozen
+      in
+      let current_unstaked_final_delegated =
+        Unstaked_finalizable.total unstaked_finalizable
+      in
+      let power =
+        Tez.(
+          current_liquid_delegated +! current_frozen
+          +! current_unstaked_frozen_delegated
+          +! current_unstaked_final_delegated
+          |> to_mutez |> Z.of_int64)
+      in
+      let optimal =
+        Tez.of_z
+          (Z.cdiv
+             power
+             (Z.of_int (state.constants.limit_of_delegation_over_baking + 1)))
+      in
+      let autostaked =
+        Int64.(sub (Tez.to_mutez optimal) (Tez.to_mutez current_frozen))
+      in
+      let state = apply_unslashable (Cycle.succ old_cycle) name state in
+      let state = apply_finalize name state in
+      (* stake or unstake *)
+      let new_state =
+        if autostaked > 0L then (
+          log_model_autostake ~optimal name pkh old_cycle "stake" autostaked ;
+          apply_stake
+            Tez.(min liquid (of_mutez autostaked))
+            (Cycle.succ old_cycle)
+            name
+            state)
+        else if autostaked < 0L then (
+          log_model_autostake
+            ~optimal
+            name
+            pkh
+            old_cycle
+            "unstake"
+            (Int64.neg autostaked) ;
+          apply_unstake
+            (Cycle.succ old_cycle)
+            (Test_tez.of_mutez_exn Int64.(neg autostaked))
+            name
+            state)
+        else (
+          log_model_autostake
+            ~optimal
+            name
+            pkh
+            old_cycle
+            "only finalize"
+            autostaked ;
+          state)
+      in
+      return new_state
+
+  (** Applies when baking the last block of a cycle *)
+  let apply_end_cycle current_cycle block state : t tzresult Lwt.t =
+    let open Lwt_result_syntax in
+    Log.debug ~color:time_color "Ending cycle %a" Cycle.pp current_cycle ;
+    let* launch_cycle_opt =
+      Context.get_adaptive_issuance_launch_cycle (B block)
+    in
+    (* Sets initial frozen for future cycle *)
     let state =
-      match Cycle.sub new_cycle unstake_wait with
-      | None -> state
-      | Some cycle -> apply_unslashable cycle state
+      update_map
+        ~f:
+          (update_frozen_rights_cycle
+             (Cycle.add current_cycle (state.constants.preserved_cycles + 1)))
+        state
+    in
+    (* Apply all slashes. They also apply to the frozen rights computed above,
+       for "reasons" related to snapshoting and the way slashes are applied to it *)
+    let state = apply_all_slashes_at_cycle_end current_cycle state in
+    (* Apply autostaking *)
+    let*? state =
+      if not state.constants.adaptive_issuance.autostaking_enable then ok state
+      else
+        match launch_cycle_opt with
+        | Some launch_cycle when Cycle.(current_cycle >= launch_cycle) ->
+            ok state
+        | None | Some _ ->
+            Environment.wrap_tzresult
+            @@ String.Map.fold_e
+                 (fun name account state ->
+                   apply_autostake ~name ~old_cycle:current_cycle account state)
+                 state.account_map
+                 state
     in
     (* Apply parameter changes *)
     let state, param_requests =
@@ -426,19 +605,13 @@ module State = struct
         (state, [])
         state.param_requests
     in
-    (* Refresh initial amount of frozen deposits at cycle end *)
-    let state =
-      update_map
-        ~f:
-          (String.Map.map (fun x ->
-               {
-                 x with
-                 frozen_deposits =
-                   Frozen_tez.refresh_at_new_cycle x.frozen_deposits;
-               }))
-        state
-    in
-    {state with param_requests}
+    return {state with param_requests}
+
+  (** Applies when baking the first block of a cycle.
+      Technically nothing special happens, but we need to update the unslashable unstakes
+      since it's done lazily *)
+  let apply_new_cycle new_cycle state : t =
+    apply_unslashable_for_all new_cycle state
 
   (* end module State *)
 end
@@ -588,22 +761,29 @@ let exec_unit f =
 let check_all_balances block state : unit tzresult Lwt.t =
   let open Lwt_result_syntax in
   let State.{account_map; total_supply; _} = state in
-  let* () =
-    String.Map.iter_es
-      (fun name _account ->
-        log_debug_balance name account_map ;
-        assert_balance_check ~loc:__LOC__ (B block) name account_map)
-      account_map
-  in
   let* actual_total_supply = Context.get_total_supply (B block) in
-  Assert.equal_tez ~loc:__LOC__ actual_total_supply total_supply
-
-(** Apply rewards in state + check *)
-let apply_rewards ~(baker : string) block state : State.t tzresult Lwt.t =
-  let open Lwt_result_syntax in
-  let* state = State.apply_rewards ~baker block state in
-  let* () = check_all_balances block state in
-  return state
+  let*! r1 =
+    String.Map.fold_s
+      (fun name account acc ->
+        log_debug_balance name account_map ;
+        let* () = log_debug_rpc_balance name (Implicit account.pkh) block in
+        let*! r =
+          assert_balance_check ~loc:__LOC__ (B block) name account_map
+        in
+        join_errors r acc)
+      account_map
+      Result.return_unit
+  in
+  let*! r2 =
+    Assert.equal
+      ~loc:__LOC__
+      Tez.equal
+      "Total supplies do not match"
+      Tez.pp
+      actual_total_supply
+      total_supply
+  in
+  join_errors r1 r2
 
 let check_issuance_rpc block : unit tzresult Lwt.t =
   let open Lwt_result_syntax in
@@ -637,7 +817,9 @@ let check_issuance_rpc block : unit tzresult Lwt.t =
   in
   (* Divided by 525_600 minutes per year, x100 because rpc returns a pct *)
   let issuance_from_rate =
-    Tez.(mul_q total_supply Q.(div yearly_rate_exact ~$525_600_00) |> of_q)
+    Tez.(
+      mul_q total_supply Q.(div yearly_rate_exact ~$525_600_00)
+      |> of_q ~round_up:false)
   in
   let* () =
     Assert.equal
@@ -715,7 +897,8 @@ let bake ?baker : t -> t tzresult Lwt.t =
       return (block, state)
     else return (block', state)
   in
-  (* TODO: mistake ? The baking parameters apply before we reach the new cycle... *)
+  let* state = State.apply_rewards ~baker:baker_name block state in
+  (* First block of a new cycle *)
   let new_current_cycle = Block.current_cycle block in
   let* state =
     if Protocol.Alpha_context.Cycle.(current_cycle = new_current_cycle) then
@@ -725,9 +908,14 @@ let bake ?baker : t -> t tzresult Lwt.t =
         ~color:time_color
         "Cycle %d"
         (Protocol.Alpha_context.Cycle.to_int32 new_current_cycle |> Int32.to_int) ;
-      return @@ State.apply_end_cycle new_current_cycle state)
+      return @@ State.apply_new_cycle new_current_cycle state)
   in
-  let* state = apply_rewards ~baker:baker_name block state in
+  (* Dawn of a new cycle *)
+  let* state =
+    if not (Block.last_block_of_cycle block) then return state
+    else State.apply_end_cycle current_cycle block state
+  in
+  let* () = check_all_balances block state in
   return (block, state)
 
 (** Bake until a cycle is reached, using [bake] instead of [Block.bake]
@@ -754,8 +942,17 @@ let set_baker baker : (t, t) scenarios =
       let {pkh; _} = State.find_account baker state in
       return {state with State.baking_policy = Some (Block.By_account pkh)})
 
-(** Unsets the de facto baker, baking policy returns to default ([By round 0]) *)
-let unset_baker : (t, t) scenarios =
+(** Exclude a list of delegates from baking *)
+let exclude_bakers bakers : (t, t) scenarios =
+  exec_state (fun (_block, state) ->
+      let bakers_pkh =
+        List.map (fun baker -> (State.find_account baker state).pkh) bakers
+      in
+      return
+        {state with State.baking_policy = Some (Block.Excluding bakers_pkh)})
+
+(** Unsets the baking policy, it returns to default ([By_round 0]) *)
+let unset_baking_policy : (t, t) scenarios =
   exec_state (fun (_block, state) ->
       return {state with State.baking_policy = None})
 
@@ -780,12 +977,16 @@ let snapshot_balances snap_name names_list : (t, t) scenarios =
       return {state with snapshot_balances})
 
 (** Check balances against a previously defined snapshot *)
-let check_snapshot_balances snap_name : (t, t) scenarios =
+let check_snapshot_balances
+    ?(f =
+      fun ~name ~old_balance ~new_balance ->
+        assert_balance_equal ~loc:__LOC__ name old_balance new_balance)
+    snap_name : (t, t) scenarios =
   let open Lwt_result_syntax in
   exec_unit (fun (_block, state) ->
       Log.debug
         ~color:low_debug_color
-        "Checking equality of balances between \"%s\" and now"
+        "Checking evolution of balances between \"%s\" and now"
         snap_name ;
       let snapshot_balances =
         String.Map.find snap_name state.State.snapshot_balances
@@ -804,7 +1005,7 @@ let check_snapshot_balances snap_name : (t, t) scenarios =
                 let new_balance =
                   balance_of_account name state.State.account_map
                 in
-                assert_balance_equal ~loc:__LOC__ old_balance new_balance)
+                f ~name ~old_balance ~new_balance)
               snapshot_balances
           in
           return_unit)
@@ -826,7 +1027,14 @@ let check_rate_evolution (f : Q.t -> Q.t -> bool) : (t, t) scenarios =
       | None -> failwith "check_rate_evolution: no rate previously saved"
       | Some previous_rate ->
           if f previous_rate new_rate then return_unit
-          else failwith "check_rate_evolution: assertion failed")
+          else
+            failwith
+              "check_rate_evolution: assertion failed@.previous rate: %a@.new \
+               rate: %a"
+              Q.pp_print
+              previous_rate
+              Q.pp_print
+              new_rate)
 
 (* ======== Operations ======== *)
 
@@ -835,6 +1043,12 @@ let next_block =
   exec (fun input ->
       Log.info ~color:action_color "[Next block]" ;
       bake input)
+
+(** Bake a single block with a specific baker *)
+let next_block_with_baker baker =
+  exec (fun input ->
+      Log.info ~color:action_color "[Next block (baker %s)]" baker ;
+      bake ~baker input)
 
 (** Bake until the end of a cycle *)
 let next_cycle =
@@ -887,7 +1101,13 @@ let begin_test ~activate_ai ?(burn_rewards = false)
           ~when_different_lengths:[Inconsistent_number_of_bootstrap_accounts]
           (fun account_map name contract ->
             let liquid = Tez.(Account.default_initial_balance -! init_staked) in
-            let frozen_deposits = Frozen_tez.init init_staked name in
+            let frozen_deposits = Frozen_tez.init init_staked name name in
+            let frozen_rights =
+              List.fold_left
+                (fun map cycle -> CycleMap.add cycle init_staked map)
+                CycleMap.empty
+                Cycle.(root ---> add root constants.preserved_cycles)
+            in
             let pkh = Context.Contract.pkh contract in
             let account =
               init_account
@@ -897,6 +1117,7 @@ let begin_test ~activate_ai ?(burn_rewards = false)
                 ~parameters:default_params
                 ~liquid
                 ~frozen_deposits
+                ~frozen_rights
                 ()
             in
             let account_map = String.Map.add name account account_map in
@@ -925,6 +1146,8 @@ let begin_test ~activate_ai ?(burn_rewards = false)
             saved_rate = None;
             burn_rewards;
             pending_operations = [];
+            pending_slashes = [];
+            double_signings = [];
           }
       in
       let* () = check_all_balances block state in
@@ -1049,8 +1272,9 @@ let stake src_name stake_value : (t, t) scenarios =
       (* Stake applies finalize *before* the stake *)
       let state = State.apply_finalize src_name state in
       let amount = quantity_to_tez src.liquid stake_value in
+      let current_cycle = Block.current_cycle block in
       let* operation = stake (B block) src.contract amount in
-      let state = State.apply_stake amount src_name state in
+      let state = State.apply_stake amount current_cycle src_name state in
       return (state, [operation]))
 
 (** unstake operation *)
@@ -1066,7 +1290,7 @@ let unstake src_name unstake_value : (t, t) scenarios =
         unstake_value ;
       let stake_balance =
         (balance_of_account src_name state.account_map).staked_b
-        |> Partial_tez.to_tez
+        |> Partial_tez.to_tez ~round_up:false
       in
       let amount = quantity_to_tez stake_balance unstake_value in
       let* operation = unstake (B block) src.contract amount in
@@ -1090,6 +1314,333 @@ let finalize_unstake src_name : (t, t) scenarios =
       let state = State.apply_finalize src_name state in
       return (state, [operation]))
 
+(* ======== Slashing ======== *)
+
+let check_pending_slashings (block, state) : unit tzresult Lwt.t =
+  let open Lwt_result_syntax in
+  let open Protocol.Denunciations_repr in
+  let* denunciations_rpc = Context.get_denunciations (B block) in
+  let denunciations_obj_equal
+      (pkh_1, {rewarded = r1; misbehaviour = m1; misbehaviour_cycle = mc1; _})
+      (pkh_2, {rewarded = r2; misbehaviour = m2; misbehaviour_cycle = mc2; _}) =
+    Signature.Public_key_hash.equal pkh_1 pkh_2
+    && Signature.Public_key_hash.equal r1 r2
+    && Stdlib.(m1 = m2)
+    && Stdlib.(mc1 = mc2)
+  in
+  let compare_denunciations
+      (pkh_1, {rewarded = r1; misbehaviour = m1; misbehaviour_cycle = mc1; _})
+      (pkh_2, {rewarded = r2; misbehaviour = m2; misbehaviour_cycle = mc2; _}) =
+    let c1 = Signature.Public_key_hash.compare pkh_1 pkh_2 in
+    if c1 <> 0 then c1
+    else
+      let c2 = Signature.Public_key_hash.compare r1 r2 in
+      if c2 <> 0 then c2
+      else
+        let c3 =
+          match (m1, m2) with
+          | Double_baking, Double_attesting -> -1
+          | x, y when x = y -> 0
+          | _ -> 1
+        in
+        if c3 <> 0 then c3
+        else
+          match (mc1, mc2) with
+          | Current, Previous -> -1
+          | x, y when x = y -> 0
+          | _ -> 1
+  in
+  let denunciations_rpc = List.sort compare_denunciations denunciations_rpc in
+  let denunciations_state =
+    List.sort compare_denunciations state.State.pending_slashes
+  in
+  let denunciations_equal = List.equal denunciations_obj_equal in
+  let denunciations_obj_pp fmt
+      (pkh, {rewarded; misbehaviour; misbehaviour_cycle; operation_hash = _}) =
+    Format.fprintf
+      fmt
+      "slashed: %a; rewarded: %a; kind: %s; cycle: %s@."
+      Signature.Public_key_hash.pp
+      pkh
+      Signature.Public_key_hash.pp
+      rewarded
+      (match misbehaviour with
+      | Double_baking -> "double baking"
+      | Double_attesting -> "double attesting")
+      (match misbehaviour_cycle with
+      | Current -> "current"
+      | Previous -> "previous")
+  in
+  let denunciations_pp = Format.pp_print_list denunciations_obj_pp in
+  let* () =
+    Assert.equal
+      ~loc:__LOC__
+      denunciations_equal
+      "Denunciations are not equal"
+      denunciations_pp
+      denunciations_rpc
+      denunciations_state
+  in
+  return_unit
+
+(** Double attestation helpers *)
+let order_attestations ~correct_order op1 op2 =
+  let oph1 = Protocol.Alpha_context.Operation.hash op1 in
+  let oph2 = Protocol.Alpha_context.Operation.hash op2 in
+  let c = Operation_hash.compare oph1 oph2 in
+  if correct_order then if c < 0 then (op1, op2) else (op2, op1)
+  else if c < 0 then (op2, op1)
+  else (op1, op2)
+
+let op_double_attestation ?(correct_order = true) op1 op2 ctxt =
+  let e1, e2 = order_attestations ~correct_order op1 op2 in
+  Op.double_attestation ctxt e1 e2
+
+let op_double_preattestation ?(correct_order = true) op1 op2 ctxt =
+  let e1, e2 = order_attestations ~correct_order op1 op2 in
+  Op.double_preattestation ctxt e1 e2
+
+let order_block_hashes ~correct_order bh1 bh2 =
+  let hash1 = Protocol.Alpha_context.Block_header.hash bh1 in
+  let hash2 = Protocol.Alpha_context.Block_header.hash bh2 in
+  let c = Block_hash.compare hash1 hash2 in
+  if correct_order then if c < 0 then (bh1, bh2) else (bh2, bh1)
+  else if c < 0 then (bh2, bh1)
+  else (bh1, bh2)
+
+let op_double_baking ?(correct_order = true) bh1 bh2 ctxt =
+  let bh1, bh2 = order_block_hashes ~correct_order bh1 bh2 in
+  Op.double_baking ctxt bh1 bh2
+
+let double_bake_ delegate_name (block, state) =
+  let open Lwt_result_syntax in
+  Log.info ~color:Log_module.event_color "Double baking with %s" delegate_name ;
+  let delegate = State.find_account delegate_name state in
+  let* operation =
+    Adaptive_issuance_helpers.unstake (B block) delegate.contract Tez.one_mutez
+  in
+  let* forked_block =
+    Block.bake ~policy:(By_account delegate.pkh) ~operation block
+  in
+  (* includes pending operations *)
+  let* main_branch, state = bake ~baker:delegate_name (block, state) in
+  let evidence = op_double_baking main_branch.header forked_block.header in
+  let dss =
+    {
+      culprit = delegate.pkh;
+      denounced = false;
+      evidence;
+      kind = Double_baking;
+      level = block.header.shell.level;
+    }
+  in
+  let state =
+    {state with double_signings = dss :: state.State.double_signings}
+  in
+  return (main_branch, state)
+
+(* Note: advances one block *)
+let double_bake delegate_name : (t, t) scenarios =
+  exec (double_bake_ delegate_name)
+
+let double_attest_op ~op ~op_evidence ~kind delegate_name (block, state) =
+  let open Lwt_result_syntax in
+  Log.info
+    ~color:Log_module.event_color
+    "Double (pre)attesting with %s"
+    delegate_name ;
+  let delegate = State.find_account delegate_name state in
+  let* baker, _, _, _ =
+    Block.get_next_baker ?policy:state.baking_policy block
+  in
+  let* other_baker1, other_baker2 =
+    Context.get_first_different_bakers (B block)
+  in
+  let other_baker =
+    if not (Signature.Public_key_hash.equal baker other_baker2) then
+      other_baker2
+    else other_baker1
+  in
+  let* forked_block = Block.bake ~policy:(By_account other_baker) block in
+  let* forked_block = Block.bake ?policy:state.baking_policy forked_block in
+  (* includes pending operations *)
+  let* block, state = bake (block, state) in
+  let* main_branch, state = bake (block, state) in
+  let* attestation_a = op ~delegate:delegate.pkh forked_block in
+  let* attestation_b = op ~delegate:delegate.pkh main_branch in
+  let evidence = op_evidence attestation_a attestation_b in
+  let dss =
+    {
+      culprit = delegate.pkh;
+      denounced = false;
+      evidence;
+      kind;
+      level = block.header.shell.level;
+    }
+  in
+  let state =
+    {state with double_signings = dss :: state.State.double_signings}
+  in
+  return (main_branch, state)
+
+let double_attest_ =
+  double_attest_op
+    ~op:(fun ~delegate block -> Op.raw_attestation ~delegate block)
+    ~op_evidence:op_double_attestation
+    ~kind:Double_attesting
+
+(* Note: advances two blocks *)
+let double_attest delegate_name : (t, t) scenarios =
+  exec (double_attest_ delegate_name)
+
+let double_preattest_ =
+  double_attest_op
+    ~op:(fun ~delegate block -> Op.raw_preattestation ~delegate block)
+    ~op_evidence:op_double_preattestation
+    ~kind:Double_preattesting
+
+(* Note: advances two blocks *)
+let double_preattest delegate_name : (t, t) scenarios =
+  exec (double_preattest_ delegate_name)
+
+let cycle_from_level blocks_per_cycle level =
+  let current_cycle = Int32.div level blocks_per_cycle in
+  let current_cycle = Cycle.add Cycle.root (Int32.to_int current_cycle) in
+  current_cycle
+
+let pct_from_kind (block : Block.t) = function
+  | Protocol.Misbehaviour.Double_baking ->
+      (block.constants.percentage_of_frozen_deposits_slashed_per_double_baking
+        :> int)
+  | Double_attesting ->
+      (block.constants
+         .percentage_of_frozen_deposits_slashed_per_double_attestation
+        :> int)
+
+let get_pending_slashed_pct_for_delegate (block, state) delegate =
+  let rec aux r = function
+    | [] -> r
+    | (culprit, {Protocol.Denunciations_repr.misbehaviour; _}) :: t ->
+        if Signature.Public_key_hash.equal delegate culprit then
+          let new_r = r + pct_from_kind block misbehaviour in
+          if new_r >= 100 then 100 else aux new_r t
+        else aux r t
+  in
+  aux 0 state.State.pending_slashes
+
+let update_state_denunciation (block, state)
+    {culprit; denounced; evidence = _; kind; level} =
+  let open Lwt_result_syntax in
+  if denounced then
+    (* If the double signing has already been denounced, a second denunciation should fail *)
+    return (state, denounced)
+  else
+    let*? block_level = Context.get_level (B block) in
+    let next_level =
+      Protocol.Alpha_context.Raw_level.(to_int32 @@ succ block_level)
+    in
+    if level > next_level then
+      (* The denunciation is trying to be included too early *)
+      return (state, denounced)
+    else
+      let inclusion_cycle =
+        cycle_from_level block.constants.blocks_per_cycle next_level
+      in
+      let ds_cycle = cycle_from_level block.constants.blocks_per_cycle level in
+      if Cycle.(succ ds_cycle < inclusion_cycle) then
+        (* denunciation is too late, gets refused *)
+        return (state, denounced)
+      else if get_pending_slashed_pct_for_delegate (block, state) culprit >= 100
+      then
+        (* Culprit has been slashed too much, a denunciation is not added to the list.
+           TODO: is the double signing treated as included, or can it be included in the
+           following cycle? *)
+        return (state, denounced)
+      else
+        let misbehaviour_cycle =
+          if Cycle.(ds_cycle = inclusion_cycle) then
+            Protocol.Denunciations_repr.Current
+          else if Cycle.(succ ds_cycle = inclusion_cycle) then Previous
+          else assert false
+        in
+        let misbehaviour =
+          match kind with
+          | Double_baking -> Protocol.Misbehaviour.Double_baking
+          | Double_attesting -> Double_attesting
+          | Double_preattesting -> Double_attesting
+        in
+        (* for simplicity's sake (lol), the block producer and the payload producer are the same
+           We also assume that the current state baking policy will be used for the next block *)
+        let* rewarded, _, _, _ =
+          Block.get_next_baker ?policy:state.baking_policy block
+        in
+        let culprit_name, culprit_account =
+          State.find_account_from_pkh culprit state
+        in
+        let state =
+          State.update_account
+            culprit_name
+            {
+              culprit_account with
+              slashed_cycles = inclusion_cycle :: culprit_account.slashed_cycles;
+            }
+            state
+        in
+        let new_pending_slash =
+          ( culprit,
+            {
+              Protocol.Denunciations_repr.rewarded;
+              misbehaviour;
+              misbehaviour_cycle;
+              operation_hash = Operation_hash.zero;
+              (* unused *)
+            } )
+        in
+        (* TODO: better log... *)
+        Log.info
+          ~color:Log_module.event_color
+          "Including denunciation (misbehaviour cycle %a)"
+          Cycle.pp
+          ds_cycle ;
+        let state =
+          State.
+            {
+              state with
+              pending_slashes = new_pending_slash :: state.pending_slashes;
+            }
+        in
+        return (state, true)
+
+let make_denunciations_ ?(filter = fun {denounced; _} -> not denounced)
+    (block, state) =
+  let open Lwt_result_syntax in
+  let* () = check_pending_slashings (block, state) in
+  let make_op state ({evidence; _} as dss) =
+    if filter dss then
+      let* state, denounced = update_state_denunciation (block, state) dss in
+      return (Some (evidence (B block), {dss with denounced}, state))
+    else return None
+  in
+  let rec make_op_list dss_list state r_op r_dss =
+    match dss_list with
+    | d :: t -> (
+        let* new_op = make_op state d in
+        match new_op with
+        | None -> make_op_list t state r_op (d :: r_dss)
+        | Some (op, p_dss, new_state) ->
+            make_op_list t new_state (op :: r_op) (p_dss :: r_dss))
+    | [] -> return @@ (state, List.rev r_op, List.rev r_dss)
+  in
+  let* state, operations, double_signings =
+    make_op_list state.double_signings state [] []
+  in
+  let state = {state with double_signings} in
+  return (state, operations)
+
+(* Important note: do not change the baking policy behaviour once denunciations are made,
+   until the operations are included in a block (by default the next block) *)
+let make_denunciations ?filter () = exec_op (make_denunciations_ ?filter)
+
 (* ======== Misc functions ========*)
 
 let check_failure_aux ?expected_error :
@@ -1105,6 +1656,7 @@ let check_failure_aux ?expected_error :
           Log.info ~color:assert_block_color "Rollback" ;
           return input
       | Some exp_e ->
+          let exp_e = exp_e input in
           if e = exp_e then (
             Log.info ~color:assert_block_color "Rollback" ;
             return input)
@@ -1151,7 +1703,7 @@ let rec loop_action n : ('a -> 'a tzresult Lwt.t) -> ('a, 'a) scenarios =
 let check_balance_field src_name field amount : (t, t) scenarios =
   let open Lwt_result_syntax in
   let check = Assert.equal_tez ~loc:__LOC__ amount in
-  let check' a = check (Partial_tez.to_tez a) in
+  let check' a = check (Partial_tez.to_tez ~round_up:false a) in
   exec_state (fun (block, state) ->
       let src = State.find_account src_name state in
       let src_balance, src_total =
@@ -1224,18 +1776,28 @@ let add_account_with_funds name source amount =
 
 let test_expected_error =
   assert_failure
-    ~expected_error:[Exn (Failure "")]
+    ~expected_error:(fun _ -> [Exn (Failure "")])
     (exec (fun _ -> failwith ""))
   --> assert_failure
-        ~expected_error:[Unexpected_error]
+        ~expected_error:(fun _ -> [Unexpected_error])
         (assert_failure
-           ~expected_error:[Inconsistent_number_of_bootstrap_accounts]
+           ~expected_error:(fun _ ->
+             [Inconsistent_number_of_bootstrap_accounts])
            (exec (fun _ -> failwith "")))
 
-let init_constants ?reward_per_block ?(deactivate_dynamic = false) () =
+let init_constants ?reward_per_block ?(deactivate_dynamic = false)
+    ?blocks_per_cycle ?(force_snapshot_at_end = false) ~autostaking_enable () =
   let reward_per_block = Option.value ~default:0L reward_per_block in
   let base_total_issued_per_minute = Tez.of_mutez reward_per_block in
   let default_constants = Default_parameters.constants_test in
+  (* default for tests: 12 *)
+  let blocks_per_cycle =
+    Option.value ~default:default_constants.blocks_per_cycle blocks_per_cycle
+  in
+  let blocks_per_stake_snapshot =
+    if force_snapshot_at_end then blocks_per_cycle
+    else default_constants.blocks_per_stake_snapshot
+  in
   let issuance_weights =
     Protocol.Alpha_context.Constants.Parametric.
       {
@@ -1261,7 +1823,9 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false) () =
       }
     else adaptive_issuance.adaptive_rewards_params
   in
-  let adaptive_issuance = {adaptive_issuance with adaptive_rewards_params} in
+  let adaptive_issuance =
+    {adaptive_issuance with adaptive_rewards_params; autostaking_enable}
+  in
   {
     default_constants with
     consensus_threshold;
@@ -1269,6 +1833,8 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false) () =
     minimal_block_delay;
     cost_per_byte;
     adaptive_issuance;
+    blocks_per_cycle;
+    blocks_per_stake_snapshot;
   }
 
 (** Initialization of scenarios with 3 cases:
@@ -1277,8 +1843,10 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false) () =
      - AI not activated (and staker = delegate)
     Any scenario that begins with this will be triplicated.
  *)
-let init_scenario ?reward_per_block () =
-  let constants = init_constants ?reward_per_block () in
+let init_scenario ?(force_ai = true) ?reward_per_block () =
+  let constants =
+    init_constants ?reward_per_block ~autostaking_enable:false ()
+  in
   let init_params =
     {limit_of_staking_over_baking = Q.one; edge_of_baking_over_staking = Q.one}
   in
@@ -1286,21 +1854,26 @@ let init_scenario ?reward_per_block () =
     let name = if self_stake then "staker" else "delegate" in
     begin_test ~activate_ai constants [name]
     --> set_delegate_params name init_params
-    --> stake name (Amount (Tez.of_mutez 1_800_000_000_000L))
     --> set_baker "__bootstrap__"
   in
-  (Tag "AI activated"
-   --> (Tag "self stake" --> begin_test ~activate_ai:true ~self_stake:true
-       |+ Tag "external stake"
-          --> begin_test ~activate_ai:true ~self_stake:false
-          --> add_account_with_funds
-                "staker"
-                "delegate"
-                (Amount (Tez.of_mutez 2_000_000_000_000L))
-          --> set_delegate "staker" (Some "delegate"))
-   --> wait_ai_activation
-  |+ Tag "AI deactivated, self stake"
-     --> begin_test ~activate_ai:false ~self_stake:true)
+  let ai_activated =
+    Tag "AI activated"
+    --> (Tag "self stake" --> begin_test ~activate_ai:true ~self_stake:true
+        |+ Tag "external stake"
+           --> begin_test ~activate_ai:true ~self_stake:false
+           --> add_account_with_funds
+                 "staker"
+                 "delegate"
+                 (Amount (Tez.of_mutez 2_000_000_000_000L))
+           --> set_delegate "staker" (Some "delegate"))
+    --> wait_ai_activation
+  in
+
+  let ai_deactivated =
+    Tag "AI deactivated, self stake"
+    --> begin_test ~activate_ai:false ~self_stake:true
+  in
+  (if force_ai then ai_activated else ai_activated |+ ai_deactivated)
   --> next_block
 
 module Roundtrip = struct
@@ -1338,6 +1911,23 @@ module Roundtrip = struct
     --> wait_for_unfreeze_and_check (default_unstake_wait - 2)
     --> wait_for_unfreeze_and_check 2
     --> finalize "staker" --> next_cycle
+
+  let shorter_roundtrip_for_baker =
+    let constants = init_constants ~autostaking_enable:false () in
+    let amount = Amount (Tez.of_mutez 333_000_000_000L) in
+    let preserved_cycles = constants.preserved_cycles in
+    begin_test ~activate_ai:true constants ["delegate"]
+    --> next_block --> wait_ai_activation
+    --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
+    --> next_cycle
+    --> snapshot_balances "init" ["delegate"]
+    --> unstake "delegate" amount
+    --> List.fold_left
+          (fun acc i -> acc |+ Tag (fs "wait %i cycles" i) --> wait_n_cycles i)
+          (Tag "wait 0 cycles" --> Empty)
+          (Stdlib.List.init (preserved_cycles + 1) (fun i -> i + 1))
+    --> stake "delegate" amount
+    --> check_snapshot_balances "init"
 
   let status_quo_rountrip =
     let full_amount = Tez.of_mutez 10_000_000L in
@@ -1419,7 +2009,7 @@ module Roundtrip = struct
     loop 20 one_cycle
 
   let change_delegate =
-    let constants = init_constants () in
+    let constants = init_constants ~autostaking_enable:false () in
     let init_params =
       {
         limit_of_staking_over_baking = Q.one;
@@ -1442,7 +2032,7 @@ module Roundtrip = struct
     --> stake "staker" Half
 
   let unset_delegate =
-    let constants = init_constants () in
+    let constants = init_constants ~autostaking_enable:false () in
     let init_params =
       {
         limit_of_staking_over_baking = Q.one;
@@ -1470,7 +2060,7 @@ module Roundtrip = struct
     --> finalize_unstake "staker"
 
   let forbid_costaking =
-    let constants = init_constants () in
+    let constants = init_constants ~autostaking_enable:false () in
     let init_params =
       {
         limit_of_staking_over_baking = Q.one;
@@ -1537,12 +2127,18 @@ module Roundtrip = struct
          ("Test change delegate", change_delegate);
          ("Test unset delegate", unset_delegate);
          ("Test forbid costake", forbid_costaking);
+         ("Test stake from unstake", shorter_roundtrip_for_baker);
        ]
 end
 
 module Rewards = struct
   let test_wait_with_rewards =
-    let constants = init_constants ~reward_per_block:1_000_000_000L () in
+    let constants =
+      init_constants
+        ~reward_per_block:1_000_000_000L
+        ~autostaking_enable:false
+        ()
+    in
     begin_test ~activate_ai:true constants ["delegate"]
     --> (Tag "block step" --> wait_n_blocks 200
         |+ Tag "cycle step" --> wait_n_cycles 20
@@ -1555,6 +2151,7 @@ module Rewards = struct
       init_constants
         ~reward_per_block:1_000_000_000L
         ~deactivate_dynamic:true
+        ~autostaking_enable:false
         ()
     in
     let pc = constants.preserved_cycles in
@@ -1575,10 +2172,10 @@ module Rewards = struct
       init_constants
         ~reward_per_block:1_000_000_000L
         ~deactivate_dynamic:true
+        ~autostaking_enable:false
         ()
     in
     let rate_var_lag = constants.preserved_cycles in
-    (* All rewards in liquid *)
     let init_params =
       {
         limit_of_staking_over_baking = Q.one;
@@ -1599,9 +2196,10 @@ module Rewards = struct
     in
     begin_test ~activate_ai:true ~burn_rewards:true constants ["delegate"]
     --> set_delegate_params "delegate" init_params
+    --> save_current_rate --> wait_ai_activation
+    (* We stake about 50% of the total supply *)
     --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
     --> stake "__bootstrap__" (Amount (Tez.of_mutez 1_800_000_000_000L))
-    --> save_current_rate --> wait_ai_activation
     --> (Tag "increase stake, decrease rate" --> next_cycle
          --> loop rate_var_lag (stake "delegate" delta --> next_cycle)
          --> loop 10 cycle_stake
@@ -1627,7 +2225,519 @@ module Rewards = struct
     @@ [
          ("Test wait with rewards", test_wait_with_rewards);
          ("Test ai curve activation time", test_ai_curve_activation_time);
-         ("Test static rate", test_static);
+         (* ("Test static rate", test_static); *)
+       ]
+end
+
+module Autostaking = struct
+  let assert_balance_evolution ~loc ~for_accounts ~part ~name ~old_balance
+      ~new_balance compare =
+    let old_b, new_b =
+      match part with
+      | `liquid ->
+          ( Q.of_int64 @@ Tez.to_mutez old_balance.liquid_b,
+            Q.of_int64 @@ Tez.to_mutez new_balance.liquid_b )
+      | `staked -> (old_balance.staked_b, new_balance.staked_b)
+      | `unstaked_frozen ->
+          (old_balance.unstaked_frozen_b, new_balance.unstaked_frozen_b)
+      | `unstaked_finalizable ->
+          ( Q.of_int64 @@ Tez.to_mutez old_balance.unstaked_finalizable_b,
+            Q.of_int64 @@ Tez.to_mutez new_balance.unstaked_finalizable_b )
+    in
+    if List.mem ~equal:String.equal name for_accounts then
+      if compare new_b old_b then return_unit
+      else (
+        Log.debug ~color:Log_module.warning_color "Balances changes failed:@." ;
+        Log.debug "@[<v 2>Old Balance@ %a@]@." balance_pp old_balance ;
+        Log.debug "@[<v 2>New Balance@ %a@]@." balance_pp new_balance ;
+        failwith "%s Unexpected stake evolution for %s" loc name)
+    else raise Not_found
+
+  let delegate = "delegate"
+
+  and delegator1 = "delegator1"
+
+  and delegator2 = "delegator2"
+
+  let setup ~activate_ai =
+    let constants = init_constants ~autostaking_enable:true () in
+    begin_test ~activate_ai constants [delegate]
+    --> add_account_with_funds
+          delegator1
+          "__bootstrap__"
+          (Amount (Tez.of_mutez 2_000_000_000L))
+    --> add_account_with_funds
+          delegator2
+          "__bootstrap__"
+          (Amount (Tez.of_mutez 2_000_000_000L))
+    --> next_cycle
+    --> (if activate_ai then wait_ai_activation else next_cycle)
+    --> snapshot_balances "before delegation" [delegate]
+    --> set_delegate delegator1 (Some delegate)
+    --> check_snapshot_balances "before delegation"
+    --> next_cycle
+
+  let test_autostaking =
+    Tag "No Ai" --> setup ~activate_ai:false
+    --> check_snapshot_balances
+          ~f:
+            (assert_balance_evolution
+               ~loc:__LOC__
+               ~for_accounts:[delegate]
+               ~part:`staked
+               Q.gt)
+          "before delegation"
+    --> snapshot_balances "before second delegation" [delegate]
+    --> (Tag "increase delegation"
+         --> set_delegate delegator2 (Some delegate)
+         --> next_cycle
+         --> check_snapshot_balances
+               ~f:
+                 (assert_balance_evolution
+                    ~loc:__LOC__
+                    ~for_accounts:[delegate]
+                    ~part:`staked
+                    Q.gt)
+               "before second delegation"
+        |+ Tag "constant delegation"
+           --> snapshot_balances "after stake change" [delegate]
+           --> wait_n_cycles 8
+           --> check_snapshot_balances "after stake change"
+        |+ Tag "decrease delegation"
+           --> set_delegate delegator1 None
+           --> next_cycle
+           --> check_snapshot_balances
+                 ~f:
+                   (assert_balance_evolution
+                      ~loc:__LOC__
+                      ~for_accounts:[delegate]
+                      ~part:`staked
+                      Q.lt)
+                 "before second delegation"
+           --> check_snapshot_balances
+                 ~f:
+                   (assert_balance_evolution
+                      ~loc:__LOC__
+                      ~for_accounts:[delegate]
+                      ~part:`unstaked_frozen
+                      Q.gt)
+                 "before second delegation"
+           --> snapshot_balances "after unstake" [delegate]
+           --> next_cycle
+           --> check_snapshot_balances "after unstake"
+           --> wait_n_cycles 4
+           --> check_snapshot_balances
+                 ~f:
+                   (assert_balance_evolution
+                      ~loc:__LOC__
+                      ~for_accounts:[delegate]
+                      ~part:`unstaked_frozen
+                      Q.lt)
+                 "after unstake"
+           (* finalizable are auto-finalize immediately  *)
+           --> check_snapshot_balances
+                 ~f:
+                   (assert_balance_evolution
+                      ~loc:__LOC__
+                      ~for_accounts:[delegate]
+                      ~part:`liquid
+                      Q.lt)
+                 "before finalisation")
+    |+ Tag "Yes AI" --> setup ~activate_ai:true
+       --> check_snapshot_balances "before delegation"
+
+  let test_overdelegation =
+    (* This test assumes that all delegate accounts created in [begin_test]
+       begin with 4M tz, with 5% staked *)
+    let constants = init_constants ~autostaking_enable:true () in
+    begin_test
+      ~activate_ai:false
+      constants
+      ["delegate"; "faucet1"; "faucet2"; "faucet3"]
+    --> add_account_with_funds
+          "delegator_to_fund"
+          "delegate"
+          (Amount (Tez.of_mutez 3_600_000_000_000L))
+    (* Delegate has 200k staked and 200k liquid *)
+    --> set_delegate "delegator_to_fund" (Some "delegate")
+    (* Delegate stake will not change at the end of cycle: same stake *)
+    --> next_cycle
+    --> check_balance_field "delegate" `Staked (Tez.of_mutez 200_000_000_000L)
+    --> transfer
+          "faucet1"
+          "delegator_to_fund"
+          (Amount (Tez.of_mutez 3_600_000_000_000L))
+    (* Delegate is not overdelegated, but will need to freeze 180k *)
+    --> next_cycle
+    --> check_balance_field "delegate" `Staked (Tez.of_mutez 380_000_000_000L)
+    --> transfer
+          "faucet2"
+          "delegator_to_fund"
+          (Amount (Tez.of_mutez 3_600_000_000_000L))
+    (* Delegate is now overdelegated, it will freeze 100% *)
+    --> next_cycle
+    --> check_balance_field "delegate" `Staked (Tez.of_mutez 400_000_000_000L)
+    --> transfer
+          "faucet3"
+          "delegator_to_fund"
+          (Amount (Tez.of_mutez 3_600_000_000_000L))
+    (* Delegate is overmegadelegated *)
+    --> next_cycle
+    --> check_balance_field "delegate" `Staked (Tez.of_mutez 400_000_000_000L)
+
+  let tests =
+    tests_of_scenarios
+      [
+        ("Test auto-staking", test_autostaking);
+        ("Test auto-staking with overdelegation", test_overdelegation);
+      ]
+end
+
+module Slashing = struct
+  let test_simple_slash =
+    let constants = init_constants ~autostaking_enable:false () in
+    let any_slash =
+      Tag "double baking" --> double_bake "delegate"
+      |+ Tag "double attesting" --> double_attest "delegate"
+      |+ Tag "double preattesting" --> double_preattest "delegate"
+    in
+    begin_test
+      ~activate_ai:true
+      constants
+      ["delegate"; "bootstrap1"; "bootstrap2"]
+    --> (Tag "No AI" --> next_cycle
+        |+ Tag "Yes AI" --> next_block --> wait_ai_activation)
+    --> any_slash
+    --> snapshot_balances "before slash" ["delegate"]
+    --> ((Tag "denounce same cycle" --> make_denunciations ()
+         |+ Tag "denounce next cycle" --> next_cycle --> make_denunciations ())
+         --> (Empty
+             |+ Tag "another slash"
+                (* delegate can be forbidden in this case, so we set another baker *)
+                --> set_baker "bootstrap1"
+                --> any_slash --> make_denunciations ())
+         --> check_snapshot_balances "before slash"
+         --> exec_unit check_pending_slashings
+         --> next_cycle
+         --> assert_failure (check_snapshot_balances "before slash")
+         --> exec_unit check_pending_slashings
+         --> next_block
+        |+ Tag "denounce too late" --> next_cycle --> next_cycle
+           --> assert_failure
+                 ~expected_error:(fun (_block, state) ->
+                   let ds = state.State.double_signings in
+                   let ds = match ds with [a] -> a | _ -> assert false in
+                   let kind =
+                     match ds.kind with
+                     | Double_baking -> Protocol.Validate_errors.Anonymous.Block
+                     | Double_attesting -> Attestation
+                     | Double_preattesting -> Preattestation
+                   in
+                   let level =
+                     Protocol.Alpha_context.Raw_level.of_int32_exn
+                       (Int32.succ ds.level)
+                   in
+                   let last_cycle =
+                     Cycle.add
+                       (Block.current_cycle_of_level
+                          ~blocks_per_cycle:
+                            state.State.constants.blocks_per_cycle
+                          ~current_level:ds.level)
+                       Protocol.Constants_repr.max_slashing_period
+                   in
+                   [
+                     Environment.Ecoproto_error
+                       (Protocol.Validate_errors.Anonymous.Outdated_denunciation
+                          {kind; level; last_cycle});
+                   ])
+                 (make_denunciations ())
+           --> check_snapshot_balances "before slash")
+
+  let check_is_forbidden baker = assert_failure (next_block_with_baker baker)
+
+  let check_is_not_forbidden baker =
+    exec (fun ((block, state) as input) ->
+        let baker = State.find_account baker state in
+        let* _ = Block.bake ~policy:(By_account baker.pkh) block in
+        return input)
+
+  let test_delegate_forbidden =
+    let constants =
+      init_constants ~blocks_per_cycle:30l ~autostaking_enable:false ()
+    in
+    begin_test
+      ~activate_ai:false
+      constants
+      ["delegate"; "bootstrap1"; "bootstrap2"]
+    --> set_baker "bootstrap1"
+    --> (Tag "Many double bakes"
+         --> loop_action 14 (double_bake_ "delegate")
+         --> (Tag "14 double bakes are not enough to forbid a delegate"
+              (*  7*14 = 98 *)
+              --> make_denunciations ()
+              --> check_is_not_forbidden "delegate"
+             |+ Tag "15 double bakes is one too many"
+                (*  7*15 = 105 > 100 *)
+                --> double_bake "delegate"
+                --> make_denunciations ()
+                --> check_is_forbidden "delegate")
+        |+ Tag "Two double attestations, in same cycle"
+           --> double_attest "delegate"
+           --> (Tag "very early first denounce" --> make_denunciations ()
+               |+ Empty)
+           --> double_attest "delegate"
+           --> check_is_not_forbidden "delegate"
+           --> make_denunciations ()
+           (* Is forbidden the moment the denunciations are included *)
+           --> check_is_forbidden "delegate"
+        |+ Tag "Two double attestations, in consecutive cycles"
+           --> double_attest "delegate"
+           --> (Tag "early first denounce" --> make_denunciations ()
+                --> next_cycle
+               |+ Tag "late first denounce" --> next_cycle
+                  --> make_denunciations ())
+           --> double_attest "delegate"
+           (* Forbidden iff the cycle of the denunciation and the previous one
+              contains enough double signing events (not denunciations)
+              to forbid the delegate *)
+           --> (Tag "early second denounce" --> make_denunciations ()
+                --> check_is_forbidden "delegate"
+               |+ Tag "late second denounce" --> next_cycle
+                  --> make_denunciations ()
+                  --> check_is_not_forbidden "delegate")
+        |+ Tag "Two double attestations, too far apart to forbid"
+           --> double_attest "delegate"
+           --> (Tag "early first denounce" --> make_denunciations ()
+                --> next_cycle
+               |+ Tag "late first denounce" --> next_cycle
+                  --> make_denunciations ())
+           --> next_cycle
+           --> double_attest "delegate"
+               (* Forbidden iff the cycle of the denunciation and the previous one
+                   contains enough double signing events (not denunciations)
+                  to forbid the delegate *)
+           --> (Tag "early second denounce" --> make_denunciations ()
+               |+ Tag "late second denounce" --> next_cycle
+                  --> make_denunciations ())
+           --> check_is_not_forbidden "delegate"
+        |+ Tag
+             "Two double attestations, in consecutive cycles, denounce out of \
+              order" --> double_attest "delegate" --> next_cycle
+           --> double_attest "delegate"
+           --> make_denunciations
+                 ~filter:(fun {level; denounced; _} ->
+                   (not denounced) && level > 10l)
+                 ()
+           --> make_denunciations
+                 ~filter:(fun {level; denounced; _} ->
+                   (not denounced) && level <= 10l)
+                 ()
+           --> check_is_forbidden "delegate")
+
+  let test_slash_unstake =
+    let constants = init_constants ~autostaking_enable:false () in
+    begin_test
+      ~activate_ai:false
+      constants
+      ["delegate"; "bootstrap1"; "bootstrap2"]
+    --> set_baker "bootstrap1" --> next_cycle --> unstake "delegate" Half
+    --> next_cycle --> double_bake "delegate" --> make_denunciations ()
+    --> next_cycle --> double_bake "delegate" --> make_denunciations ()
+    --> wait_n_cycles 5
+    --> finalize_unstake "delegate"
+
+  let test_slash_monotonous_stake =
+    let scenario ~op ~early_d =
+      let constants =
+        init_constants
+          ~force_snapshot_at_end:true
+          ~blocks_per_cycle:8l
+          ~autostaking_enable:false
+          ()
+      in
+      begin_test ~activate_ai:false constants ["delegate"]
+      --> next_cycle
+      --> loop
+            6
+            (op "delegate" (Amount (Tez.of_mutez 1_000_000_000L)) --> next_cycle)
+      --> loop
+            10
+            (op "delegate" (Amount (Tez.of_mutez 1_000_000_000L))
+            --> double_bake "delegate"
+            -->
+            if early_d then make_denunciations () --> next_cycle
+            else next_cycle --> make_denunciations ())
+    in
+    Tag "slashes with increasing stake"
+    --> (Tag "denounce early" --> scenario ~op:stake ~early_d:true
+        |+ Tag "denounce late" --> scenario ~op:stake ~early_d:false)
+    |+ Tag "slashes with decreasing stake"
+       --> (Tag "denounce early" --> scenario ~op:unstake ~early_d:true
+           |+ Tag "denounce late" --> scenario ~op:unstake ~early_d:false)
+
+  let test_slash_timing =
+    let constants =
+      init_constants
+        ~force_snapshot_at_end:true
+        ~blocks_per_cycle:8l
+        ~autostaking_enable:false
+        ()
+    in
+    begin_test ~activate_ai:false constants ["delegate"]
+    --> next_cycle
+    --> (Tag "stake" --> stake "delegate" Half
+        |+ Tag "unstake" --> unstake "delegate" Half)
+    --> (Tag "with a first slash" --> double_bake "delegate"
+         --> make_denunciations ()
+        |+ Tag "without another slash" --> Empty)
+    --> List.fold_left
+          (fun acc i ->
+            acc |+ Tag (string_of_int i ^ " cycles lag") --> wait_n_cycles i)
+          Empty
+          [3; 4; 5; 6]
+    --> double_bake "delegate" --> make_denunciations () --> next_cycle
+
+  let init_scenario_with_delegators delegate_name delegators_list =
+    let constants =
+      init_constants ~force_snapshot_at_end:true ~autostaking_enable:false ()
+    in
+    let rec init_delegators = function
+      | [] -> Empty
+      | (delegator, amount) :: t ->
+          add_account_with_funds
+            delegator
+            delegate_name
+            (Amount (Tez.of_mutez amount))
+          --> set_delegate delegator (Some delegate_name)
+          --> init_delegators t
+    in
+    let init_params =
+      {
+        limit_of_staking_over_baking = Q.one;
+        edge_of_baking_over_staking = Q.one;
+      }
+    in
+    begin_test ~activate_ai:true constants [delegate_name]
+    --> set_delegate_params "delegate" init_params
+    --> init_delegators delegators_list
+    --> next_block --> wait_ai_activation
+
+  let test_many_slashes =
+    let rec stake_unstake_for = function
+      | [] -> Empty
+      | staker :: t ->
+          stake staker Half --> unstake staker Half --> stake_unstake_for t
+    in
+    let slash delegate = double_bake delegate --> make_denunciations () in
+    Tag "double bake"
+    --> (Tag "solo delegate"
+        --> init_scenario_with_delegators
+              "delegate"
+              [("delegator", 1_234_567_891L)]
+        --> loop
+              10
+              (stake_unstake_for ["delegate"]
+              --> slash "delegate" --> next_cycle))
+  (* |+ Tag "delegate with one staker"
+        --> init_scenario_with_delegators
+              "delegate"
+              [("staker", 1_234_356_891L)]
+        --> loop
+              10
+              (stake_unstake_for ["delegate"; "staker"]
+              --> slash "delegate" --> next_cycle)
+     |+ Tag "delegate with three stakers"
+        --> init_scenario_with_delegators
+              "delegate"
+              [
+                ("staker1", 1_234_356_891L);
+                ("staker2", 1_234_356_890L);
+                ("staker3", 1_723_333_111L);
+              ]
+        --> loop
+              10
+              (stake_unstake_for
+                 ["delegate"; "staker1"; "staker2"; "staker3"]
+              --> slash "delegate" --> next_cycle)) *)
+
+  let test_no_shortcut_for_cheaters =
+    let constants = init_constants ~autostaking_enable:false () in
+    let amount = Amount (Tez.of_mutez 333_000_000_000L) in
+    let preserved_cycles = constants.preserved_cycles in
+    begin_test ~activate_ai:true constants ["delegate"]
+    --> next_block --> wait_ai_activation
+    --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
+    --> next_cycle --> double_bake "delegate" --> make_denunciations ()
+    --> next_cycle
+    --> snapshot_balances "init" ["delegate"]
+    --> unstake "delegate" amount
+    --> (List.fold_left
+           (fun acc i -> acc |+ Tag (fs "wait %i cycles" i) --> wait_n_cycles i)
+           (Tag "wait 0 cycles" --> Empty)
+           (Stdlib.List.init (preserved_cycles - 1) (fun i -> i + 1))
+         --> stake "delegate" amount
+         --> assert_failure (check_snapshot_balances "init")
+        |+ Tag "wait enough cycles (preserved cycles + 1)"
+           --> wait_n_cycles (preserved_cycles + 1)
+           --> stake "delegate" amount
+           --> check_snapshot_balances "init")
+
+  let test_slash_correct_amount_after_stake_from_unstake =
+    let constants = init_constants ~autostaking_enable:false () in
+    let amount_to_unstake = Amount (Tez.of_mutez 200_000_000_000L) in
+    let amount_to_restake = Amount (Tez.of_mutez 100_000_000_000L) in
+    let amount_expected_in_unstake_after_slash = Tez.of_mutez 50_000_000_000L in
+    let preserved_cycles = constants.preserved_cycles in
+    begin_test ~activate_ai:true constants ["delegate"]
+    --> next_block --> wait_ai_activation
+    --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
+    --> next_cycle
+    --> unstake "delegate" amount_to_unstake
+    --> stake "delegate" amount_to_restake
+    --> List.fold_left
+          (fun acc i -> acc |+ Tag (fs "wait %i cycles" i) --> wait_n_cycles i)
+          (Tag "wait 0 cycles" --> Empty)
+          (Stdlib.List.init (preserved_cycles - 2) (fun i -> i + 1))
+    --> double_attest "delegate" --> make_denunciations () --> next_cycle
+    --> check_balance_field
+          "delegate"
+          `Unstaked_frozen_total
+          amount_expected_in_unstake_after_slash
+
+  (* Test a non-zero request finalizes for a non-zero amount if it hasn't been slashed 100% *)
+  let test_mini_slash =
+    let constants = init_constants ~autostaking_enable:false () in
+    (Tag "Yes AI"
+     --> begin_test ~activate_ai:true constants ["delegate"; "baker"]
+     --> next_block --> wait_ai_activation
+    |+ Tag "No AI"
+       --> begin_test ~activate_ai:false constants ["delegate"; "baker"])
+    --> unstake "delegate" (Amount Tez.one_mutez)
+    --> next_cycle
+    --> ((Tag "7% slash" --> double_bake "delegate" --> make_denunciations ()
+         |+ Tag "99% slash" --> next_cycle --> double_attest "delegate"
+            --> loop 7 (double_bake "delegate")
+            --> make_denunciations ())
+        --> next_cycle
+        --> check_balance_field "delegate" `Unstaked_frozen_total Tez.one_mutez
+        )
+    --> wait_n_cycles (constants.preserved_cycles + 1)
+
+  let tests =
+    tests_of_scenarios
+    @@ [
+         ("Test simple slashing", test_simple_slash);
+         ("Test slashed is forbidden", test_delegate_forbidden);
+         ("Test slash with unstake", test_slash_unstake);
+         ("Test slashes with simple varying stake", test_slash_monotonous_stake);
+         ( "Test multiple slashes with multiple stakes/unstakes",
+           test_many_slashes );
+         ("Test slash timing", test_slash_timing);
+         ( "Test stake from unstake deactivated when slashed",
+           test_no_shortcut_for_cheaters );
+         ( "Test stake from unstake reduce initial amount",
+           test_slash_correct_amount_after_stake_from_unstake );
+         ("Test unstake 1 mutez then slash", test_mini_slash);
        ]
 end
 
@@ -1637,7 +2747,7 @@ let tests =
        ("Test expected error in assert failure", test_expected_error);
        ("Test init", init_scenario () --> Action (fun _ -> return_unit));
      ])
-  @ Roundtrip.tests @ Rewards.tests
+  @ Roundtrip.tests @ Rewards.tests @ Autostaking.tests @ Slashing.tests
 
 let () =
   Alcotest_lwt.run

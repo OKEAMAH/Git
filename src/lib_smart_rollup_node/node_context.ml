@@ -74,12 +74,10 @@ type rw = [`Read | `Write] t
 type ro = [`Read] t
 
 let get_operator node_ctxt purpose =
-  Purpose.Map.find purpose node_ctxt.config.operators
+  Purpose.find_operator purpose node_ctxt.config.operators
 
 let is_operator node_ctxt pkh =
-  Purpose.Map.exists
-    (fun _ operator -> Signature.Public_key_hash.(operator = pkh))
-    node_ctxt.config.operators
+  Purpose.mem_operator pkh node_ctxt.config.operators
 
 let is_accuser node_ctxt = node_ctxt.config.mode = Accuser
 
@@ -91,9 +89,9 @@ let can_inject node_ctxt (op_kind : Operation_kind.t) =
   Configuration.can_inject node_ctxt.config.mode op_kind
 
 let check_op_in_whitelist_or_bailout_mode (node_ctxt : _ t) whitelist =
-  let operator = get_operator node_ctxt Purpose.Operating in
+  let operator = get_operator node_ctxt Operating in
   match operator with
-  | Some operator ->
+  | Some (Single operator) ->
       error_unless
         (is_bailout node_ctxt
         || List.mem ~equal:Signature.Public_key_hash.equal operator whitelist)
@@ -135,6 +133,11 @@ let unlock {lockfile; _} =
   Lwt.finalize
     (fun () -> Lwt_unix.lockf lockfile Unix.F_ULOCK 0)
     (fun () -> Lwt_unix.close lockfile)
+
+let processing_lockfile_path ~data_dir =
+  Filename.concat data_dir "processing_lock"
+
+let gc_lockfile_path ~data_dir = Filename.concat data_dir "gc_lock"
 
 let make_kernel_logger event ?log_kernel_debug_file logs_dir =
   let open Lwt_syntax in
@@ -760,9 +763,8 @@ let find_messages node_ctxt messages_hash =
   let* msg = Store.Messages.read node_ctxt.store.messages messages_hash in
   match msg with
   | None -> return_none
-  | Some (messages, block_hash) ->
-      let* header = header_of_hash node_ctxt block_hash in
-      let* pred_header = header_of_hash node_ctxt header.header.predecessor in
+  | Some (messages, pred_hash) ->
+      let* pred_header = header_of_hash node_ctxt pred_hash in
       let* grand_parent_header =
         header_of_hash node_ctxt pred_header.header.predecessor
       in
@@ -798,7 +800,7 @@ let get_messages_without_proto_messages node_ctxt =
       let* msg = Store.Messages.read node_ctxt.store.messages messages_hash in
       match msg with
       | None -> return_none
-      | Some (messages, _block_hash) -> return_some messages)
+      | Some (messages, _pred_hash) -> return_some messages)
     Merkelized_payload_hashes_hash.pp
     node_ctxt
 
@@ -811,13 +813,13 @@ let get_num_messages {store; _} hash =
         "Could not retrieve number of messages for inbox witness %a"
         Merkelized_payload_hashes_hash.pp
         hash
-  | Some (messages, _block_hash) -> return (List.length messages)
+  | Some (messages, _pred_hash) -> return (List.length messages)
 
-let save_messages {store; _} key ~block_hash messages =
+let save_messages {store; _} key ~predecessor messages =
   Store.Messages.append
     store.messages
     ~key
-    ~header:block_hash
+    ~header:predecessor
     ~value:(messages :> string list)
 
 let get_full_l2_block node_ctxt block_hash =
@@ -1126,6 +1128,9 @@ let gc node_ctxt ~(level : int32) =
             Block_hash.pp
             hash
       | Some {context; _} ->
+          let* gc_lockfile =
+            Utils.lock (gc_lockfile_path ~data_dir:node_ctxt.data_dir)
+          in
           let*! () = Event.calling_gc ~gc_level ~head_level:level in
           let*! () = save_gc_info node_ctxt ~at_level:level ~gc_level in
           (* Start both node and context gc asynchronously *)
@@ -1135,7 +1140,8 @@ let gc node_ctxt ~(level : int32) =
             let open Lwt_syntax in
             let* () = Context.wait_gc_completion node_ctxt.context
             and* () = Store.wait_gc_completion node_ctxt.store in
-            Event.gc_finished ~gc_level ~head_level:level
+            let* () = Event.gc_finished ~gc_level ~head_level:level in
+            Utils.unlock gc_lockfile
           in
           Lwt.dont_wait gc_waiter (fun _exn -> ()) ;
           return_unit)
@@ -1154,7 +1160,12 @@ module Internal_for_tests = struct
       kind =
     let open Lwt_result_syntax in
     let rollup_address = Address.zero in
-    let operators = Purpose.Map.empty in
+    let mode = Configuration.Observer in
+    let*? operators =
+      Purpose.make_operator
+        ~needed_purposes:(Configuration.purposes_of_mode mode)
+        []
+    in
     let loser_mode = Loser_mode.no_failures in
     let l1_blocks_cache_size = Configuration.default_l1_blocks_cache_size in
     let l2_blocks_cache_size = Configuration.default_l2_blocks_cache_size in
@@ -1171,7 +1182,7 @@ module Internal_for_tests = struct
           metrics_addr = None;
           reconnection_delay = 5.;
           fee_parameters = Configuration.default_fee_parameters;
-          mode = Observer;
+          mode;
           loser_mode;
           dal_node_endpoint = None;
           dac_observer_endpoint = None;

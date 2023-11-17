@@ -47,26 +47,6 @@ let update_activity ctxt last_cycle =
             return (ctxt, delegate :: deactivated)
           else return (ctxt, deactivated))
 
-let update_forbidden_delegates ctxt ~new_cycle =
-  let open Lwt_result_syntax in
-  let*! ctxt = Delegate_storage.reset_forbidden_delegates ctxt in
-  let* selection_for_new_cycle =
-    Stake_storage.get_selected_distribution ctxt new_cycle
-  in
-  List.fold_left_es
-    (fun ctxt (delegate, _stake) ->
-      let* current_deposits =
-        Delegate_storage.current_frozen_deposits ctxt delegate
-      in
-      if Tez_repr.(current_deposits = zero) then
-        (* If the delegate's current deposit remains at zero then we add it to
-           the forbidden set. *)
-        let*! ctxt = Delegate_storage.forbid_delegate ctxt delegate in
-        return ctxt
-      else return ctxt)
-    ctxt
-    selection_for_new_cycle
-
 let delegate_has_revealed_nonces delegate unrevelead_nonces_set =
   not (Signature.Public_key_hash.Set.mem delegate unrevelead_nonces_set)
 
@@ -112,7 +92,7 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
       if sufficient_participation && has_revealed_nonces then
         (* Sufficient participation: we pay the rewards *)
         let+ ctxt, payed_rewards_receipts =
-          Delegate_staking_parameters.pay_rewards
+          Shared_stake.pay_rewards
             ctxt
             ~active_stake
             ~source:`Attesting_rewards
@@ -133,6 +113,56 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
         (ctxt, payed_rewards_receipts @ balance_updates))
     (ctxt, [])
     delegates
+
+let adjust_frozen_stakes ctxt :
+    (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t =
+  let open Lwt_result_syntax in
+  Stake_storage.fold_on_active_delegates_with_minimal_stake_es
+    ctxt
+    ~order:`Undefined
+    ~init:(ctxt, [])
+    ~f:(fun delegate (ctxt, balance_updates) ->
+      let* ({own_frozen; _} as full_staking_balance :
+             Full_staking_balance_repr.t) =
+        Stake_storage.get_full_staking_balance ctxt delegate
+      in
+      let*? optimal_frozen =
+        Stake_context.optimal_frozen_wrt_delegated_without_ai
+          ctxt
+          full_staking_balance
+      in
+      let* deposit_limit =
+        Delegate_storage.frozen_deposits_limit ctxt delegate
+      in
+      let optimal_frozen =
+        match deposit_limit with
+        | None -> optimal_frozen
+        | Some deposit_limit -> Tez_repr.min optimal_frozen deposit_limit
+      in
+      let* ctxt, new_balance_updates =
+        if Tez_repr.(optimal_frozen > own_frozen) then
+          let*? optimal_to_stake = Tez_repr.(optimal_frozen -? own_frozen) in
+          Staking.stake
+            ctxt
+            ~for_next_cycle_use_only_after_slashing:true
+            ~amount:(`At_most optimal_to_stake)
+            ~sender:delegate
+            ~delegate
+        else if Tez_repr.(optimal_frozen < own_frozen) then
+          let*? to_unstake = Tez_repr.(own_frozen -? optimal_frozen) in
+          Staking.request_unstake
+            ctxt
+            ~for_next_cycle_use_only_after_slashing:true
+            ~sender_contract:Contract_repr.(Implicit delegate)
+            ~delegate
+            to_unstake
+        else
+          Staking.finalize_unstake
+            ctxt
+            ~for_next_cycle_use_only_after_slashing:true
+            Contract_repr.(Implicit delegate)
+      in
+      return (ctxt, new_balance_updates @ balance_updates))
 
 let cycle_end ctxt last_cycle =
   let open Lwt_result_syntax in
@@ -158,7 +188,12 @@ let cycle_end ctxt last_cycle =
       ctxt
       ~new_cycle
   in
-  let* ctxt = update_forbidden_delegates ctxt ~new_cycle in
+  let* ctxt, autostake_balance_updates =
+    match Staking.staking_automation ctxt with
+    | Manual_staking -> return (ctxt, [])
+    | Auto_staking -> adjust_frozen_stakes ctxt
+  in
+  let* ctxt = Forbidden_delegates_storage.update_at_cycle_end ctxt ~new_cycle in
   let* ctxt = Stake_storage.clear_at_cycle_end ctxt ~new_cycle in
   let* ctxt = Delegate_sampler.clear_outdated_sampling_data ctxt ~new_cycle in
   let*! ctxt = Delegate_staking_parameters.activate ctxt ~new_cycle in
@@ -166,25 +201,24 @@ let cycle_end ctxt last_cycle =
   let* ctxt =
     Adaptive_issuance_storage.update_stored_rewards_at_cycle_end ctxt ~new_cycle
   in
-  let balance_updates = slashing_balance_updates @ attesting_balance_updates in
+  let balance_updates =
+    slashing_balance_updates @ attesting_balance_updates
+    @ autostake_balance_updates
+  in
   return (ctxt, balance_updates, deactivated_delegates)
 
 let init_first_cycles ctxt =
   let open Lwt_result_syntax in
   let preserved = Constants_storage.preserved_cycles ctxt in
-  let* ctxt =
-    List.fold_left_es
-      (fun ctxt c ->
-        let cycle = Cycle_repr.of_int32_exn (Int32.of_int c) in
-        let* ctxt = Stake_storage.snapshot ctxt in
-        (* NB: we need to take several snapshots because
-           select_distribution_for_cycle deletes the snapshots *)
-        Delegate_sampler.select_distribution_for_cycle
-          ctxt
-          ~slashings:Signature.Public_key_hash.Map.empty
-          cycle)
-      ctxt
-      Misc.(0 --> preserved)
-  in
-  let cycle = (Raw_context.current_level ctxt).cycle in
-  update_forbidden_delegates ~new_cycle:cycle ctxt
+  List.fold_left_es
+    (fun ctxt c ->
+      let cycle = Cycle_repr.of_int32_exn (Int32.of_int c) in
+      let* ctxt = Stake_storage.snapshot ctxt in
+      (* NB: we need to take several snapshots because
+         select_distribution_for_cycle deletes the snapshots *)
+      Delegate_sampler.select_distribution_for_cycle
+        ctxt
+        ~slashings:Signature.Public_key_hash.Map.empty
+        cycle)
+    ctxt
+    Misc.(0 --> preserved)

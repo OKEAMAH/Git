@@ -871,6 +871,7 @@ module Constants : sig
       launch_ema_threshold : int32;
       adaptive_rewards_params : adaptive_rewards_params;
       activation_vote_enable : bool;
+      autostaking_enable : bool;
     }
 
     type issuance_weights = {
@@ -2053,7 +2054,7 @@ module Zk_rollup : sig
   end
 end
 
-(** This module re-exports definitions from {!Receipt_repr}. *)
+(** This module re-exports definitions from {!Receipt_repr} and {!Staker_repr}. *)
 module Receipt : sig
   module Token : sig
     type 'token t =
@@ -2068,15 +2069,31 @@ module Receipt : sig
     val pp : 'token t -> Format.formatter -> 'token -> unit
   end
 
-  type staker =
+  type unstaked_frozen_staker =
     | Single of Contract.t * Signature.public_key_hash
     | Shared of Signature.public_key_hash
+
+  type frozen_staker = private
+    | Baker of Signature.public_key_hash
+    | Single_staker of {
+        staker : Contract.t;
+        delegate : Signature.public_key_hash;
+      }
+    | Shared_between_stakers of {delegate : Signature.public_key_hash}
+
+  val frozen_baker : Signature.public_key_hash -> frozen_staker
+
+  val frozen_single_staker :
+    staker:Contract.t -> delegate:Signature.public_key_hash -> frozen_staker
+
+  val frozen_shared_between_stakers :
+    delegate:Signature.public_key_hash -> frozen_staker
 
   type 'token balance =
     | Contract : Contract.t -> Tez.t balance
     | Block_fees : Tez.t balance
-    | Deposits : staker -> Tez.t balance
-    | Unstaked_deposits : staker * Cycle.t -> Tez.t balance
+    | Deposits : frozen_staker -> Tez.t balance
+    | Unstaked_deposits : unstaked_frozen_staker * Cycle.t -> Tez.t balance
     | Nonce_revelation_rewards : Tez.t balance
     | Attesting_rewards : Tez.t balance
     | Baking_rewards : Tez.t balance
@@ -2112,6 +2129,7 @@ module Receipt : sig
     | Protocol_migration
     | Subsidy
     | Simulation
+    | Delayed_operation of {operation_hash : Operation_hash.t}
 
   type balance_update_item = private
     | Balance_update_item :
@@ -2155,9 +2173,15 @@ end
 (** This module re-exports definitions from {!Delegate_storage},
    {!Delegate_consensus_key}, {!Delegate_missed_attestations_storage},
    {!Delegate_slashed_deposits_storage}, {!Delegate_cycles},
-   {!Delegate_rewards}. *)
+   {!Delegate_rewards}, and {!Forbidden_delegates_storage}. *)
 module Delegate : sig
   val check_not_tz4 : Signature.public_key_hash -> unit tzresult
+
+  val frozen_deposits_limit :
+    context -> public_key_hash -> Tez.t option tzresult Lwt.t
+
+  val set_frozen_deposits_limit :
+    context -> public_key_hash -> Tez.t option -> context Lwt.t
 
   val fold :
     context ->
@@ -2206,11 +2230,12 @@ module Delegate : sig
 
   val punish_double_signing :
     context ->
+    operation_hash:Operation_hash.t ->
     Misbehaviour.t ->
     public_key_hash ->
     Level.t ->
     rewarded:public_key_hash ->
-    context tzresult Lwt.t
+    (context * bool) tzresult Lwt.t
 
   type level_participation = Participated | Didn't_participate
 
@@ -2242,10 +2267,8 @@ module Delegate : sig
 
   val deactivated : context -> public_key_hash -> bool tzresult Lwt.t
 
-  (** See {!Delegate_storage.is_forbidden_delegate}. *)
+  (** See {!Forbidden_delegates_storage.is_forbidden}. *)
   val is_forbidden_delegate : t -> public_key_hash -> bool
-
-  val forbid_delegate : t -> public_key_hash -> t Lwt.t
 
   (** See {!Delegate_activation_storage.last_cycle_before_deactivation}. *)
   val last_cycle_before_deactivation :
@@ -2359,7 +2382,9 @@ module Delegate : sig
       context ->
       Signature.Public_key_hash.t ->
       (Cycle.t * Staking_parameters_repr.t) list tzresult Lwt.t
+  end
 
+  module Shared_stake : sig
     val pay_rewards :
       context ->
       ?active_stake:Stake_repr.t ->
@@ -2400,9 +2425,9 @@ module Staking : sig
     to [delegate]. *)
   val stake :
     context ->
+    amount:[`At_most of Tez.t | `Exactly of Tez.t] ->
     sender:public_key_hash ->
     delegate:public_key_hash ->
-    Tez.t ->
     (context * Receipt.balance_updates) tzresult Lwt.t
 
   (** [request_unstake ctxt ~sender_contract ~delegate amount] records a request
@@ -2425,6 +2450,10 @@ module Staking : sig
     the requested stake undergone in between. *)
   val finalize_unstake :
     context -> Contract.t -> (context * Receipt.balance_updates) tzresult Lwt.t
+
+  (** Staking can be either automated or manual. If Adaptive Issuance is
+      enabled, staking must be manual. *)
+  val check_manual_staking_allowed : context -> unit tzresult
 end
 
 (** This module re-exports definitions from {!Voting_period_repr} and
@@ -4278,6 +4307,8 @@ module Kind : sig
 
   type event = Event_kind
 
+  type set_deposits_limit = Set_deposits_limit_kind
+
   type increase_paid_storage = Increase_paid_storage_kind
 
   type update_consensus_key = Update_consensus_key_kind
@@ -4322,6 +4353,7 @@ module Kind : sig
     | Delegation_manager_kind : delegation manager
     | Event_manager_kind : event manager
     | Register_global_constant_manager_kind : register_global_constant manager
+    | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Increase_paid_storage_manager_kind : increase_paid_storage manager
     | Update_consensus_key_manager_kind : update_consensus_key manager
     | Transfer_ticket_manager_kind : transfer_ticket manager
@@ -4459,6 +4491,9 @@ and _ manager_operation =
       value : Script.lazy_expr;
     }
       -> Kind.register_global_constant manager_operation
+  | Set_deposits_limit :
+      Tez.t option
+      -> Kind.set_deposits_limit manager_operation
   | Increase_paid_storage : {
       amount_in_bytes : Z.t;
       destination : Contract_hash.t;
@@ -4709,6 +4744,8 @@ module Operation : sig
     val register_global_constant_case :
       Kind.register_global_constant Kind.manager case
 
+    val set_deposits_limit_case : Kind.set_deposits_limit Kind.manager case
+
     val increase_paid_storage_case :
       Kind.increase_paid_storage Kind.manager case
 
@@ -4763,6 +4800,8 @@ module Operation : sig
       val update_consensus_key_case : Kind.update_consensus_key case
 
       val register_global_constant_case : Kind.register_global_constant case
+
+      val set_deposits_limit_case : Kind.set_deposits_limit case
 
       val increase_paid_storage_case : Kind.increase_paid_storage case
 
@@ -4828,6 +4867,13 @@ module Stake_distribution : sig
 
     val delegate_current_baking_power :
       context -> Signature.public_key_hash -> int64 tzresult Lwt.t
+  end
+
+  module Internal_for_tests : sig
+    val get_selected_distribution :
+      context ->
+      Cycle.t ->
+      (Signature.public_key_hash * Stake_repr.t) list tzresult Lwt.t
   end
 end
 
@@ -5084,8 +5130,8 @@ module Token : sig
   type container =
     [ `Contract of Contract.t
     | `Collected_commitments of Blinded_public_key_hash.t
-    | `Frozen_deposits of Receipt.staker
-    | `Unstaked_frozen_deposits of Receipt.staker * Cycle.t
+    | `Frozen_deposits of Receipt.frozen_staker
+    | `Unstaked_frozen_deposits of Receipt.unstaked_frozen_staker * Cycle.t
     | `Block_fees
     | `Frozen_bonds of Contract.t * Bond_id.t ]
 

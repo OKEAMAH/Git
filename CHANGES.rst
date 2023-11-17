@@ -57,20 +57,24 @@ Node
   was emitted every time a block was applied using an old protocol
   where its plugin was removed.
 
+- **Breaking change** Bumped the Octez snapshot version from ``6`` to
+  ``7`` which fixes the corrupted generation of tar rolling and full
+  snapshots. It is still possible to import previous version snapshots
+  but snapshots in version 7 are not retro-compatible with previous
+  Octez versions (MR :gl:`!10785`).
+
 Client
 ------
-
-- For the protocols that support it, added an
-  ``operation_with_legacy_attestation_name`` and
-  ``operation_with_legacy_attestation_name.unsigned`` registered encodings that
-  support legacy ``endorsement`` kind instead of ``attestation``. (MR
-  :gl:`!9832`)
 
 - Fixed indentation of the stacks outputted by the ``normalize stack``
   command. (MR :gl:`!9944`)
 
 - Added options to temporarily extend the context with other contracts
   and extra big maps in Michelson commands. (MR :gl:`!9946`)
+
+- Added a ``run_step`` RPC in the plugin and a ``run michelson code``
+  client command allowing to run a single Michelson instruction or a
+  sequence of Michelson instructions on a given stack. (MR :gl:`!9935`)
 
 Baker
 -----
@@ -119,6 +123,17 @@ Smart Rollup node
 - Added the argument ``cors-headers`` and ``cors-origins`` to specify respectively the
   allowed headers and origins. (MR :gl:`!10571`)
 
+- Fix header in messages store to use predecessor hash to avoid missing pointer
+  in case of reorganization and GC. (MR :gl:`!10847`)
+
+- Added a garbage collection mechanism that cleans historical data before the LCC.
+  (MRs :gl:`!10050`, :gl:`!10135`, :gl:`!10236`, :gl:`!10237`, :gl:`!10452`)
+
+- Added a ``history-mode`` option, which can be either ``archive`` or
+  ``full``. In ``archive``, the default, the rollup node has the whole L2 chain
+  history, no GC happens. In ``full`` the rollup node retains data for possible
+  refutations. (MRs :gl:`!10475`, :gl:`!10695`)
+
 Smart Rollup client
 -------------------
 
@@ -144,3 +159,8 @@ Miscellaneous
 -------------
 
 - Beta scripts to build Debian and RedHat packages have been added to the tree.
+
+- New Recommended Rust version 1.65.0 instead of 1.64.0.
+
+- Extended the Micheline lexer to allow primitives starting with the
+  underscore symbol (``_``). (MR :gl:`!10782`)

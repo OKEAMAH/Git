@@ -8,22 +8,60 @@ use evm_execution::precompiles::precompile_set;
 use evm_execution::{run_transaction, Config};
 
 use tezos_ethereum::block::BlockConstants;
-use tezos_smart_rollup_host::runtime::Runtime;
-use tezos_smart_rollup_mock::MockHost;
 
-use bytes::Bytes;
 use hex_literal::hex;
-use primitive_types::H160;
-use primitives::{HashMap, B160, B256};
+use primitive_types::{H160, H256, U256};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
-use std::str::FromStr;
 use thiserror::Error;
 
+use crate::evalhost::EvalHost;
+use crate::fillers::process;
+use crate::helpers::construct_folder_path;
 use crate::models::{Env, FillerSource, SpecName, TestSuite};
+use crate::{Opt, ReportValue};
 
-use crate::helpers::{
-    network_to_specid, parse_and_get_cmp, purify_network, u256_to_h256,
-};
+const MAP_CALLER_KEYS: [(H256, H160); 6] = [
+    (
+        H256(hex!(
+            "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"
+        )),
+        H160(hex!("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")),
+    ),
+    (
+        H256(hex!(
+            "c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4"
+        )),
+        H160(hex!("cd2a3d9f938e13cd947ec05abc7fe734df8dd826")),
+    ),
+    (
+        H256(hex!(
+            "044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d"
+        )),
+        H160(hex!("82a978b3f5962a5b0957d9ee9eef472ee55b42f1")),
+    ),
+    (
+        H256(hex!(
+            "6a7eeac5f12b409d42028f66b0b2132535ee158cfda439e3bfdd4558e8f4bf6c"
+        )),
+        H160(hex!("c9c5a15a403e41498b6f69f6f89dd9f5892d21f7")),
+    ),
+    (
+        H256(hex!(
+            "a95defe70ebea7804f9c3be42d20d24375e2a92b9d9666b832069c5f3cd423dd"
+        )),
+        H160(hex!("3fb1cd2cd96c6d5c0b5eb3322d807b34482481d4")),
+    ),
+    (
+        H256(hex!(
+            "fe13266ff57000135fb9aa854bbfe455d8da85b21f626307bf3263a0c2a8e7fe"
+        )),
+        H160(hex!("dcc5ba93a1ed7e045690d722f2bf460a51c61415")),
+    ),
+];
 
 #[derive(Debug, Error)]
 pub enum TestError {
@@ -32,210 +70,37 @@ pub enum TestError {
     #[error("Serde yaml error")]
     SerdeDeserializeYAML(#[from] serde_yaml::Error),
     #[error("Unknown private key: {private_key:?}")]
-    UnknownPrivateKey { private_key: B256 },
+    UnknownPrivateKey { private_key: H256 },
 }
 
-fn process_fillers<Host: Runtime>(
-    host: &mut Host,
-    filler_source: FillerSource,
-    spec_name: &SpecName,
-) -> bool {
-    let mut good_state = true;
-    for (name, fillers) in filler_source.0.into_iter() {
-        println!("\nProcessing checks with filler: {}Filler\n", name);
-        for filler_expectation in fillers.expect {
-            for filler_network in filler_expectation.network {
-                let cmp_spec_id = parse_and_get_cmp(&filler_network);
-                let network = purify_network(&filler_network);
-                let check_network_id = network_to_specid(&network) as u8;
-                let current_network_config_id =
-                    network_to_specid(&spec_name.to_str()) as u8;
-
-                if !cmp_spec_id(&current_network_config_id, &check_network_id) {
-                    continue;
-                }
-
-                println!("CONFIG NETWORK ---- {}", spec_name.to_str());
-                println!("CHECK  NETWORK ---- {}\n", filler_network);
-
-                for (account, info) in filler_expectation.result.iter() {
-                    let hex_address = if account.contains("0x") {
-                        account.to_owned()
-                    } else {
-                        "0x".to_owned() + account
-                    };
-                    let address =
-                        H160::from_str(&hex_address).expect("Expect valid hex digit(s).");
-                    let account = EthereumAccount::from_address(&address).unwrap();
-                    let mut invalid_state = false;
-
-                    // Check when fields are available in the source filler file
-
-                    if let Some(_shouldnotexist) = &info.shouldnotexist {
-                        if account.balance(host).is_ok() {
-                            println!("Account {} should not exist.", hex_address);
-                            invalid_state = true;
-                        } else {
-                            println!("Account {} rightfully do not exist.", hex_address)
-                        }
-                    }
-
-                    if let Some(balance) = info.balance {
-                        match account.balance(host) {
-                            Ok(current_balance) => {
-                                if current_balance != balance {
-                                    invalid_state = true;
-                                    println!("Account {}: balance don't match current one, {} was expected, but got {}.", hex_address, balance, current_balance)
-                                } else {
-                                    println!("Account {}: balance matched.", hex_address)
-                                }
-                            }
-                            Err(_) => {
-                                invalid_state = true;
-                                println!(
-                                    "Account {} should have a balance.",
-                                    hex_address
-                                );
-                            }
-                        }
-                    }
-
-                    if let Some(code) = &info.code {
-                        match account.code(host) {
-                            Ok(current_code) => {
-                                let current_code: Bytes = current_code.into();
-                                if current_code != code {
-                                    invalid_state = true;
-                                    println!("Account {}: code don't match current one, {:?} was expected, but got {:?}.", hex_address, code, current_code)
-                                } else {
-                                    println!("Account {}: code matched.", hex_address)
-                                }
-                            }
-                            Err(_) => {
-                                invalid_state = true;
-                                println!("Account {} should have a code.", hex_address);
-                            }
-                        }
-                    }
-
-                    if let Some(nonce) = info.nonce {
-                        match account.nonce(host) {
-                            Ok(current_nonce) => {
-                                if current_nonce != nonce.into() {
-                                    invalid_state = true;
-                                    println!("Account {}: nonce don't match current one, {} was expected, but got {}.", hex_address, nonce, current_nonce)
-                                } else {
-                                    println!("Account {}: nonce matched.", hex_address)
-                                }
-                            }
-                            Err(_) => {
-                                invalid_state = true;
-                                println!("Account {} should have a nonce.", hex_address);
-                            }
-                        }
-                    }
-
-                    if let Some(storage) = &info.storage {
-                        if storage.is_empty() {
-                            println!(
-                                "Account {}: storage matched (both empty).",
-                                hex_address
-                            )
-                        }
-                        for (index, value) in storage.iter() {
-                            match account.get_storage(host, &u256_to_h256(index)) {
-                                Ok(current_storage_value) => {
-                                    let storage_value = u256_to_h256(value);
-                                    if current_storage_value != storage_value {
-                                        invalid_state = true;
-                                        println!("Account {}: storage don't match current one, {} was expected, but got {}.", hex_address, storage_value, current_storage_value)
-                                    } else {
-                                        println!(
-                                            "Account {}: storage matched.",
-                                            hex_address
-                                        )
-                                    }
-                                }
-                                Err(_) => {
-                                    invalid_state = true;
-                                    println!(
-                                        "Account {} should have a storage.",
-                                        hex_address
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    if invalid_state {
-                        // One invalid state will cause the entire test to be a failure
-                        good_state = false;
-                        println!("==> [INVALID STATE]\n")
-                    } else {
-                        println!("==> [CORRECT STATE]\n")
-                    }
-                }
-            }
-        }
-    }
-    if good_state {
-        println!("TX INTERPRETATION: GOOD STATE")
-    } else {
-        println!("TX INTERPRETATION: BAD STATE")
-    }
-
-    good_state
-}
-
-pub fn run_test(path: &Path) -> Result<(), TestError> {
+pub fn run_test(
+    path: &Path,
+    report_map: &mut HashMap<String, ReportValue>,
+    report_key: String,
+    opt: &Opt,
+    output_file: &mut File,
+) -> Result<(), TestError> {
     let json_reader = std::fs::read(path).unwrap();
     let suit: TestSuite = serde_json::from_reader(&*json_reader)?;
+    let execution_buffer = Vec::new();
+    let buffer = RefCell::new(execution_buffer);
+    let mut host = EvalHost::default_with_buffer(buffer);
 
-    let map_caller_keys: HashMap<B256, B160> = [
-        (
-            B256(hex!(
-                "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"
-            )),
-            B160(hex!("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")),
-        ),
-        (
-            B256(hex!(
-                "c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4"
-            )),
-            B160(hex!("cd2a3d9f938e13cd947ec05abc7fe734df8dd826")),
-        ),
-        (
-            B256(hex!(
-                "044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d"
-            )),
-            B160(hex!("82a978b3f5962a5b0957d9ee9eef472ee55b42f1")),
-        ),
-        (
-            B256(hex!(
-                "6a7eeac5f12b409d42028f66b0b2132535ee158cfda439e3bfdd4558e8f4bf6c"
-            )),
-            B160(hex!("c9c5a15a403e41498b6f69f6f89dd9f5892d21f7")),
-        ),
-        (
-            B256(hex!(
-                "a95defe70ebea7804f9c3be42d20d24375e2a92b9d9666b832069c5f3cd423dd"
-            )),
-            B160(hex!("3fb1cd2cd96c6d5c0b5eb3322d807b34482481d4")),
-        ),
-        (
-            B256(hex!(
-                "fe13266ff57000135fb9aa854bbfe455d8da85b21f626307bf3263a0c2a8e7fe"
-            )),
-            B160(hex!("dcc5ba93a1ed7e045690d722f2bf460a51c61415")),
-        ),
-    ]
-    .into();
+    let map_caller_keys: HashMap<H256, H160> = MAP_CALLER_KEYS.into();
 
     for (name, unit) in suit.0.into_iter() {
-        println!("Running unit test: {}", name);
-        let mut successful_outcome = true;
-        let full_filler_path = "tests/".to_owned() + &unit._info.source;
-        println!("Filler source: {}", &full_filler_path);
+        let precompiles = precompile_set::<EvalHost>();
+        let mut evm_account_storage = init_account_storage().unwrap();
+
+        writeln!(output_file, "Running unit test: {}", name).unwrap();
+        let full_filler_path =
+            construct_folder_path(&unit._info.source, &opt.eth_tests, &None);
+        writeln!(
+            host.buffer.borrow_mut(),
+            "Filler source: {}",
+            &full_filler_path.to_str().unwrap()
+        )
+        .unwrap();
         let filler_path = Path::new(&full_filler_path);
         let reader = std::fs::read(filler_path).unwrap();
         let filler_source = if unit._info.source.contains(".json") {
@@ -250,34 +115,47 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
             None
         };
 
-        let mut host = MockHost::default();
-        let precompiles = precompile_set::<MockHost>();
-        let mut evm_account_storage = init_account_storage().unwrap();
-
-        println!("\n[START] Accounts initialisation");
+        writeln!(
+            host.buffer.borrow_mut(),
+            "\n[START] Accounts initialisation"
+        )
+        .unwrap();
         for (address, info) in unit.pre.into_iter() {
             let h160_address: H160 = address.as_fixed_bytes().into();
-            println!("\nAccount is {}", h160_address);
+            writeln!(host.buffer.borrow_mut(), "\nAccount is {}", h160_address).unwrap();
             let mut account =
                 EthereumAccount::from_address(&address.as_fixed_bytes().into()).unwrap();
             if info.nonce != 0 {
                 account.set_nonce(&mut host, info.nonce.into()).unwrap();
-                println!("Nonce is set for {} : {}", address, info.nonce);
+                writeln!(
+                    host.buffer.borrow_mut(),
+                    "Nonce is set for {} : {}",
+                    address,
+                    info.nonce
+                )
+                .unwrap();
             }
             account.balance_add(&mut host, info.balance).unwrap();
-            println!("Balance for {} was added : {}", address, info.balance);
+            writeln!(
+                host.buffer.borrow_mut(),
+                "Balance for {} was added : {}",
+                address,
+                info.balance
+            )
+            .unwrap();
             account.set_code(&mut host, &info.code).unwrap();
-            println!("Code was set for {}", address);
+            writeln!(host.buffer.borrow_mut(), "Code was set for {}", address).unwrap();
             for (index, value) in info.storage.iter() {
-                account
-                    .set_storage(&mut host, &u256_to_h256(index), &u256_to_h256(value))
-                    .unwrap();
+                account.set_storage(&mut host, index, value).unwrap();
             }
         }
-        println!("\n[END] Accounts initialisation\n");
+        writeln!(
+            host.buffer.borrow_mut(),
+            "\n[END] Accounts initialisation\n"
+        )
+        .unwrap();
 
         let mut env = Env::default();
-        env.cfg.chain_id = 1; // Mainnet
 
         // BlockEnv
         env.block.number = unit.env.current_number;
@@ -285,14 +163,6 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
         env.block.timestamp = unit.env.current_timestamp;
         env.block.gas_limit = unit.env.current_gas_limit;
         env.block.basefee = unit.env.current_base_fee.unwrap_or_default();
-        env.block.difficulty = unit.env.current_difficulty;
-        // After the Merge prevrandao replaces mix_hash field in block and replaced
-        // difficulty opcode in EVM.
-        let mut prevrandao_bytes: [u8; 32] = [0; 32];
-        unit.env
-            .current_difficulty
-            .to_little_endian(&mut prevrandao_bytes);
-        env.block.prevrandao = Some(prevrandao_bytes.into());
 
         // TxEnv
         env.tx.caller = if let Some(caller) =
@@ -307,36 +177,35 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
             .transaction
             .gas_price
             .unwrap_or_else(|| unit.transaction.max_fee_per_gas.unwrap_or_default());
-        env.tx.gas_priority_fee = unit.transaction.max_priority_fee_per_gas;
 
         // post and execution
         for (spec_name, tests) in unit.post {
             let config = match spec_name {
-                // TODO: enable all configs when parallelization is enabled.
-                // SpecName::Berlin => Config::berlin(),
-                // SpecName::London => Config::london(),
-                // SpecName::Merge => Config::merge(),
                 SpecName::Shanghai => Config::shanghai(),
-                /* Other tests are ignored */ _ => continue,
+                // TODO: enable future configs when parallelization is enabled.
+                // Other tests are ignored
+                _ => continue,
             };
 
-            env.cfg.spec_id = spec_name.to_spec_id();
-
-            // TODO: use id
-            for (_id, test) in tests.into_iter().enumerate() {
-                let gas_limit =
-                    *unit.transaction.gas_limit.get(test.indexes.gas).unwrap();
+            for test_execution in tests.into_iter() {
+                let gas_limit = *unit
+                    .transaction
+                    .gas_limit
+                    .get(test_execution.indexes.gas)
+                    .unwrap();
                 let gas_limit = u64::try_from(gas_limit).unwrap_or(u64::MAX);
                 env.tx.gas_limit = gas_limit;
                 env.tx.data = unit
                     .transaction
                     .data
-                    .get(test.indexes.data)
+                    .get(test_execution.indexes.data)
                     .unwrap()
                     .clone();
-                env.tx.value = *unit.transaction.value.get(test.indexes.value).unwrap();
-
-                env.tx.access_list = Vec::new(); // TODO: not used for now
+                env.tx.value = *unit
+                    .transaction
+                    .value
+                    .get(test_execution.indexes.value)
+                    .unwrap();
                 env.tx.transact_to = unit.transaction.to;
 
                 let block_constants = BlockConstants {
@@ -346,7 +215,7 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
                     timestamp: env.block.timestamp,
                     gas_limit: env.block.gas_limit.as_u64(),
                     base_fee_per_gas: env.block.basefee,
-                    chain_id: env.cfg.chain_id.into(),
+                    chain_id: U256::from(1337),
                 };
                 let address = env.tx.transact_to.map(|addr| addr.to_fixed_bytes().into());
                 let caller = env.tx.caller.to_fixed_bytes().into();
@@ -382,54 +251,71 @@ pub fn run_test(path: &Path) -> Result<(), TestError> {
                             }
                             None => "[INVALID]",
                         };
-                        println!("\nOutcome status: {}", outcome_status);
+                        writeln!(
+                            host.buffer.borrow_mut(),
+                            "\nOutcome status: {}",
+                            outcome_status
+                        )
+                        .unwrap();
                     }
-                    Err(e) => println!("\nA test failed due to {:?}", e),
+                    Err(e) => writeln!(
+                        host.buffer.borrow_mut(),
+                        "\nA test failed due to {:?}",
+                        e
+                    )
+                    .unwrap(),
                 }
 
-                // check the state after the execution of the result
-                successful_outcome = match filler_source.clone() {
-                    Some(filler_source) => {
-                        let new_outcome =
-                            process_fillers(&mut host, filler_source, &spec_name);
-                        if successful_outcome {
-                            new_outcome
-                        } else {
-                            // if the outcome was a failure once it will stay a failure
-                            successful_outcome
-                        }
+                write!(host.buffer.borrow_mut(), "\nFinal check: ").unwrap();
+                match (&test_execution.expect_exception, &exec_result) {
+                    (None, Ok(_)) => {
+                        writeln!(host.buffer.borrow_mut(), "No unexpected exception.")
+                            .unwrap()
                     }
-                    None => {
-                        println!(
-                            "\nNo filler file, the outcome of this test is uncertain."
-                        );
-                        false
+                    (Some(_), Err(_)) => {
+                        writeln!(host.buffer.borrow_mut(), "Exception was expected.")
+                            .unwrap()
                     }
-                };
-
-                print!("\nFinal check: ");
-                match (&test.expect_exception, &exec_result) {
-                    (None, Ok(_)) => println!("No unexpected exception."),
-                    (Some(_), Err(_)) => println!("Exception was expected."),
                     _ => {
-                        println!("\nSomething unexpected happened for test {}.", name);
-                        println!(
+                        writeln!(
+                            host.buffer.borrow_mut(),
+                            "\nSomething unexpected happened for test {}.",
+                            name
+                        )
+                        .unwrap();
+                        writeln!(
+                            host.buffer.borrow_mut(),
                             "Expected exception is the following: {:?}",
-                            test.expect_exception
-                        );
-                        println!(
+                            test_execution.expect_exception
+                        )
+                        .unwrap();
+                        writeln!(
+                            host.buffer.borrow_mut(),
                             "Furter details on the execution result: {:?}",
                             exec_result
                         )
+                        .unwrap();
                     }
                 }
-                println!("\n=======> OK! <=======\n")
+                writeln!(host.buffer.borrow_mut(), "\n=======> OK! <=======\n").unwrap();
             }
-            if successful_outcome {
-                println!("FINAL INTERPRETATION: SUCCESS\n")
-            } else {
-                println!("FINAL INTERPRETATION: FAILURE\n")
-            }
+
+            // Check the state after the execution of the result.
+            match filler_source.clone() {
+                Some(filler_source) => process(
+                    &mut host,
+                    filler_source,
+                    &spec_name,
+                    report_map,
+                    report_key.clone(),
+                    output_file,
+                ),
+                None => writeln!(
+                    host.buffer.borrow_mut(),
+                    "No filler file, the outcome of this test is uncertain."
+                )
+                .unwrap(),
+            };
         }
     }
     Ok(())

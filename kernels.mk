@@ -9,6 +9,7 @@ SDK_DIR=src/kernel_sdk
 RISC_V_SANDBOX_DIR=src/risc_v/sandbox
 RISC_V_INTERPRETER_DIR=src/risc_v/interpreter
 RISC_V_DUMMY_DIR=src/risc_v/dummy_kernel
+RISC_V_TESTS_DIR=src/risc_v/tests
 EVM_DIR=src/kernel_evm
 DEMO_DIR=src/kernel_tx_demo
 SEQUENCER_DIR=src/kernel_sequencer
@@ -32,6 +33,15 @@ risc-v-sandbox:
 .PHONY: risc-v-interpreter
 risc-v-interpreter:
 	@make -C $(RISC_V_INTERPRETER_DIR) build
+
+.PHONY: evm-execution
+evm-execution:
+	@make -C src/kernel_evm build-evm-execution
+
+.PHONY: evm-evaluation-assessor
+evm-evaluation-assessor:
+	@make -C src/kernel_evm build-evm-evaluation
+	@cp src/kernel_evm/target/release/evm-evaluation $@
 
 evm_kernel_unstripped.wasm::
 	@make -C src/kernel_evm build
@@ -64,7 +74,7 @@ endif
 evm_benchmark_installer.wasm::
 	@${MAKE} -f kernels.mk \
 	EVM_CONFIG=src/kernel_evm/config/benchmarking.yaml \
-	EVM_KERNEL_FEATURES=benchmark \
+	EVM_KERNEL_FEATURES=benchmark,debug \
 	evm_unstripped_installer.wasm
 	cp evm_unstripped_installer.wasm $@
 
@@ -103,8 +113,12 @@ risc-v-dummy.elf:
 	@make -C ${RISC_V_DUMMY_DIR} build
 	@ln -f ${RISC_V_DUMMY_DIR}/target/riscv64gc-unknown-none-elf/release/risc-v-dummy $@
 
+.PHONY: risc-v-tests
+risc-v-tests:
+	@make -C ${RISC_V_TESTS_DIR} build
+
 .PHONY: build
-build: ${KERNELS} kernel_sdk risc-v-sandbox risc-v-interpreter
+build: ${KERNELS} evm-evaluation-assessor evm-execution kernel_sdk risc-v-sandbox risc-v-interpreter risc-v-tests
 
 .PHONY: build-dev-deps
 build-dev-deps: build-deps
@@ -122,6 +136,7 @@ build-deps:
 	@make -C ${RISC_V_SANDBOX_DIR} build-deps
 	@make -C ${RISC_V_INTERPRETER_DIR} build-deps
 	@make -C ${RISC_V_DUMMY_DIR} build-deps
+	@make -C ${RISC_V_TESTS_DIR} build-deps
 	@make -C ${EVM_DIR} build-deps
 	@make -C ${SEQUENCER_DIR} build-deps
 	@make -C ${DEMO_DIR} build-deps
@@ -137,7 +152,7 @@ test:
 	@make -C ${DEMO_DIR} test
 
 .PHONY: check
-check:
+check: build-dev-deps
 	@make -C ${SDK_DIR} check
 	@make -C ${RISC_V_SANDBOX_DIR} check
 	@make -C ${RISC_V_INTERPRETER_DIR} check
@@ -145,6 +160,7 @@ check:
 	@make -C ${EVM_DIR} check
 	@make -C ${SEQUENCER_DIR} check
 	@make -C ${DEMO_DIR} check
+	@make -C ${RISC_V_TESTS_DIR} check
 
 .PHONY: publish-sdk-deps
 publish-sdk-deps: build-deps
@@ -166,3 +182,4 @@ clean:
 	@make -C ${DEMO_DIR} clean
 	@rm -rf ${EVM_KERNEL_PREIMAGES}
 	@rm -f risc-v-sandbox
+	@make -C ${RISC_V_TESTS_DIR} clean

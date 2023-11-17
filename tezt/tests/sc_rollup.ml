@@ -44,7 +44,6 @@ open Sc_rollup_helpers
 
 let default_wasm_pvm_revision = function
   | Protocol.Alpha -> "2.0.0-r3"
-  | Protocol.Oxford -> "2.0.0-r2"
   | Protocol.Nairobi -> "2.0.0-r1"
 
 let assert_some_client_command cmd ~__LOC__ ?hooks client =
@@ -320,21 +319,20 @@ let test_rollup_node_running ~kind =
       description = "the smart contract rollup node runs on correct address";
     }
     ~kind
-  @@ fun _protocol rollup_node rollup_client sc_rollup _tezos_node _tezos_client
-    ->
+  @@ fun _protocol
+             rollup_node
+             _rollup_client
+             sc_rollup
+             _tezos_node
+             _tezos_client ->
   let metrics_port = string_of_int (Port.fresh ()) in
   let metrics_addr = "localhost:" ^ metrics_port in
   let* () =
     Sc_rollup_node.run rollup_node sc_rollup ["--metrics-addr"; metrics_addr]
   in
   let* sc_rollup_from_rpc =
-    Sc_rollup_helpers.call_rpc
-      ~smart_rollup_node:rollup_node
-      ~service:"global/smart_rollup_address"
-  in
-  let sc_rollup_from_rpc = JSON.as_string sc_rollup_from_rpc in
-  let*! sc_rollup_from_client =
-    Sc_rollup_client.sc_rollup_address ~hooks rollup_client
+    Sc_rollup_node.RPC.call rollup_node
+    @@ Sc_rollup_rpc.get_global_smart_rollup_address ()
   in
   if sc_rollup_from_rpc <> sc_rollup then
     failwith
@@ -342,12 +340,6 @@ let test_rollup_node_running ~kind =
          "Expecting %s, got %s when we query the sc rollup node RPC address"
          sc_rollup
          sc_rollup_from_rpc)
-  else if sc_rollup_from_client <> sc_rollup then
-    failwith
-      (Printf.sprintf
-         "Expecting %s, got %s when the client asks for the sc rollup address"
-         sc_rollup
-         sc_rollup_from_client)
   else
     let url = "http://" ^ metrics_addr ^ "/metrics" in
     let*! metrics = Curl.get_raw url in
@@ -636,8 +628,7 @@ let bake_levels ?hook n client =
     Then continues baking until an event happens.
     waiting for the rollup node to catch up to the client's level.
     Returns the event value. *)
-let bake_until_event ?hook ?(at_least = 0) ?(timeout = 15.) client
-    sc_rollup_node event =
+let bake_until_event ?hook ?(at_least = 0) ?(timeout = 15.) client event =
   let event_value = ref None in
   let _ =
     let* return_value = event in
@@ -662,8 +653,6 @@ let bake_until_event ?hook ?(at_least = 0) ?(timeout = 15.) client
               timeout
         | e -> raise e)
   in
-  (* Let the sc rollup node catch up *)
-  let* _ = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:3. in
   return updated_level
 
 (** Bake [at_least] levels.
@@ -677,7 +666,7 @@ let bake_until_lpc_updated ?hook ?at_least ?timeout client sc_rollup_node =
       "smart_rollup_node_commitment_lpc_updated.v0"
     @@ fun json -> JSON.(json |-> "level" |> as_int_opt)
   in
-  bake_until_event ?hook ?at_least ?timeout client sc_rollup_node event
+  bake_until_event ?hook ?at_least ?timeout client event
 
 (** helpers that send a message then bake until the rollup node
     executes an output message (whitelist_update) *)
@@ -689,7 +678,6 @@ let send_messages_then_bake_until_rollup_node_execute_output_message
       ~timeout:5.0
       ~at_least:(commitment_period + challenge_window + 1)
       client
-      rollup_node
     @@ wait_for_included_successful_operation
          rollup_node
          ~operation_kind:"execute_outbox_message"
@@ -1058,12 +1046,18 @@ let test_rollup_node_boots_into_initial_state ~kind =
   Check.(level = init_level)
     Check.int
     ~error_msg:"Current level has moved past origination level (%L = %R)" ;
-  let* ticks = Sc_rollup_helpers.total_ticks sc_rollup_node in
+  let* ticks =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_total_ticks ()
+  in
   Check.(ticks = 0)
     Check.int
     ~error_msg:"Unexpected initial tick count (%L = %R)" ;
 
-  let* status = Sc_rollup_helpers.status sc_rollup_node in
+  let* status =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_status ()
+  in
   let expected_status =
     match kind with
     | "arith" -> "Halted"
@@ -1116,7 +1110,10 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
       Sc_rollup_node.RPC.call sc_rollup_node
       @@ Sc_rollup_rpc.get_global_block_state_hash ()
     in
-    let* prev_ticks = Sc_rollup_helpers.total_ticks sc_rollup_node in
+    let* prev_ticks =
+      Sc_rollup_node.RPC.call sc_rollup_node
+      @@ Sc_rollup_rpc.get_global_block_total_ticks ()
+    in
     let message = sf "%d %d + value" i ((i + 2) * 2) in
     let* () =
       match forwarder with
@@ -1185,7 +1182,10 @@ let test_rollup_node_advances_pvm_state ?regression ~title ?boot_sector
     Check.(state_hash <> prev_state_hash)
       Check.string
       ~error_msg:"State hash has not changed (%L <> %R)" ;
-    let* ticks = Sc_rollup_helpers.total_ticks sc_rollup_node in
+    let* ticks =
+      Sc_rollup_node.RPC.call sc_rollup_node
+      @@ Sc_rollup_rpc.get_global_block_total_ticks ()
+    in
     Check.(ticks >= prev_ticks)
       Check.int
       ~error_msg:"Tick counter did not advance (%L >= %R)" ;
@@ -3062,18 +3062,42 @@ let bailout_mode_recover_bond_starting_no_commitment_staked ~kind =
         ~error_msg:
           "The operator should have a stake nor holds a frozen balance.")
   in
+  let* staked_on =
+    Client.RPC.call tezos_client
+    @@ RPC
+       .get_chain_block_context_smart_rollups_smart_rollup_staker_staked_on_commitment
+         ~sc_rollup
+         operator
+  in
+  let staked_on =
+    (* We do not really care about the value *)
+    Option.map (Fun.const ()) (JSON.as_opt staked_on)
+  in
+  let () =
+    Check.(
+      (staked_on = None)
+        (option unit)
+        ~error_msg:
+          "The operator should have a stake but no commitment attached to it.")
+  in
   Log.info
     "Start a rollup node in bailout mode, operator still has stake but no \
      attached commitment" ;
-  let sc_rollup_node =
+  let sc_rollup_node' =
     Sc_rollup_node.create
       Bailout
       tezos_node
       ~base_dir:(Client.base_dir tezos_client)
       ~default_operator:operator
   in
-  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
-  let* () = Client.bake_for_and_wait tezos_client in
+  let* () = Sc_rollup_node.run sc_rollup_node' sc_rollup []
+  and* () =
+    bake_until_event tezos_client
+    @@ Sc_rollup_node.wait_for
+         sc_rollup_node'
+         "smart_rollup_node_daemon_exit_bailout_mode.v0"
+         (Fun.const (Some ()))
+  in
   Log.info "Check that the bond have been recovered by the rollup node" ;
   let* frozen_balance =
     Client.RPC.call tezos_client
@@ -3768,7 +3792,10 @@ let test_outbox_message_generic ?supports ?regression ?expected_error
     let parameters = "37" in
     let message_index = 0 in
     let check_expected_outbox () =
-      let* outbox = Sc_rollup_helpers.outbox ~outbox_level rollup_node in
+      let* outbox =
+        Sc_rollup_node.RPC.call rollup_node
+        @@ Sc_rollup_rpc.get_global_block_outbox ~outbox_level ()
+      in
       Log.info "Outbox is %s" (JSON.encode outbox) ;
 
       match expected_error with
@@ -4197,9 +4224,10 @@ let test_rpcs ~kind
       ["global"; "block"; "head"; "state_hash"]
   in
   let* _outbox =
-    Sc_rollup_helpers.outbox
-      ~outbox_level:l2_finalied_block_level
-      sc_rollup_node
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_outbox
+         ~outbox_level:l2_finalied_block_level
+         ()
   in
   let*! _head =
     Sc_rollup_client.rpc_get ~hooks sc_client ["global"; "tezos_head"]
@@ -4213,7 +4241,7 @@ let test_rpcs ~kind
   let l2_block_hash' = JSON.(l2_block |-> "block_hash" |> as_string) in
   Check.((l2_block_hash' = l2_block_hash) string)
     ~error_msg:"L2 head is from full block is %L but should be %R" ;
-  if Protocol.number protocol >= 019 then (
+  if Protocol.number protocol >= 018 then (
     let whitelist = [Constant.bootstrap1.public_key_hash] in
     let* _, _, sc_rollup =
       setup_rollup ~protocol ~alias:"rollup2" ~kind ~whitelist node client
@@ -4267,11 +4295,11 @@ let test_messages_processed_by_commitment ~kind =
   let* {commitment = {inbox_level; _}; hash = _} =
     get_last_stored_commitment ~__LOC__ ~hooks sc_rollup_client
   in
-
   let* current_level =
-    Sc_rollup_helpers.state_current_level
-      ~block:(string_of_int inbox_level)
-      sc_rollup_node
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_state_current_level
+         ~block:(string_of_int inbox_level)
+         ()
   in
   Check.((current_level = inbox_level) int)
     ~error_msg:
@@ -4508,7 +4536,7 @@ let test_bootstrap_smart_rollup_originated =
 
 let test_bootstrap_private_smart_rollup_originated =
   register_test
-    ~supports:(From_protocol 019)
+    ~supports:(From_protocol 018)
     ~__FILE__
     ~tags:["bootstrap"; "parameter"; "private"]
     ~title:"Bootstrap private smart rollups are private"
@@ -4583,7 +4611,7 @@ let test_private_rollup_whitelist ?check_error ~regression ~description
     ~commit_publisher ~whitelist =
   test_l1_scenario
     ~regression
-    ~supports:(From_protocol 019)
+    ~supports:(From_protocol 018)
     ~whitelist_enable:true
     ~whitelist
     ~src:Constant.bootstrap1.public_key_hash
@@ -4630,7 +4658,7 @@ let test_private_rollup_non_whitelisted_staker =
 let test_private_rollup_node_publish_in_whitelist =
   let commitment_period = 3 in
   test_full_scenario
-    ~supports:(From_protocol 019)
+    ~supports:(From_protocol 018)
     ~whitelist_enable:true
     ~whitelist:[Constant.bootstrap1.public_key_hash]
     ~operator:Constant.bootstrap1.alias
@@ -4655,7 +4683,7 @@ let test_private_rollup_node_publish_in_whitelist =
 let test_private_rollup_node_publish_not_in_whitelist =
   let operator = Constant.bootstrap1.alias in
   test_full_scenario
-    ~supports:(From_protocol 019)
+    ~supports:(From_protocol 018)
     ~whitelist_enable:true
     ~whitelist:[Constant.bootstrap2.public_key_hash]
     ~operator
@@ -4689,7 +4717,7 @@ let test_rollup_whitelist_update ~kind =
     ~kind
     ~whitelist_enable:true
     ~whitelist
-    ~supports:(From_protocol 019)
+    ~supports:(From_protocol 018)
     ~commitment_period
     ~challenge_window
     ~operator:Constant.bootstrap1.public_key_hash
@@ -4821,7 +4849,7 @@ let test_rollup_whitelist_outdated_update ~kind =
     ~kind
     ~whitelist_enable:true
     ~whitelist
-    ~supports:(From_protocol 019)
+    ~supports:(From_protocol 018)
     ~commitment_period
     ~challenge_window
   @@ fun _protocol rollup_node rollup_client rollup_addr _node client ->
@@ -5182,7 +5210,7 @@ let register ~kind ~protocols =
     test_consecutive_commitments
     protocols
     ~kind ;
-  test_cement_ignore_commitment ~kind [Nairobi; Alpha] ;
+  test_cement_ignore_commitment ~kind protocols ;
   bailout_mode_not_publish ~kind protocols ;
   bailout_mode_fail_to_start_without_operator ~kind protocols ;
   bailout_mode_fail_operator_no_stake ~kind protocols ;

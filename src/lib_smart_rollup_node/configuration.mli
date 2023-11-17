@@ -44,9 +44,6 @@ type mode =
   - 0 < [min_batch_elements] <= [max_batch_elements]
 *)
 type batcher = {
-  simulate : bool;
-      (** If [true], the batcher will simulate the messages it receives, in an
-          incremental context, before queuing them. *)
   min_batch_elements : int;
       (** The minimum number elements in a batch for it to be produced when the
           batcher receives new messages. *)
@@ -196,7 +193,7 @@ val description_of_mode : mode -> string
 val config_filename : data_dir:string -> string
 
 (** [purposes_of_mode mode] returns purposes associated with the provided mode. *)
-val purposes_of_mode : mode -> Purpose.t list
+val purposes_of_mode : mode -> Purpose.ex_purpose list
 
 (** [operation_kinds_of_mode mode] returns operation kinds with the provided mode. *)
 val operation_kinds_of_mode : mode -> Operation_kind.t list
@@ -207,7 +204,7 @@ val can_inject : mode -> Operation_kind.t -> bool
 
 (** [purpose_matches_mode mode purpose] returns true if and only if the given [mode]
     supports the given [purpose]. *)
-val purpose_matches_mode : mode -> Purpose.t -> bool
+val purpose_matches_mode : mode -> 'kind Purpose.t -> bool
 
 (** Number of levels the refutation player waits until trying to play
     for a game state it already played before. *)
@@ -253,7 +250,7 @@ module Cli : sig
     boot_sector_file:string option ->
     operators:
       [< `Default of Signature.public_key_hash
-      | `Purpose of Purpose.t * Signature.public_key_hash ]
+      | `Purpose of Purpose.ex_purpose * Signature.public_key_hash ]
       list ->
     index_buffer_size:int option ->
     irmin_cache_size:int option ->
@@ -283,7 +280,7 @@ module Cli : sig
     boot_sector_file:string option ->
     operators:
       [< `Default of Signature.public_key_hash
-      | `Purpose of Purpose.t * Signature.public_key_hash ]
+      | `Purpose of Purpose.ex_purpose * Signature.public_key_hash ]
       list ->
     index_buffer_size:int option ->
     irmin_cache_size:int option ->

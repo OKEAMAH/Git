@@ -403,7 +403,7 @@ let tezt_lib =
   external_lib
     ~js_compatible:false
     "tezt"
-    V.(at_least "3.1.1")
+    V.(at_least "4.0.0" && less_than "5.0.0")
     ~main_module:"Tezt"
 
 let tezt_core_lib =
@@ -8247,15 +8247,12 @@ let octez_scoru_wasm_debugger_plugin =
     ~deps:[]
     ~synopsis:"Plugin interface for the Octez Smart Rollup WASM Debugger"
 
-let _octez_scoru_wasm_debugger =
-  public_exe
-    (sf "octez-smart-rollup-wasm-debugger")
-    ~internal_name:(sf "main_wasm_debugger")
-    ~path:"src/bin_wasm_debugger"
-    ~opam:"octez-smart-rollup-wasm-debugger"
-    ~synopsis:"Tezos: Debugger for the smart rollups’ WASM kernels"
+let octez_scoru_wasm_debugger_lib =
+  public_lib
+    "octez-smart-rollup-wasm-debugger-lib"
+    ~path:"src/lib_wasm_debugger"
+    ~synopsis:"Tezos: Library used for the Smart Rollups' WASM debugger"
     ~release_status:Released
-    ~with_macos_security_framework:true
     ~deps:
       [
         octez_base |> open_ ~m:"TzPervasives";
@@ -8276,11 +8273,44 @@ let _octez_scoru_wasm_debugger =
         lambda_term;
       ]
 
+let _octez_scoru_wasm_debugger =
+  public_exe
+    (sf "octez-smart-rollup-wasm-debugger")
+    ~internal_name:(sf "main_wasm_debugger")
+    ~path:"src/bin_wasm_debugger"
+    ~opam:"octez-smart-rollup-wasm-debugger"
+    ~synopsis:"Tezos: Debugger for the smart rollups’ WASM kernels"
+    ~release_status:Released
+    ~with_macos_security_framework:true
+    ~deps:[octez_scoru_wasm_debugger_lib |> open_]
+
+(* Container of the registered sublibraries of [octez-evm-node] *)
+let registered_octez_evm_node_libs : Sub_lib.container =
+  Sub_lib.make_container ()
+
+(* Registers a sub-library in the [octez-evm-node] package. *)
+let octez_evm_node_lib : Sub_lib.maker =
+  Sub_lib.sub_lib
+    ~package_synopsis:"Octez EVM node libraries"
+    ~container:registered_octez_evm_node_libs
+    ~package:"octez-evm-node-libs"
+
+let evm_node_config =
+  octez_evm_node_lib
+    "evm_node_config"
+    ~path:"src/bin_evm_node/config"
+    ~synopsis:"Configuration for the EVM node"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        octez_base_unix;
+        octez_stdlib_unix |> open_;
+      ]
+
 let evm_node_lib_prod_encoding =
-  private_lib
+  octez_evm_node_lib
     "evm_node_lib_prod_encoding"
     ~path:"src/bin_evm_node/lib_prod/encodings"
-    ~opam:"octez-node-lib-prod-encoding"
     ~synopsis:
       "EVM encodings for the EVM node and plugin for the WASM Debugger [prod \
        version]"
@@ -8288,10 +8318,9 @@ let evm_node_lib_prod_encoding =
       [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
 let evm_node_lib_prod =
-  private_lib
+  octez_evm_node_lib
     "evm_node_lib_prod"
     ~path:"src/bin_evm_node/lib_prod"
-    ~opam:"octez-node-lib-prod"
     ~synopsis:
       "An implementation of a subset of Ethereum JSON-RPC API for the EVM \
        rollup [prod version]"
@@ -8305,13 +8334,13 @@ let evm_node_lib_prod =
         octez_stdlib_unix |> open_;
         evm_node_lib_prod_encoding |> open_;
         lwt_exit;
+        evm_node_config |> open_;
       ]
 
 let evm_node_lib_dev_encoding =
-  private_lib
+  octez_evm_node_lib
     "evm_node_lib_dev_encoding"
     ~path:"src/bin_evm_node/lib_dev/encodings"
-    ~opam:"octez-node-lib-dev-encoding"
     ~synopsis:
       "EVM encodings for the EVM node and plugin for the WASM Debugger [dev \
        version]"
@@ -8319,10 +8348,9 @@ let evm_node_lib_dev_encoding =
       [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
 let evm_node_lib_dev =
-  private_lib
+  octez_evm_node_lib
     "evm_node_lib_dev"
     ~path:"src/bin_evm_node/lib_dev"
-    ~opam:"octez-node-lib-dev"
     ~synopsis:
       "An implementation of a subset of Ethereum JSON-RPC API for the EVM \
        rollup [dev version]"
@@ -8336,6 +8364,7 @@ let evm_node_lib_dev =
         octez_stdlib_unix |> open_;
         evm_node_lib_dev_encoding |> open_;
         lwt_exit;
+        evm_node_config |> open_;
       ]
 
 let _octez_evm_node_tests =
@@ -8377,6 +8406,7 @@ let _evm_node =
         evm_node_lib_prod;
         evm_node_lib_dev;
         evm_node_lib_dev_encoding |> open_;
+        evm_node_config |> open_;
       ]
     ~bisect_ppx:Yes
 
@@ -8774,5 +8804,19 @@ let () =
      It contains the following libraries:\n\n"
   in
   Sub_lib.pp_documentation_of_container ~header fmt registered_octez_l2_libs
+
+(* Generate documentation index for [octez-evm-node-libs] *)
+let () =
+  write "src/bin_evm_node/index.mld" @@ fun fmt ->
+  let header =
+    "{0 Octez-evm-node-libs: octez EVM Node libraries}\n\n\
+     This is a package containing some libraries used by the EVM Node of \
+     Octez.\n\n\
+     It contains the following libraries:\n\n"
+  in
+  Sub_lib.pp_documentation_of_container
+    ~header
+    fmt
+    registered_octez_evm_node_libs
 
 let () = postcheck ~exclude ()

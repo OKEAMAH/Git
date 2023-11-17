@@ -41,16 +41,14 @@ module Token : sig
   val pp : 'token t -> Format.formatter -> 'token -> unit
 end
 
-type staker = Staker_repr.staker =
-  | Single of Contract_repr.t * Signature.public_key_hash
-  | Shared of Signature.public_key_hash
-
 (** Places where tokens can be found in the ledger's state. *)
 type 'token balance =
   | Contract : Contract_repr.t -> Tez_repr.t balance
   | Block_fees : Tez_repr.t balance
-  | Deposits : staker -> Tez_repr.t balance
-  | Unstaked_deposits : staker * Cycle_repr.t -> Tez_repr.t balance
+  | Deposits : Frozen_staker_repr.t -> Tez_repr.t balance
+  | Unstaked_deposits :
+      Unstaked_frozen_staker_repr.t * Cycle_repr.t
+      -> Tez_repr.t balance
   | Nonce_revelation_rewards : Tez_repr.t balance
   | Attesting_rewards : Tez_repr.t balance
   | Baking_rewards : Tez_repr.t balance
@@ -93,6 +91,9 @@ type update_origin =
   | Protocol_migration  (** Update from a protocol migration *)
   | Subsidy  (** Update from an inflationary subsidy  *)
   | Simulation  (** Simulation of an operation **)
+  | Delayed_operation of {operation_hash : Operation_hash.t}
+      (** Delayed application of an operation, whose hash is given. E.g. for
+          operations that take effect only at the end of the cycle. *)
 
 (** Compares two origins. *)
 val compare_update_origin : update_origin -> update_origin -> int

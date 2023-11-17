@@ -256,9 +256,13 @@ let test_multi_protocols =
     ~__FILE__
     ~title:"proxy_server multi protocols"
     ~tags:["multi_protocols"]
+    ~supports:Has_predecessor
   @@ fun to_protocol ->
   match Protocol.previous_protocol to_protocol with
-  | None -> Lwt.return_unit
+  | None ->
+      Test.fail
+        "this test requires the protocol to have a predecessor, which is \
+         supposed to be the case thanks to the ~supports it was declared with"
   | Some from_protocol ->
       (* Create a context with 3 blocks in [from_protocol] and 2 blocks in [to_protocol] *)
       let patch_config =
@@ -291,7 +295,7 @@ let test_multi_protocols =
           @@ RPC.get_chain_block_helper_attestation_rights ?block ()
         in
         check proto_attestation_rights ;
-        if Protocol.(number proto <= number Oxford) then (
+        if Protocol.(number proto <= number Nairobi + 1) then (
           let* proto_endorsing_rights =
             Client.RPC.call client
             @@ RPC.get_chain_block_helper_endorsing_rights ?block ()

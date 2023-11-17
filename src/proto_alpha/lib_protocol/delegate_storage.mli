@@ -31,6 +31,7 @@
     It also groups "trivial" getters/setters related to delegates.
 
     It is responsible for maintaining the following tables:
+    - {!Storage.Contract.Frozen_deposits_limit}
     - {!Storage.Delegates}
 *)
 
@@ -115,30 +116,19 @@ val initial_frozen_deposits_of_previous_cycle :
 val current_frozen_deposits :
   Raw_context.t -> Signature.public_key_hash -> Tez_repr.t tzresult Lwt.t
 
+val frozen_deposits_limit :
+  Raw_context.t ->
+  Signature.Public_key_hash.t ->
+  Tez_repr.t option tzresult Lwt.t
+
+val set_frozen_deposits_limit :
+  Raw_context.t ->
+  Signature.Public_key_hash.t ->
+  Tez_repr.t option ->
+  Raw_context.t Lwt.t
+
 val spendable_balance :
   Raw_context.t -> Signature.public_key_hash -> Tez_repr.tez tzresult Lwt.t
-
-(** [is_forbidden_delegate ctxt delegate] returns [true] if the given
-    [delegate] is forbidden to bake or attest. This means that its
-    current frozen deposit is equal to zero. Returns [false]
-    otherwise. *)
-val is_forbidden_delegate : Raw_context.t -> Signature.Public_key_hash.t -> bool
-
-(** [forbid_delegate ctxt delegate] adds [delegate] to the set of
-    forbidden delegates and stores the updated set, which prevents this
-    delegate from baking or attesting. *)
-val forbid_delegate :
-  Raw_context.t -> Signature.Public_key_hash.t -> Raw_context.t Lwt.t
-
-(** [load_forbidden_delegates ctxt] reads from the storage the saved
-    set of forbidden delegates and sets the raw context's in-memory
-    cached value. *)
-val load_forbidden_delegates : Raw_context.t -> Raw_context.t tzresult Lwt.t
-
-(** [reset_forbidden_delegates ctxt delegates] overwrites the
-    forbidden delegates set with an empty set in both storage and
-    in-memory. *)
-val reset_forbidden_delegates : Raw_context.t -> Raw_context.t Lwt.t
 
 val drain :
   Raw_context.t ->

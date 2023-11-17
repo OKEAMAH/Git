@@ -25,11 +25,10 @@
 (*****************************************************************************)
 
 (* Declaration order must respect the version order. *)
-type t = Nairobi | Oxford | Alpha
+type t = Nairobi | Alpha
 
 let encoding =
-  Data_encoding.string_enum
-    [("nairobi", Nairobi); ("oxford", Oxford); ("alpha", Alpha)]
+  Data_encoding.string_enum [("nairobi", Nairobi); ("alpha", Alpha)]
 
 type constants =
   | Constants_sandbox
@@ -43,17 +42,13 @@ let constants_to_string = function
   | Constants_mainnet_with_chain_id -> "mainnet-with-chain-id"
   | Constants_test -> "test"
 
-let name = function
-  | Alpha -> "Alpha"
-  | Nairobi -> "Nairobi"
-  | Oxford -> "Oxford"
+let name = function Alpha -> "Alpha" | Nairobi -> "Nairobi"
 
-let number = function Nairobi -> 017 | Oxford -> 018 | Alpha -> 019
+let number = function Nairobi -> 017 | Alpha -> 018
 
 let directory = function
   | Alpha -> "proto_alpha"
   | Nairobi -> "proto_017_PtNairob"
-  | Oxford -> "proto_018_Proxford"
 
 (* Test tags must be lowercase. *)
 let tag protocol = String.lowercase_ascii (name protocol)
@@ -61,7 +56,6 @@ let tag protocol = String.lowercase_ascii (name protocol)
 let hash = function
   | Alpha -> "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK"
   | Nairobi -> "PtNairobiyssHuh87hEhfVBGCVrK3WnS8Z2FT4ymB5tAa4r1nQf"
-  | Oxford -> "ProxfordSW2S7fvchT1Zgj2avb5UES194neRyYVXoaDGvF9egt8"
 
 let genesis_hash = "ProtoGenesisGenesisGenesisGenesisGenesisGenesk612im"
 
@@ -260,25 +254,25 @@ let write_parameter_file :
   JSON.encode_to_file_u output_file parameters ;
   Lwt.return output_file
 
-let next_protocol = function
-  | Nairobi -> Some Alpha
-  | Oxford -> None
-  | Alpha -> None
+let next_protocol = function Nairobi -> Some Alpha | Alpha -> None
 
-let previous_protocol = function
-  | Alpha -> Some Nairobi
-  | Oxford -> Some Nairobi
-  | Nairobi -> None
+let previous_protocol = function Alpha -> Some Nairobi | Nairobi -> None
 
-let all = [Nairobi; Oxford; Alpha]
+let has_predecessor p = previous_protocol p <> None
+
+let all = [Nairobi; Alpha]
 
 type supported_protocols =
   | Any_protocol
   | From_protocol of int
   | Until_protocol of int
   | Between_protocols of int * int
+  | Has_predecessor
+  | And of supported_protocols list
+  | Or of supported_protocols list
+  | Not of supported_protocols
 
-let is_supported supported_protocols protocol =
+let rec is_supported supported_protocols protocol =
   match supported_protocols with
   | Any_protocol -> true
   | From_protocol n -> number protocol >= n
@@ -286,12 +280,22 @@ let is_supported supported_protocols protocol =
   | Between_protocols (a, b) ->
       let n = number protocol in
       a <= n && n <= b
+  | Has_predecessor -> has_predecessor protocol
+  | And l -> List.for_all (fun sp -> is_supported sp protocol) l
+  | Or l -> List.exists (fun sp -> is_supported sp protocol) l
+  | Not sp -> not (is_supported sp protocol)
 
-let show_supported_protocols = function
+let rec show_supported_protocols = function
   | Any_protocol -> "Any_protocol"
   | From_protocol n -> sf "From_protocol %d" n
   | Until_protocol n -> sf "Until_protocol %d" n
   | Between_protocols (a, b) -> sf "Between_protocol (%d, %d)" a b
+  | Has_predecessor -> "Has_predecessor"
+  | And l ->
+      sf "And [%s]" (String.concat "; " (List.map show_supported_protocols l))
+  | Or l ->
+      sf "Or [%s]" (String.concat "; " (List.map show_supported_protocols l))
+  | Not sp -> sf "Not (%s)" (show_supported_protocols sp)
 
 let iter_on_supported_protocols ~title ~protocols ?(supports = Any_protocol) f =
   match List.filter (is_supported supports) protocols with

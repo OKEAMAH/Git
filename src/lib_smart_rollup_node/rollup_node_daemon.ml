@@ -216,6 +216,11 @@ and update_l2_chain ({node_ctxt; _} as state) ~catching_up
       in
       return_unit
 
+let update_l2_chain state ~catching_up head =
+  Utils.with_lockfile
+    (Node_context.processing_lockfile_path ~data_dir:state.node_ctxt.data_dir)
+  @@ fun () -> update_l2_chain state ~catching_up head
+
 let missing_data_error trace =
   TzTrace.fold
     (fun acc error ->
@@ -294,7 +299,7 @@ let on_layer_1_head ({node_ctxt; _} as state) (head : Layer1.header) =
   let* () = Publisher.cement_commitments () in
   let*! () = Daemon_event.new_heads_processed reorg.new_chain in
   let* () = Refutation_coordinator.process stripped_head in
-  let* () = Batcher.new_head stripped_head in
+  let* () = Batcher.produce_batches () in
   let*! () = Injector.inject ~header:head.header () in
   return_unit
 
@@ -344,8 +349,8 @@ let maybe_recover_bond ({node_ctxt; configuration; _} as state) =
     match operator with
     | None ->
         (* this case can't happen because the bailout mode needs a operator to start*)
-        tzfail (Purpose.Missing_operator Operating)
-    | Some operating_pkh -> (
+        tzfail (Purpose.Missing_operator (Purpose Operating))
+    | Some (Single operating_pkh) -> (
         let module Plugin = (val state.plugin) in
         let* last_published_commitment =
           Plugin.Layer1_helpers.get_last_published_commitment
@@ -363,31 +368,75 @@ let maybe_recover_bond ({node_ctxt; configuration; _} as state) =
             return_unit)
   else return_unit
 
+let make_signers_for_injector operators =
+  let update map (purpose, operator) =
+    match operator with
+    | Purpose.Operator (Single operator) | Operator (Multiple [operator]) ->
+        Signature.Public_key_hash.Map.update
+          operator
+          (function
+            | None -> Some ([operator], [purpose])
+            | Some ([operator], purposes) ->
+                Some ([operator], purpose :: purposes)
+            | Some (operators, purposes) ->
+                invalid_arg
+                  (Format.asprintf
+                     "operator %a appears to be used in another purpose (%a) \
+                      with multiple keys (%a). It can't be reused for another \
+                      purpose %a."
+                     Signature.Public_key_hash.pp
+                     operator
+                     (Format.pp_print_list Purpose.pp_ex_purpose)
+                     purposes
+                     (Format.pp_print_list Signature.Public_key_hash.pp)
+                     operators
+                     Purpose.pp_ex_purpose
+                     purpose))
+          map
+    | Operator (Multiple operators) ->
+        List.fold_left
+          (fun map pkh ->
+            Signature.Public_key_hash.Map.update
+              pkh
+              (function
+                | None -> Some (operators, [purpose])
+                | Some (_operators, purposes) ->
+                    invalid_arg
+                      (Format.asprintf
+                         "operator is already used in another purpose (%a). It \
+                          can't be reused for a purpose with multiple keys."
+                         (Format.pp_print_list Purpose.pp_ex_purpose)
+                         purposes))
+              map)
+          map
+          operators
+  in
+  List.fold_left
+    update
+    Signature.Public_key_hash.Map.empty
+    (Purpose.operators_bindings operators)
+  |> Signature.Public_key_hash.Map.bindings |> List.map snd
+  |> List.sort_uniq (fun (operators, _purposes) (operators', _purposes) ->
+         List.compare Signature.Public_key_hash.compare operators operators')
+  |> List.map (fun (operators, purposes) ->
+         let operation_kinds =
+           List.flatten @@ List.map Purpose.operation_kind purposes
+         in
+         let strategy =
+           match operation_kinds with
+           | [Operation_kind.Add_messages] ->
+               (* For the batcher We delay of 0.5 sec to allow more
+                  operator to get in *)
+               `Delay_block 0.5
+           | _ -> `Each_block
+         in
+         (operators, strategy, operation_kinds))
+
 let run ({node_ctxt; configuration; plugin; _} as state) =
   let open Lwt_result_syntax in
   let module Plugin = (val state.plugin) in
   let start () =
-    let signers =
-      Purpose.Map.bindings node_ctxt.config.operators
-      |> List.fold_left
-           (fun acc (purpose, operator) ->
-             let operation_kinds = Purpose.operation_kind purpose in
-             let operation_kinds =
-               match Signature.Public_key_hash.Map.find operator acc with
-               | None -> operation_kinds
-               | Some kinds -> operation_kinds @ kinds
-             in
-             Signature.Public_key_hash.Map.add operator operation_kinds acc)
-           Signature.Public_key_hash.Map.empty
-      |> Signature.Public_key_hash.Map.bindings
-      |> List.map (fun (operator, operation_kinds) ->
-             let strategy =
-               match operation_kinds with
-               | [Operation_kind.Add_messages] -> `Delay_block 0.5
-               | _ -> `Each_block
-             in
-             (operator, strategy, operation_kinds))
-    in
+    let signers = make_signers_for_injector node_ctxt.config.operators in
     let* () =
       unless (signers = []) @@ fun () ->
       Injector.init
@@ -568,16 +617,28 @@ let plugin_of_first_block cctxt (block : Layer1.header) =
 let run ~data_dir ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
     (configuration : Configuration.t) (cctxt : Client_context.full) =
   let open Lwt_result_syntax in
+  let* () =
+    Tezos_base_unix.Internal_event_unix.enable_default_daily_logs_at
+      ~daily_logs_path:Filename.Infix.(data_dir // "daily_logs")
+  in
   Random.self_init () (* Initialize random state (for reconnection delays) *) ;
   let*! () = Event.starting_node () in
   let open Configuration in
   let* () =
     (* Check that the operators are valid keys. *)
-    Purpose.Map.iter_es
-      (fun _purpose operator ->
-        let+ _pkh, _pk, _skh = Client_keys.get_key cctxt operator in
-        ())
-      configuration.operators
+    List.iter_ep
+      (fun (_purpose, operator) ->
+        let operator_list =
+          match operator with
+          | Purpose.Operator (Single operator) -> [operator]
+          | Operator (Multiple operators) -> operators
+        in
+        List.iter_es
+          (fun operator ->
+            let* _alias, _pk, _sk_uri = Client_keys.get_key cctxt operator in
+            return_unit)
+          operator_list)
+      (Purpose.operators_bindings configuration.operators)
   in
   let* l1_ctxt =
     Layer1.start
@@ -591,7 +652,7 @@ let run ~data_dir ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
   let* predecessor =
     Layer1.fetch_tezos_shell_header l1_ctxt head.header.predecessor
   in
-  let publisher = Purpose.Map.find Operating configuration.operators in
+  let publisher = Purpose.find_operator Operating configuration.operators in
 
   let* protocol, plugin = plugin_of_first_block cctxt head in
   let module Plugin = (val plugin) in
@@ -607,9 +668,12 @@ let run ~data_dir ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
       configuration.sc_rollup_address
   and* lpc =
     Option.filter_map_es
-      (Plugin.Layer1_helpers.get_last_published_commitment
-         cctxt
-         configuration.sc_rollup_address)
+      (function
+        | Purpose.Single operator ->
+            Plugin.Layer1_helpers.get_last_published_commitment
+              cctxt
+              configuration.sc_rollup_address
+              operator)
       publisher
   and* kind =
     Plugin.Layer1_helpers.get_kind cctxt configuration.sc_rollup_address

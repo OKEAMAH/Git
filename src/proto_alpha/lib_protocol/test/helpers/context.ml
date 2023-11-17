@@ -456,6 +456,7 @@ module Delegate = struct
     current_frozen_deposits : Tez.t;
     frozen_deposits : Tez.t;
     staking_balance : Tez.t;
+    frozen_deposits_limit : Tez.t option;
     delegated_contracts : Alpha_context.Contract.t list;
     delegated_balance : Tez.t;
     total_delegated_stake : Tez.t;
@@ -466,6 +467,8 @@ module Delegate = struct
     active_consensus_key : Signature.Public_key_hash.t;
     pending_consensus_keys : (Cycle.t * Signature.Public_key_hash.t) list;
   }
+
+  type stake = {frozen : Tez.t; weighted_delegated : Tez.t}
 
   let info ctxt pkh = Delegate_services.info rpc_ctxt ctxt pkh
 
@@ -487,6 +490,9 @@ module Delegate = struct
     in
     Staking_pseudotoken.Internal_for_tests.to_z pseudotokens
 
+  let frozen_deposits_limit ctxt pkh =
+    Delegate_services.frozen_deposits_limit rpc_ctxt ctxt pkh
+
   let deactivated ctxt pkh = Delegate_services.deactivated rpc_ctxt ctxt pkh
 
   let voting_info ctxt d = Alpha_services.Delegate.voting_info rpc_ctxt ctxt d
@@ -499,6 +505,27 @@ module Delegate = struct
     let open Lwt_result_syntax in
     let* ctxt = get_alpha_ctxt ?policy ctxt in
     return (Delegate.is_forbidden_delegate ctxt pkh)
+
+  let stake_for_cycle ?policy ctxt cycle pkh =
+    let open Lwt_result_wrap_syntax in
+    let* alpha_ctxt = get_alpha_ctxt ?policy ctxt in
+    let*@ stakes =
+      Protocol.Alpha_context.Stake_distribution.Internal_for_tests
+      .get_selected_distribution
+        alpha_ctxt
+        cycle
+    in
+    let stake_opt =
+      List.assoc ~equal:Signature.Public_key_hash.equal pkh stakes
+    in
+    let Protocol.Stake_repr.{frozen; weighted_delegated} =
+      Option.value ~default:Protocol.Stake_repr.zero stake_opt
+    in
+    let frozen = Protocol.Tez_repr.to_mutez frozen |> Tez.of_mutez_exn in
+    let weighted_delegated =
+      Protocol.Tez_repr.to_mutez weighted_delegated |> Tez.of_mutez_exn
+    in
+    return {frozen; weighted_delegated}
 end
 
 module Sc_rollup = struct
@@ -597,7 +624,7 @@ let init_gen tup ?rng_state ?commitments ?bootstrap_balances
     ?cycles_per_voting_period ?sc_rollup_enable ?sc_rollup_arith_pvm_enable
     ?sc_rollup_private_enable ?sc_rollup_riscv_pvm_enable ?dal_enable
     ?zk_rollup_enable ?hard_gas_limit_per_block ?nonce_revelation_threshold ?dal
-    () =
+    ?adaptive_issuance () =
   let open Lwt_result_syntax in
   let n = tup_n tup in
   let*? accounts = Account.generate_accounts ?rng_state n in
@@ -632,6 +659,7 @@ let init_gen tup ?rng_state ?commitments ?bootstrap_balances
       ?hard_gas_limit_per_block
       ?nonce_revelation_threshold
       ?dal
+      ?adaptive_issuance
       bootstrap_accounts
   in
   (blk, tup_get tup contracts)

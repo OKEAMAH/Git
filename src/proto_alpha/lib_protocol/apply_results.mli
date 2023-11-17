@@ -82,14 +82,20 @@ and 'kind contents_result =
   | Vdf_revelation_result :
       Receipt.balance_updates
       -> Kind.vdf_revelation contents_result
-  | Double_attestation_evidence_result :
-      Receipt.balance_updates
+  | Double_attestation_evidence_result : {
+      forbidden_delegate : Signature.public_key_hash option;
+      balance_updates : Receipt.balance_updates;
+    }
       -> Kind.double_attestation_evidence contents_result
-  | Double_preattestation_evidence_result :
-      Receipt.balance_updates
+  | Double_preattestation_evidence_result : {
+      forbidden_delegate : Signature.public_key_hash option;
+      balance_updates : Receipt.balance_updates;
+    }
       -> Kind.double_preattestation_evidence contents_result
-  | Double_baking_evidence_result :
-      Receipt.balance_updates
+  | Double_baking_evidence_result : {
+      forbidden_delegate : Signature.public_key_hash option;
+      balance_updates : Receipt.balance_updates;
+    }
       -> Kind.double_baking_evidence contents_result
   | Activate_account_result :
       Receipt.balance_updates
@@ -161,6 +167,10 @@ and _ successful_manager_operation_result =
       global_address : Script_expr_hash.t;
     }
       -> Kind.register_global_constant successful_manager_operation_result
+  | Set_deposits_limit_result : {
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.set_deposits_limit successful_manager_operation_result
   | Increase_paid_storage_result : {
       balance_updates : Receipt.balance_updates;
       consumed_gas : Gas.Arith.fp;

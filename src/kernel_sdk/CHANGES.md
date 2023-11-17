@@ -4,6 +4,7 @@
 
 ### SDK
 
+- Add michelson `or` and `option`.
 - Add a feature flag `proto-alpha` to enable host functions introduced in
   unreleased protocols.
 - Add `Runtime::reveal_dal_page` to let a kernel request pages from Tezos’ Data
@@ -14,6 +15,7 @@
   with `DEBUG:` and do not print a newline by default.
 - Correctly initialise `MockHost::reboots_remaining` flag for testing outside of `run_level` api.
 - Add `Runtime::reveal_dal_parameters` to let a kernel request DAL parameters from the L1.
+- Add experimental, partial support for RISC-V kernels behind the `proto-alpha`flag.
 
 ### Installer client/kernel
 

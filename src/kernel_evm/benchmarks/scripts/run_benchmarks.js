@@ -43,7 +43,7 @@ function push_match(output, array, regexp) {
 /// Parses the data from the `Section` output. See
 /// `evm_execution/src/handler.rs` for the format.
 function parse_data(opcode, gas_and_result) {
-    if (opcode.length != 4 && gas_and_result.length != 18) { return undefined };
+    if (gas_and_result.length != 18) { return undefined };
 
     let gas_data = gas_and_result.substring(0, 16);
     let step_result = parseInt('0x' + gas_and_result.substring(16));
@@ -53,16 +53,28 @@ function parse_data(opcode, gas_and_result) {
 }
 
 /// Parses the section and push the sample into the set of opcodes.
-function push_profiler_sections(output, opcodes) {
+function push_profiler_sections(output, opcodes, precompiles) {
     const section_regex = /\__wasm_debugger__::Section{ticks:(\d+);data:\((0x[0-9a-fA-F]*),0x([0-9a-fA-F]*)\)}/g;
+    let precompiled_address_set = new Set([2, 3, 4, 32]);
+
     for (const match of output.matchAll(section_regex)) {
-        let { opcode, gas, step_result } = parse_data(match[2], match[3]);
-        let ticks = parseInt(match[1]);
-        let result = { ticks, gas, step_result };
-        if (opcodes[opcode] == undefined) {
-            opcodes[opcode] = [result]
+        let is_opcode_data = match[2].length == 4;
+        if (is_opcode_data) {
+            let { opcode, gas, step_result } = parse_data(match[2], match[3]);
+            let ticks = parseInt(match[1]);
+            let result = { ticks, gas, step_result };
+            if (opcodes[opcode] == undefined) {
+                opcodes[opcode] = [result]
+            } else {
+                opcodes[opcode].push(result)
+            }
         } else {
-            opcodes[opcode].push(result)
+            let ticks = parseInt(match[1]);
+            let address = parseInt(match[2].substring(0, 42));
+            let data_size = parseInt("0x"+match[2].substring(42));
+            if (precompiled_address_set.has(address)) {
+                precompiles.push({"address": address, "data_size": data_size, "ticks": ticks})
+            }
         }
     }
     return opcodes;
@@ -81,6 +93,7 @@ function run_profiler(path) {
         var bip_store = [];
         var bip_read = [];
         var receipt_size = [];
+        let bloom_size = [];
 
         var profiler_output_path = "";
 
@@ -89,6 +102,8 @@ function run_profiler(path) {
         const childProcess = spawn(RUN_DEBUGGER_COMMAND, args, {});
 
         let opcodes = {};
+
+        let precompiles = [];
 
         childProcess.stdin.write("load inputs\n");
 
@@ -117,7 +132,8 @@ function run_profiler(path) {
             push_match(output, bip_store, /\bStoring Block in Progress of size\s*(\d+)/g)
             push_match(output, bip_read, /\bReading Block in Progress of size\s*(\d+)/g)
             push_match(output, receipt_size, /\bStoring receipt of size \s*(\d+)/g)
-            push_profiler_sections(output, opcodes);
+            push_match(output, bloom_size, /\[Benchmarking\] bloom size:\s*(\d+)/g)
+            push_profiler_sections(output, opcodes, precompiles);
         });
         childProcess.on('close', _ => {
             if (profiler_output_path == "") {
@@ -138,6 +154,9 @@ function run_profiler(path) {
             if (tx_status.length != receipt_size.length) {
                 console.log(new Error("Missing receipt size value (expected: " + tx_status.length + ", actual: " + receipt_size.length + ")"));
             }
+            if (tx_status.length != bloom_size.length) {
+                console.log(new Error("Missing bloom size value (expected: " + tx_status.length + ", actual: " + bloom_size.length + ")"));
+            }
             resolve({
                 profiler_output_path,
                 gas_costs: gas_used,
@@ -149,6 +168,8 @@ function run_profiler(path) {
                 bip_read,
                 receipt_size,
                 opcodes,
+                bloom_size,
+                precompiles,
             });
         });
     })
@@ -200,6 +221,7 @@ async function analyze_profiler_output(path) {
     interpreter_decode_ticks = await get_ticks(path, "interpreter(decode)");
     fetch_blueprint_ticks = await get_ticks(path, "blueprint5fetch");
     block_finalize = await get_ticks(path, "store_current_block");
+    logs_to_bloom = await get_ticks(path, "logs_to_bloom");
     return {
         kernel_run_ticks: kernel_run_ticks,
         run_transaction_ticks: run_transaction_ticks,
@@ -210,7 +232,8 @@ async function analyze_profiler_output(path) {
         fetch_blueprint_ticks: fetch_blueprint_ticks,
         sputnik_runtime_ticks: sputnik_runtime_ticks,
         store_receipt_ticks,
-        block_finalize
+        block_finalize,
+        logs_to_bloom
     };
 }
 
@@ -289,6 +312,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
                     store_receipt_ticks: run_benchmark_result.store_receipt_ticks[j],
                     receipt_size: run_benchmark_result.receipt_size[j],
                     tx_size: tx_size[j],
+                    logs_to_bloom: run_benchmark_result.logs_to_bloom[j],
+                    bloom_size: run_benchmark_result.bloom_size[j],
                     ...basic_info_row
                 });
             gas_cost_index += 1;
@@ -361,6 +386,10 @@ function opcodes_dump_filename(time) {
     return path.format({ dir: OUTPUT_DIRECTORY, base: `dump_opcodes_${time}.json` })
 }
 
+function precompiles_filename(time) {
+    return path.format({ dir: OUTPUT_DIRECTORY, base: `precompiles_${time}.csv` })
+}
+
 function dump_opcodes(filename, opcodes) {
     fs.appendFileSync(filename, "{");
     let opcodes_entries = Object.entries(opcodes);
@@ -377,7 +406,7 @@ function dump_opcodes(filename, opcodes) {
 // Run the benchmark suite and write the result to benchmark_result_${TIMESTAMP}.csv
 async function run_all_benchmarks(benchmark_scripts) {
     console.log(`Running benchmarks on: [${benchmark_scripts.join('\n  ')}]`);
-    var fields = [
+    var benchmark_fields = [
         "benchmark_name",
         "status",
         "gas_cost",
@@ -388,6 +417,8 @@ async function run_all_benchmarks(benchmark_scripts) {
         "store_transaction_object_ticks",
         "receipt_size",
         "store_receipt_ticks",
+        "logs_to_bloom",
+        "bloom_size",
         "estimated_ticks",
         "interpreter_decode_ticks",
         "interpreter_init_ticks",
@@ -400,13 +431,22 @@ async function run_all_benchmarks(benchmark_scripts) {
         "kernel_run_ticks",
         "unaccounted_ticks",
     ];
+    var precompiles_field = [
+        "address",
+        "data_size",
+        "ticks",
+    ]
     let time = timestamp();
     let output = output_filename(time);
     let opcodes_dump = opcodes_dump_filename(time);
+    let precompiles_output = precompiles_filename(time);
     console.log(`Output in ${output}`);
     console.log(`Dumped opcodes in ${opcodes_dump}`);
-    const csv_config = { columns: fields };
-    fs.writeFileSync(output, csv.stringify([], { header: true, ...csv_config }));
+    console.log(`Precompiles in ${precompiles_output}`);
+    const benchmark_csv_config = { columns: benchmark_fields };
+    const precompile_csv_config = { columns: precompiles_field };
+    fs.writeFileSync(output, csv.stringify([], { header: true, ...benchmark_csv_config }));
+    fs.writeFileSync(precompiles_output, csv.stringify([], { header: true, ...precompile_csv_config }));
     let opcodes = {};
     for (var i = 0; i < benchmark_scripts.length; i++) {
         var benchmark_script = benchmark_scripts[i];
@@ -417,7 +457,8 @@ async function run_all_benchmarks(benchmark_scripts) {
         run_benchmark_result = await run_benchmark("transactions.json");
         benchmark_log = log_benchmark_result(benchmark_name, run_benchmark_result);
         opcodes[benchmark_name] = run_benchmark_result.opcodes;
-        fs.appendFileSync(output, csv.stringify(benchmark_log, csv_config));
+        fs.appendFileSync(output, csv.stringify(benchmark_log, benchmark_csv_config));
+        fs.appendFileSync(precompiles_output, csv.stringify(run_benchmark_result.precompiles, precompile_csv_config))
     }
     dump_opcodes(opcodes_dump, opcodes);
     console.log("Benchmarking complete");

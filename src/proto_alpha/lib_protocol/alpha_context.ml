@@ -496,7 +496,28 @@ module Bond_id = struct
   module Internal_for_tests = Contract_storage
 end
 
-module Receipt = Receipt_repr
+module Receipt = struct
+  type unstaked_frozen_staker = Unstaked_frozen_staker_repr.t =
+    | Single of Contract_repr.t * Signature.public_key_hash
+    | Shared of Signature.public_key_hash
+
+  type frozen_staker = Frozen_staker_repr.t = private
+    | Baker of Signature.public_key_hash
+    | Single_staker of {
+        staker : Contract_repr.t;
+        delegate : Signature.public_key_hash;
+      }
+    | Shared_between_stakers of {delegate : Signature.public_key_hash}
+
+  let frozen_baker = Frozen_staker_repr.baker
+
+  let frozen_single_staker = Frozen_staker_repr.single_staker
+
+  let frozen_shared_between_stakers = Frozen_staker_repr.shared_between_stakers
+
+  include Receipt_repr
+end
+
 module Consensus_key = Delegate_consensus_key
 
 module Delegate = struct
@@ -516,6 +537,8 @@ module Delegate = struct
 
   let deactivated = Delegate_activation_storage.is_inactive
 
+  let is_forbidden_delegate = Forbidden_delegates_storage.is_forbidden
+
   module Consensus_key = Delegate_consensus_key
 
   module Rewards = struct
@@ -530,6 +553,7 @@ module Delegate = struct
   end
 
   module Staking_parameters = Delegate_staking_parameters
+  module Shared_stake = Shared_stake
 
   module For_RPC = struct
     include For_RPC
@@ -561,10 +585,22 @@ module Stake_distribution = struct
     return (Stake_repr.get_frozen total_stake)
 
   module For_RPC = Delegate_sampler.For_RPC
+
+  module Internal_for_tests = struct
+    let get_selected_distribution = Stake_storage.get_selected_distribution
+  end
 end
 
 module Staking = struct
   include Staking
+
+  let stake = stake ~for_next_cycle_use_only_after_slashing:false
+
+  let request_unstake =
+    request_unstake ~for_next_cycle_use_only_after_slashing:false
+
+  let finalize_unstake =
+    finalize_unstake ~for_next_cycle_use_only_after_slashing:false
 end
 
 module Nonce = Nonce_storage
@@ -614,7 +650,7 @@ let prepare ctxt ~level ~predecessor_timestamp ~timestamp =
     Init_storage.prepare ctxt ~level ~predecessor_timestamp ~timestamp
   in
   let* ctxt = Consensus.load_attestation_branch ctxt in
-  let* ctxt = Delegate.load_forbidden_delegates ctxt in
+  let* ctxt = Forbidden_delegates_storage.load ctxt in
   let* ctxt = Adaptive_issuance_storage.load_reward_coeff ctxt in
   return (ctxt, balance_updates, origination_results)
 
@@ -679,6 +715,9 @@ module Cache = Cache_repr
 
 module Unstake_requests = struct
   include Unstake_requests_storage
+
+  let prepare_finalize_unstake =
+    prepare_finalize_unstake ~for_next_cycle_use_only_after_slashing:false
 
   module For_RPC = struct
     let apply_slash_to_unstaked_unfinalizable ctxt ~delegate ~requests =

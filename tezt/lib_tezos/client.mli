@@ -893,7 +893,7 @@ val multiple_transfers :
 
 (** Run octez-client register key <delegate> as delegate. *)
 val register_delegate :
-  ?endpoint:endpoint -> delegate:string -> t -> string Lwt.t
+  ?endpoint:endpoint -> ?wait:string -> delegate:string -> t -> string Lwt.t
 
 (** Run octez-client get delegate for <src>. Returns [Some address] if delegate
     is set or [None] otherwise. *)
@@ -1446,6 +1446,48 @@ val spawn_run_script_at :
   t ->
   string list ->
   Protocol.t ->
+  Process.t
+
+(** Run [octez-client run michelson code .. on stack ..]. *)
+val run_code :
+  ?hooks:Process.hooks ->
+  ?protocol_hash:string ->
+  ?no_base_dir_warnings:bool ->
+  ?amount:Tez.t ->
+  ?balance:Tez.t ->
+  ?source:string ->
+  ?payer:string ->
+  ?self_address:string ->
+  ?gas:int ->
+  ?mode:normalize_mode ->
+  ?level:int ->
+  ?now:string ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
+  src:string ->
+  stack:string ->
+  t ->
+  string Lwt.t
+
+(** Same as [run_code] but do not wait for the process to exit. *)
+val spawn_run_code :
+  ?hooks:Process.hooks ->
+  ?protocol_hash:string ->
+  ?no_base_dir_warnings:bool ->
+  ?amount:Tez.t ->
+  ?balance:Tez.t ->
+  ?source:string ->
+  ?payer:string ->
+  ?self_address:string ->
+  ?gas:int ->
+  ?mode:normalize_mode ->
+  ?level:int ->
+  ?now:string ->
+  ?other_contracts:string ->
+  ?extra_big_maps:string ->
+  src:string ->
+  stack:string ->
+  t ->
   Process.t
 
 (** Run [octez-client register global constant value from src].

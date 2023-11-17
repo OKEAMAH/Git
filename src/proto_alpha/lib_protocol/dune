@@ -142,7 +142,8 @@
   Sapling_repr
   Lazy_storage_kind
   Full_staking_balance_repr
-  Staker_repr
+  Unstaked_frozen_staker_repr
+  Frozen_staker_repr
   Stake_repr
   Receipt_repr
   Migration_repr
@@ -189,11 +190,13 @@
   Adaptive_issuance_costs
   Adaptive_issuance_storage
   Delegate_staking_parameters
+  Shared_stake
   Delegate_consensus_key
   Delegate_storage
   Delegate_sampler
   Delegate_rewards
   Delegate_missed_attestations_storage
+  Forbidden_delegates_storage
   Delegate_slashed_deposits_storage
   Staking
   Delegate_cycles
@@ -436,7 +439,8 @@
   sapling_repr.ml
   lazy_storage_kind.ml lazy_storage_kind.mli
   full_staking_balance_repr.ml full_staking_balance_repr.mli
-  staker_repr.ml staker_repr.mli
+  unstaked_frozen_staker_repr.ml unstaked_frozen_staker_repr.mli
+  frozen_staker_repr.ml frozen_staker_repr.mli
   stake_repr.ml stake_repr.mli
   receipt_repr.ml receipt_repr.mli
   migration_repr.ml migration_repr.mli
@@ -483,12 +487,14 @@
   adaptive_issuance_costs.ml adaptive_issuance_costs.mli
   adaptive_issuance_storage.ml adaptive_issuance_storage.mli
   delegate_staking_parameters.ml delegate_staking_parameters.mli
+  shared_stake.ml shared_stake.mli
   delegate_consensus_key.ml delegate_consensus_key.mli
   delegate_storage.ml delegate_storage.mli
   delegate_sampler.ml delegate_sampler.mli
   delegate_rewards.ml delegate_rewards.mli
   delegate_missed_attestations_storage.ml
   delegate_missed_attestations_storage.mli
+  forbidden_delegates_storage.ml forbidden_delegates_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
   staking.ml staking.mli
   delegate_cycles.ml delegate_cycles.mli
@@ -732,7 +738,8 @@
   sapling_repr.ml
   lazy_storage_kind.ml lazy_storage_kind.mli
   full_staking_balance_repr.ml full_staking_balance_repr.mli
-  staker_repr.ml staker_repr.mli
+  unstaked_frozen_staker_repr.ml unstaked_frozen_staker_repr.mli
+  frozen_staker_repr.ml frozen_staker_repr.mli
   stake_repr.ml stake_repr.mli
   receipt_repr.ml receipt_repr.mli
   migration_repr.ml migration_repr.mli
@@ -779,12 +786,14 @@
   adaptive_issuance_costs.ml adaptive_issuance_costs.mli
   adaptive_issuance_storage.ml adaptive_issuance_storage.mli
   delegate_staking_parameters.ml delegate_staking_parameters.mli
+  shared_stake.ml shared_stake.mli
   delegate_consensus_key.ml delegate_consensus_key.mli
   delegate_storage.ml delegate_storage.mli
   delegate_sampler.ml delegate_sampler.mli
   delegate_rewards.ml delegate_rewards.mli
   delegate_missed_attestations_storage.ml
   delegate_missed_attestations_storage.mli
+  forbidden_delegates_storage.ml forbidden_delegates_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
   staking.ml staking.mli
   delegate_cycles.ml delegate_cycles.mli
@@ -1012,7 +1021,8 @@
   sapling_repr.ml
   lazy_storage_kind.ml lazy_storage_kind.mli
   full_staking_balance_repr.ml full_staking_balance_repr.mli
-  staker_repr.ml staker_repr.mli
+  unstaked_frozen_staker_repr.ml unstaked_frozen_staker_repr.mli
+  frozen_staker_repr.ml frozen_staker_repr.mli
   stake_repr.ml stake_repr.mli
   receipt_repr.ml receipt_repr.mli
   migration_repr.ml migration_repr.mli
@@ -1059,12 +1069,14 @@
   adaptive_issuance_costs.ml adaptive_issuance_costs.mli
   adaptive_issuance_storage.ml adaptive_issuance_storage.mli
   delegate_staking_parameters.ml delegate_staking_parameters.mli
+  shared_stake.ml shared_stake.mli
   delegate_consensus_key.ml delegate_consensus_key.mli
   delegate_storage.ml delegate_storage.mli
   delegate_sampler.ml delegate_sampler.mli
   delegate_rewards.ml delegate_rewards.mli
   delegate_missed_attestations_storage.ml
   delegate_missed_attestations_storage.mli
+  forbidden_delegates_storage.ml forbidden_delegates_storage.mli
   delegate_slashed_deposits_storage.ml delegate_slashed_deposits_storage.mli
   staking.ml staking.mli
   delegate_cycles.ml delegate_cycles.mli

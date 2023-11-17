@@ -31,6 +31,7 @@ open Alpha_context
 
 type error +=
   | Faulty_validation_wrong_slot
+  | Set_deposits_limit_on_unregistered_delegate of Signature.Public_key_hash.t
   | Error_while_taking_fees
   | Update_consensus_key_on_unregistered_delegate of Signature.Public_key_hash.t
   | Empty_transaction of Contract.t
@@ -62,6 +63,21 @@ let () =
     Data_encoding.empty
     (function Faulty_validation_wrong_slot -> Some () | _ -> None)
     (fun () -> Faulty_validation_wrong_slot) ;
+  register_error_kind
+    `Temporary
+    ~id:"operation.set_deposits_limit_on_unregistered_delegate"
+    ~title:"Set deposits limit on an unregistered delegate"
+    ~description:"Cannot set deposits limit on an unregistered delegate."
+    ~pp:(fun ppf c ->
+      Format.fprintf
+        ppf
+        "Cannot set a deposits limit on the unregistered delegate %a."
+        Signature.Public_key_hash.pp
+        c)
+    Data_encoding.(obj1 (req "delegate" Signature.Public_key_hash.encoding))
+    (function
+      | Set_deposits_limit_on_unregistered_delegate c -> Some c | _ -> None)
+    (fun c -> Set_deposits_limit_on_unregistered_delegate c) ;
 
   let error_while_taking_fees_description =
     "There was an error while taking the fees, which should not happen and \
@@ -391,7 +407,7 @@ let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
         error_when forbidden Staking_to_delegate_that_refuses_external_staking
       in
       let* ctxt, balance_updates =
-        Staking.stake ctxt ~sender ~delegate amount
+        Staking.stake ctxt ~amount:(`Exactly amount) ~sender ~delegate
       in
       (* Since [delegate] is an already existing delegate, it is already allocated. *)
       let allocated_destination_contract = false in
@@ -1047,6 +1063,7 @@ let apply_manager_operation :
                   (Script.is_unit parameters)
                   (Script_interpreter.Bad_contract_parameter source_contract)
               in
+              let*? () = Staking.check_manual_staking_allowed ctxt in
               apply_stake
                 ~ctxt
                 ~sender:source
@@ -1059,6 +1076,7 @@ let apply_manager_operation :
                   (Script.is_unit parameters)
                   (Script_interpreter.Bad_contract_parameter source_contract)
               in
+              let*? () = Staking.check_manual_staking_allowed ctxt in
               apply_unstake
                 ~ctxt
                 ~sender:source
@@ -1326,6 +1344,19 @@ let apply_manager_operation :
             }
         in
         return (ctxt, result, [])
+    | Set_deposits_limit limit ->
+        let*! is_registered = Delegate.registered ctxt source in
+        let*? () =
+          error_unless
+            is_registered
+            (Set_deposits_limit_on_unregistered_delegate source)
+        in
+        let*! ctxt = Delegate.set_frozen_deposits_limit ctxt source limit in
+        return
+          ( ctxt,
+            Set_deposits_limit_result
+              {consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt},
+            [] )
     | Increase_paid_storage {amount_in_bytes; destination} ->
         let* ctxt =
           Contract.increase_paid_storage ctxt destination ~amount_in_bytes
@@ -1691,7 +1722,8 @@ let burn_manager_storage_fees :
               size_of_constant = payload.size_of_constant;
               global_address = payload.global_address;
             } )
-    | Update_consensus_key_result _ -> return (ctxt, storage_limit, smopr)
+    | Set_deposits_limit_result _ | Update_consensus_key_result _ ->
+        return (ctxt, storage_limit, smopr)
     | Increase_paid_storage_result _ -> return (ctxt, storage_limit, smopr)
     | Transfer_ticket_result payload ->
         let consumed = payload.paid_storage_size_diff in
@@ -2259,29 +2291,38 @@ let apply_manager_operations ctxt ~payload_producer chain_id ~mempool_mode
   in
   return (ctxt, contents_result_list)
 
-let punish_delegate ctxt delegate level misbehaviour mk_result ~payload_producer
-    =
+let punish_delegate ctxt ~operation_hash delegate level misbehaviour mk_result
+    ~payload_producer =
   let open Lwt_result_syntax in
   let rewarded = payload_producer.Consensus_key.delegate in
-  let+ ctxt =
-    Delegate.punish_double_signing ctxt misbehaviour delegate level ~rewarded
+  let+ ctxt, forbidden_delegate =
+    Delegate.punish_double_signing
+      ctxt
+      ~operation_hash
+      misbehaviour
+      delegate
+      level
+      ~rewarded
   in
-  (ctxt, Single_result (mk_result []))
+  ( ctxt,
+    Single_result
+      (mk_result (if forbidden_delegate then Some delegate else None) []) )
 
-let punish_double_attestation_or_preattestation (type kind) ctxt
+let punish_double_attestation_or_preattestation (type kind) ctxt ~operation_hash
     ~(op1 : kind Kind.consensus Operation.t) ~payload_producer :
     (context
     * kind Kind.double_consensus_operation_evidence contents_result_list)
     tzresult
     Lwt.t =
   let open Lwt_result_syntax in
-  let mk_result (balance_updates : Receipt.balance_updates) :
+  let mk_result forbidden_delegate (balance_updates : Receipt.balance_updates) :
       kind Kind.double_consensus_operation_evidence contents_result =
     match op1.protocol_data.contents with
     | Single (Preattestation _) ->
-        Double_preattestation_evidence_result balance_updates
+        Double_preattestation_evidence_result
+          {forbidden_delegate; balance_updates}
     | Single (Attestation _) ->
-        Double_attestation_evidence_result balance_updates
+        Double_attestation_evidence_result {forbidden_delegate; balance_updates}
   in
   match op1.protocol_data.contents with
   | Single (Preattestation e1) | Single (Attestation e1) ->
@@ -2291,13 +2332,15 @@ let punish_double_attestation_or_preattestation (type kind) ctxt
       in
       punish_delegate
         ctxt
+        ~operation_hash
         consensus_pk1.delegate
         level
         Double_attesting
         mk_result
         ~payload_producer
 
-let punish_double_baking ctxt (bh1 : Block_header.t) ~payload_producer =
+let punish_double_baking ctxt ~operation_hash (bh1 : Block_header.t)
+    ~payload_producer =
   let open Lwt_result_syntax in
   let*? bh1_fitness = Fitness.from_raw bh1.shell.fitness in
   let round1 = Fitness.round bh1_fitness in
@@ -2308,14 +2351,17 @@ let punish_double_baking ctxt (bh1 : Block_header.t) ~payload_producer =
   let* ctxt, consensus_pk1 = Stake_distribution.slot_owner ctxt level slot1 in
   punish_delegate
     ctxt
+    ~operation_hash
     consensus_pk1.delegate
     level
     Double_baking
     ~payload_producer
-    (fun balance_updates -> Double_baking_evidence_result balance_updates)
+    (fun forbidden_delegate balance_updates ->
+      Double_baking_evidence_result {forbidden_delegate; balance_updates})
 
 let apply_contents_list (type kind) ctxt chain_id (mode : mode)
-    ~payload_producer ~operation (contents_list : kind contents_list) :
+    ~payload_producer ~operation ~operation_hash
+    (contents_list : kind contents_list) :
     (context * kind contents_result_list) tzresult Lwt.t =
   let open Lwt_result_syntax in
   let mempool_mode =
@@ -2357,7 +2403,7 @@ let apply_contents_list (type kind) ctxt chain_id (mode : mode)
       let tip = Delegate.Rewards.seed_nonce_revelation_tip ctxt in
       let delegate = payload_producer.Consensus_key.delegate in
       let+ ctxt, balance_updates =
-        Delegate.Staking_parameters.pay_rewards
+        Delegate.Shared_stake.pay_rewards
           ctxt
           ~source:`Revelation_rewards
           ~delegate
@@ -2369,7 +2415,7 @@ let apply_contents_list (type kind) ctxt chain_id (mode : mode)
       let tip = Delegate.Rewards.vdf_revelation_tip ctxt in
       let delegate = payload_producer.Consensus_key.delegate in
       let+ ctxt, balance_updates =
-        Delegate.Staking_parameters.pay_rewards
+        Delegate.Shared_stake.pay_rewards
           ctxt
           ~source:`Revelation_rewards
           ~delegate
@@ -2377,11 +2423,19 @@ let apply_contents_list (type kind) ctxt chain_id (mode : mode)
       in
       (ctxt, Single_result (Vdf_revelation_result balance_updates))
   | Single (Double_preattestation_evidence {op1; op2 = _}) ->
-      punish_double_attestation_or_preattestation ctxt ~op1 ~payload_producer
+      punish_double_attestation_or_preattestation
+        ctxt
+        ~operation_hash
+        ~op1
+        ~payload_producer
   | Single (Double_attestation_evidence {op1; op2 = _}) ->
-      punish_double_attestation_or_preattestation ctxt ~op1 ~payload_producer
+      punish_double_attestation_or_preattestation
+        ctxt
+        ~operation_hash
+        ~op1
+        ~payload_producer
   | Single (Double_baking_evidence {bh1; bh2 = _}) ->
-      punish_double_baking ctxt bh1 ~payload_producer
+      punish_double_baking ctxt ~operation_hash bh1 ~payload_producer
   | Single (Activate_account {id = pkh; activation_code}) ->
       let blinded_pkh =
         Blinded_public_key_hash.of_ed25519_pkh activation_code pkh
@@ -2455,6 +2509,7 @@ let apply_operation application_state operation_hash operation =
         application_state.mode
         ~payload_producer
         ~operation
+        ~operation_hash
         operation.protocol_data.contents
     in
     let ctxt = Gas.set_unlimited ctxt in

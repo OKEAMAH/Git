@@ -69,15 +69,13 @@ module Token = struct
     | Staking_pseudotoken -> Staking_pseudotoken_repr.pp
 end
 
-type staker = Staker_repr.staker =
-  | Single of Contract_repr.t * Signature.public_key_hash
-  | Shared of Signature.public_key_hash
-
 type 'token balance =
   | Contract : Contract_repr.t -> Tez_repr.t balance
   | Block_fees : Tez_repr.t balance
-  | Deposits : staker -> Tez_repr.t balance
-  | Unstaked_deposits : staker * Cycle_repr.t -> Tez_repr.t balance
+  | Deposits : Frozen_staker_repr.t -> Tez_repr.t balance
+  | Unstaked_deposits :
+      Unstaked_frozen_staker_repr.t * Cycle_repr.t
+      -> Tez_repr.t balance
   | Nonce_revelation_rewards : Tez_repr.t balance
   | Attesting_rewards : Tez_repr.t balance
   | Baking_rewards : Tez_repr.t balance
@@ -138,9 +136,9 @@ let compare_balance :
  fun ba bb ->
   match (ba, bb) with
   | Contract ca, Contract cb -> Contract_repr.compare ca cb
-  | Deposits sa, Deposits sb -> Staker_repr.compare_staker sa sb
+  | Deposits sa, Deposits sb -> Frozen_staker_repr.compare sa sb
   | Unstaked_deposits (sa, ca), Unstaked_deposits (sb, cb) ->
-      Compare.or_else (Staker_repr.compare_staker sa sb) (fun () ->
+      Compare.or_else (Unstaked_frozen_staker_repr.compare sa sb) (fun () ->
           Cycle_repr.compare ca cb)
   | Lost_attesting_rewards (pkha, pa, ra), Lost_attesting_rewards (pkhb, pb, rb)
     ->
@@ -280,7 +278,7 @@ let balance_and_update_encoding ~use_legacy_attestation_name =
            (obj3
               (req "kind" (constant "freezer"))
               (req "category" (constant "deposits"))
-              (req "staker" Staker_repr.staker_encoding))
+              (req "staker" Frozen_staker_repr.encoding))
            (function Deposits staker -> Some ((), (), staker) | _ -> None)
            (fun ((), (), staker) -> Deposits staker);
          tez_case
@@ -450,7 +448,7 @@ let balance_and_update_encoding ~use_legacy_attestation_name =
            (obj4
               (req "kind" (constant "freezer"))
               (req "category" (constant "unstaked_deposits"))
-              (req "staker" Staker_repr.staker_encoding)
+              (req "staker" Unstaked_frozen_staker_repr.encoding)
               (req "cycle" Cycle_repr.encoding))
            (function
              | Unstaked_deposits (staker, cycle) -> Some ((), (), staker, cycle)
@@ -492,47 +490,64 @@ type update_origin =
   | Protocol_migration
   | Subsidy
   | Simulation
+  | Delayed_operation of {operation_hash : Operation_hash.t}
 
 let compare_update_origin oa ob =
-  let index o =
-    match o with
-    | Block_application -> 0
-    | Protocol_migration -> 1
-    | Subsidy -> 2
-    | Simulation -> 3
-  in
-  Compare.Int.compare (index oa) (index ob)
+  match (oa, ob) with
+  | ( Delayed_operation {operation_hash = oha},
+      Delayed_operation {operation_hash = ohb} ) ->
+      Operation_hash.compare oha ohb
+  | _, _ ->
+      let index o =
+        match o with
+        | Block_application -> 0
+        | Protocol_migration -> 1
+        | Subsidy -> 2
+        | Simulation -> 3
+        | Delayed_operation _ -> 4
+        (* don't forget to add parameterized cases in the first part of the function *)
+      in
+      Compare.Int.compare (index oa) (index ob)
 
 let update_origin_encoding =
   let open Data_encoding in
   def "operation_metadata.alpha.update_origin"
-  @@ obj1 @@ req "origin"
   @@ union
        [
          case
            (Tag 0)
            ~title:"Block_application"
-           (constant "block")
+           (obj1 (req "origin" (constant "block")))
            (function Block_application -> Some () | _ -> None)
            (fun () -> Block_application);
          case
            (Tag 1)
            ~title:"Protocol_migration"
-           (constant "migration")
+           (obj1 (req "origin" (constant "migration")))
            (function Protocol_migration -> Some () | _ -> None)
            (fun () -> Protocol_migration);
          case
            (Tag 2)
            ~title:"Subsidy"
-           (constant "subsidy")
+           (obj1 (req "origin" (constant "subsidy")))
            (function Subsidy -> Some () | _ -> None)
            (fun () -> Subsidy);
          case
            (Tag 3)
            ~title:"Simulation"
-           (constant "simulation")
+           (obj1 (req "origin" (constant "simulation")))
            (function Simulation -> Some () | _ -> None)
            (fun () -> Simulation);
+         case
+           (Tag 4)
+           ~title:"Delayed_operation"
+           (obj2
+              (req "origin" (constant "delayed_operation"))
+              (req "delayed_operation_hash" Operation_hash.encoding))
+           (function
+             | Delayed_operation {operation_hash} -> Some ((), operation_hash)
+             | _ -> None)
+           (fun ((), operation_hash) -> Delayed_operation {operation_hash});
        ]
 
 type balance_update_item =

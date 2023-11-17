@@ -232,6 +232,7 @@ module Delegate : sig
     current_frozen_deposits : Tez.t;
     frozen_deposits : Tez.t;
     staking_balance : Tez.t;
+    frozen_deposits_limit : Tez.t option;
     delegated_contracts : Alpha_context.Contract.t list;
     delegated_balance : Tez.t;
     total_delegated_stake : Tez.t;
@@ -242,6 +243,8 @@ module Delegate : sig
     active_consensus_key : Signature.Public_key_hash.t;
     pending_consensus_keys : (Cycle.t * Signature.Public_key_hash.t) list;
   }
+
+  type stake = {frozen : Tez.t; weighted_delegated : Tez.t}
 
   val info : t -> public_key_hash -> Delegate_services.info tzresult Lwt.t
 
@@ -257,6 +260,9 @@ module Delegate : sig
 
   val staking_denominator : t -> public_key_hash -> Z.t tzresult Lwt.t
 
+  val frozen_deposits_limit :
+    t -> public_key_hash -> Tez.t option tzresult Lwt.t
+
   val deactivated : t -> public_key_hash -> bool tzresult Lwt.t
 
   val voting_info : t -> public_key_hash -> Vote.delegate_info tzresult Lwt.t
@@ -271,6 +277,13 @@ module Delegate : sig
       specify a valid baker for the new block (default [By_round 0]) *)
   val is_forbidden :
     ?policy:Block.baker_policy -> t -> public_key_hash -> bool tzresult Lwt.t
+
+  val stake_for_cycle :
+    ?policy:Block.baker_policy ->
+    t ->
+    Cycle.t ->
+    public_key_hash ->
+    stake tzresult Lwt.t
 end
 
 module Sc_rollup : sig
@@ -337,6 +350,7 @@ type 'accounts init :=
   ?hard_gas_limit_per_block:Gas.Arith.integral ->
   ?nonce_revelation_threshold:int32 ->
   ?dal:Constants.Parametric.dal ->
+  ?adaptive_issuance:Constants.Parametric.adaptive_issuance ->
   unit ->
   (Block.t * 'accounts) tzresult Lwt.t
 

@@ -269,53 +269,20 @@ let current_frozen_deposits ctxt delegate =
   let*? total = Tez_repr.(own_frozen +? staked_frozen) in
   return total
 
+let frozen_deposits_limit ctxt delegate =
+  Storage.Contract.Frozen_deposits_limit.find
+    ctxt
+    (Contract_repr.Implicit delegate)
+
+let set_frozen_deposits_limit ctxt delegate limit =
+  Storage.Contract.Frozen_deposits_limit.add_or_remove
+    ctxt
+    (Contract_repr.Implicit delegate)
+    limit
+
 let spendable_balance ctxt delegate =
   let contract = Contract_repr.Implicit delegate in
   Storage.Contract.Spendable_balance.get ctxt contract
-
-let is_forbidden_delegate ctxt delegate =
-  let forbidden_delegates = Raw_context.Consensus.forbidden_delegates ctxt in
-  Signature.Public_key_hash.Set.mem delegate forbidden_delegates
-
-let forbid_delegate ctxt delegate =
-  let ctxt = Raw_context.Consensus.forbid_delegate ctxt delegate in
-  let new_forbidden_delegates =
-    Raw_context.Consensus.forbidden_delegates ctxt
-  in
-  Storage.Tenderbake.Forbidden_delegates.add ctxt new_forbidden_delegates
-
-let load_forbidden_delegates ctxt =
-  let open Lwt_result_syntax in
-  let* forbidden_delegates_opt =
-    Storage.Tenderbake.Forbidden_delegates.find ctxt
-  in
-  let ctxt =
-    match forbidden_delegates_opt with
-    | Some forbidden_delegates ->
-        Raw_context.Consensus.set_forbidden_delegates ctxt forbidden_delegates
-    | None ->
-        Raw_context.Consensus.set_forbidden_delegates
-          ctxt
-          Signature.Public_key_hash.Set.empty
-  in
-  return ctxt
-
-let set_forbidden_delegates ctxt forbidden_delegates =
-  let open Lwt_syntax in
-  let* ctxt =
-    Storage.Tenderbake.Forbidden_delegates.add ctxt forbidden_delegates
-  in
-  let ctxt =
-    Raw_context.Consensus.set_forbidden_delegates ctxt forbidden_delegates
-  in
-  return ctxt
-
-let reset_forbidden_delegates ctxt =
-  if
-    Signature.Public_key_hash.Set.is_empty
-      (Raw_context.Consensus.forbidden_delegates ctxt)
-  then Lwt.return ctxt
-  else set_forbidden_delegates ctxt Signature.Public_key_hash.Set.empty
 
 let drain ctxt ~delegate ~destination =
   let open Lwt_result_syntax in
@@ -362,6 +329,7 @@ module For_RPC = struct
       let* result =
         Unstake_requests_storage.prepare_finalize_unstake
           ctxt
+          ~for_next_cycle_use_only_after_slashing:false
           (Contract_repr.Implicit delegate)
       in
       match result with

@@ -21,6 +21,14 @@ else
 endif
 	@cargo build --target wasm32-unknown-unknown --release ${EXCLUDE} ${FEATURES}
 
+.PHONY: build-evm-execution
+build-evm-execution:
+	@cargo build --target wasm32-unknown-unknown --release --package evm-execution
+
+.PHONY: build-evm-evaluation
+build-evm-evaluation:
+	@cargo build --release --package evm-evaluation
+
 .PHONY: build-deps
 build-deps:
 	@rustup target add wasm32-unknown-unknown

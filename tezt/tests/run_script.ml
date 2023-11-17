@@ -111,7 +111,7 @@ let test_balance_and_self_address =
       client
   in
 
-  (* When --self-address is given, SELF_ADDRESS should match the given. *)
+  (* When --self-address is given, SELF_ADDRESS should match with it. *)
   let* _storage =
     Client.run_script
       ~self_address
@@ -132,7 +132,7 @@ let test_balance_and_self_address =
   in
 
   (* When both --self-address and --balance are given, the BALANCE should be
-     equal to the given value and SELF_ADDRESS should still match the given. *)
+     equal to the given value and SELF_ADDRESS should still match the given one. *)
   let* _storage =
     Client.run_script
       ~balance:(Tez.of_int 1)
@@ -227,7 +227,7 @@ let test_other_contracts =
     ~__FILE__
     ~title:"Run script with other_contracts"
     ~tags:["client"; "michelson"]
-    ~supports:(Protocol.From_protocol 019)
+    ~supports:(Protocol.From_protocol 018)
   @@ fun protocol ->
   let* client = Client.init_mockup ~protocol () in
   let unused_address = {|"KT1Q36KWPSba7dHsH5E4ZsQHehrChc51e19d"|} in
@@ -246,7 +246,7 @@ let test_extra_big_maps =
     ~__FILE__
     ~title:"Run script with extra_big_maps"
     ~tags:["client"; "michelson"]
-    ~supports:(Protocol.From_protocol 019)
+    ~supports:(Protocol.From_protocol 018)
   @@ fun protocol ->
   let* client = Client.init_mockup ~protocol () in
   let* {storage; _} =

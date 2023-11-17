@@ -103,17 +103,14 @@ let block_transaction_count block =
   | TxHash l -> List.length l
   | TxFull l -> List.length l
 
-let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
-    (input, id) =
+let dispatch_input (config : Configuration.t)
+    ((module Rollup_node_rpc : Rollup_node.S), _) (input, id) =
   let open Lwt_result_syntax in
   let dispatch_input_aux : type w. w input -> w output tzresult Lwt.t = function
     (* INTERNAL RPCs *)
     | Kernel_version.Input _ ->
         let* kernel_version = Rollup_node_rpc.kernel_version () in
         return (Kernel_version.Output (Ok kernel_version))
-    | Upgrade_nonce.Input _ ->
-        let* upgrade_nonce = Rollup_node_rpc.upgrade_nonce () in
-        return (Upgrade_nonce.Output (Ok (Int32.of_int upgrade_nonce)))
     (* ETHEREUM JSON-RPC API *)
     | Accounts.Input _ -> return (Accounts.Output (Ok []))
     | Network_id.Input _ ->
@@ -126,6 +123,9 @@ let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
     | Get_balance.Input (Some (address, _block_param)) ->
         let* balance = Rollup_node_rpc.balance address in
         return (Get_balance.Output (Ok balance))
+    | Get_storage_at.Input (Some (address, position, _block_param)) ->
+        let* value = Rollup_node_rpc.storage_at address position in
+        return (Get_storage_at.Output (Ok value))
     | Block_number.Input _ ->
         let* block_number = Rollup_node_rpc.current_block_number () in
         return (Block_number.Output (Ok block_number))
@@ -137,25 +137,19 @@ let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
             (module Rollup_node_rpc)
         in
         return (Get_block_by_number.Output (Ok block))
-    | Get_block_by_number.Input None ->
-        return
-          (Get_block_by_number.Output
-             (Ok Mockup.(block (TxHash [transaction_hash]))))
     | Get_block_by_hash.Input (Some (block_hash, full_transaction_object)) ->
         let* block =
           Rollup_node_rpc.block_by_hash ~full_transaction_object block_hash
         in
         return (Get_block_by_hash.Output (Ok block))
-    | Get_block_by_hash.Input None ->
-        return
-          (Get_block_by_hash.Output
-             (Ok Mockup.(block (TxHash [transaction_hash]))))
     | Get_code.Input (Some (address, _)) ->
         let* code = Rollup_node_rpc.code address in
         return (Get_code.Output (Ok code))
-    | Gas_price.Input _ -> return (Gas_price.Output (Ok Mockup.gas_price))
+    | Gas_price.Input _ ->
+        let* base_fee = Rollup_node_rpc.base_fee_per_gas () in
+        return (Gas_price.Output (Ok base_fee))
     | Get_transaction_count.Input (Some (address, _)) ->
-        let* nonce = Rollup_node_rpc.nonce address in
+        let* nonce = Tx_pool.nonce address in
         return (Get_transaction_count.Output (Ok nonce))
     | Get_block_transaction_count_by_hash.Input (Some block_hash) ->
         let* block =
@@ -237,12 +231,10 @@ let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
               (Send_raw_transaction.Output
                  (Error {code = -32000; message = reason; data = None}))
         (* By default, the current dispatch handles the inputs *))
-    | Send_transaction.Input _ ->
-        return (Send_transaction.Output (Ok Mockup.transaction_hash))
     | Eth_call.Input (Some (call, _)) ->
         let* call_result = Rollup_node_rpc.simulate_call call in
         return (Eth_call.Output (Ok call_result))
-    | Get_estimate_gas.Input (Some call) ->
+    | Get_estimate_gas.Input (Some (call, _)) ->
         let* gas = Rollup_node_rpc.estimate_gas call in
         return (Get_estimate_gas.Output (Ok gas))
     | Txpool_content.Input _ ->
@@ -257,34 +249,42 @@ let dispatch_input ~verbose ((module Rollup_node_rpc : Rollup_node.S), _)
         let hash_bytes = Tezos_crypto.Hacl.Hash.Keccak_256.digest bytes in
         let hash = Hex.of_bytes hash_bytes |> Hex.show in
         return (Web3_sha3.Output (Ok (Hash (Hex hash))))
+    | Get_logs.Input (Some filter) ->
+        let+ logs =
+          Filter_helpers.get_logs
+            config.log_filter
+            (module Rollup_node_rpc)
+            filter
+        in
+        Get_logs.Output (Ok logs)
     | _ -> Error_monad.failwith "Unsupported method\n%!"
   in
   let* output = dispatch_input_aux input in
-  if verbose then
+  if config.verbose then
     Data_encoding.Json.construct Output.encoding (Output.Box output, id)
     |> Data_encoding.Json.to_string |> Printf.printf "%s\n%!" ;
   return (output, id)
 
-let dispatch ~verbose ctx dir =
+let dispatch config ctx dir =
   Directory.register0 dir dispatch_service (fun () input ->
       let open Lwt_result_syntax in
       match input with
       | Singleton (Box input, rpc) ->
-          let+ output, rpc = dispatch_input ~verbose ctx (input, rpc) in
+          let+ output, rpc = dispatch_input config ctx (input, rpc) in
           Singleton (Output.Box output, rpc)
       | Batch inputs ->
           let+ outputs =
             List.map_es
               (fun (Input.Box input, rpc) ->
-                let+ output, rpc = dispatch_input ~verbose ctx (input, rpc) in
+                let+ output, rpc = dispatch_input config ctx (input, rpc) in
                 (Output.Box output, rpc))
               inputs
           in
           Batch outputs)
 
-let directory ~verbose
+let directory config
     ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) =
   Directory.empty |> version
   |> dispatch
-       ~verbose
+       config
        ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)

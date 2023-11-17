@@ -2,14 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use primitive_types::{H256, U256};
-use primitives::SpecId;
-
-pub fn u256_to_h256(value: &U256) -> H256 {
-    let mut ret = H256::zero();
-    value.to_big_endian(ret.as_bytes_mut());
-    ret
-}
+use std::path::{Path, PathBuf};
 
 pub fn parse_and_get_cmp(data: &str) -> impl Fn(&u8, &u8) -> bool {
     if data.contains('>') {
@@ -33,15 +26,20 @@ pub fn purify_network(network: &str) -> String {
     network.replace('=', "")
 }
 
-pub fn network_to_specid(network: &str) -> SpecId {
-    let actual_network = if network == "EIP150" {
-        "Homestead"
-    } else if network == "EIP158" {
-        "Spurious"
-    } else if network.contains("Constantinople") {
-        "Petersburg"
-    } else {
-        network
+pub fn construct_folder_path(
+    base: &str,
+    eth_tests: &str,
+    sub_dir: &Option<String>,
+) -> PathBuf {
+    let eth_tests_path = Path::new(eth_tests);
+    let base_path = Path::new(base);
+    let path_buf = match sub_dir {
+        Some(sub_dir) => {
+            let sub_dir_path = Path::new(sub_dir);
+            eth_tests_path.join(base_path.join(sub_dir_path))
+        }
+        None => eth_tests_path.join(base_path),
     };
-    SpecId::from(actual_network)
+
+    path_buf
 }

@@ -8,6 +8,7 @@
 use crate::ast::*;
 use crate::context::Ctx;
 use crate::gas::{interpret_cost, OutOfGas};
+use crate::irrefutable_match::irrefutable_match;
 use crate::stack::*;
 
 #[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
@@ -47,7 +48,7 @@ impl ContractScript<TypecheckedStage> {
         use TypedValue as V;
         match stack.pop().expect("empty execution stack") {
             V::Pair(p) => match *p {
-                (V::List(vec), storage) => Ok((vec, storage)),
+                (V::List(vec), storage) => Ok((vec.into(), storage)),
                 (v, _) => panic!("expected `list operation`, got {:?}", v),
             },
             v => panic!("expected `pair 'a 'b`, got {:?}", v),
@@ -194,6 +195,34 @@ fn interpret_one(
                 None => interpret(when_none, ctx, stack)?,
             }
         }
+        I::IfCons(when_cons, when_nil) => {
+            ctx.gas.consume(interpret_cost::IF_CONS)?;
+            let lst = irrefutable_match!(&mut stack[0]; V::List);
+            match lst.uncons() {
+                Some(x) => {
+                    stack.push(x);
+                    interpret(when_cons, ctx, stack)?
+                }
+                None => {
+                    pop!();
+                    interpret(when_nil, ctx, stack)?;
+                }
+            }
+        }
+        I::IfLeft(when_left, when_right) => {
+            ctx.gas.consume(interpret_cost::IF_LEFT)?;
+            let or = *pop!(V::Or);
+            match or {
+                Or::Left(x) => {
+                    stack.push(x);
+                    interpret(when_left, ctx, stack)?
+                }
+                Or::Right(x) => {
+                    stack.push(x);
+                    interpret(when_right, ctx, stack)?;
+                }
+            }
+        }
         I::Int => {
             let i = pop!(V::Nat);
             ctx.gas.consume(interpret_cost::INT_NAT)?;
@@ -208,6 +237,27 @@ fn interpret_one(
                 } else {
                     ctx.gas.consume(interpret_cost::LOOP_EXIT)?;
                     break;
+                }
+            }
+        }
+        I::Iter(overload, nested) => {
+            ctx.gas.consume(interpret_cost::ITER)?;
+            match overload {
+                overloads::Iter::List => {
+                    let lst = pop!(V::List);
+                    for i in lst {
+                        ctx.gas.consume(interpret_cost::PUSH)?;
+                        stack.push(i);
+                        interpret(nested, ctx, stack)?;
+                    }
+                }
+                overloads::Iter::Map => {
+                    let map = pop!(V::Map);
+                    for (k, v) in map {
+                        ctx.gas.consume(interpret_cost::PUSH)?;
+                        stack.push(V::new_pair(k, v));
+                        interpret(nested, ctx, stack)?;
+                    }
                 }
             }
         }
@@ -267,7 +317,16 @@ fn interpret_one(
         }
         I::Nil(..) => {
             ctx.gas.consume(interpret_cost::NIL)?;
-            stack.push(V::List(vec![]));
+            stack.push(V::List(MichelsonList::new()));
+        }
+        I::Cons => {
+            ctx.gas.consume(interpret_cost::CONS)?;
+            let elt = pop!();
+            let mut lst = pop!(V::List);
+            // NB: this is slightly better than lists on average, but needs to
+            // be benchmarked.
+            lst.cons(elt);
+            stack.push(V::List(lst));
         }
         I::Get(overload) => match overload {
             overloads::Get::Map => {
@@ -524,6 +583,83 @@ mod interpreter_tests {
     }
 
     #[test]
+    fn test_iter_list_many() {
+        let mut stack = stk![
+            V::List(vec![].into()),
+            V::List((1..5).map(V::Int).collect())
+        ];
+        assert!(interpret_one(
+            &Iter(overloads::Iter::List, vec![Cons]),
+            &mut Ctx::default(),
+            &mut stack,
+        )
+        .is_ok());
+        // NB: walking a list start-to-end and CONSing each element effectively
+        // reverses the list.
+        assert_eq!(stack, stk![V::List((1..5).rev().map(V::Int).collect())]);
+    }
+
+    #[test]
+    fn test_iter_list_zero() {
+        let mut stack = stk![V::Unit, V::List(vec![].into())];
+        assert!(interpret_one(
+            &Iter(overloads::Iter::List, vec![Drop(None)]),
+            &mut Ctx::default(),
+            &mut stack,
+        )
+        .is_ok());
+        assert_eq!(stack, stk![V::Unit]);
+    }
+
+    #[test]
+    fn test_iter_map_many() {
+        let mut stack = stk![
+            V::List(vec![].into()),
+            V::Map(
+                vec![
+                    (V::Int(1), V::Nat(1)),
+                    (V::Int(2), V::Nat(2)),
+                    (V::Int(3), V::Nat(3)),
+                ]
+                .into_iter()
+                .collect()
+            )
+        ];
+        assert!(interpret_one(
+            &Iter(overloads::Iter::Map, vec![Cons]),
+            &mut Ctx::default(),
+            &mut stack,
+        )
+        .is_ok());
+        assert_eq!(
+            stack,
+            stk![V::List(
+                // NB: traversing the map start-to-end, we're CONSing to a
+                // list, thus the first element of the map is the last element
+                // of the list.
+                vec![
+                    V::new_pair(V::Int(3), V::Nat(3)),
+                    V::new_pair(V::Int(2), V::Nat(2)),
+                    V::new_pair(V::Int(1), V::Nat(1)),
+                ]
+                .into()
+            )]
+        );
+    }
+
+    #[test]
+    fn test_iter_map_zero() {
+        let mut stack = stk![V::Int(0), V::Map(BTreeMap::new())];
+        assert!(interpret_one(
+            &Iter(overloads::Iter::Map, vec![Car, Add(overloads::Add::IntInt)]),
+            &mut Ctx::default(),
+            &mut stack,
+        )
+        .is_ok());
+        assert_eq!(stack, stk![V::Int(0)]);
+    }
+
+    #[test]
     fn test_swap() {
         let mut stack = stk![V::Nat(20), V::Int(10)];
         let expected_stack = stk![V::Int(10), V::Nat(20)];
@@ -735,6 +871,69 @@ mod interpreter_tests {
     }
 
     #[test]
+    fn if_cons_cons() {
+        let code = vec![IfCons(vec![Swap, Drop(None)], vec![Push(V::Int(0))])];
+        let mut stack = stk![V::List(vec![V::Int(1), V::Int(2)].into())];
+        let mut ctx = Ctx::default();
+        assert_eq!(interpret(&code, &mut ctx, &mut stack), Ok(()));
+        assert_eq!(stack, stk![V::Int(1)]);
+        assert_eq!(
+            ctx.gas.milligas(),
+            Gas::default().milligas()
+                - interpret_cost::IF_CONS
+                - interpret_cost::SWAP
+                - interpret_cost::DROP
+                - interpret_cost::INTERPRET_RET * 2
+        );
+    }
+
+    #[test]
+    fn if_cons_nil() {
+        let code = vec![IfCons(vec![Swap, Drop(None)], vec![Push(V::Int(0))])];
+        let mut stack = stk![V::List(vec![].into())];
+        let mut ctx = Ctx::default();
+        assert_eq!(interpret(&code, &mut ctx, &mut stack), Ok(()));
+        assert_eq!(stack, stk![V::Int(0)]);
+        assert_eq!(
+            ctx.gas.milligas(),
+            Gas::default().milligas()
+                - interpret_cost::IF_CONS
+                - interpret_cost::PUSH
+                - interpret_cost::INTERPRET_RET * 2
+        );
+    }
+
+    #[test]
+    fn if_left_left() {
+        let code = vec![IfLeft(vec![], vec![Drop(None), Push(V::Int(0))])];
+        let mut stack = stk![V::new_or(Or::Left(V::Int(1)))];
+        let mut ctx = Ctx::default();
+        assert_eq!(interpret(&code, &mut ctx, &mut stack), Ok(()));
+        assert_eq!(stack, stk![V::Int(1)]);
+        assert_eq!(
+            ctx.gas.milligas(),
+            Gas::default().milligas() - interpret_cost::IF_LEFT - interpret_cost::INTERPRET_RET * 2
+        );
+    }
+
+    #[test]
+    fn if_left_right() {
+        let code = vec![IfLeft(vec![], vec![Drop(None), Push(V::Int(0))])];
+        let mut stack = stk![V::new_or(Or::Right(V::Unit))];
+        let mut ctx = Ctx::default();
+        assert_eq!(interpret(&code, &mut ctx, &mut stack), Ok(()));
+        assert_eq!(stack, stk![V::Int(0)]);
+        assert_eq!(
+            ctx.gas.milligas(),
+            Gas::default().milligas()
+                - interpret_cost::IF_LEFT
+                - interpret_cost::DROP
+                - interpret_cost::PUSH
+                - interpret_cost::INTERPRET_RET * 2
+        );
+    }
+
+    #[test]
     fn some() {
         let mut stack = stk![V::Int(5)];
         let mut ctx = Ctx::default();
@@ -798,11 +997,9 @@ mod interpreter_tests {
         let mut ctx = Ctx::default();
         assert_eq!(
             interpret(
-                &vec![Push(TypedValue::List(vec![
-                    TypedValue::Int(1),
-                    TypedValue::Int(2),
-                    TypedValue::Int(3),
-                ]))],
+                &vec![Push(TypedValue::List(
+                    vec![TypedValue::Int(1), TypedValue::Int(2), TypedValue::Int(3),].into()
+                ))],
                 &mut ctx,
                 &mut stack
             ),
@@ -810,11 +1007,9 @@ mod interpreter_tests {
         );
         assert_eq!(
             stack,
-            stk![TypedValue::List(vec![
-                TypedValue::Int(1),
-                TypedValue::Int(2),
-                TypedValue::Int(3),
-            ])]
+            stk![TypedValue::List(
+                vec![TypedValue::Int(1), TypedValue::Int(2), TypedValue::Int(3),].into()
+            )]
         );
         assert_eq!(
             ctx.gas.milligas(),
@@ -827,10 +1022,25 @@ mod interpreter_tests {
         let mut stack = stk![];
         let mut ctx = Ctx::default();
         assert_eq!(interpret(&vec![Nil(())], &mut ctx, &mut stack), Ok(()));
-        assert_eq!(stack, stk![TypedValue::List(vec![])]);
+        assert_eq!(stack, stk![TypedValue::List(vec![].into())]);
         assert_eq!(
             ctx.gas.milligas(),
             Gas::default().milligas() - interpret_cost::NIL - interpret_cost::INTERPRET_RET,
+        )
+    }
+
+    #[test]
+    fn cons() {
+        let mut stack = stk![V::List(vec![V::Int(321)].into()), V::Int(123)];
+        let mut ctx = Ctx::default();
+        assert_eq!(interpret(&vec![Cons], &mut ctx, &mut stack), Ok(()));
+        assert_eq!(
+            stack,
+            stk![TypedValue::List(vec![V::Int(123), V::Int(321)].into())]
+        );
+        assert_eq!(
+            ctx.gas.milligas(),
+            Gas::default().milligas() - interpret_cost::CONS - interpret_cost::INTERPRET_RET,
         )
     }
 

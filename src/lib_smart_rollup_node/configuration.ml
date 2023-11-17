@@ -35,7 +35,6 @@ type mode =
   | Custom of Operation_kind.t list
 
 type batcher = {
-  simulate : bool;
   min_batch_elements : int;
   min_batch_size : int;
   max_batch_elements : int;
@@ -185,8 +184,6 @@ let default_fee_parameters =
     Operation_kind.Map.empty
     Operation_kind.all
 
-let default_batcher_simulate = true
-
 let default_batcher_min_batch_elements = 10
 
 let default_batcher_min_batch_size = 10
@@ -195,7 +192,6 @@ let default_batcher_max_batch_elements = max_int
 
 let default_batcher =
   {
-    simulate = default_batcher_simulate;
     min_batch_elements = default_batcher_min_batch_elements;
     min_batch_size = default_batcher_min_batch_size;
     max_batch_elements = default_batcher_max_batch_elements;
@@ -322,22 +318,14 @@ let batcher_encoding =
   let open Data_encoding in
   conv_with_guard
     (fun {
-           simulate;
            min_batch_elements;
            min_batch_size;
            max_batch_elements;
            max_batch_size;
          } ->
-      ( simulate,
-        min_batch_elements,
-        min_batch_size,
-        max_batch_elements,
-        max_batch_size ))
-    (fun ( simulate,
-           min_batch_elements,
-           min_batch_size,
-           max_batch_elements,
-           max_batch_size ) ->
+      (min_batch_elements, min_batch_size, max_batch_elements, max_batch_size))
+    (fun (min_batch_elements, min_batch_size, max_batch_elements, max_batch_size)
+         ->
       let open Result_syntax in
       let error_when c s = if c then Error s else return_unit in
       let* () =
@@ -357,15 +345,8 @@ let batcher_encoding =
           (max_batch_elements < min_batch_elements)
           "max_batch_elements must be greater than min_batch_elements"
       in
-      {
-        simulate;
-        min_batch_elements;
-        min_batch_size;
-        max_batch_elements;
-        max_batch_size;
-      })
-  @@ obj5
-       (dft "simulate" bool default_batcher_simulate)
+      {min_batch_elements; min_batch_size; max_batch_elements; max_batch_size})
+  @@ obj4
        (dft "min_batch_elements" int31 default_batcher_min_batch_elements)
        (dft "min_batch_size" int31 default_batcher_min_batch_size)
        (dft "max_batch_elements" int31 default_batcher_max_batch_elements)
@@ -580,14 +561,21 @@ let encoding : t Data_encoding.t =
 (** Maps a mode to their corresponding purposes. The Custom mode
     returns each purposes where it has at least one operation kind
     from (i.e. {!purposes_of_operation_kinds}). *)
-let purposes_of_mode mode : Purpose.t list =
+let purposes_of_mode mode : Purpose.ex_purpose list =
   match mode with
   | Observer -> []
-  | Batcher -> [Batching]
-  | Accuser -> [Operating]
-  | Bailout -> [Operating; Cementing; Recovering]
-  | Maintenance -> [Operating; Cementing; Executing_outbox]
-  | Operator -> [Operating; Cementing; Executing_outbox; Batching]
+  | Batcher -> [Purpose Batching]
+  | Accuser -> [Purpose Operating]
+  | Bailout -> [Purpose Operating; Purpose Cementing; Purpose Recovering]
+  | Maintenance ->
+      [Purpose Operating; Purpose Cementing; Purpose Executing_outbox]
+  | Operator ->
+      [
+        Purpose Operating;
+        Purpose Cementing;
+        Purpose Executing_outbox;
+        Purpose Batching;
+      ]
   | Custom op_kinds -> Purpose.of_operation_kind op_kinds
 
 let operation_kinds_of_mode mode =
@@ -604,8 +592,8 @@ let can_inject mode (op_kind : Operation_kind.t) =
   let allowed_operations = operation_kinds_of_mode mode in
   List.mem ~equal:Stdlib.( = ) op_kind allowed_operations
 
-let purpose_matches_mode mode purpose =
-  List.mem ~equal:Stdlib.( = ) purpose (purposes_of_mode mode)
+let purpose_matches_mode (type k) mode (purpose : k Purpose.t) =
+  List.mem ~equal:Stdlib.( = ) (Purpose.Purpose purpose) (purposes_of_mode mode)
 
 let refutation_player_buffer_levels = 5
 

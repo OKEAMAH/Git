@@ -593,11 +593,28 @@ module Get_estimate_gas = MethodMaker (struct
 
   type method_
 
-  type input = call
+  type input = call * block_param
 
   type output = quantity
 
-  let input_encoding = Data_encoding.tup1 call_encoding
+  let input_encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"full_parameters"
+          (Tag 0)
+          (tup2 call_encoding block_param_encoding)
+          (fun (call, block_param) -> Some (call, block_param))
+          (fun (call, block_param) -> (call, block_param));
+        (* eth-cli doesn't put the block parameter. *)
+        case
+          ~title:"only_call_parameter"
+          (Tag 1)
+          (tup1 call_encoding)
+          (fun (call, _) -> Some call)
+          (fun call -> (call, Latest));
+      ]
 
   let output_encoding = quantity_encoding
 
@@ -650,6 +667,22 @@ module Web3_sha3 = MethodMaker (struct
   let method_ = "web3_sha3"
 end)
 
+module Get_logs = MethodMaker (struct
+  open Ethereum_types
+
+  type method_
+
+  type input = filter
+
+  type output = filter_changes list
+
+  let input_encoding = Data_encoding.tup1 filter_encoding
+
+  let output_encoding = Data_encoding.list filter_changes_encoding
+
+  let method_ = "eth_getLogs"
+end)
+
 let methods : (module METHOD) list =
   [
     (module Kernel_version);
@@ -666,6 +699,7 @@ let methods : (module METHOD) list =
     (module Get_transaction_count);
     (module Get_block_transaction_count_by_hash);
     (module Get_block_transaction_count_by_number);
+    (module Get_logs);
     (module Get_uncle_count_by_block_hash);
     (module Get_uncle_count_by_block_number);
     (module Get_transaction_receipt);

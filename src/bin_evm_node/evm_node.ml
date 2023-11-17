@@ -24,46 +24,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
-
-type version = Prod | Dev
-
-type config = {
-  rpc_addr : string;
-  rpc_port : int;
-  debug : bool;
-  rollup_node_endpoint : Uri.t;
-  version : version;
-  cors_origins : string list;
-  cors_headers : string list;
-  verbose : bool;
-}
-
-let default_config =
-  {
-    rpc_addr = "127.0.0.1";
-    rpc_port = 8545;
-    debug = true;
-    rollup_node_endpoint = Uri.empty;
-    version = Prod;
-    cors_origins = [];
-    cors_headers = [];
-    verbose = false;
-  }
-
-let make_config ?version ?rpc_addr ?rpc_port ?debug ?cors_origins ?cors_headers
-    ~rollup_node_endpoint ~verbose () =
-  {
-    rpc_addr = Option.value ~default:default_config.rpc_addr rpc_addr;
-    rpc_port = Option.value ~default:default_config.rpc_port rpc_port;
-    debug = Option.value ~default:default_config.debug debug;
-    rollup_node_endpoint;
-    version = Option.value ~default:default_config.version version;
-    cors_origins =
-      Option.value ~default:default_config.cors_origins cors_origins;
-    cors_headers =
-      Option.value ~default:default_config.cors_headers cors_headers;
-    verbose;
-  }
+open Configuration
 
 let install_finalizer_prod server =
   let open Lwt_syntax in
@@ -131,15 +92,15 @@ let rollup_node_config_dev ~rollup_node_endpoint =
   let* smart_rollup_address = Rollup_node_rpc.smart_rollup_address in
   return ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
 
-let prod_directory ~verbose rollup_node_config =
+let prod_directory config rollup_node_config =
   let open Lwt_result_syntax in
   let open Evm_node_lib_prod in
-  return @@ Services.directory ~verbose rollup_node_config
+  return @@ Services.directory config rollup_node_config
 
-let dev_directory ~verbose rollup_node_config =
+let dev_directory config rollup_node_config =
   let open Lwt_result_syntax in
   let open Evm_node_lib_dev in
-  return @@ Services.directory ~verbose rollup_node_config
+  return @@ Services.directory config rollup_node_config
 
 let start {rpc_addr; rpc_port; debug; cors_origins; cors_headers; _} ~directory
     =
@@ -182,16 +143,6 @@ module Params = struct
 
   let int = Tezos_clic.parameter (fun _ s -> Lwt.return_ok (int_of_string s))
 
-  let version =
-    Tezos_clic.parameter (fun _ s ->
-        let version =
-          match s with
-          | "prod" -> Prod
-          | "dev" -> Dev
-          | _ -> Stdlib.failwith "The version must be prod or dev."
-        in
-        Lwt.return_ok version)
-
   let rollup_node_endpoint =
     Tezos_clic.parameter (fun _ uri -> Lwt.return_ok (Uri.of_string uri))
 
@@ -224,17 +175,13 @@ let cors_allowed_headers_arg =
 
 let cors_allowed_origins_arg =
   Tezos_clic.arg
-    ~long:"cors-origin"
+    ~long:"cors-origins"
     ~placeholder:"ALLOWED_ORIGINS"
     ~doc:"List of accepted cors origins."
     Params.string_list
 
-let version_arg =
-  Tezos_clic.arg
-    ~long:"version"
-    ~placeholder:"VERSION"
-    ~doc:"The EVM node version, it's either prod or dev."
-    Params.version
+let devmode_arg =
+  Tezos_clic.switch ~long:"devmode" ~doc:"The EVM node in development mode." ()
 
 let verbose_arg =
   Tezos_clic.switch
@@ -242,6 +189,18 @@ let verbose_arg =
     ~long:"verbose"
     ~doc:"If verbose is set, the node will display the responses to RPCs."
     ()
+
+let data_dir_arg =
+  let default = Configuration.default_data_dir in
+  Tezos_clic.default_arg
+    ~long:"data-dir"
+    ~placeholder:"data-dir"
+    ~doc:
+      (Format.sprintf
+         "The path to the EVM node data directory. Default value is %s"
+         default)
+    ~default
+    Params.string
 
 let rollup_node_endpoint_param =
   Tezos_clic.param
@@ -284,8 +243,9 @@ let proxy_command =
   let open Lwt_result_syntax in
   command
     ~desc:"Start the RPC server"
-    (args6
-       version_arg
+    (args7
+       data_dir_arg
+       devmode_arg
        rpc_addr_arg
        rpc_port_arg
        cors_allowed_origins_arg
@@ -293,14 +253,21 @@ let proxy_command =
        verbose_arg)
     (prefixes ["run"; "proxy"; "with"; "endpoint"]
     @@ rollup_node_endpoint_param @@ stop)
-    (fun (version, rpc_addr, rpc_port, cors_origins, cors_headers, verbose)
+    (fun ( data_dir,
+           devmode,
+           rpc_addr,
+           rpc_port,
+           cors_origins,
+           cors_headers,
+           verbose )
          rollup_node_endpoint
          () ->
       let*! () = Tezos_base_unix.Internal_event_unix.init () in
       let*! () = Internal_event.Simple.emit Event.event_starting () in
-      let config =
-        make_config
-          ?version
+      let* config =
+        Cli.create_or_read_config
+          ~data_dir
+          ~devmode
           ?rpc_addr
           ?rpc_port
           ?cors_origins
@@ -309,32 +276,26 @@ let proxy_command =
           ~verbose
           ()
       in
+      let* () = Configuration.save ~force:true ~data_dir config in
       let* () =
-        match config.version with
-        | Prod ->
-            let* rollup_config =
-              rollup_node_config_prod ~rollup_node_endpoint
-            in
-            let* () = Evm_node_lib_prod.Tx_pool.start rollup_config in
-            let* directory =
-              prod_directory ~verbose:config.verbose rollup_config
-            in
-            let* server = start config ~directory in
-            let (_ : Lwt_exit.clean_up_callback_id) =
-              install_finalizer_prod server
-            in
-            return_unit
-        | Dev ->
-            let* rollup_config = rollup_node_config_dev ~rollup_node_endpoint in
-            let* () = Evm_node_lib_dev.Tx_pool.start rollup_config in
-            let* directory =
-              dev_directory ~verbose:config.verbose rollup_config
-            in
-            let* server = start config ~directory in
-            let (_ : Lwt_exit.clean_up_callback_id) =
-              install_finalizer_dev server
-            in
-            return_unit
+        if not config.devmode then
+          let* rollup_config = rollup_node_config_prod ~rollup_node_endpoint in
+          let* () = Evm_node_lib_prod.Tx_pool.start rollup_config in
+          let* directory = prod_directory config rollup_config in
+          let* server = start config ~directory in
+          let (_ : Lwt_exit.clean_up_callback_id) =
+            install_finalizer_prod server
+          in
+          return_unit
+        else
+          let* rollup_config = rollup_node_config_dev ~rollup_node_endpoint in
+          let* () = Evm_node_lib_dev.Tx_pool.start rollup_config in
+          let* directory = dev_directory config rollup_config in
+          let* server = start config ~directory in
+          let (_ : Lwt_exit.clean_up_callback_id) =
+            install_finalizer_dev server
+          in
+          return_unit
       in
       let wait, _resolve = Lwt.wait () in
       let* () = wait in
@@ -367,14 +328,13 @@ let chunker_command =
     ~desc:
       "Chunk hexadecimal data according to the message representation of the \
        EVM rollup"
-    (args2 version_arg rollup_address_arg)
+    (args2 devmode_arg rollup_address_arg)
     (prefixes ["chunk"; "data"] @@ data_parameter @@ stop)
-    (fun (version, rollup_address) data () ->
+    (fun (devmode, rollup_address) data () ->
       let print_chunks smart_rollup_address s =
         let* messages =
-          match Option.value ~default:Prod version with
-          | Prod -> make_prod_messages ~smart_rollup_address s
-          | Dev -> make_dev_messages ~smart_rollup_address s
+          if devmode then make_dev_messages ~smart_rollup_address s
+          else make_prod_messages ~smart_rollup_address s
         in
         Format.printf "Chunked transactions :\n%!" ;
         List.iter (Format.printf "%s\n%!") messages ;
@@ -412,8 +372,8 @@ let dispatch initial_ctx args =
 let handle_error = function
   | Ok _ -> ()
   | Error [Tezos_clic.Version] ->
-      let version = Tezos_version_value.Bin_version.version_string in
-      Format.printf "%s\n" version ;
+      let devmode = Tezos_version_value.Bin_version.version_string in
+      Format.printf "%s\n" devmode ;
       exit 0
   | Error [Tezos_clic.Help command] ->
       Tezos_clic.usage

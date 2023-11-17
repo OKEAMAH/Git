@@ -1,5 +1,5 @@
-use crate::syscalls::{write_str, StdOut};
+use tezos_smart_rollup::prelude::*;
 
-pub fn main() {
-    write_str(StdOut, "Hello World\n");
+pub fn main(host: impl Runtime) {
+    debug_msg!(host, "Hello World\n");
 }
