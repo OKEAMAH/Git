@@ -1202,6 +1202,7 @@ module Make
           (Proto_services.S.Mempool.monitor_operations Tezos_rpc.Path.open_root)
           (fun pv params () ->
             Lwt_mutex.with_lock pv.lock @@ fun () ->
+            Profiler.record "monitor operation first call" ;
             let op_stream, stopper =
               Lwt_watcher.create_stream pv.operation_stream
             in
@@ -1272,6 +1273,7 @@ module Make
               let open Lwt_syntax in
               match !current_mempool with
               | Some mempool ->
+                  Profiler.stop () ;
                   current_mempool := None ;
                   Lwt.return_some (params#version, mempool)
               | None -> (
