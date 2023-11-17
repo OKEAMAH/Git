@@ -320,9 +320,10 @@ let handle_msg state msg =
           Peer_metadata.incr meta @@ Received_response Block_header ;
           Lwt.return_unit)
   | Get_operations hashes ->
-      Profiler.span_s
-        ["Get_operations"; P2p_peer_id.to_short_b58check state.gid]
-      @@ fun () ->
+      List.iter
+        (fun h ->
+          Format.kasprintf Profiler.stamp "get op: %a" Operation_hash.pp h)
+        hashes ;
       Peer_metadata.incr meta @@ Received_request Operations ;
       List.iter_p
         (fun hash ->
@@ -339,16 +340,19 @@ let handle_msg state msg =
         hashes
   | Operation operation -> (
       let hash = Operation.hash operation in
-      Profiler.span_s
-        [
-          "Operation";
+      let l =
+        Format.asprintf
+          "op %s from %a: %a"
           (match Char.code (Bytes.get operation.proto 0) with
-          | 0x14 -> "preendorsement"
-          | 0x15 -> "endorsement"
-          | _ -> "other");
-          P2p_peer_id.to_short_b58check state.gid;
-        ]
-      @@ fun () ->
+          | 0x14 -> "preendo"
+          | 0x15 -> "endo"
+          | _ -> "other")
+          P2p_peer_id.pp
+          state.gid
+          Operation_hash.pp
+          hash
+      in
+      Profiler.stamp l ;
       match find_pending_operation state hash with
       | None ->
           Peer_metadata.incr meta Unexpected_response ;
