@@ -406,6 +406,7 @@ and _ manager_operation =
   | Auth_source : {
       auth_source : Signature.Public_key_hash.t;
       auth_signature : Signature.t;
+      txs : _ contents_list;
     }
       -> Kind.auth_source manager_operation
 
@@ -555,10 +556,18 @@ let zk_rollup_operation_publish_tag = zk_rollup_operation_tag_offset + 1
 
 let zk_rollup_operation_update_tag = zk_rollup_operation_tag_offset + 2
 
+let meta_transaction_tag_offset = 210
+
+let auth_source_tag = meta_transaction_tag_offset + 0
+
 module Encoding = struct
   open Data_encoding
 
-  (** These tags can not be used yet for operations. *)
+  type _ nonrec_case = Case
+
+  type _ rec_case =
+    | Rec_case  (** These tags can not be used yet for operations. *)
+
   let reserved_tag t =
     (* These tags are reserved for future extensions: [fd] - [ff]. *)
     Compare.Int.(t >= 0xfd)
@@ -581,7 +590,7 @@ module Encoding = struct
 
   module Manager_operations = struct
     type 'kind case =
-      | MCase : {
+      | MCase :  {
           tag : int;
           name : string;
           encoding : 'a Data_encoding.t;
@@ -589,7 +598,16 @@ module Encoding = struct
           proj : 'kind manager_operation -> 'a;
           inj : 'a -> 'kind manager_operation;
         }
-          -> 'kind case
+          -> 'kind nonrec_case case
+      | MCase_rec : 'a 'kind. {
+          tag : int;
+          name : string;
+          encoding : packed_contents_list Data_encoding.t -> 'a Data_encoding.t;
+          select : packed_manager_operation -> 'kind manager_operation option;
+          proj : 'kind manager_operation -> 'a;
+          inj : 'a -> 'kind manager_operation;
+        }
+          -> 'kind rec_case case
 
     let reveal_case =
       MCase
@@ -991,7 +1009,34 @@ module Encoding = struct
             (fun (sc_rollup, staker) ->
               Sc_rollup_recover_bond {sc_rollup; staker});
         }
+
+    let auth_source_case =
+      MCase_rec
+        {
+          tag = auth_source_tag;
+          name = "auth_source";
+          encoding =
+            (fun e ->
+              obj3
+                (req "auth_source" Signature.Public_key_hash.encoding)
+                (req "auth_signature" (dynamic_size Signature.encoding))
+                (req "txs" (dynamic_size e)));
+          select =
+            (function
+            | Manager (Auth_source _ as op) ->
+                Some (op : Kind.auth_source manager_operation)
+            | _ -> None);
+          proj =
+            (function
+            | Auth_source {auth_source; auth_signature; txs} ->
+                (auth_source, auth_signature, Contents_list txs));
+          inj =
+            (fun (auth_source, auth_signature, Contents_list txs) ->
+              Auth_source {auth_source; auth_signature; txs});
+        }
   end
+
+
 
   type 'b case =
     | Case : {
@@ -1002,7 +1047,16 @@ module Encoding = struct
         proj : 'b contents -> 'a;
         inj : 'a -> 'b contents;
       }
-        -> 'b case
+        -> 'b nonrec_case case
+    | Case_rec :  {
+        tag : int;
+        name : string;
+        encoding : packed_contents_list Data_encoding.t -> 'a Data_encoding.t;
+        select : packed_contents -> 'b contents option;
+        proj : 'b contents -> 'a;
+        inj : 'a -> 'b contents;
+      }
+        -> 'a rec_case case
 
   let preendorsement_case =
     Case
@@ -1220,7 +1274,7 @@ module Encoding = struct
       }
 
   let double_preendorsement_evidence_case :
-      Kind.double_preattestation_evidence case =
+      Kind.double_preattestation_evidence nonrec_case case =
     Case
       {
         tag = 7;
@@ -1238,7 +1292,7 @@ module Encoding = struct
       }
 
   let double_preattestation_evidence_case :
-      Kind.double_preattestation_evidence case =
+      Kind.double_preattestation_evidence nonrec_case case =
     Case
       {
         tag = 7;
@@ -1255,7 +1309,8 @@ module Encoding = struct
         inj = (fun (op1, op2) -> Double_preattestation_evidence {op1; op2});
       }
 
-  let double_endorsement_evidence_case : Kind.double_attestation_evidence case =
+  let double_endorsement_evidence_case :
+      Kind.double_attestation_evidence nonrec_case case =
     Case
       {
         tag = 2;
@@ -1272,7 +1327,8 @@ module Encoding = struct
         inj = (fun (op1, op2) -> Double_attestation_evidence {op1; op2});
       }
 
-  let double_attestation_evidence_case : Kind.double_attestation_evidence case =
+  let double_attestation_evidence_case :
+      Kind.double_attestation_evidence nonrec_case case =
     Case
       {
         tag = 2;
@@ -1420,12 +1476,39 @@ module Encoding = struct
       {source; fee; counter; gas_limit; storage_limit; operation}
 
   let make_manager_case tag (type kind)
-      (Manager_operations.MCase mcase : kind Manager_operations.case) =
+      (Manager_operations.MCase mcase :
+        kind nonrec_case Manager_operations.case) =
     Case
       {
         tag;
         name = mcase.name;
         encoding = merge_objs manager_encoding mcase.encoding;
+        select =
+          (function
+          | Contents (Manager_operation ({operation; _} as op)) -> (
+              match mcase.select (Manager operation) with
+              | None -> None
+              | Some operation -> Some (Manager_operation {op with operation}))
+          | _ -> None);
+        proj =
+          (function
+          | Manager_operation {operation; _} as op ->
+              (extract op, mcase.proj operation));
+        inj = (fun (op, contents) -> rebuild op (mcase.inj contents));
+      }
+
+  let make_manager_case_rec tag (type kind)
+      (Manager_operations.MCase_rec mcase :
+        kind rec_case Manager_operations.case) =
+    Case_rec
+      {
+        tag;
+        name = mcase.name;
+        encoding =
+              (fun  e ->
+                let enc = mcase.encoding e in
+                let res = merge_objs manager_encoding enc in 
+                res);
         select =
           (function
           | Contents (Manager_operation ({operation; _} as op)) -> (
@@ -1982,7 +2065,7 @@ let hash_packed (o : packed_operation) =
 
 type ('a, 'b) eq = Eq : ('a, 'a) eq
 
-let equal_manager_operation_kind :
+let rec equal_manager_operation_kind :
     type a b. a manager_operation -> b manager_operation -> (a, b) eq option =
  fun op1 op2 ->
   match (op1, op2) with
@@ -2027,10 +2110,13 @@ let equal_manager_operation_kind :
   | Zk_rollup_publish _, _ -> None
   | Zk_rollup_update _, Zk_rollup_update _ -> Some Eq
   | Zk_rollup_update _, _ -> None
-  | Auth_source _, Auth_source _ -> Some Eq
+  | Auth_source {txs; _}, Auth_source {txs = txs2; _} -> (
+      match equal_contents_kind_list txs txs2 with
+      | Some Eq -> Some Eq
+      | _ -> None)
   | Auth_source _, _ -> None
 
-let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
+and equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
  fun op1 op2 ->
   match (op1, op2) with
@@ -2067,7 +2153,7 @@ let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
       | Some Eq -> Some Eq)
   | Manager_operation _, _ -> None
 
-let rec equal_contents_kind_list :
+and equal_contents_kind_list :
     type a b. a contents_list -> b contents_list -> (a, b) eq option =
  fun op1 op2 ->
   match (op1, op2) with

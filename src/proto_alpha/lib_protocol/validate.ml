@@ -2098,9 +2098,23 @@ module Manager = struct
            trace to this effect. *)
         record_trace Gas.Gas_limit_too_high
 
+  type ok_kont = {
+    run :
+      'a.
+      fee_payer:batch_state ->
+      info ->
+      check_signature:bool ->
+      'a Kind.manager protocol_data ->
+      Gas.Arith.fp ->
+      unit tzresult Lwt.t;
+  }
+
+  type kont = unit -> ok_kont tzresult
+
   let check_kind_specific_content (type kind)
-      (contents : kind Kind.manager contents) remaining_gas vi =
-    let open Result_syntax in
+      (contents : kind Kind.manager contents) remaining_gas vi (k : kont)
+      ~fee_payer : unit tzresult Lwt.t =
+    let open Lwt_result_syntax in
     let (Manager_operation
           {
             source;
@@ -2112,53 +2126,63 @@ module Manager = struct
           }) =
       contents
     in
+    let lift res = match res with Ok res -> return res | Error e -> fail e in
     match operation with
-    | Reveal pk -> Contract.check_public_key pk source
+    | Reveal pk -> lift @@ Contract.check_public_key pk source
+    | Auth_source {txs; auth_signature; _} ->
+        let*? k = k () in
+        k.run
+          ~fee_payer
+          vi
+          ~check_signature:true
+          {signature = Some auth_signature; contents = txs}
+          remaining_gas
     | Transaction {parameters; _} ->
-        let* (_ : Gas.Arith.fp) =
+        let*? (_ : Gas.Arith.fp) =
           consume_decoding_gas remaining_gas parameters
         in
         return_unit
     | Origination {script; _} ->
-        let* remaining_gas = consume_decoding_gas remaining_gas script.code in
-        let* (_ : Gas.Arith.fp) =
+        let*? remaining_gas = consume_decoding_gas remaining_gas script.code in
+        let*? (_ : Gas.Arith.fp) =
           consume_decoding_gas remaining_gas script.storage
         in
         return_unit
     | Register_global_constant {value} ->
-        let* (_ : Gas.Arith.fp) = consume_decoding_gas remaining_gas value in
+        let*? (_ : Gas.Arith.fp) = consume_decoding_gas remaining_gas value in
         return_unit
-    | Delegation (Some pkh) -> Delegate.check_not_tz4 pkh
-    | Update_consensus_key pk -> Delegate.Consensus_key.check_not_tz4 pk
+    | Delegation (Some pkh) -> lift @@ Delegate.check_not_tz4 pkh
+    | Update_consensus_key pk -> lift @@ Delegate.Consensus_key.check_not_tz4 pk
     | Delegation None | Increase_paid_storage _ -> return_unit
     | Transfer_ticket {contents; ty; _} ->
-        let* remaining_gas = consume_decoding_gas remaining_gas contents in
-        let* (_ : Gas.Arith.fp) = consume_decoding_gas remaining_gas ty in
+        let*? remaining_gas = consume_decoding_gas remaining_gas contents in
+        let*? (_ : Gas.Arith.fp) = consume_decoding_gas remaining_gas ty in
         return_unit
     | Sc_rollup_originate {kind; _} ->
-        let* () = assert_sc_rollup_feature_enabled vi in
-        assert_pvm_kind_enabled vi kind
+        let*? () = assert_sc_rollup_feature_enabled vi in
+        lift @@ assert_pvm_kind_enabled vi kind
     | Sc_rollup_cement _ | Sc_rollup_publish _ | Sc_rollup_refute _
     | Sc_rollup_timeout _ | Sc_rollup_execute_outbox_message _ ->
-        assert_sc_rollup_feature_enabled vi
+        lift @@ assert_sc_rollup_feature_enabled vi
     | Sc_rollup_add_messages {messages; _} ->
-        let* () = assert_sc_rollup_feature_enabled vi in
-        assert_not_zero_messages messages
+        let*? () = assert_sc_rollup_feature_enabled vi in
+        lift @@ assert_not_zero_messages messages
     | Sc_rollup_recover_bond _ ->
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/3063
            Should we successfully precheck Sc_rollup_recover_bond and any
            (simple) Sc rollup operation, or should we add some some checks to make
            the operations Branch_delayed if they cannot be successfully
            prechecked? *)
-        assert_sc_rollup_feature_enabled vi
+        lift @@ assert_sc_rollup_feature_enabled vi
     | Dal_publish_slot_header slot_header ->
-        Dal_apply.validate_publish_slot_header vi.ctxt slot_header
+        lift @@ Dal_apply.validate_publish_slot_header vi.ctxt slot_header
     | Zk_rollup_origination _ | Zk_rollup_publish _ | Zk_rollup_update _ ->
-        assert_zk_rollup_feature_enabled vi
+        let*? () = assert_zk_rollup_feature_enabled vi in
+        return_unit
 
   let check_contents (type kind) vi batch_state
       (contents : kind Kind.manager contents) ~consume_gas_for_sig_check
-      remaining_block_gas =
+      remaining_block_gas (k : kont) ~fee_payer =
     let open Lwt_result_syntax in
     let (Manager_operation
           {source; fee; counter = _; operation = _; gas_limit; storage_limit}) =
@@ -2203,7 +2227,9 @@ module Manager = struct
         batch_state.is_allocated
         (Contract_storage.Empty_implicit_contract source)
     in
-    let*? () = check_kind_specific_content contents remaining_gas vi in
+    let* () =
+      check_kind_specific_content contents remaining_gas vi k ~fee_payer
+    in
     (* Gas should no longer be consumed below this point, because it
        would not take into account any gas consumed by
        {!check_kind_specific_content}. If you really need to consume gas here, then you
@@ -2213,7 +2239,7 @@ module Manager = struct
       (* lin: check if can pay fee here. *)
       Contract.simulate_spending
         vi.ctxt
-        ~balance:batch_state.balance
+        ~balance:fee_payer.balance
         ~amount:fee
         source
     in
@@ -2231,17 +2257,19 @@ module Manager = struct
       type kind.
       info ->
       batch_state ->
-      fee_payer:public_key_hash ->
+      fee_payer:batch_state ->
       kind Kind.manager contents_list ->
       consume_gas_for_sig_check:Gas.cost option ->
       Gas.Arith.fp ->
+      kont ->
       Gas.Arith.fp tzresult Lwt.t =
    fun vi
        batch_state
        ~fee_payer
        contents_list
        ~consume_gas_for_sig_check
-       remaining_gas ->
+       remaining_gas
+       k ->
     let open Lwt_result_syntax in
     match contents_list with
     | Single contents ->
@@ -2252,7 +2280,10 @@ module Manager = struct
             contents
             ~consume_gas_for_sig_check
             remaining_gas
+            k
+            ~fee_payer
         in
+
         return batch_state.total_gas_used
     | Cons (contents, tail) ->
         let* batch_state =
@@ -2262,19 +2293,34 @@ module Manager = struct
             contents
             ~consume_gas_for_sig_check
             remaining_gas
+            k
+            ~fee_payer
         in
         check_contents_list
           vi
           batch_state
+          ~fee_payer
           tail
           ~consume_gas_for_sig_check:None
           (* lin: Sig check not accouted after second element.
                   additional sig check for the inner operations of the relay operation
                   should be accounted for somewhere. *)
           remaining_gas
+          k
 
-  let check_manager_operation vi ~check_signature
-      (operation : _ Kind.manager operation) remaining_block_gas =
+  let rec check_manager_operation :
+      type kind.
+      ?fee_payer:batch_state ->
+      info ->
+      check_signature:bool ->
+      kind Kind.manager operation ->
+      Gas.Arith.fp ->
+      Gas.Arith.fp tzresult Lwt.t =
+   fun ?fee_payer
+       vi
+       ~check_signature
+       (operation : kind Kind.manager operation)
+       remaining_block_gas ->
     let open Lwt_result_syntax in
     let contents_list = operation.protocol_data.contents in
     let* batch_state, source_pk =
@@ -2285,10 +2331,22 @@ module Manager = struct
         (Michelson_v1_gas.Cost_of.Interpreter.algo_of_public_key source_pk)
         operation
     in
+    let is_sponsored = Option.is_some fee_payer in
     let fee_payer =
-      match contents_list with
-      | Single (Manager_operation {source; _}) -> source
-      | Cons (Manager_operation {source; _}, _) -> source
+      Option.fold_f ~some:(fun x -> x) ~none:(fun () -> batch_state) fee_payer
+    in
+    let cont ~fee_payer vi ~check_signature (op : _ protocol_data)
+        remaining_block_gas =
+      let op : _ operation = {protocol_data = op; shell = operation.shell} in
+      let* _ =
+        check_manager_operation
+          ~fee_payer
+          vi
+          ~check_signature
+          op
+          remaining_block_gas
+      in
+      return_unit
     in
     let* gas_used =
       check_contents_list
@@ -2298,6 +2356,9 @@ module Manager = struct
         contents_list
         ~consume_gas_for_sig_check:(Some signature_checking_gas_cost)
         remaining_block_gas
+        (function () ->
+          if is_sponsored then Result_syntax.tzfail Invalid_sponsored_operation
+          else Ok {run = cont})
     in
     let*? () =
       (* lin: check sig for manager operations here. *)
@@ -2307,20 +2368,39 @@ module Manager = struct
     in
     return gas_used
 
+  let rec find_sources :
+      type kind.
+      kind Kind.manager contents_list -> Signature.Public_key_hash.Set.t =
+   fun operation ->
+    let module S = Signature.Public_key_hash.Set in
+    match operation with
+    | Single
+        (Manager_operation
+          {source; operation = Auth_source {auth_source; _}; _}) ->
+        S.of_list [source; auth_source]
+    | Cons
+        ( Manager_operation {source; operation = Auth_source {auth_source; _}; _},
+          rest ) ->
+        S.of_list [source; auth_source] |> S.union (find_sources rest)
+    | Single (Manager_operation {source; _}) -> S.singleton source
+    | Cons (Manager_operation {source; _}, rest) ->
+        S.singleton source |> S.union (find_sources rest)
+
   let check_manager_operation_conflict (type kind) vs oph
       (operation : kind Kind.manager operation) =
-    let source =
-      match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
-          source
-    in
+    let sources = find_sources operation.protocol_data.contents in
     (* lin: 1M done here *)
     (* One-operation-per-manager-per-block restriction (1M) *)
     match
-      Signature.Public_key_hash.Map.find_opt
-        source
-        vs.manager_state.managers_seen
+      Signature.Public_key_hash.Set.fold
+        (fun source -> function
+          | None ->
+              Signature.Public_key_hash.Map.find_opt
+                source
+                vs.manager_state.managers_seen
+          | acc -> acc)
+        sources
+        None
     with
     | None -> ok_unit
     | Some existing ->
@@ -2340,16 +2420,11 @@ module Manager = struct
 
   let add_manager_operation (type kind) vs oph
       (operation : kind Kind.manager operation) =
-    let source =
-      match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
-          source
-    in
+    let sources = find_sources operation.protocol_data.contents in
     let managers_seen =
-      Signature.Public_key_hash.Map.add
-        source
-        oph
+      Signature.Public_key_hash.Set.fold
+        (fun source acc -> Signature.Public_key_hash.Map.add source oph acc)
+        sources
         vs.manager_state.managers_seen
     in
     {vs with manager_state = {managers_seen}}
@@ -2375,14 +2450,12 @@ module Manager = struct
 
   let remove_manager_operation (type kind) vs
       (operation : kind Kind.manager operation) =
-    let source =
-      match operation.protocol_data.contents with
-      | Single (Manager_operation {source; _})
-      | Cons (Manager_operation {source; _}, _) ->
-          source
-    in
+    let sources = find_sources operation.protocol_data.contents in
     let managers_seen =
-      Signature.Public_key_hash.Map.remove source vs.manager_state.managers_seen
+      Signature.Public_key_hash.Set.fold
+        (fun source acc -> Signature.Public_key_hash.Map.remove source acc)
+        sources
+        vs.manager_state.managers_seen
     in
     {vs with manager_state = {managers_seen}}
 

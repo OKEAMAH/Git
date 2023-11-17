@@ -1117,6 +1117,7 @@ module Manager = struct
     | Sc_rollup_arith_pvm_disabled
     | Sc_rollup_riscv_pvm_disabled
     | Zk_rollup_feature_disabled
+    | Invalid_sponsored_operation
 
   let () =
     register_error_kind
@@ -1257,7 +1258,17 @@ module Manager = struct
       ~pp:(fun ppf () -> Format.fprintf ppf "%s" zkru_disabled_description)
       Data_encoding.unit
       (function Zk_rollup_feature_disabled -> Some () | _ -> None)
-      (fun () -> Zk_rollup_feature_disabled)
+      (fun () -> Zk_rollup_feature_disabled) ;
+    let invalid_sponsored_operation = "Invalid_sponsored_operation" in
+    register_error_kind
+      `Permanent
+      ~id:"validate.operation.invalid_sponsored_operation"
+      ~title:"Invalid_sponsored_operation"
+      ~description:invalid_sponsored_operation
+      ~pp:(fun ppf () -> Format.fprintf ppf "%s" invalid_sponsored_operation)
+      Data_encoding.unit
+      (function Invalid_sponsored_operation -> Some () | _ -> None)
+      (fun () -> Invalid_sponsored_operation)
 end
 
 type error += Failing_noop_error
