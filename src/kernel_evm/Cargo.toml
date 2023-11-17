@@ -60,7 +60,7 @@ tezos-smart-rollup-debug = { path = "../kernel_sdk/debug" }
 tezos-smart-rollup-encoding = { path = "../kernel_sdk/encoding" }
 tezos-smart-rollup-installer-config = { path = "../kernel_sdk/installer-config" }
 tezos-smart-rollup-mock = { path = "../kernel_sdk/mock", features = [
-  "proto-nairobi",
+  "proto-nairobi", "dac"
 ] }
 tezos-smart-rollup-storage = { path = "../kernel_sdk/storage" }
 

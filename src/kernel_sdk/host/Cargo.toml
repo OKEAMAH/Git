@@ -24,6 +24,7 @@ optional = true
 
 [dependencies.tezos_data_encoding]
 git = "https://github.com/victor-dumitrescu/tezedge.git"
+default-features = false
 optional = true
 
 [dependencies.thiserror]

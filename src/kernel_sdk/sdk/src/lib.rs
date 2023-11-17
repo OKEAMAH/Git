@@ -76,6 +76,7 @@ pub mod types {
 }
 
 #[doc(inline)]
+#[cfg(feature = "dac")]
 pub use tezos_smart_rollup_encoding::dac;
 #[cfg(feature = "data-encoding")]
 #[doc(inline)]

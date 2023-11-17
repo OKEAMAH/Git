@@ -129,6 +129,7 @@ impl HostState {
         }
     }
 
+    #[cfg(feature = "dac")]
     pub(crate) fn set_preimage(&mut self, preimage: Vec<u8>) -> [u8; PREIMAGE_HASH_SIZE] {
         self.store.add_preimage(preimage)
     }

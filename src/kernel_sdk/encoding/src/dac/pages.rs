@@ -32,6 +32,8 @@
 //! Merkle tree encodings of DAC pages are versioned, to allow for multiple
 //! hashing schemes to be used.
 
+#![cfg(feature = "dac")]
+
 use host::runtime::{Runtime, RuntimeError};
 
 /// Maximum size of dac pages is 4Kb.

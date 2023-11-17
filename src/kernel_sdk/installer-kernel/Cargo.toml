@@ -31,3 +31,4 @@ default-features = false
 path = "../installer-config"
 version = "0.2.1"
 default-features = false
+features = ["dac"]

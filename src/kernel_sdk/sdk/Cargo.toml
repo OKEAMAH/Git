@@ -62,6 +62,7 @@ optional = true
 [features]
 default = ["std", "crypto", "dlmalloc", "panic-hook", "data-encoding", "storage"]
 crypto = ["tezos_crypto_rs"]
+dac = ["tezos_data_encoding/blst"]
 debug_alloc = ["tezos-smart-rollup-debug/alloc"]
 alloc = ["tezos-smart-rollup-entrypoint/alloc"]
 dlmalloc = ["tezos-smart-rollup-entrypoint/dlmalloc"]

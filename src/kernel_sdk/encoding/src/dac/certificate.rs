@@ -10,7 +10,7 @@
 // TODO: <https://github.com/trilitech/tezedge/issues/17>
 //       lint triggered by issue in encoding macro
 #![allow(clippy::useless_format)]
-#![cfg(feature = "alloc")]
+#![cfg(all(feature = "alloc", feature = "dac"))]
 
 use super::PreimageHash;
 use super::SlicePage;

@@ -17,6 +17,7 @@ extern crate tezos_smart_rollup_host as host;
 
 #[cfg(feature = "crypto")]
 pub mod contract;
+#[cfg(feature = "dac")]
 pub mod dac;
 #[cfg(feature = "alloc")]
 pub mod entrypoint;

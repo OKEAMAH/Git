@@ -1,5 +1,7 @@
 //! Test of reveal preimage mechanism from [encoding::dac].
 
+#![cfg(feature = "dac")]
+
 use tezos_crypto_rs::hash::BlsSignature;
 use tezos_smart_rollup_encoding::dac::certificate::CertificateError;
 use tezos_smart_rollup_encoding::dac::certificate::*;

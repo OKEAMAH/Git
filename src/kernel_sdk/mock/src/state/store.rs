@@ -162,6 +162,7 @@ impl Store {
             .unwrap_or(false)
     }
 
+    #[cfg(feature = "dac")]
     pub fn add_preimage(&mut self, preimage: Vec<u8>) -> [u8; PREIMAGE_HASH_SIZE] {
         let hash_with_prefix =
             tezos_smart_rollup_encoding::dac::pages::make_preimage_hash(&preimage)

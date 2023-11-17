@@ -15,6 +15,7 @@ use crypto::hash::ContractKt1Hash;
 use crypto::hash::HashType;
 use crypto::hash::SmartRollupHash;
 use tezos_data_encoding::enc::BinWriter;
+#[cfg(feature = "dac")]
 use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
 use tezos_smart_rollup_encoding::inbox;
 use tezos_smart_rollup_encoding::michelson::Michelson;
@@ -162,6 +163,7 @@ impl MockHost {
     }
 
     /// Make a preimage available to the _reveal_data_ channel.
+    #[cfg(feature = "dac")]
     pub fn set_preimage(&mut self, preimage: Vec<u8>) -> [u8; PREIMAGE_HASH_SIZE] {
         self.as_mut().set_preimage(preimage)
     }
