@@ -1,4 +1,0 @@
-(library
- (name yaml_unix)
- (public_name yaml.unix)
- (libraries yaml bos))
