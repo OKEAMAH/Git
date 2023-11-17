@@ -43,4 +43,7 @@ val ( +? ) : t -> t -> t tzresult
 
 val ( -? ) : t -> t -> t tzresult
 
+val mul_ratio :
+  rounding:[`Down | `Up] -> t -> num:int64 -> den:int64 -> t tzresult
+
 val pp : Format.formatter -> t -> unit
