@@ -583,7 +583,7 @@ module Make_s
         Profiler.aggregate_s "set mempool" @@ fun () ->
         set_mempool pv_shell our_mempool
       in
-      Lwt.pause ()
+      Lwt.return_unit
 
   let handle_unprocessed pv =
     let open Lwt_syntax in

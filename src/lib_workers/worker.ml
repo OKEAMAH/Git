@@ -624,7 +624,9 @@ struct
                     return (Ok ()))
           in
           match r with
-          | Ok () -> loop ()
+          | Ok () ->
+              let* () = Lwt.pause () in
+              loop ()
           | Error err -> (
               let* r =
                 match w.current_request with
