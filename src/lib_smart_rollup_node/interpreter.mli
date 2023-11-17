@@ -40,6 +40,18 @@ val process_head :
   Octez_smart_rollup.Inbox.t * string list ->
   ('a Context.t * int * int64 * Z.t) tzresult Lwt.t
 
+(** [process_head_read_only] is identical to {!process_head} but does not apply
+    the write effects of the evaluation of messages. It is used to verify
+    evaluation results. *)
+val process_head_read_only :
+  (module Protocol_plugin_sig.PARTIAL) ->
+  _ Node_context.t ->
+  'a Context.t ->
+  predecessor:Layer1.head ->
+  Layer1.head ->
+  Octez_smart_rollup.Inbox.t * string list ->
+  ('a Context.t * int * int64 * Z.t) tzresult Lwt.t
+
 (** [state_of_tick plugin node_ctxt ?start_state ~tick level] returns [Some
     (state, hash)] for a given [tick] if this [tick] happened before
     [level]. Otherwise, returns [None]. If provided, the evaluation is resumed

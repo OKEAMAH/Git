@@ -64,8 +64,8 @@ let state_of_head plugin node_ctxt ctxt Layer1.{hash; level} =
 (** [transition_pvm plugin node_ctxt ctxt predecessor head] runs a PVM at the
     previous state from block [predecessor] by consuming as many messages as
     possible from block [head]. *)
-let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt
-    predecessor Layer1.{hash = _; _} inbox_messages =
+let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) handle_effects
+    node_ctxt ctxt predecessor Layer1.{hash = _; _} inbox_messages =
   let open Lwt_result_syntax in
   (* Retrieve the previous PVM state from store. *)
   let* ctxt, predecessor_state =
@@ -79,11 +79,11 @@ let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt
       predecessor_state
   in
   let* {
-         state = {state; state_hash; inbox_level; tick; _};
+         Pvm_plugin_sig.state = {state; state_hash; inbox_level; tick; _};
          num_messages;
          num_ticks;
        } =
-    Delayed_write_monad.apply node_ctxt eval_result
+    handle_effects node_ctxt eval_result
   in
   let*! ctxt = Context.PVMState.set ctxt state in
   let*! initial_tick = Plugin.Pvm.get_tick node_ctxt.kind predecessor_state in
@@ -93,19 +93,35 @@ let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt
   in
   return (ctxt, num_messages, Z.to_int64 num_ticks, initial_tick)
 
-(** [process_head plugin node_ctxt ctxt ~predecessor head inbox_and_messages] runs the PVM for the given
-    head. *)
-let process_head plugin (node_ctxt : _ Node_context.t) ctxt
+let process_head handle_effects plugin (node_ctxt : _ Node_context.t) ctxt
     ~(predecessor : Layer1.head) (head : Layer1.head) inbox_and_messages =
   let open Lwt_result_syntax in
   let first_inbox_level = node_ctxt.genesis_info.level |> Int32.succ in
   if head.level >= first_inbox_level then
-    transition_pvm plugin node_ctxt ctxt predecessor head inbox_and_messages
+    transition_pvm
+      plugin
+      handle_effects
+      node_ctxt
+      ctxt
+      predecessor
+      head
+      inbox_and_messages
   else if head.Layer1.level = node_ctxt.genesis_info.level then
     let* ctxt, state = genesis_state plugin head.hash node_ctxt ctxt in
     let*! ctxt = Context.PVMState.set ctxt state in
     return (ctxt, 0, 0L, Z.zero)
   else return (ctxt, 0, 0L, Z.zero)
+
+let process_head_read_only plugin node_ctxt =
+  process_head
+    (fun _node_ctxt x -> Lwt_result.return (Delayed_write_monad.ignore x))
+    plugin
+    node_ctxt
+
+(** [process_head plugin node_ctxt ctxt ~predecessor head inbox_and_messages]
+    runs the PVM for the given head. *)
+let process_head plugin node_ctxt =
+  process_head Delayed_write_monad.apply plugin node_ctxt
 
 (** Returns the starting evaluation before the evaluation of the block. It
     contains the PVM state at the end of the execution of the previous block and
