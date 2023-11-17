@@ -503,7 +503,7 @@ let init_local_rpc_server (config : Config_file.t) dir =
                 in
                 launch_rpc_server config dir (Local (mode, port)) addr)
               addrs)
-      config.rpc.local_listen_addrs
+      (config.rpc.local_listen_addrs @ config.rpc.listen_addrs)
   in
   return (Local_rpc_server servers)
 
@@ -533,7 +533,7 @@ let init_local_rpc_server_for_external_process id (config : Config_file.t) dir
   in
   return (rpc_server, comm_socket_path)
 
-let init_external_rpc_server config node_version dir internal_events =
+let _init_external_rpc_server config node_version dir internal_events =
   let open Lwt_result_syntax in
   (* Start one rpc_process for each rpc endpoint. *)
   let id = ref 0 in
@@ -618,7 +618,7 @@ let init_zcash () =
          "Failed to initialize Zcash parameters: %s"
          (Printexc.to_string exn))
 
-let init_rpc (config : Config_file.t) (node : Node.t) internal_events =
+let init_rpc (config : Config_file.t) (node : Node.t) _internal_events =
   let open Lwt_result_syntax in
   (* Start local RPC server (handled by the node main process) only
      when at least one local listen addr is given. *)
@@ -640,19 +640,11 @@ let init_rpc (config : Config_file.t) (node : Node.t) internal_events =
   in
 
   let* local_rpc_server =
-    if config.rpc.local_listen_addrs = [] then return No_server
+    if config.rpc.listen_addrs = [] && config.rpc.local_listen_addrs = [] then
+      return No_server
     else init_local_rpc_server config dir
   in
-  (* Start RPC process only when at least one listen addr is given. *)
-  let* rpc_server =
-    if config.rpc.listen_addrs = [] then return No_server
-    else
-      (* Starts the node's local RPC server that aims to handle the
-         RPCs forwarded by the rpc_process, if they cannot be
-         processed by the rpc_process itself. *)
-      init_external_rpc_server config node_version dir internal_events
-  in
-  return (local_rpc_server :: [rpc_server])
+  return [local_rpc_server]
 
 let run ?verbosity ?sandbox ?target ?(cli_warnings = [])
     ?ignore_testchain_warning ~singleprocess ~force_history_mode_switch
