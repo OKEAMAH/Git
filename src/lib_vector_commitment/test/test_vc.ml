@@ -23,6 +23,87 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* This module is taken from lib_plonk/test/helpers.ml but modified for VC functions. *)
+module Time = struct
+  type data = {n : int; sum : float; sum_squares : float; last : float}
+
+  let str_time = ref ""
+
+  let zero_data = {n = 0; sum = 0.; sum_squares = 0.; last = 0.}
+
+  let apply_update = ref zero_data
+
+  let reset () = apply_update := zero_data
+
+  let update data time =
+    let sum = time +. !data.sum in
+    let sum_squares = (time *. time) +. !data.sum_squares in
+    data := {n = !data.n + 1; sum; sum_squares; last = time}
+
+  let mean data = !data.sum /. float_of_int !data.n
+
+  let var data =
+    let m = mean data in
+    (!data.sum_squares /. float_of_int !data.n) -. (m *. m)
+
+  let std data = sqrt (var data)
+
+  let string_of_time t =
+    if t > 60. then Printf.sprintf "%3.2f m " (t /. 60.)
+    else if t > 1. then Printf.sprintf "%3.2f s " t
+    else if t > 0.001 then Printf.sprintf "%3.2f ms" (t *. 1_000.)
+    else Printf.sprintf "%3.0f µs" (t *. 1_000_000.)
+
+  let time description f =
+    Gc.full_major () ;
+    let start = Unix.gettimeofday () in
+    let res = f () in
+    let stop = Unix.gettimeofday () in
+    let d = stop -. start in
+    let () =
+      match description with "apply_update" -> update apply_update d | _ -> ()
+    in
+    let t_str = string_of_time d in
+    Printf.printf "%-8s: Time: %8s \n%!" description t_str ;
+    res
+
+  let reset_str () = str_time := ""
+
+  let update_str ?header () =
+    let header =
+      match header with None -> "" | Some header -> header ^ "\n"
+    in
+    str_time := !str_time ^ Printf.sprintf "%s%f\n" header !apply_update.last
+
+  let print_time_in_file file =
+    let oc = open_out file in
+    Printf.fprintf oc "%s" !str_time ;
+    close_out oc
+
+  let rec repeat n f () =
+    if n > 0 then (
+      f () ;
+      repeat (n - 1) f ())
+
+  let bench_test_function ~nb_rep func () =
+    reset () ;
+    repeat nb_rep func () ;
+    assert (nb_rep = !apply_update.n) ;
+    Printf.printf
+      "\nTimes over %d repetitions (95%% confidence interval):\n\n"
+      nb_rep ;
+    let pp = string_of_time in
+    let z = 1.96 in
+    Printf.printf
+      "  Apply_update : %s ± %s\n"
+      (pp (mean apply_update))
+      (pp (z *. std apply_update)) ;
+    Printf.printf "\n"
+
+  let time_if_verbose verbose description f =
+    if verbose then time description f else f ()
+end
+
 module Make_VC_test
     (Make_VC : Vector_commitment.Vector_commitment_sig.Make_Vector_commitment) =
 struct
@@ -71,14 +152,13 @@ struct
     let open VC in
     let file_name = "test_vc_bench" in
     let diff = generate_update ~size:(1 lsl log_size_update) in
-    let t1 = Unix.gettimeofday () in
-    let () = apply_update ~file_name diff in
-    let t2 = Unix.gettimeofday () in
-    Printf.printf
-      "\n log_nb_bits = %d ; log_size_update = %d ; time = %f \n"
-      log_nb_bits
-      log_size_update
-      (t2 -. t1) ;
+    let () =
+      Time.bench_test_function
+        ~nb_rep:10
+        (fun () ->
+          Time.time "apply_update" (fun () -> apply_update ~file_name diff))
+        ()
+    in
     Printf.printf "-----------------------------"
 
   let test_bench_update () =
