@@ -4,7 +4,8 @@
 #
 # SPDX-License-Identifier: MIT
 
-KERNELS=evm_kernel.wasm sequenced_kernel.wasm tx_kernel.wasm tx_kernel_dal.wasm dal_echo_kernel.wasm risc-v-dummy.elf
+# TODO: reinstate tx_kernel.wasm tx_kernel_dal.wasm
+KERNELS=evm_kernel.wasm sequenced_kernel.wasm dal_echo_kernel.wasm risc-v-dummy.elf
 SDK_DIR=src/kernel_sdk
 RISC_V_SANDBOX_DIR=src/risc_v/sandbox
 RISC_V_INTERPRETER_DIR=src/risc_v/interpreter
