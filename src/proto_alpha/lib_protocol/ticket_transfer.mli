@@ -88,3 +88,11 @@ val transfer_ticket :
   Ticket_token.ex_token ->
   Ticket_amount.t ->
   (context * Z.t, error trace) result Lwt.t
+
+val transfer_tickets_in_parameters :
+  context ->
+  'a ->
+  ('a, 'b) Script_typed_ir.ty ->
+  source:Destination.t ->
+  dst:Destination.t ->
+  (context * Ticket_receipt.item list * Z.t, error trace) result Lwt.t
