@@ -567,7 +567,8 @@ let apply_transaction_to_implicit_with_ticket ~sender ~destination ~ty ~ticket
       [] )
 
 let apply_transaction_to_smart_contract ~ctxt ~sender ~contract_hash ~amount
-    ~entrypoint ~before_operation ~payer ~chain_id ~internal ~parameter =
+    ~entrypoint ~before_operation ~payer ~chain_id ~internal ~parameter
+    ?(paid_storage_diff_acc = Z.zero) ?(ticket_receipt_acc = []) () =
   let open Lwt_result_syntax in
   let contract = Contract.Originated contract_hash in
   (* Since the contract is originated, nothing will be allocated or this
@@ -669,12 +670,15 @@ let apply_transaction_to_smart_contract ~ctxt ~sender ~contract_hash ~amount
             storage = Some storage;
             lazy_storage_diff;
             balance_updates;
-            ticket_receipt;
+            ticket_receipt = ticket_receipt_acc @ ticket_receipt;
             originated_contracts;
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
             storage_size = new_size;
             paid_storage_size_diff =
-              Z.add contract_paid_storage_size_diff ticket_paid_storage_diff;
+              Z.(
+                add
+                  (add contract_paid_storage_size_diff ticket_paid_storage_diff)
+                  paid_storage_diff_acc);
             allocated_destination_contract = false;
           }
       in
@@ -839,6 +843,7 @@ let apply_internal_operation_contents :
             ~chain_id
             ~internal:true
             ~parameter:(Typed_arg (location, parameters_ty, typed_parameters))
+            ()
         in
         (ctxt, ITransaction_result res, ops)
     | Transaction_to_sc_rollup
@@ -1136,13 +1141,13 @@ let apply_manager_operation :
             has_tickets
             typed_arg
         in
-        let* ctxt =
+        let* ctxt, ticket_receipt, paid_storage_diff =
           List.fold_left_es
-            (fun ctxt ticket ->
+            (fun (ctxt, ticket_receipt_acc, paid_storage_diff_acc) ticket ->
               let ticket_token, amount =
                 Ticket_scanner.ex_token_and_amount_of_ex_ticket ticket
               in
-              let* ctxt, _bytes =
+              let* ctxt, paid_storage_diff =
                 Ticket_transfer.transfer_ticket
                   ctxt
                   ~sender:(Destination.Contract source_contract)
@@ -1150,8 +1155,29 @@ let apply_manager_operation :
                   ticket_token
                   amount
               in
-              return ctxt)
-            ctxt
+              let* ticket_token, ctxt =
+                Ticket_token_unparser.unparse ctxt ticket_token
+              in
+              let amount = Script_int.(to_zint (amount :> n num)) in
+              let ticket_receipt_item =
+                Ticket_receipt.
+                  {
+                    ticket_token;
+                    updates =
+                      [
+                        {
+                          account = Contract source_contract;
+                          amount = Z.neg amount;
+                        };
+                        {account = Contract (Originated contract_hash); amount};
+                      ];
+                  }
+              in
+              return
+                ( ctxt,
+                  ticket_receipt_item :: ticket_receipt_acc,
+                  Z.add paid_storage_diff_acc paid_storage_diff ))
+            (ctxt, [], Z.zero)
             tickets
         in
         let+ ctxt, res, ops =
@@ -1167,6 +1193,9 @@ let apply_manager_operation :
             ~internal:false
             ~parameter:
               (Typed_arg (Micheline.dummy_location, arg_type, typed_arg))
+            ~ticket_receipt_acc:ticket_receipt
+            ~paid_storage_diff_acc:paid_storage_diff
+            ()
         in
         (ctxt, Transaction_result res, ops)
     | Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint}
