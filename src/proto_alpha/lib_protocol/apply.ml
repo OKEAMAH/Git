@@ -327,7 +327,7 @@ let apply_delegation ~ctxt ~(sender : Contract.t) ~delegate ~before_operation =
 
 type 'loc execution_arg =
   | Typed_arg : 'loc * ('a, _) Script_typed_ir.ty * 'a -> 'loc execution_arg
-  | Untyped_arg : Script.expr -> _ execution_arg
+(* | Untyped_arg : Script.expr -> _ execution_arg *)
 
 let apply_transaction_to_implicit ~ctxt ~sender ~amount ~pkh ~before_operation =
   let contract = Contract.Implicit pkh in
@@ -604,54 +604,9 @@ let apply_transaction_to_smart_contract ~ctxt ~sender ~contract_hash ~amount
           level;
         }
       in
-      let* ctxt =
-        match parameter with
-        | Untyped_arg parameter ->
-            let (Ex_script (Script {arg_type; _})) = script_ir in
-            let* entrypoint_arg, ctxt =
-              (* parsing and type-checking at same time. *)
-              Script_ir_translator.parse_data
-                ctxt
-                ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
-                ~allow_forged:true
-                arg_type
-                (Micheline.root parameter)
-            in
-            let*? has_tickets, ctxt =
-              Ticket_scanner.type_has_tickets ctxt arg_type
-            in
-            let* tickets, ctxt =
-              Ticket_scanner.tickets_of_value
-                ~include_lazy:true
-                ctxt
-                has_tickets
-                entrypoint_arg
-            in
-            let _ =
-              (* At this point, we have enough info to turn `Unparsed_arg` into `Typed_arg`. *)
-              Typed_arg (Micheline.dummy_location, arg_type, entrypoint_arg)
-            in
-            List.fold_left_es
-              (fun ctxt ticket ->
-                let ticket_token, amount =
-                  Ticket_scanner.ex_token_and_amount_of_ex_ticket ticket
-                in
-                let* ctxt, _bytes =
-                  Ticket_transfer.transfer_ticket
-                    ctxt
-                    ~sender
-                    ~dst:(Contract (Originated contract_hash))
-                    ticket_token
-                    amount
-                in
-                return ctxt)
-              ctxt
-              tickets
-        | Typed_arg (_location, _parameter_ty, _parameter) -> return ctxt
-      in
       let execute =
         match parameter with
-        | Untyped_arg parameter -> Script_interpreter.execute ~parameter
+        (* | Untyped_arg parameter -> Script_interpreter.execute ~parameter *)
         | Typed_arg (location, parameter_ty, parameter) ->
             Script_interpreter.execute_with_typed_parameter
               ~location
@@ -1154,6 +1109,51 @@ let apply_manager_operation :
             ctxt
             parameters
         in
+        let* ctxt, _cache_key, script = Script_cache.find ctxt contract_hash in
+        let* _script, script_ir =
+          match script with
+          | None ->
+              tzfail (Contract.Non_existing_contract (Originated contract_hash))
+          | Some (script, script_ir) -> return (script, script_ir)
+        in
+        let (Ex_script (Script {arg_type; _})) = script_ir in
+        let* typed_arg, ctxt =
+          (* parsing and type-checking at same time. *)
+          Script_ir_translator.parse_data
+            ctxt
+            ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+            ~allow_forged:true
+            arg_type
+            (Micheline.root parameters)
+        in
+        let*? has_tickets, ctxt =
+          Ticket_scanner.type_has_tickets ctxt arg_type
+        in
+        let* tickets, ctxt =
+          Ticket_scanner.tickets_of_value
+            ~include_lazy:true
+            ctxt
+            has_tickets
+            typed_arg
+        in
+        let* ctxt =
+          List.fold_left_es
+            (fun ctxt ticket ->
+              let ticket_token, amount =
+                Ticket_scanner.ex_token_and_amount_of_ex_ticket ticket
+              in
+              let* ctxt, _bytes =
+                Ticket_transfer.transfer_ticket
+                  ctxt
+                  ~sender:(Destination.Contract source_contract)
+                  ~dst:(Contract (Originated contract_hash))
+                  ticket_token
+                  amount
+              in
+              return ctxt)
+            ctxt
+            tickets
+        in
         let+ ctxt, res, ops =
           apply_transaction_to_smart_contract
             ~ctxt
@@ -1165,7 +1165,8 @@ let apply_manager_operation :
             ~payer:source
             ~chain_id
             ~internal:false
-            ~parameter:(Untyped_arg parameters)
+            ~parameter:
+              (Typed_arg (Micheline.dummy_location, arg_type, typed_arg))
         in
         (ctxt, Transaction_result res, ops)
     | Transfer_ticket {contents; ty; ticketer; amount; destination; entrypoint}
