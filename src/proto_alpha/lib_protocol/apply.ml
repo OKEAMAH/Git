@@ -1131,54 +1131,15 @@ let apply_manager_operation :
             arg_type
             (Micheline.root parameters)
         in
-        let*? has_tickets, ctxt =
-          Ticket_scanner.type_has_tickets ctxt arg_type
-        in
-        let* tickets, ctxt =
-          Ticket_scanner.tickets_of_value
-            ~include_lazy:true
-            ctxt
-            has_tickets
-            typed_arg
-        in
         let* ctxt, ticket_receipt, paid_storage_diff =
-          List.fold_left_es
-            (fun (ctxt, ticket_receipt_acc, paid_storage_diff_acc) ticket ->
-              let ticket_token, amount =
-                Ticket_scanner.ex_token_and_amount_of_ex_ticket ticket
-              in
-              let* ctxt, paid_storage_diff =
-                Ticket_transfer.transfer_ticket
-                  ctxt
-                  ~sender:(Destination.Contract source_contract)
-                  ~dst:(Contract (Originated contract_hash))
-                  ticket_token
-                  amount
-              in
-              let* ticket_token, ctxt =
-                Ticket_token_unparser.unparse ctxt ticket_token
-              in
-              let amount = Script_int.(to_zint (amount :> n num)) in
-              let ticket_receipt_item =
-                Ticket_receipt.
-                  {
-                    ticket_token;
-                    updates =
-                      [
-                        {
-                          account = Contract source_contract;
-                          amount = Z.neg amount;
-                        };
-                        {account = Contract (Originated contract_hash); amount};
-                      ];
-                  }
-              in
-              return
-                ( ctxt,
-                  ticket_receipt_item :: ticket_receipt_acc,
-                  Z.add paid_storage_diff_acc paid_storage_diff ))
-            (ctxt, [], Z.zero)
-            tickets
+          if Constants.direct_ticket_spending_enable ctxt then
+            Ticket_transfer.transfer_tickets_in_parameters
+              ctxt
+              typed_arg
+              arg_type
+              ~source:(Contract source_contract)
+              ~dst:(Contract (Originated contract_hash))
+          else return (ctxt, [], Z.zero)
         in
         let+ ctxt, res, ops =
           apply_transaction_to_smart_contract
