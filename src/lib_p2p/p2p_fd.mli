@@ -98,9 +98,9 @@ val set_point : point:P2p_point.Id.t -> t -> unit
     connected to. *)
 val set_peer_id : peer_id:P2p_peer.Id.t -> t -> unit
 
-(** [close ?reason fd] closes the connection and the underlying fd.
+(** [close ~reason fd] closes the connection and the underlying fd.
     It is idempotent. *)
-val close : ?reason:P2p_disconnection_reason.t -> t -> unit Lwt.t
+val close : reason:P2p_disconnection_reason.t -> t -> unit Lwt.t
 
 (** Stores in the fd a reason for which it will be closed in a near future. *)
 val add_closing_reason : reason:P2p_disconnection_reason.t -> t -> unit

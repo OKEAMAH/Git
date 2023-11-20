@@ -601,7 +601,7 @@ let register st fd =
         Moving_average.destroy st.ma_state write_conn.counter ;
         Lwt_pipe.Maybe_bounded.close write_queue ;
         Lwt_pipe.Maybe_bounded.close read_queue ;
-        P2p_fd.close fd) ;
+        P2p_fd.close ~reason:(Unknown_reason {location = __LOC__}) fd) ;
     let readable = P2p_buffer_reader.mk_readable ~read_buffer ~read_queue in
     let conn =
       {

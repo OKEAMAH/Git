@@ -184,9 +184,9 @@ let create_listening_socket ?(reuse_port = false) ~backlog
                {reason = err; address = addr; port})
       | exn -> Lwt.reraise exn)
 
-let close ?reason t =
+let close ~reason t =
   let open Lwt_syntax in
-  Option.iter (fun reason -> add_closing_reason ~reason t) reason ;
+  add_closing_reason ~reason t ;
   let* () =
     Events.(emit close_fd) (t.id, t.closing_reasons, t.nread, t.nwrit)
   in
