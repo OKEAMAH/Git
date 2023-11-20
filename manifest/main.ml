@@ -8454,6 +8454,7 @@ let _kaitai_of_data_encoding_test =
     ~deps:[yaml; data_encoding; kaitai; kaitai_of_data_encoding]
     ~bisect_ppx:No
     ~inline_tests:ppx_expect
+    ~inline_tests_deps:[[S "glob_files"; S "expected/*.ksy"]]
 
 let _octez_codec_kaitai =
   public_exe

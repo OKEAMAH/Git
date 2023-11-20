@@ -9,5 +9,8 @@
   data-encoding
   kaitai
   kaitai-of-data-encoding)
- (inline_tests (flags -verbose) (modes native))
+ (inline_tests
+  (flags -verbose)
+  (modes native)
+  (deps (glob_files expected/*.ksy)))
  (preprocess (pps ppx_expect)))
