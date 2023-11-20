@@ -248,7 +248,16 @@ let pp_line ?toplevel_timestamp nindent ppf id n t t0 =
       (int_of_float (ceil (100. *. (t.cpu /. t.wall)))) ;
   match t0 with
   | None -> Format.fprintf ppf "@,"
-  | Some t0 -> Format.fprintf ppf " +%a@," pp_delta_t t0.wall
+  | Some t0 ->
+      let my_cpu = t.cpu in
+      let my_wall = t.wall in
+      let parent_cpu = t0.cpu in
+      let parent_wall = t0.wall in
+      let x =
+        int_of_float
+          (ceil (100. *. (parent_cpu -. my_cpu) /. (parent_wall -. my_wall)))
+      in
+      Format.fprintf ppf " +%a P%i%%@," pp_delta_t t0.wall x
 
 let rec pp_report ?(toplevel_call = true) t0 nident ppf {aggregated; recorded} =
   StringMap.iter
