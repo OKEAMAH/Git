@@ -5,7 +5,9 @@
 use crate::evalhost::EvalHost;
 use crate::helpers::{parse_and_get_cmp, purify_network};
 use crate::models::spec::SpecId;
-use crate::models::{AccountInfoFiller, FillerSource, SpecName};
+use crate::models::{
+    AccountInfoFiller, FillerResultIndexes, FillerSource, IndexKind, Info, SpecName,
+};
 use crate::ReportValue;
 
 use evm_execution::account_storage::EthereumAccount;
@@ -16,6 +18,43 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
+
+fn check_filler_contraints(
+    indexes: &FillerResultIndexes,
+    info: &Info,
+    tx_index: i64,
+) -> bool {
+    // A transaction matches the constraints if:
+    // - there are no constraints
+    // - OR, if it has a label, it matches one of the label of the test
+    // - OR, its index is the range of those identified
+
+    if indexes.data.is_empty() {
+        return true;
+    }
+
+    let tx_label = info.labels.get(&tx_index.try_into().unwrap());
+
+    for index_kind in indexes.to_owned().data.into_iter() {
+        match index_kind {
+            IndexKind::Label(label) => match tx_label {
+                Some(tx_label) => {
+                    if tx_label.eq(&label) {
+                        return true;
+                    }
+                }
+                None => (),
+            },
+            IndexKind::Range(start, end) => {
+                if start <= tx_index && tx_index <= end {
+                    return true;
+                }
+            }
+        }
+    }
+    // at this point, no the constraint have been matched
+    return false;
+}
 
 fn check_should_not_exist(
     host: &mut EvalHost,
@@ -300,6 +339,86 @@ pub fn process(
                 .unwrap();
 
                 check_durable_storage(host, &filler_expectation.result, &mut good_state);
+            }
+        }
+    }
+
+    if good_state {
+        writeln!(output_file, "\nFINAL RESULT: SUCCESS\n").unwrap();
+        report_map.entry(report_key).and_modify(|report_value| {
+            *report_value = ReportValue {
+                successes: report_value.successes + 1,
+                failures: report_value.failures,
+            };
+        });
+    } else {
+        write!(
+            output_file,
+            "{}",
+            String::from_utf8(host.buffer.borrow_mut().to_vec()).unwrap()
+        )
+        .unwrap();
+        writeln!(output_file, "FINAL RESULT: FAILURE\n").unwrap();
+        report_map.entry(report_key).and_modify(|report_value| {
+            *report_value = ReportValue {
+                successes: report_value.successes,
+                failures: report_value.failures + 1,
+            };
+        });
+    }
+}
+
+pub fn process_for_transaction(
+    host: &mut EvalHost,
+    filler_source: &FillerSource,
+    tx_index: i64,
+    info: &Info,
+    spec_name: &SpecName,
+    report_map: &mut HashMap<String, ReportValue>,
+    report_key: String,
+    output_file: &mut File,
+) {
+    let mut good_state = true;
+
+    for (name, fillers) in filler_source.to_owned().0.into_iter() {
+        writeln!(
+            host.buffer.borrow_mut(),
+            "Processing checks for transaction {} with filler: {}Filler\n",
+            &tx_index,
+            name
+        )
+        .unwrap();
+        for filler_expectation in fillers.expect {
+            for filler_network in filler_expectation.network {
+                let cmp_spec_id = parse_and_get_cmp(&filler_network);
+                let network = purify_network(&filler_network);
+                let check_network_id = SpecId::from(&network) as u8;
+                let current_network_config_id = SpecId::from(&spec_name.to_str()) as u8;
+
+                if !cmp_spec_id(&current_network_config_id, &check_network_id) {
+                    continue;
+                }
+
+                writeln!(
+                    host.buffer.borrow_mut(),
+                    "CONFIG NETWORK ---- {}",
+                    spec_name.to_str()
+                )
+                .unwrap();
+                writeln!(
+                    host.buffer.borrow_mut(),
+                    "CHECK  NETWORK ---- {}\n",
+                    filler_network
+                )
+                .unwrap();
+
+                if check_filler_contraints(&filler_expectation.indexes, &info, tx_index) {
+                    check_durable_storage(
+                        host,
+                        &filler_expectation.result,
+                        &mut good_state,
+                    );
+                }
             }
         }
     }

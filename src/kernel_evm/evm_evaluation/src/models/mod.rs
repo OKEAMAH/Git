@@ -66,8 +66,9 @@ pub struct Fillers {
     pub expect: Vec<FillerResult>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
 pub struct FillerResult {
+    #[serde(default)]
     pub indexes: FillerResultIndexes,
     pub network: Vec<String>,
     pub result: HashMap<String, AccountInfoFiller>,
@@ -79,12 +80,15 @@ pub enum IndexKind {
     Range(i64, i64),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
 pub struct FillerResultIndexes {
+    #[serde(default)]
     #[serde(deserialize_with = "deserialize_indices")]
     pub data: Vec<IndexKind>,
+    #[serde(default)]
     #[serde(deserialize_with = "deserialize_indices")]
     pub gas: Vec<IndexKind>,
+    #[serde(default)]
     #[serde(deserialize_with = "deserialize_indices")]
     pub value: Vec<IndexKind>,
 }
@@ -111,6 +115,7 @@ pub struct AccountInfoFiller {
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Info {
     pub source: String,
+    #[serde(default)]
     pub labels: HashMap<usize, String>,
 }
 

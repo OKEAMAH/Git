@@ -19,7 +19,7 @@ use std::path::Path;
 use thiserror::Error;
 
 use crate::evalhost::EvalHost;
-use crate::fillers::process;
+use crate::fillers::{process, process_for_transaction};
 use crate::helpers::construct_folder_path;
 use crate::models::{Env, FillerSource, SpecName, TestSuite};
 use crate::{Opt, ReportValue};
@@ -178,6 +178,8 @@ pub fn run_test(
             .gas_price
             .unwrap_or_else(|| unit.transaction.max_fee_per_gas.unwrap_or_default());
 
+        let info = &unit._info;
+
         // post and execution
         for (spec_name, tests) in unit.post {
             let config = match spec_name {
@@ -187,7 +189,7 @@ pub fn run_test(
                 _ => continue,
             };
 
-            for test_execution in tests.into_iter() {
+            for (test_index, test_execution) in tests.into_iter().enumerate() {
                 let gas_limit = *unit
                     .transaction
                     .gas_limit
@@ -298,6 +300,24 @@ pub fn run_test(
                     }
                 }
                 writeln!(host.buffer.borrow_mut(), "\n=======> OK! <=======\n").unwrap();
+
+                match filler_source.clone() {
+                    Some(filler_source) => process_for_transaction(
+                        &mut host,
+                        &filler_source,
+                        i64::try_from(test_index).unwrap(),
+                        info,
+                        &spec_name,
+                        report_map,
+                        report_key.clone(),
+                        output_file,
+                    ),
+                    None => writeln!(
+                        host.buffer.borrow_mut(),
+                        "No filler file, the outcome of this test is uncertain."
+                    )
+                    .unwrap(),
+                };
             }
 
             // Check the state after the execution of the result.
