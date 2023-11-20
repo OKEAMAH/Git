@@ -455,7 +455,9 @@ module P2p_fd = struct
     declare_2
       ~section
       ~name:"close_fd_unknown_reason"
-      ~msg:"disconnected from {point}#{peer}: unknown reason"
+      ~msg:
+        "disconnected from {point}#{peer}: unknown reason (Should be \
+         unreachable)"
       ~level:Info
       ~pp1:
         Format.(
