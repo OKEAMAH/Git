@@ -1321,8 +1321,11 @@ module Make
        fun r ->
         let open Lwt_syntax in
         let* () =
-          Profiler.aggregate_s "handle_unprocessed" @@ fun () ->
-          handle_unprocessed pv
+          match request with
+          | Request.Inject _ -> Lwt.return_unit
+          | _ ->
+              Profiler.aggregate_s "handle_unprocessed" @@ fun () ->
+              handle_unprocessed pv
         in
         r
       in
