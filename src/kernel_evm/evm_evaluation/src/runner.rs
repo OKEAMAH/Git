@@ -189,6 +189,12 @@ pub fn run_test(
                 _ => continue,
             };
 
+            writeln!(
+                host.buffer.borrow_mut(),
+                "Number of transactions: {}",
+                tests.len()
+            );
+
             for (test_index, test_execution) in tests.into_iter().enumerate() {
                 let gas_limit = *unit
                     .transaction

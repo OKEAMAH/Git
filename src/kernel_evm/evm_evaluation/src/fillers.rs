@@ -20,6 +20,7 @@ use std::io::Write;
 use std::str::FromStr;
 
 fn check_filler_contraints(
+    host: &EvalHost,
     indexes: &FillerResultIndexes,
     info: &Info,
     tx_index: i64,
@@ -34,6 +35,14 @@ fn check_filler_contraints(
     }
 
     let tx_label = info.labels.get(&tx_index.try_into().unwrap());
+
+    writeln!(
+        host.buffer.borrow_mut(),
+        "Transaction: index: {}, label: {:?}; Constraints: {:?}",
+        tx_index,
+        &tx_label,
+        &indexes.data
+    );
 
     for index_kind in indexes.to_owned().data.into_iter() {
         match index_kind {
@@ -389,30 +398,31 @@ pub fn process_for_transaction(
         )
         .unwrap();
         for filler_expectation in fillers.expect {
-            for filler_network in filler_expectation.network {
-                let cmp_spec_id = parse_and_get_cmp(&filler_network);
-                let network = purify_network(&filler_network);
-                let check_network_id = SpecId::from(&network) as u8;
-                let current_network_config_id = SpecId::from(&spec_name.to_str()) as u8;
+            if check_filler_contraints(host, &filler_expectation.indexes, info, tx_index)
+            {
+                for filler_network in filler_expectation.network {
+                    let cmp_spec_id = parse_and_get_cmp(&filler_network);
+                    let network = purify_network(&filler_network);
+                    let check_network_id = SpecId::from(&network) as u8;
+                    let current_network_config_id =
+                        SpecId::from(&spec_name.to_str()) as u8;
 
-                if !cmp_spec_id(&current_network_config_id, &check_network_id) {
-                    continue;
-                }
+                    if !cmp_spec_id(&current_network_config_id, &check_network_id) {
+                        continue;
+                    }
 
-                writeln!(
-                    host.buffer.borrow_mut(),
-                    "CONFIG NETWORK ---- {}",
-                    spec_name.to_str()
-                )
-                .unwrap();
-                writeln!(
-                    host.buffer.borrow_mut(),
-                    "CHECK  NETWORK ---- {}\n",
-                    filler_network
-                )
-                .unwrap();
-
-                if check_filler_contraints(&filler_expectation.indexes, &info, tx_index) {
+                    writeln!(
+                        host.buffer.borrow_mut(),
+                        "CONFIG NETWORK ---- {}",
+                        spec_name.to_str()
+                    )
+                    .unwrap();
+                    writeln!(
+                        host.buffer.borrow_mut(),
+                        "CHECK  NETWORK ---- {}\n",
+                        filler_network
+                    )
+                    .unwrap();
                     check_durable_storage(
                         host,
                         &filler_expectation.result,
