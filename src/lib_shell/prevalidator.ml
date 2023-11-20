@@ -323,7 +323,6 @@ module Make_s
   }
 
   let already_handled ~origin shell oph =
-    Profiler.aggregate_f "is already handled" @@ fun () ->
     if Operation_hash.Set.mem oph shell.banned_operations then (
       (* In order to avoid data-races (for instance in
          [may_fetch_operation]), this event is triggered
@@ -332,15 +331,21 @@ module Make_s
         (Unit.catch_s (fun () ->
              Events.(emit ban_operation_encountered) (origin, oph))) ;
       true)
-    else
-      ( Profiler.aggregate_f "is_classified" @@ fun () ->
-        Classification.is_in_mempool oph shell.classification <> None )
-      || ( Profiler.aggregate_f "is_live_operation" @@ fun () ->
-           Operation_hash.Set.mem oph shell.live_operations )
-      || ( Profiler.aggregate_f "is_pending" @@ fun () ->
-           Pending_ops.mem oph shell.pending )
-      || Profiler.aggregate_f "is_known_unparsable" @@ fun () ->
-         Classification.is_known_unparsable oph shell.classification
+    else if Classification.is_in_mempool oph shell.classification <> None then (
+      Profiler.mark ["is already handled"; "is_classified"] ;
+      true)
+    else if Operation_hash.Set.mem oph shell.live_operations then (
+      Profiler.mark ["is already handled"; "is_live_operation"] ;
+      true)
+    else if Pending_ops.mem oph shell.pending then (
+      Profiler.mark ["is already handled"; "is_pending"] ;
+      true)
+    else if Classification.is_known_unparsable oph shell.classification then (
+      Profiler.mark ["is already handled"; "is_known_unparsable"] ;
+      true)
+    else (
+      Profiler.mark ["not already handled"] ;
+      false)
 
   let advertise (shell : ('operation_data, _) types_state_shell) mempool =
     let open Lwt_syntax in
@@ -635,7 +640,6 @@ module Make_s
          and push an arrived worker request. *)
       spawn_fetch_operation ~notify_arrival:false)
     else if not (already_handled ~origin shell oph) then (
-      Profiler.mark ["not already handled"] ;
       shell.fetching <- Operation_hash.Set.add oph shell.fetching ;
       spawn_fetch_operation ~notify_arrival:true)
 
@@ -648,10 +652,8 @@ module Make_s
     let on_arrived (pv : types_state) oph op : (unit, Empty.t) result Lwt.t =
       let open Lwt_syntax in
       pv.shell.fetching <- Operation_hash.Set.remove oph pv.shell.fetching ;
-      if already_handled ~origin:Events.Arrived pv.shell oph then
-        Profiler.aggregate_s "already handled" @@ fun () -> return_ok_unit
+      if already_handled ~origin:Events.Arrived pv.shell oph then return_ok_unit
       else
-        Profiler.aggregate_f "not already handled" @@ fun () ->
         match Parser.parse oph op with
         | Error _ ->
             let* () = Events.(emit unparsable_operation) oph in
