@@ -212,7 +212,9 @@ let create_connection t p2p_conn id_point point_info peer_info
       in
       Lwt_pipe.Maybe_bounded.close messages ;
       let reason =
-        Option.value ~default:Unknown_reason (P2p_conn.disconnect_reason conn)
+        Option.value
+          ~default:(Unknown_reason {location = __LOC__})
+          (P2p_conn.disconnect_reason conn)
       in
       P2p_conn.close ~reason conn) ;
   List.iter (fun f -> f peer_id conn) t.new_connection_hook ;

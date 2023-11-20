@@ -38,7 +38,7 @@ type t =
   | Explicit_RPC
   | Maintenance_too_many
   | User of string
-  | Unknown_reason
+  | Unknown_reason of {location : string}
 
 (* Encoding of disconnection reasons *)
 val encoding : t Data_encoding.encoding

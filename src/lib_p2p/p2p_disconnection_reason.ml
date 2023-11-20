@@ -35,7 +35,7 @@ type t =
   | Explicit_RPC
   | Maintenance_too_many
   | User of string
-  | Unknown_reason
+  | Unknown_reason of {location : string}
 
 let encoding =
   let open Data_encoding in
@@ -258,9 +258,12 @@ let encoding =
       case
         (Tag 0x28)
         ~title:"Unknown_reason"
-        (constant "Unknown_reason")
-        (function Unknown_reason -> Some () | _ -> None)
-        (fun () -> Unknown_reason);
+        (obj2
+           (req "reason" (constant "Unknown_reason"))
+           (req "location" string))
+        (function
+          | Unknown_reason {location} -> Some ((), location) | _ -> None)
+        (fun ((), location) -> Unknown_reason {location});
     ]
 
 let pp fmt =
@@ -351,4 +354,8 @@ let pp fmt =
   | Maintenance_too_many ->
       Format.fprintf fmt "maintenance detected too many connections"
   | User reason -> Format.fprintf fmt "%s" reason
-  | Unknown_reason -> Format.fprintf fmt "connection canceled without reason"
+  | Unknown_reason {location} ->
+      Format.fprintf
+        fmt
+        "connection canceled without reason at location %s"
+        location
