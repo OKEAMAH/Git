@@ -62,7 +62,6 @@ include: .gitlab/ci/jobs/test/common.yml
         --job ${CI_NODE_INDEX:-1}/${CI_NODE_TOTAL:-1}
         --record tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json
         --job-count ${TEZT_PARALLEL:-3}
-        --retry 1
     - ./scripts/ci/merge_coverage.sh
 
 .tezt_tests:
@@ -157,7 +156,6 @@ tezt:static-binaries:
         --job ${CI_NODE_INDEX:-1}/${CI_NODE_TOTAL:-1}
         --record tezt-results-${CI_NODE_INDEX}.json
         --job-count 3
-        --retry 1
 
 # Note: if you reactivate this test and if you keep it manual, put it in the "manual" stage.
 #
