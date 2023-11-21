@@ -29,7 +29,8 @@ export alpine_version='3.18'
 export full_opam_repository_tag=2314da5646931ec7f643bdc9aaa39177971ac857
 
 ## opam_repository is an additional, tezos-specific opam repository.
-## This value MUST be the same as `build_deps_image_version` in `.gitlab-ci.yml`
+## This value MUST be the same as `build_deps_image_version` in `.gitlab-ci.yml`.
+## To update `.gitlab-ci.yml`, run `make -C ci`.
 export opam_repository_url=https://gitlab.com/tezos/opam-repository
 export opam_repository_tag="${OPAM_REPOSITORY_TAG:-5d7889150ef8283a4610bfc85d5b66a159d72d2e}"
 export opam_repository_git="$opam_repository_url.git"
