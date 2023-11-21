@@ -31,12 +31,6 @@ let cpt = ref 1
 
 let cpt_req = ref 0
 
-let reqs_total_time = ref 0.
-
-let req_start_time = ref 0.
-
-let total_handle_unprocess_time = ref 0.
-
 type req =
   | RFlush
   | RNotify
@@ -1370,37 +1364,23 @@ module Make
         (r, request_error) result Lwt.t =
      fun w request ->
       let rreq = to_req request in
-      (if !last_request = rreq then incr cpt_req
-      else
-        let pending_requests = Worker.(information w).queue_length in
+      if !last_request = rreq then incr cpt_req
+      else (
         Format.kasprintf
           Profiler.stamp
-          "#%d: %s - %d (total time: %a (- %a)) - pending: %d"
+          "#%d: %s - %d"
           !cpt
           (s_req !last_request)
-          !cpt_req
-          Ptime.Span.pp
-          (WithExceptions.Option.get
-             ~loc:__LOC__
-             (Ptime.Span.of_float_s !reqs_total_time))
-          Ptime.Span.pp
-          (WithExceptions.Option.get
-             ~loc:__LOC__
-             (Ptime.Span.of_float_s !total_handle_unprocess_time))
-          pending_requests ;
+          !cpt_req ;
         incr cpt ;
         last_request := rreq ;
-        cpt_req := 1 ;
-        reqs_total_time := 0. ;
-        total_handle_unprocess_time := 0.) ;
-      req_start_time := Unix.gettimeofday () ;
+        cpt_req := 1) ;
       let open Lwt_result_syntax in
       Prometheus.Counter.inc_one metrics.worker_counters.worker_request_count ;
       let pv = Worker.state w in
       let post_processing :
           (r, request_error) result Lwt.t -> (r, request_error) result Lwt.t =
        fun r ->
-        let now = Unix.gettimeofday () in
         let open Lwt_syntax in
         let* () =
           match request with
@@ -1409,8 +1389,6 @@ module Make
               Profiler.aggregate_s "handle_unprocessed" @@ fun () ->
               handle_unprocessed pv
         in
-        let end_ = Unix.gettimeofday () in
-        total_handle_unprocess_time := end_ -. now ;
         r
       in
       post_processing
@@ -1612,10 +1590,11 @@ module Make
 
     let on_completion _w r _ st =
       Prometheus.Counter.inc_one metrics.worker_counters.worker_completion_count ;
-      let x = Events.(emit request_completed_info) (Request.view r, st) in
-      let then_ = Unix.gettimeofday () in
-      reqs_total_time := !reqs_total_time +. then_ -. !req_start_time ;
-      x
+      match Request.view r with
+      | View (Inject _) | View (Ban _) | Request.View (Flush _) ->
+          Events.(emit request_completed_info) (Request.view r, st)
+      | View (Notify _) | View Leftover | View (Arrived _) | View Advertise ->
+          Events.(emit request_completed_debug) (Request.view r, st)
 
     let on_no_request _ = Lwt.return_unit
   end
