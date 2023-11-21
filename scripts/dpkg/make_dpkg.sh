@@ -5,7 +5,7 @@
 # (c) Chris Pinnock 2022-3, Supplied under a MIT license.
 # see ../pkg-common/utils.sh for more detail
 
-set -eu
+#set -eu
 
 # Setup
 #
