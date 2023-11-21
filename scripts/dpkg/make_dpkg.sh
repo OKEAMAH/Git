@@ -11,7 +11,7 @@
 #
 myhome=scripts/dpkg
 common=scripts/pkg-common
-dieonwarn=${dieonwarn:-1}
+dieonwarn=0
 
 #shellcheck disable=SC1091
 . ${common}/utils.sh
