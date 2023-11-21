@@ -191,9 +191,9 @@ In addition, a rollup node can run under different modes:
    rollup node will accept transactions in its queue and batch them on
    the Layer 1.
 
-#. ``private_operator`` is equal to the ``operator`` mode and
-   additionally execute whitelist update outbox message for private
-   rollup upon encountering it, once a commitment have been cemented.
+#. ``private_operator`` is equal to the ``operator`` mode but
+   additionally executes any whitelist update outbox message for the private
+   rollup upon encountering it, once a commitment has been cemented.
 
 #. ``batcher`` means that the rollup node will accept transactions in
    its queue and batch them on the Layer 1. In this mode, the rollup
@@ -249,7 +249,7 @@ operations which are injected by the rollup node in each mode.
 .. [*] An accuser node will publish commitments only when it detects
        conflicts; for such cases it must make a deposit of 10,000 tez.
 
-.. [*] A private operator will only publish execute outbox message
+.. [**] A private operator will only publish execute outbox message
        for whitelist updates. Any other outbox message is discarded.
 
 .. _rollup_node_config_file:
