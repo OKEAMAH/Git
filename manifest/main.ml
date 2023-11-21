@@ -8773,6 +8773,8 @@ let exclude filename =
   | ["opam"; "mandatory-for-make.opam"] -> true
   (* opam-repository is used by scripts/opam-release.sh *)
   | "opam-repository" :: _ -> true
+  (* CI stuff *)
+  | "ci" :: _ -> true
   | _ -> false
 
 let () =
