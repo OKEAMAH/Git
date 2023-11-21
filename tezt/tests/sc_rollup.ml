@@ -5176,6 +5176,58 @@ let test_multiple_batcher_key ~kind =
     ~error_msg:"%L found where %R were expected" ;
   unit
 
+let flaky_test_parallel_injection =
+  Protocol.register_test
+    ~tags:["node"; "flaky"]
+    ~__FILE__
+    ~title:"inject in parallel lots of messages in rollup inbox."
+  @@ fun protocol ->
+  let* _node, client = Client.init_with_protocol `Client ~protocol () in
+  let nb_of_keys = 16 and msg_per_batch = 8 and msg_size = 4000 in
+  let* operators, multiple_transfers_json_batch =
+    let str_amount = Tez.to_string (Tez.of_int 1000) in
+    fold nb_of_keys ([], []) (fun _i (keys, json_batch_dest) ->
+        let* key = Client.gen_and_show_keys client in
+        let json_batch_dest =
+          `O
+            [("destination", `String key.alias); ("amount", `String str_amount)]
+          :: json_batch_dest
+        in
+        let keys = (Sc_rollup_node.Batching, key.public_key_hash) :: keys in
+        return (keys, json_batch_dest))
+  in
+  let*! () =
+    Client.multiple_transfers
+      ~giver:Constant.bootstrap1.alias
+      ~json_batch:(JSON.encode_u (`A multiple_transfers_json_batch))
+      ~burn_cap:(Tez.of_int 2)
+      client
+  in
+  let* _ = Client.bake_for_and_wait client in
+  let batch () =
+    let msg_cpt = ref 0 in
+    List.init msg_per_batch (fun _ ->
+        msg_cpt := !msg_cpt + 1 ;
+        String.make msg_size @@ Char.chr (97 + !msg_cpt))
+  in
+  let* _hashes =
+    Lwt.all
+    @@ List.map
+         (fun (_, src) ->
+           let msg =
+             JSON.encode_u @@ `A (List.map (fun str -> `String str) (batch ()))
+           in
+           Client.Sc_rollup.send_message client ~msg ~src)
+         operators
+  in
+  let timeout = 10. in
+  Lwt.catch
+    (fun () ->
+      Lwt.pick [Lwt_unix.timeout timeout; Client.bake_for_and_wait client])
+    (function
+      | Lwt_unix.Timeout -> Test.fail "Timeout of %f seconds reached." timeout
+      | e -> raise e)
+
 let register_riscv () =
   test_rollup_node_boots_into_initial_state [Protocol.Alpha] ~kind:"riscv" ;
   test_commitment_scenario
@@ -5350,6 +5402,7 @@ let register ~protocols =
   (* PVM-independent tests. We still need to specify a PVM kind
      because the tezt will need to originate a rollup. However,
      the tezt will not test for PVM kind specific features. *)
+  flaky_test_parallel_injection protocols ;
   test_rollup_node_missing_preimage_exit_at_initialisation protocols ;
   test_rollup_node_configuration protocols ~kind:"wasm_2_0_0" ;
   test_rollup_list protocols ~kind:"wasm_2_0_0" ;
