@@ -4,5 +4,12 @@ build_get_contracts:
   extends:
     - .tags_template__build
     - .build_template
+  rules:
+    - if:
+      changes:
+        paths:
+          - src/**/*
+          - devtools/get_contracts/**/*
+      when: on_success
   script:
     - dune build @devtools/get_contracts/check

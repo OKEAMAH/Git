@@ -7,6 +7,13 @@ include: .gitlab/ci/jobs/test/common.yml
 #   make && dune exec tezt/tests/main.exe -- --record tezt/test-results.json
 
 .tezt_template:
+  rules:
+    - if:
+      changes:
+        paths:
+          - src/**/*
+          - test/**/*
+      when: on_success
   variables:
     JUNIT: "tezt-junit.xml"
     # if we do not set BISECT_FILE here, it will be empty, and include the
@@ -71,6 +78,7 @@ include: .gitlab/ci/jobs/test/common.yml
     - .image_template__runtime_e2etest_dependencies
     - .template__coverage_files
     - .tezt_template
+    - .rules__octez_changes
   variables:
     # Certain tests can be blacklisted by modifying the TESTS variable.
     # Do not tests with the tag 'ci_disabled' and 'flaky'.
@@ -125,6 +133,7 @@ tezt:static-binaries:
     - .default_settings_template
     - .image_template__runtime_e2etest_dependencies
     - .tezt_template
+    - .rules__octez_changes
   dependencies:
     # Fetch src/proto_*/parameters/*.json and tezt/tests/main.exe from
     # build_x86_64-exp-dev-extra

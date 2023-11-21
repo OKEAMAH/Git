@@ -1,5 +1,7 @@
 .unit_test_template:
-  extends: .test_template
+  extends:
+    - .test_template
+    - .rules__octez_changes
   variables:
     ARCH: ""
     MAKE_TARGETS: ""
@@ -15,7 +17,8 @@
     when: always
 
 .unit_test_template_x86_64:
-  extends: .unit_test_template
+  extends:
+    - .unit_test_template
   variables:
     ARCH: "x86_64"
 
@@ -33,7 +36,8 @@
       - test_results
 
 .unit_test_template_arm64:
-  extends: .unit_test_template
+  extends:
+    - .unit_test_template
   needs:
     - "build_arm64-released"
     - "build_arm64-exp-dev-extra"
@@ -95,6 +99,7 @@ unit:js_components:
     - make test-js
 
 unit:protocol_compiles:
-  extends: .unit_test_template_x86_64
+  extends:
+    - .unit_test_template_x86_64
   script:
     - dune build @runtest_compile_protocol

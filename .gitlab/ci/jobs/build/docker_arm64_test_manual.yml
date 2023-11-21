@@ -7,7 +7,8 @@ docker:arm64:
     - .tags_template__no_gcp_arm64
   stage: manual
   needs: []
-  when: manual
+  rules:
+    - when: manual
   variables:
     IMAGE_ARCH_PREFIX: "arm64_"
     CI_DOCKER_HUB: "false"

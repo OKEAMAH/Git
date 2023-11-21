@@ -3,6 +3,13 @@
 tezt:build-long:
   extends:
     - .build_template
+  rules:
+    - if:
+      changes:
+        paths:
+          - src/**/*
+          - tezt/**/*
+      when: on_success
   stage: test
   # Artificial needs for ordering.
   needs:

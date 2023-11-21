@@ -2,6 +2,12 @@ check_precommit_hook:
   extends:
     - .default_settings_template
     - .image_template__runtime_build_test_dependencies
+  rules:
+    - if:
+      changes:
+        paths:
+          - scripts/pre_commit/pre_commit.py
+      when: always
   stage: test
   needs: [trigger]
   before_script:

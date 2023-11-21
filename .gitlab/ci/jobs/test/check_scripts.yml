@@ -8,6 +8,7 @@ script:snapshot_alpha_and_link:
   extends:
     - .default_settings_template
     - .image_template__runtime_build_dependencies
+    - .rules__octez_changes_or_margebot
   stage: test
   before_script:
     - . ./scripts/version.sh
@@ -33,6 +34,7 @@ script:test-gen-genesis:
   extends:
     - .default_settings_template
     - .image_template__runtime_build_dependencies
+    - .rules__octez_changes
   stage: test
   needs: [trigger]
   before_script:
@@ -54,6 +56,14 @@ check_scripts_b58_prefix:
     - .default_settings_template
     # Requires Python
     - .image_template__runtime_build_test_dependencies
+  rules:
+    - if:
+      changes:
+        paths:
+          - src/**/*
+          - scripts/b58_prefix/b58_prefix.py
+          - scripts/b58_prefix/test_b58_prefix.py
+      when: on_success
   stage: test
   needs: [trigger]
   before_script:
