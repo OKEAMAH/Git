@@ -201,11 +201,13 @@ mod tests {
 
     #[test]
     fn vote_contract() {
-        use crate::ast::micheline::test_helpers::*;
         let mut ctx = Ctx {
             amount: 5_000_000,
             ..Ctx::default()
         };
+        let arena = typed_arena::Arena::new();
+        use crate::lexer::Prim;
+        use Micheline as M;
         let interp_res = parse_contract_script(VOTE_SRC)
             .unwrap()
             .typecheck_script(&mut ctx)
@@ -213,7 +215,14 @@ mod tests {
             .interpret(
                 &mut ctx,
                 "foo".into(),
-                seq! {app!(Elt["bar", 0]); app!(Elt["baz", 0]); app!(Elt["foo", 0])},
+                M::seq(
+                    &arena,
+                    [
+                        M::prim2(&arena, Prim::Elt, "bar".into(), 0.into()),
+                        M::prim2(&arena, Prim::Elt, "baz".into(), 0.into()),
+                        M::prim2(&arena, Prim::Elt, "foo".into(), 0.into()),
+                    ],
+                ),
             );
         use TypedValue as TV;
         match interp_res.unwrap() {

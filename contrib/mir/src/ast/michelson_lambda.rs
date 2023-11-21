@@ -5,10 +5,11 @@
 /*                                                                            */
 /******************************************************************************/
 
-use super::Instruction;
+use super::{Instruction, Micheline};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Lambda {
+pub struct Lambda<'a> {
     pub recursive: bool,
-    pub code: Vec<Instruction>,
+    pub micheline_code: Micheline<'a>,
+    pub code: Vec<Instruction<'a>>,
 }

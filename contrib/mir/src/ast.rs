@@ -96,30 +96,30 @@ impl Type {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TypedValue {
+pub enum TypedValue<'a> {
     Int(i128),
     Nat(u128),
     Mutez(i64),
     Bool(bool),
     String(String),
     Unit,
-    Pair(Box<(TypedValue, TypedValue)>),
-    Option(Option<Box<TypedValue>>),
-    List(MichelsonList<TypedValue>),
-    Map(BTreeMap<TypedValue, TypedValue>),
-    Or(Box<Or<TypedValue, TypedValue>>),
+    Pair(Box<(Self, Self)>),
+    Option(Option<Box<Self>>),
+    List(MichelsonList<Self>),
+    Map(BTreeMap<Self, Self>),
+    Or(Box<Or<Self, Self>>),
     Address(Address),
     ChainId(ChainId),
     Contract(Address),
     Bytes(Vec<u8>),
     Key(Key),
     Signature(Signature),
-    Lambda(Lambda),
+    Lambda(Lambda<'a>),
 }
 
 pub fn typed_value_to_value_optimized<'a>(
     arena: &'a Arena<Micheline<'a>>,
-    tv: TypedValue,
+    tv: TypedValue<'a>,
 ) -> Micheline<'a> {
     use Micheline as V;
     use TypedValue as TV;
@@ -155,11 +155,21 @@ pub fn typed_value_to_value_optimized<'a>(
         TV::Bytes(x) => V::Bytes(x),
         TV::Key(k) => V::Bytes(k.to_bytes_vec()),
         TV::Signature(s) => V::Bytes(s.to_bytes_vec()),
-        TV::Lambda(_) => todo!(),
+        TV::Lambda(Lambda {
+            recursive,
+            micheline_code,
+            ..
+        }) => {
+            if recursive {
+                V::prim1(arena, Prim::Lambda_rec, micheline_code)
+            } else {
+                micheline_code
+            }
+        }
     }
 }
 
-impl TypedValue {
+impl TypedValue<'_> {
     pub fn new_pair(l: Self, r: Self) -> Self {
         Self::Pair(Box::new((l, r)))
     }
@@ -174,7 +184,7 @@ impl TypedValue {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub enum Instruction {
+pub enum Instruction<'a> {
     Add(overloads::Add),
     Dip(Option<u16>, Vec<Self>),
     Drop(Option<u16>),
@@ -184,7 +194,7 @@ pub enum Instruction {
     IfNone(Vec<Self>, Vec<Self>),
     Int,
     Loop(Vec<Self>),
-    Push(TypedValue),
+    Push(TypedValue<'a>),
     Swap,
     Failwith(Type),
     Unit,
@@ -211,8 +221,8 @@ pub enum Instruction {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContractScript {
+pub struct ContractScript<'a> {
     pub parameter: Type,
     pub storage: Type,
-    pub code: Instruction,
+    pub code: Instruction<'a>,
 }
