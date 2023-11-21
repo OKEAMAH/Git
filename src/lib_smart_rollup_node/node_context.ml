@@ -314,7 +314,9 @@ let close (type repo tree)
 
 let checkout_context :
     type repo tree.
-    (module Context.SMCONTEXT) ->
+    (module Context.SMCONTEXT
+       with type Context.Store.repo = repo
+        and type Context.Store.tree = tree) ->
     ('a, repo) t ->
     Block_hash.t ->
     ('a, repo, tree) Context.context tzresult Lwt.t =
@@ -331,12 +333,8 @@ let checkout_context :
         tzfail (Rollup_node_errors.Cannot_checkout_context (block_hash, None))
     | Some {context; _} -> return context
   in
-  let (module Ctx) =
-    (module Context.M (Pvm) : Context.MM
-      with type tree = tree
-       and type repo = repo)
-  in
-  let*! ctxt = Ctx.checkout node_ctxt.context context_hash in
+
+  let*! ctxt = Context.checkout pvm node_ctxt.context context_hash in
   match ctxt with
   | None ->
       tzfail

@@ -188,7 +188,9 @@ val gc_lockfile_path : data_dir:string -> string
 (** [checkout_context node_ctxt block_hash] returns the context at block
     [block_hash]. *)
 val checkout_context :
-  (module Context.SMCONTEXT) ->
+  (module Context.SMCONTEXT
+     with type Context.Store.repo = 'repo
+      and type Context.Store.tree = 'tree) ->
   ('a, 'repo) t ->
   Block_hash.t ->
   ('a, 'repo, 'tree) Context.context tzresult Lwt.t

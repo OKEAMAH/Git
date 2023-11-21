@@ -562,7 +562,7 @@ let checkout :
  fun (module Ctx) index key -> Ctx.Context.checkout index key
 
 let close :
-    type repo tree.
+    type repo.
     (module SMCONTEXT with type Context.Store.repo = repo) ->
     (_, repo) index ->
     unit Lwt.t =

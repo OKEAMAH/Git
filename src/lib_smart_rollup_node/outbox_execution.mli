@@ -30,6 +30,6 @@
     message to execute. It publishes and executes the most
     recent/closest one. *)
 val publish_execute_whitelist_update_message :
-  ('repo, _) Protocol_plugins.proto_plugin Protocol_hash.Table.t ->
+  ('repo * _) Protocol_plugins.tid ->
   'repo Node_context.rw ->
   unit tzresult Lwt.t

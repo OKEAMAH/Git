@@ -27,6 +27,8 @@ type error += Unsupported_protocol of Protocol_hash.t
 
 type error += Unregistered_protocol of Protocol_hash.t
 
+type 'a tid = 'a Context.tid
+
 let () =
   register_error_kind
     ~id:"smart_rollup.node.unsupported_protocol"
@@ -181,15 +183,15 @@ let get_constants_of_block_hash proto_plugins node_ctxt block_hash =
   let* level = Node_context.level_of_hash node_ctxt block_hash in
   get_constants_of_level proto_plugins node_ctxt level
 
-type context_t =
-  | Irmin of
-      (Context.IStore.Context.Store.repo * Context.IStore.Context.Store.tree)
-      tid
+(* type context_t = *)
+(*   | Irmin of *)
+(*       (Context.IStore.Context.Store.repo * Context.IStore.Context.Store.tree) *)
+(*       tid *)
 
-let proto_tid : context_t Protocol_hash.Table.t = Protocol_hash.Table.create 7
+(* let proto_tid : context_t Protocol_hash.Table.t = Protocol_hash.Table.create 7 *)
 
-let get_tid : Protocol_hash.t -> 'a tid option =
- fun protocol_hash ->
-  match Protocol_hash.Table.find proto_tid protocol_hash with
-  | Some (Irmin t) -> Some t
-  | None -> None
+(* let get_tid : Protocol_hash.t -> 'a tid option = *)
+(*  fun protocol_hash -> *)
+(*   match Protocol_hash.Table.find proto_tid protocol_hash with *)
+(*   | Some (Irmin t) -> Some t *)
+(*   | None -> None *)

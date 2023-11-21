@@ -252,8 +252,7 @@ let next_move :
       let choice = agreed_start_chunk.tick in
       final_move choice
 
-let play_next_move (type tree repo) plugin node_ctxt tick_state_cache game
-    opponent =
+let play_next_move plugin node_ctxt tick_state_cache game opponent =
   let open Lwt_result_syntax in
   let* refutation =
     next_move plugin node_ctxt tick_state_cache ~opponent game

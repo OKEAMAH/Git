@@ -40,7 +40,7 @@ module W (Context : Context.SMCONTEXT) : sig
   val init :
     ( Context.Context.Store.repo,
       Context.Context.Store.tree )
-    Protocol_plugin_sig.full ->
+    Protocol_plugin_sig.typed_full ->
     (_, Context.Context.Store.repo) Node_context.t ->
     unit tzresult Lwt.t
 

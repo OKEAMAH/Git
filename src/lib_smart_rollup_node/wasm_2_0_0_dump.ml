@@ -7,10 +7,23 @@
 
 (** [get_wasm_pvm_state ~l2_header data_dir] reads the WASM PVM state in
     [data_dir] for the given [l2_header].*)
-let get_wasm_pvm_state ~(pvm : (module Pvm_plugin_sig.S))
-    ~(l2_header : Sc_rollup_block.header) data_dir =
+let get_wasm_pvm_state :
+    type repo tree.
+    pvm:
+      (module Pvm_plugin_sig.S
+         with type Store.Context.Store.tree = tree
+          and type Store.Context.Store.repo = repo) ->
+    l2_header:Sc_rollup_block.header ->
+    string ->
+    tree tzresult Lwt.t =
+ fun ~(pvm :
+        (module Pvm_plugin_sig.S
+           with type Store.Context.Store.tree = tree
+            and type Store.Context.Store.repo = repo))
+     ~(l2_header : Sc_rollup_block.header)
+     data_dir ->
   let open Lwt_result_syntax in
-  let module Pvm : Pvm_plugin_sig.S = (val pvm) in
+  let module Pvm = (val pvm) in
   let context_hash = l2_header.context in
   let block_hash = l2_header.block_hash in
   (* Now, we can checkout the state of the rollup of the given block hash *)
@@ -35,10 +48,13 @@ let get_wasm_pvm_state ~(pvm : (module Pvm_plugin_sig.S))
   | None -> failwith "No PVM state found for block %a" Block_hash.pp block_hash
 
 (** [decode_value tree] decodes a durable storage value from the given tree. *)
-let decode_value
-    ~(pvm : (module Pvm_plugin_sig.S with type tree = Context.tree)) tree =
+let decode_value (type tree)
+    ~(pvm : (module Pvm_plugin_sig.S with type Store.Context.Store.tree = tree))
+    tree =
   let open Lwt_syntax in
-  let module Pvm : Pvm_plugin_sig.S with type tree = Context.tree = (val pvm) in
+  let module Pvm : Pvm_plugin_sig.S with type Store.Context.Store.tree = tree =
+    (val pvm)
+  in
   let* cbv =
     Pvm.Wasm_2_0_0.decode_durable_state
       Tezos_lazy_containers.Chunked_byte_vector.encoding
@@ -60,8 +76,9 @@ let check_dumpable_path key =
       | _ -> `Nothing)
 
 (** [print_set_value] dumps a value in the YAML format of the installer. *)
-let set_value_instr
-    ~(pvm : (module Pvm_plugin_sig.S with type tree = Context.tree)) key tree =
+let set_value_instr (type tree)
+    ~(pvm : (module Pvm_plugin_sig.S with type Store.Context.Store.tree = tree))
+    key tree =
   let open Lwt_syntax in
   let full_key = String.concat "/" key in
   let+ value = decode_value ~pvm tree in
@@ -70,12 +87,15 @@ let set_value_instr
 (* [generate_durable_storage tree] folds on the keys in the durable storage and
    their values and generates as set of instructions out of it. The order is not
    specified. *)
-let generate_durable_storage
-    ~(plugin : (module Protocol_plugin_sig.S with type Pvm.tree = Context.tree))
-    tree =
+let generate_durable_storage (type repo tree)
+    ~(plugin :
+       (module Protocol_plugin_sig.S
+          with type Pvm.Store.Context.Store.repo = repo
+           and type Pvm.Store.Context.Store.tree = tree)) tree =
   let open Lwt_syntax in
   let durable_path = "durable" :: [] in
-  let module Plugin : Protocol_plugin_sig.S with type Pvm.tree = Context.tree =
+  let module Plugin :
+    Protocol_plugin_sig.S with type Pvm.Store.Context.Store.tree = tree =
     (val plugin)
   in
   let* path_exists = Plugin.Pvm.Wasm_2_0_0.proof_mem_tree tree durable_path in
@@ -99,7 +119,7 @@ let generate_durable_storage
     return_ok instrs
   else failwith "The durable storage is not available in the tree\n%!"
 
-let dump_durable_storage ~block ~data_dir ~file =
+let dump_durable_storage (type repo tree) tid ~block ~data_dir ~file =
   let open Lwt_result_syntax in
   let* store =
     Store.load
@@ -149,9 +169,8 @@ let dump_durable_storage ~block ~data_dir ~file =
         let* h = hash_from_level l in
         return (h, l)
   in
-  let* (plugin :
-         (module Protocol_plugin_sig.S with type Pvm.tree = Context.tree)) =
-    Protocol_plugins.proto_plugin_for_level_with_store store block_level
+  let* (plugin : (repo, tree) Protocol_plugin_sig.typed_full) =
+    Protocol_plugins.proto_plugin_for_level_with_store tid store block_level
   in
   let* l2_header = Store.L2_blocks.header store.l2_blocks block_hash in
   let* l2_header =
@@ -161,7 +180,9 @@ let dump_durable_storage ~block ~data_dir ~file =
   in
   let pvm =
     let (module Plugin) = plugin in
-    (module Plugin.Pvm : Pvm_plugin_sig.S)
+    (module Plugin.Pvm : Pvm_plugin_sig.S
+      with type Store.Context.Store.tree = tree
+       and type Store.Context.Store.repo = repo)
   in
   let* state = get_wasm_pvm_state ~pvm ~l2_header data_dir in
   let* instrs = generate_durable_storage ~plugin state in

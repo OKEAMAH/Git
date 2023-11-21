@@ -9,6 +9,7 @@
     state of the WASM PVM from [data_dir], that is the state of the WASM PVM
     for the given [block]. *)
 val dump_durable_storage :
+  ('repo * 'tree) Protocol_plugins.tid ->
   block:Tezos_shell_services.Block_services.block ->
   data_dir:string ->
   file:string ->

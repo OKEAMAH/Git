@@ -43,7 +43,7 @@ type ('repo, 'tree) state = {
   messages : Message_queue.t;
   batched : Batched_messages.t;
   mutable simulation_ctxt : ('repo, 'tree) Simulation.t option;
-  mutable plugin : ('repo, 'tree) Protocol_plugin_sig.full;
+  mutable plugin : ('repo, 'tree) Protocol_plugin_sig.typed_full;
 }
 
 let message_size s =
@@ -76,7 +76,7 @@ let inject_batch state (l2_messages : L2_message.t list) =
 let inject_batches state = List.iter_es (inject_batch state)
 
 let max_batch_size (type tree repo)
-    {node_ctxt; plugin : (repo, tree) Protocol_plugin_sig.full; _} =
+    {node_ctxt; plugin : (repo, tree) Protocol_plugin_sig.typed_full; _} =
   let (module Plugin) = plugin in
   Option.value
     node_ctxt.config.batcher.max_batch_size
@@ -160,7 +160,7 @@ let simulate (type tree repo) state simulation_ctxt
     (messages : L2_message.t list) =
   let open Lwt_result_syntax in
   let (module Plugin) =
-    (state.plugin : (repo, tree) Protocol_plugin_sig.full)
+    (state.plugin : (repo, tree) Protocol_plugin_sig.typed_full)
   in
   let*? ext_messages =
     List.map_e
@@ -175,7 +175,7 @@ let simulate (type tree repo) state simulation_ctxt
 let on_register (type tree repo) state (messages : string list) =
   let open Lwt_result_syntax in
   let (module Plugin) =
-    (state.plugin : (repo, tree) Protocol_plugin_sig.full)
+    (state.plugin : (repo, tree) Protocol_plugin_sig.typed_full)
   in
   let max_size_msg =
     min
@@ -212,12 +212,16 @@ let on_register (type tree repo) state (messages : string list) =
   let+ () = produce_batches state ~only_full:true in
   hashes
 
-let on_new_head state head =
+let on_new_head (type repo tree) (state : (repo, tree) state) head =
   let open Lwt_result_syntax in
   (* Produce batches first *)
   let* () = produce_batches state ~only_full:false in
+  let (module Plugin) = state.plugin in
+  let tid =
+    match !Plugin.Pvm.Store.tid with None -> assert false | Some t -> t
+  in
   let* simulation_ctxt =
-    Simulation.start_simulation ~reveal_map:None state.node_ctxt head
+    Simulation.start_simulation tid ~reveal_map:None state.node_ctxt head
   in
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4224
      Replay with simulation may be too expensive *)
@@ -240,7 +244,7 @@ let on_new_head state head =
   List.iter (Message_queue.remove state.messages) failing
 
 let init_batcher_state :
-    ('repo, 'tree) Protocol_plugin_sig.full ->
+    ('repo, 'tree) Protocol_plugin_sig.typed_full ->
     'repo Node_context.ro ->
     ('repo, 'tree) state =
  fun plugin node_ctxt ->
@@ -259,7 +263,8 @@ module Types (Context : Context.SMCONTEXT) = struct
 
   type parameters = {
     node_ctxt : Context.Store.repo Node_context.ro;
-    plugin : (Context.Store.repo, Context.Store.tree) Protocol_plugin_sig.full;
+    plugin :
+      (Context.Store.repo, Context.Store.tree) Protocol_plugin_sig.typed_full;
   }
 end
 
@@ -352,7 +357,9 @@ module W (Context_plugin : Context.SMCONTEXT) = struct
   let worker_promise, worker_waker = Lwt.task ()
 
   let start :
-      (module Protocol_plugin_sig.S) ->
+      ( Context_plugin.Context.Store.repo,
+        Context_plugin.Context.Store.tree )
+      Protocol_plugin_sig.typed_full ->
       (_, Context_plugin.Context.Store.repo) Node_context.t ->
       unit tzresult Lwt.t =
    fun plugin node_ctxt ->

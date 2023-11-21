@@ -40,7 +40,7 @@ type ('repo, 'tree) t = {
   nb_messages_inbox : int;
   level_position : level_position;
   info_per_level : info_per_level;
-  plugin : ('repo, 'tree) Protocol_plugin_sig.full;
+  plugin : ('repo, 'tree) Protocol_plugin_sig.typed_full;
 }
 
 let simulate_info_per_level (node_ctxt : ([`Read], _) Node_context.t)
@@ -72,33 +72,31 @@ let set_simulation_kernel_log ?log_kernel_debug_file
 
 let start_simulation :
     type tree repo.
-    (repo, tree) Protocol_plugins.proto_plugin Protocol_hash.Table.t ->
+    (repo * tree) Protocol_plugins.tid ->
     ([`Read], repo) Node_context.t ->
     reveal_map:'a ->
     ?log_kernel_debug_file:string ->
     Layer1.head ->
-    ('b, error trace) result Lwt.t =
- fun proto_plugins
+    ((repo, tree) t, error trace) result Lwt.t =
+ fun tid
      node_ctxt
      ~reveal_map
      ?log_kernel_debug_file
      (Layer1.{hash; level} as head) ->
   let open Lwt_result_syntax in
   let open Node_context in
-  let*? (module Plugin : Protocol_plugin_sig.S
-          with type Pvm.tree = tree
-           and type Pvm.repo = repo) =
+  let*? (plugin : (repo, tree) Protocol_plugin_sig.typed_full) =
     Protocol_plugins.proto_plugin_for_protocol
-      proto_plugins
+      tid
       node_ctxt.current_protocol.hash
   in
-
+  let (module Plugin) = plugin in
   let*! node_ctxt =
     set_simulation_kernel_log ?log_kernel_debug_file node_ctxt
   in
   let inbox_level = Int32.succ level in
-  let* (plugin : (repo, tree) Protocol_plugin_sig.full) =
-    Protocol_plugins.proto_plugin_for_level proto_plugins node_ctxt inbox_level
+  let* (plugin : (repo, tree) Protocol_plugin_sig.typed_full) =
+    Protocol_plugins.proto_plugin_for_level tid node_ctxt inbox_level
   in
   let*? () =
     error_unless
@@ -128,7 +126,7 @@ let start_simulation :
     plugin;
   }
 
-let simulate_messages_no_checks
+let simulate_messages_no_checks (type repo tree)
     ({
        node_ctxt;
        ctxt;
@@ -136,10 +134,11 @@ let simulate_messages_no_checks
        inbox_level;
        reveal_map;
        nb_messages_inbox;
-       plugin;
+       plugin : (repo, tree) Protocol_plugin_sig.typed_full;
        level_position = _;
        info_per_level = _;
-     } as sim) messages =
+     } as sim :
+      (repo, tree) t) messages =
   let open Lwt_result_syntax in
   let open (val plugin) in
   let*! state_hash = Pvm.state_hash node_ctxt.kind state in
@@ -167,9 +166,11 @@ let simulate_messages_no_checks
   let nb_messages_inbox = nb_messages_inbox + num_messages in
   return ({sim with ctxt; state; nb_messages_inbox}, num_ticks)
 
-let simulate_messages sim messages =
+let simulate_messages (type repo tree)
+    ({plugin : (repo, tree) Protocol_plugin_sig.typed_full; _} as sim :
+      (repo, tree) t) messages =
   let open Lwt_result_syntax in
-  let open (val sim.plugin) in
+  let open (val plugin) in
   (* Build new inbox *)
   let*? () =
     error_when
@@ -187,9 +188,10 @@ let simulate_messages sim messages =
   let+ sim, num_ticks = simulate_messages_no_checks sim messages in
   ({sim with level_position = Middle}, num_ticks)
 
-let end_simulation sim =
+let end_simulation (type repo tree)
+    ({plugin : (repo, tree) Protocol_plugin_sig.typed_full; _} as sim) =
   let open Lwt_result_syntax in
-  let open (val sim.plugin) in
+  let open (val plugin) in
   let*? () =
     error_when
       (sim.level_position = End)

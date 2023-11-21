@@ -30,18 +30,6 @@ type info_per_level = {
   predecessor : Block_hash.t;
 }
 
-(* type ('a, 'tree) t = { *)
-(*   node_ctxt : 'a Node_context.ro; *)
-(*   ctxt : ('a, 'tree) Context.ro; *)
-(*   inbox_level : int32; *)
-(*   state : 'tree; *)
-(*   reveal_map : string Utils.Reveal_hash_map.t option; *)
-(*   nb_messages_inbox : int; *)
-(*   level_position : level_position; *)
-(*   info_per_level : info_per_level; *)
-(*   plugin : (module Protocol_plugin_sig.S with type Pvm.tree = 'tree); *)
-(* } *)
-
 (** Type of the state for a simulation. *)
 type ('repo, 'tree) t = {
   node_ctxt : 'repo Node_context.ro;
@@ -52,10 +40,7 @@ type ('repo, 'tree) t = {
   nb_messages_inbox : int;
   level_position : level_position;
   info_per_level : info_per_level;
-  plugin :
-    (module Protocol_plugin_sig.S
-       with type Pvm.tree = 'tree
-        and type Pvm.repo = 'repo);
+  plugin : ('repo, 'tree) Protocol_plugin_sig.typed_full;
 }
 
 (** [start_simulation node_ctxt ~reveal_map ?log_kernel_debug_file block] starts
@@ -63,11 +48,12 @@ type ('repo, 'tree) t = {
     (level). If [log_kernel_debug_file] is provided, kernel logs will be written
     to [node_ctxt.data_dir/simulation_kernel_logs/log_kernel_debug_file]. *)
 val start_simulation :
+  ('repo * 'tree) Protocol_plugins.tid ->
   'repo Node_context.ro ->
   reveal_map:string Utils.Reveal_hash_map.t option ->
   ?log_kernel_debug_file:string ->
   Layer1.head ->
-  ('repo, _) t tzresult Lwt.t
+  ('repo, 'tree) t tzresult Lwt.t
 
 (** [simulate_messages sim messages] runs a simulation of new [messages] in the
     given simulation (state) [sim] and returns a new simulation state, the

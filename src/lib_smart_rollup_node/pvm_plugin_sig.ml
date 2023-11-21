@@ -82,33 +82,38 @@ end
 module type S = sig
   module Store : Context.SMCONTEXT
 
-  type tree = Store.Context.Store.tree
+  val get_tick : Kind.t -> Store.Context.Store.tree -> Z.t Lwt.t
 
-  type repo = Store.Context.Store.repo
+  val state_hash : Kind.t -> Store.Context.Store.tree -> State_hash.t Lwt.t
 
-  val get_tick : Kind.t -> tree -> Z.t Lwt.t
-
-  val state_hash : Kind.t -> tree -> State_hash.t Lwt.t
-
-  val initial_state : Kind.t -> tree Lwt.t
+  val initial_state : Kind.t -> Store.Context.Store.tree Lwt.t
 
   val parse_boot_sector : Kind.t -> string -> string option
 
-  val install_boot_sector : Kind.t -> tree -> string -> tree Lwt.t
+  val install_boot_sector :
+    Kind.t ->
+    Store.Context.Store.tree ->
+    string ->
+    Store.Context.Store.tree Lwt.t
 
-  val get_status : _ Node_context.t -> tree -> string tzresult Lwt.t
+  val get_status :
+    _ Node_context.t -> Store.Context.Store.tree -> string tzresult Lwt.t
 
   val find_whitelist_update_output_index :
-    _ Node_context.t -> tree -> outbox_level:int32 -> int option Lwt.t
+    _ Node_context.t ->
+    Store.Context.Store.tree ->
+    outbox_level:int32 ->
+    int option Lwt.t
 
   val produce_serialized_output_proof :
     _ Node_context.rw ->
-    tree ->
+    Store.Context.Store.tree ->
     outbox_level:int32 ->
     message_index:int ->
     string tzresult Lwt.t
 
-  val get_current_level : Kind.t -> tree -> int32 option Lwt.t
+  val get_current_level :
+    Kind.t -> Store.Context.Store.tree -> int32 option Lwt.t
 
   val start_of_level_serialized : string
 
@@ -122,10 +127,11 @@ module type S = sig
   module Wasm_2_0_0 : sig
     (** [decode_durable_state enc tree] decodes a value using the encoder
         [enc] from the provided [tree] *)
-    val decode_durable_state : 'a Tezos_tree_encoding.t -> tree -> 'a Lwt.t
+    val decode_durable_state :
+      'a Tezos_tree_encoding.t -> Store.Context.Store.tree -> 'a Lwt.t
 
     (** [proof_mem_tree t k] is false iff [find_tree k = None].*)
-    val proof_mem_tree : tree -> string list -> bool Lwt.t
+    val proof_mem_tree : Store.Context.Store.tree -> string list -> bool Lwt.t
 
     (** [fold ?depth t root ~order ~init ~f] recursively folds over the trees and
         values of t. The f callbacks are called with a key relative to root. f is
@@ -144,19 +150,24 @@ module type S = sig
         order of their keys. *)
     val proof_fold_tree :
       ?depth:Tezos_context_sigs.Context.depth ->
-      tree ->
+      Store.Context.Store.tree ->
       string list ->
       order:[`Sorted | `Undefined] ->
       init:'a ->
-      f:(string list -> tree -> 'a -> 'a Lwt.t) ->
+      f:(string list -> Store.Context.Store.tree -> 'a -> 'a Lwt.t) ->
       'a Lwt.t
   end
 
   module Fueled : sig
-    module Free : FUELED_PVM with type fuel := Fuel.Free.t and type tree = tree
+    module Free :
+      FUELED_PVM
+        with type fuel := Fuel.Free.t
+         and type tree = Store.Context.Store.tree
 
     module Accounted :
-      FUELED_PVM with type fuel := Fuel.Accounted.t and type tree = tree
+      FUELED_PVM
+        with type fuel := Fuel.Accounted.t
+         and type tree = Store.Context.Store.tree
   end
 end
 
