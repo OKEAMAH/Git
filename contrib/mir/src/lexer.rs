@@ -118,6 +118,7 @@ defprim! {
     signature,
     CHECK_SIGNATURE,
     lambda,
+    Lambda_rec,
 }
 
 defprim! {

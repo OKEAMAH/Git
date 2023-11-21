@@ -47,7 +47,7 @@ impl PartialOrd for TypedValue {
             (Signature(..), _) => None,
 
             // non-comparable types
-            (List(..) | Map(..) | Contract(..), _) => None,
+            (List(..) | Map(..) | Contract(..) | Lambda(..), _) => None,
         }
     }
 }

@@ -176,6 +176,7 @@ macro_rules! micheline_values {
                 | Prim::Some
                 | Prim::Elt
                 | Prim::Left
+                | Prim::Lambda_rec
                 | Prim::Right,
             ..,
         )
