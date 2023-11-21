@@ -29,6 +29,7 @@ pub enum TztTestError<'a> {
     UnexpectedError(TestError),
     UnexpectedSuccess(ErrorExpectation<'a>, IStack),
     ExpectedDifferentError(ErrorExpectation<'a>, TestError),
+    UntypeableValue(TypedValue),
 }
 
 impl fmt::Display for TztTestError<'_> {
@@ -53,6 +54,13 @@ impl fmt::Display for TztTestError<'_> {
                     f,
                     "Expected an error but got a different one.\n expected: {}\n got: {}.",
                     e, r
+                )
+            }
+            UntypeableValue(v) => {
+                write!(
+                    f,
+                    "Value couldn't be untyped to match with the expectation: {:?}",
+                    v
                 )
             }
         }

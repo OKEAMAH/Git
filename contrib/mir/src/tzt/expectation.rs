@@ -25,7 +25,7 @@ fn check_error_expectation<'a>(
             Ok(())
         }
         (Ex::InterpreterError(i_error), Er::InterpreterError(res_i_error))
-            if unify_interpreter_error(ctx, &i_error, &res_i_error) =>
+            if unify_interpreter_error(ctx, &i_error, &res_i_error)? =>
         {
             Ok(())
         }
@@ -33,12 +33,13 @@ fn check_error_expectation<'a>(
     }
 }
 
-fn unify_interpreter_error(
+fn unify_interpreter_error<'a>(
     ctx: &mut Ctx,
     exp: &InterpreterErrorExpectation,
     err: &InterpretError,
-) -> bool {
+) -> Result<bool, TztTestError<'a>> {
     use InterpreterErrorExpectation::*;
+    use TztTestError::*;
     match (exp, err) {
         (FailedWith(value), InterpretError::FailedWith(typ, failed_typed_value)) => {
             // Here we typecheck the untyped value from the expectation using the
@@ -52,15 +53,21 @@ fn unify_interpreter_error(
                     // both values being compared, so it is probably safe to compare typed
                     // representation as well.
                     let arena = typed_arena::Arena::new();
-                    typed_value_to_value_optimized(&arena, exp_typed_val)
-                        == typed_value_to_value_optimized(&arena, failed_typed_value.clone())
+                    match (
+                        typed_value_to_value_optimized(&arena, exp_typed_val.clone()),
+                        typed_value_to_value_optimized(&arena, failed_typed_value.clone()),
+                    ) {
+                        (Some(exp), Some(actual)) => Ok(exp == actual),
+                        (None, None) => Err(UntypeableValue(failed_typed_value.clone())),
+                        _ => Ok(false), // If one was untypeable and one was not, then clearly they are different.
+                    }
                 }
-                Err(_) => false,
+                Err(_) => Ok(false),
             }
         }
-        (MutezOverflow(_, _), InterpretError::MutezOverflow) => true,
+        (MutezOverflow(_, _), InterpretError::MutezOverflow) => Ok(true),
         (GeneralOverflow(_, _), _) => todo!("General overflow is unsupported on interpreter"),
-        (_, _) => false, //Some error that we didn't expect happened.
+        (_, _) => Ok(false), //Some error that we didn't expect happened.
     }
 }
 
