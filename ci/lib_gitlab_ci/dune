@@ -1,0 +1,4 @@
+(library
+ (name gitlab_ci)
+ (libraries yaml generate_ci)
+ (flags :standard -open Generate_ci -open Generate_ci.Base))

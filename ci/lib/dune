@@ -1,0 +1,5 @@
+(library
+ (name generate_ci)
+ (preprocess
+  (pps ppx_expect))
+ (libraries yaml ppx_expect))

@@ -1,0 +1,4 @@
+(executable
+ (name main)
+ (libraries generate_ci gitlab_ci yaml unix)
+ (flags :standard -open Generate_ci -open Generate_ci.Base))
