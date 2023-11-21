@@ -1,4 +1,4 @@
-misc_checks:
+oc.misc_checks:
   extends:
     - .default_settings_template
     - .image_template__runtime_build_test_dependencies
@@ -29,13 +29,13 @@ kaitai_checks: # check that ksy files are still up-to-date with octez
   retry: 0
   needs: [trigger]
   needs:
-    - "build_x86_64-released"
+    - "oc.build_x86_64-released"
   before_script:
     - . ./scripts/version.sh
   script:
     - make -C ${CI_PROJECT_DIR} check-kaitai-struct-files
 
-check_lift_limits_patch:
+oc.check_lift_limits_patch:
   extends:
     - .test_template
   # These tests are not flaky at all so we overwrite the retry value

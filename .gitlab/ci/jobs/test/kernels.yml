@@ -1,10 +1,10 @@
 test_kernels:
   extends:
-    - .kernels_template
+    - .oc.kernels_template
     - .rules__octez_changes
   stage: test
-  needs: [build_kernels]
-  dependencies: [build_kernels]
+  needs: [oc.build_kernels]
+  dependencies: [oc.build_kernels]
   script:
     - make -f kernels.mk check
     - make -f kernels.mk test

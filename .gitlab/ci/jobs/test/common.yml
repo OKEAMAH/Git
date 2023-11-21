@@ -2,18 +2,18 @@
   extends:
     - .default_settings_template
     - .image_template__runtime_build_dependencies
-    - .template__coverage
+    - .oc.template__coverage
   needs:
-    - "build_x86_64-released"
-    - "build_x86_64-exp-dev-extra"
+    - "oc.build_x86_64-released"
+    - "oc.build_x86_64-exp-dev-extra"
   stage: test
   before_script:
     - . ./scripts/version.sh
   retry: 2
 
 # Merge coverage files after the execution
-.template__coverage_files:
-  extends: .template__coverage
+.oc.template__coverage_files:
+  extends: .oc.template__coverage
   artifacts:
     name: "coverage-files-$CI_JOB_ID"
     paths:

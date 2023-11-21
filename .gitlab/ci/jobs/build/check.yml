@@ -1,7 +1,7 @@
 ocaml-check:
   extends:
     - .tags_template__build
-    - .build
+    - .oc.build
     - .rules__octez_changes
   needs: [trigger]
   script:
