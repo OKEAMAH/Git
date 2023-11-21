@@ -28,9 +28,7 @@ let id = "tez"
 
 let name = "mutez"
 
-open Compare.Int64 (* invariant: positive *)
-
-type repr = t
+type repr = Uint63.t
 
 type t = Tez_tag of repr [@@ocaml.unboxed]
 
@@ -39,27 +37,27 @@ let wrap t = Tez_tag t [@@ocaml.inline always]
 type error +=
   | Addition_overflow of t * t (* `Temporary *)
   | Subtraction_underflow of t * t (* `Temporary *)
-  | Multiplication_overflow of t * int64 (* `Temporary *)
+  | Multiplication_overflow of t * Uint63.t (* `Temporary *)
   | Negative_multiplicator of t * int64 (* `Temporary *)
   | Invalid_divisor of t * int64
 
 (* `Temporary *)
 
-let zero = Tez_tag 0L
+let zero = Tez_tag Uint63.zero
 
 (* all other constant are defined from the value of one micro tez *)
-let one_mutez = Tez_tag 1L
+let one_mutez = Tez_tag Uint63.one
 
-let max_mutez = Tez_tag Int64.max_int
+let max_mutez = Tez_tag Uint63.max_int
 
-let mul_int (Tez_tag tez) i = Tez_tag (Int64.mul tez i)
+let mul_int (Tez_tag tez) i = Tez_tag (Uint63.With_exceptions.mul tez i)
 
-let one_cent = mul_int one_mutez 10_000L
+let one_cent = mul_int one_mutez Uint63.ten_thousand
 
-let fifty_cents = mul_int one_cent 50L
+let fifty_cents = mul_int one_cent Uint63.fifty
 
 (* 1 tez = 100 cents = 1_000_000 mutez *)
-let one = mul_int one_cent 100L
+let one = mul_int one_cent Uint63.one_hundred
 
 let of_string s =
   let triplets = function
@@ -81,7 +79,7 @@ let of_string s =
       String.init 6 (fun i -> if Compare.Int.(i < len) then s.[i] else '0')
     in
     let prepared = remove_commas left ^ pad_to_six (remove_commas right) in
-    Option.map wrap (Int64.of_string_opt prepared)
+    Option.map wrap (Uint63.of_string_opt prepared)
   in
   match String.split_on_char '.' s with
   | [left; right] ->
@@ -114,6 +112,7 @@ let pp ppf (Tez_tag amount) =
     if Compare.Int.(lo = 0) then Format.fprintf ppf "%a" triplet hi
     else Format.fprintf ppf "%03d%a" hi triplet lo
   in
+  let amount = (amount :> Int64.t) in
   let ints, decs =
     (Int64.div amount mult_int, Int64.(to_int (rem amount mult_int)))
   in
@@ -126,35 +125,39 @@ let ( -? ) tez1 tez2 =
   let open Result_syntax in
   let (Tez_tag t1) = tez1 in
   let (Tez_tag t2) = tez2 in
-  if t2 <= t1 then return (Tez_tag (Int64.sub t1 t2))
-  else tzfail (Subtraction_underflow (tez1, tez2))
+  match Uint63.sub t1 t2 with
+  | Some res -> return (Tez_tag res)
+  | None -> tzfail (Subtraction_underflow (tez1, tez2))
 
-let sub_opt (Tez_tag t1) (Tez_tag t2) =
-  if t2 <= t1 then Some (Tez_tag (Int64.sub t1 t2)) else None
+let sub_opt (Tez_tag t1) (Tez_tag t2) = Uint63.sub t1 t2 |> Option.map wrap
 
 let ( +? ) tez1 tez2 =
   let open Result_syntax in
   let (Tez_tag t1) = tez1 in
   let (Tez_tag t2) = tez2 in
-  let t = Int64.add t1 t2 in
-  if t < t1 then tzfail (Addition_overflow (tez1, tez2)) else return (Tez_tag t)
+  match Uint63.add t1 t2 with
+  | None -> tzfail (Addition_overflow (tez1, tez2))
+  | Some t -> return (Tez_tag t)
 
 let ( *? ) tez m =
   let open Result_syntax in
-  let (Tez_tag t) = tez in
-  if m < 0L then tzfail (Negative_multiplicator (tez, m))
-  else if m = 0L then return (Tez_tag 0L)
-  else if t > Int64.(div max_int m) then
-    tzfail (Multiplication_overflow (tez, m))
-  else return (Tez_tag (Int64.mul t m))
+  match Uint63.of_int64 m with
+  | None -> tzfail (Negative_multiplicator (tez, m))
+  | Some m -> (
+      let (Tez_tag t) = tez in
+      match Uint63.mul t m with
+      | None -> tzfail (Multiplication_overflow (tez, m))
+      | Some res -> return (Tez_tag res))
 
 let ( /? ) tez d =
   let open Result_syntax in
-  let (Tez_tag t) = tez in
-  if d <= 0L then tzfail (Invalid_divisor (tez, d))
-  else return (Tez_tag (Int64.div t d))
+  match Uint63.Div_safe.of_int64 d with
+  | None -> tzfail (Invalid_divisor (tez, d))
+  | Some d ->
+      let (Tez_tag t) = tez in
+      return (Tez_tag (Uint63.div t d))
 
-let div2 (Tez_tag t) = Tez_tag (Int64.div t 2L)
+let div2 (Tez_tag t) = Tez_tag Uint63.(div t Div_safe.two)
 
 let mul_exn t m =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> invalid_arg "mul_exn"
@@ -165,49 +168,47 @@ let div_exn t d =
 let mul_ratio ~rounding tez ~num ~den =
   let open Result_syntax in
   let (Tez_tag t) = tez in
-  if num < 0L then tzfail (Negative_multiplicator (tez, num))
-  else if den <= 0L then tzfail (Invalid_divisor (tez, den))
-  else if num = 0L then return zero
-  else
-    let numerator = Z.(mul (of_int64 t) (of_int64 num)) in
-    let denominator = Z.of_int64 den in
-    let z =
-      match rounding with
-      | `Down -> Z.div numerator denominator
-      | `Up -> Z.cdiv numerator denominator
-    in
-    if Z.fits_int64 z then return (Tez_tag (Z.to_int64 z))
-    else tzfail (Multiplication_overflow (tez, num))
+  match Uint63.of_int64 num with
+  | None -> tzfail (Negative_multiplicator (tez, num))
+  | Some num -> (
+      match Uint63.Div_safe.of_int64 den with
+      | None -> tzfail (Invalid_divisor (tez, den))
+      | Some den -> (
+          match Uint63.mul_ratio ~rounding t ~num ~den with
+          | Some res -> return (Tez_tag res)
+          | None -> tzfail (Multiplication_overflow (tez, num))))
 
-let mul_percentage ~rounding =
-  let z100 = Z.of_int 100 in
-  fun (Tez_tag t) (percentage : Int_percentage.t) ->
-    (* Guaranteed to produce no errors by the invariants on {!Int_percentage.t}. *)
-    let div' = match rounding with `Down -> Z.div | `Up -> Z.cdiv in
-    Tez_tag
-      Z.(to_int64 (div' (mul (of_int64 t) (of_int (percentage :> int))) z100))
+let mul_percentage ~rounding (Tez_tag t) percentage =
+  Tez_tag (Uint63.mul_percentage ~rounding t percentage)
 
-let of_mutez t = if t < 0L then None else Some (Tez_tag t)
+let of_mutez t = Uint63.of_int64 t |> Option.map wrap
 
 let of_mutez_exn x =
   match of_mutez x with None -> invalid_arg "Tez.of_mutez" | Some v -> v
 
-let to_mutez (Tez_tag t) = t
+let to_mutez (Tez_tag t) = (t :> Int64.t)
 
 let encoding =
   let open Data_encoding in
-  let decode (Tez_tag t) = Z.of_int64 t in
-  let encode = Json.wrap_error (fun i -> Tez_tag (Z.to_int64 i)) in
-  Data_encoding.def name (check_size 10 (conv decode encode n))
+  let decode (Tez_tag t) = Z.of_int64 (t :> Int64.t) in
+  let encode =
+    Json.wrap_error (fun z ->
+        match Uint63.of_int64 (Z.to_int64 z) with
+        | None -> Error "Non-negative integer expected"
+        | Some i -> Ok (Tez_tag i))
+  in
+  Data_encoding.def name (check_size 10 (conv_with_guard decode encode n))
 
 let balance_update_encoding =
   let open Data_encoding in
   conv
     (function
-      | `Credited v -> to_mutez v | `Debited v -> Int64.neg (to_mutez v))
+      | `Credited v -> (to_mutez v :> Int64.t)
+      | `Debited v -> Int64.neg (to_mutez v :> Int64.t))
     ( Json.wrap_error @@ fun v ->
-      if Compare.Int64.(v < 0L) then `Debited (Tez_tag (Int64.neg v))
-      else `Credited (Tez_tag v) )
+      match Uint63.abs_of_int64 v with
+      | `Neg v -> `Debited (Tez_tag v)
+      | `Pos v -> `Credited (Tez_tag v) )
     int64
 
 let () =
@@ -257,14 +258,15 @@ let () =
     ~pp:(fun ppf (opa, opb) ->
       Format.fprintf
         ppf
-        "Overflowing multiplication of %a %s and %Ld"
+        "Overflowing multiplication of %a %s and %a"
         pp
         opa
         id
+        Uint63.pp
         opb)
     ~description:
       ("A multiplication of a " ^ id ^ " amount by an integer overflowed")
-    (obj2 (req "amount" encoding) (req "multiplicator" int64))
+    (obj2 (req "amount" encoding) (req "multiplicator" Uint63.encoding))
     (function Multiplication_overflow (a, b) -> Some (a, b) | _ -> None)
     (fun (a, b) -> Multiplication_overflow (a, b)) ;
   register_error_kind
@@ -301,22 +303,22 @@ let () =
     (function Invalid_divisor (a, b) -> Some (a, b) | _ -> None)
     (fun (a, b) -> Invalid_divisor (a, b))
 
-let compare (Tez_tag x) (Tez_tag y) = compare x y
+let compare (Tez_tag x) (Tez_tag y) = Uint63.compare x y
 
-let ( = ) (Tez_tag x) (Tez_tag y) = x = y
+let ( = ) (Tez_tag x) (Tez_tag y) = Uint63.(x = y)
 
-let ( <> ) (Tez_tag x) (Tez_tag y) = x <> y
+let ( <> ) (Tez_tag x) (Tez_tag y) = Uint63.(x <> y)
 
-let ( < ) (Tez_tag x) (Tez_tag y) = x < y
+let ( < ) (Tez_tag x) (Tez_tag y) = Uint63.(x < y)
 
-let ( > ) (Tez_tag x) (Tez_tag y) = x > y
+let ( > ) (Tez_tag x) (Tez_tag y) = Uint63.(x > y)
 
-let ( <= ) (Tez_tag x) (Tez_tag y) = x <= y
+let ( <= ) (Tez_tag x) (Tez_tag y) = Uint63.(x <= y)
 
-let ( >= ) (Tez_tag x) (Tez_tag y) = x >= y
+let ( >= ) (Tez_tag x) (Tez_tag y) = Uint63.(x >= y)
 
-let equal (Tez_tag x) (Tez_tag y) = equal x y
+let equal (Tez_tag x) (Tez_tag y) = Uint63.equal x y
 
-let max (Tez_tag x) (Tez_tag y) = Tez_tag (max x y)
+let max (Tez_tag x) (Tez_tag y) = Tez_tag (Uint63.max x y)
 
-let min (Tez_tag x) (Tez_tag y) = Tez_tag (min x y)
+let min (Tez_tag x) (Tez_tag y) = Tez_tag (Uint63.min x y)
