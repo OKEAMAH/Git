@@ -52,6 +52,7 @@
       changes:
         paths:
           - docs/**/*
+          - src/**/*
       when: on_success
 
 # Add variables for bisect_ppx instrumentation
