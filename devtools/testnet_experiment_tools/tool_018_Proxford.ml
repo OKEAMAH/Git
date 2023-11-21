@@ -652,8 +652,8 @@ let choose_and_inject_operations cctxt state prohibited_managers n =
     nb_erroneous ;
   return new_state
 
-let start_injector cctxt ~op_per_mempool ~min_manager_queues
-    ~operations_file_path =
+let start_injector cctxt ?delay_before_injection ~op_per_mempool
+    ~min_manager_queues ~operations_file_path () =
   let* state = init ~operations_file_path in
   Format.printf "Starting injector@." ;
   let* head_stream, _stopper = Monitor_services.heads cctxt `Main in
@@ -737,6 +737,7 @@ let start_injector cctxt ~op_per_mempool ~min_manager_queues
           "Injecting %d new manager operations...@."
           nb_missing_operations ;
         let* state =
+          let*! () = Option.iter_s Lwt_unix.sleep delay_before_injection in
           choose_and_inject_operations
             cctxt
             state

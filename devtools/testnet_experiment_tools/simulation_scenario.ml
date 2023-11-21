@@ -88,6 +88,13 @@ let positive_int_parameter =
   | Some i when i > 0 -> return i
   | _ -> failwith "Parameter should be a positive integer literal"
 
+let positive_float_parameter =
+  parameter @@ fun _ s ->
+  let open Lwt_result_syntax in
+  match float_of_string_opt s with
+  | Some i when i > 0. -> return i
+  | _ -> failwith "Parameter should be a positive float literal"
+
 let round_duration_arg =
   arg
     ~doc:
@@ -125,6 +132,17 @@ let min_manager_queues_arg =
     ~default:"1"
     ~placeholder:"integer"
     positive_int_parameter
+
+let delay_before_injection_arg =
+  default_arg
+    ~doc:
+      "Delay after new block gets applied to start injecting manager \
+       operations. Default is 1.0."
+    ~short:'d'
+    ~default:"1.0"
+    ~long:"delay-before-injection"
+    ~placeholder:"time span"
+    positive_float_parameter
 
 let pp_spaced_int ppf i =
   let s = Format.sprintf "%d" i |> String.to_seq |> List.of_seq |> List.rev in
@@ -287,8 +305,8 @@ let sync_node (cctxt : Client_context.full) round_duration_target =
   let*! () = cctxt#message "Synchronizing the node to a low round time." in
   Tool.sync_node cctxt ?round_duration_target ()
 
-let run_injector (cctxt : Client_context.full) ~op_per_mempool
-    ~min_manager_queues ~operations_file_path =
+let run_injector (cctxt : Client_context.full) ?delay_before_injection
+    ~op_per_mempool ~min_manager_queues ~operations_file_path () =
   let open Lwt_result_syntax in
   let* {current_protocol; _} =
     Tezos_shell_services.Chain_services.Blocks.protocols cctxt ()
@@ -296,9 +314,11 @@ let run_injector (cctxt : Client_context.full) ~op_per_mempool
   let* (module Tool) = find_proto_tool current_protocol in
   Tool.start_injector
     cctxt
+    ?delay_before_injection
     ~op_per_mempool
     ~min_manager_queues
     ~operations_file_path
+    ()
 
 let patch_block_time ~data_dir ~block_time_target =
   let open Lwt_result_syntax in
@@ -424,17 +444,22 @@ let commands =
          target 2500 manager operations present in the mempool at all time. \
          Terminates whenever there are not enough operations to reach the \
          threshold target."
-      (args2 op_per_mempool_arg min_manager_queues_arg)
+      (args3
+         op_per_mempool_arg
+         min_manager_queues_arg
+         delay_before_injection_arg)
       (prefixes ["run"; "simulation"] @@ operations_file_param @@ stop)
-      (fun (op_per_mempool, min_manager_queues)
+      (fun (op_per_mempool, min_manager_queues, delay_before_injection)
            operations_file_path
            (cctxt : Client_context.full) ->
         let* () =
           run_injector
             cctxt
+            ~delay_before_injection
             ~op_per_mempool
             ~operations_file_path
             ~min_manager_queues
+            ()
         in
         return_unit);
     command
