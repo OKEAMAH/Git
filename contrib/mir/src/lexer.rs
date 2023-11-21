@@ -117,6 +117,7 @@ defprim! {
     key,
     signature,
     CHECK_SIGNATURE,
+    lambda,
 }
 
 defprim! {

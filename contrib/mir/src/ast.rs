@@ -48,6 +48,7 @@ pub enum Type {
     Bytes,
     Key,
     Signature,
+    Lambda(Box<(Type, Type)>),
 }
 
 impl Type {
@@ -58,7 +59,7 @@ impl Type {
         match self {
             Nat | Int | Bool | Mutez | String | Unit | Operation | Address | ChainId | Bytes
             | Key | Signature => 1,
-            Pair(p) | Or(p) | Map(p) => 1 + p.0.size_for_gas() + p.1.size_for_gas(),
+            Pair(p) | Or(p) | Map(p) | Lambda(p) => 1 + p.0.size_for_gas() + p.1.size_for_gas(),
             Option(x) | List(x) | Contract(x) => 1 + x.size_for_gas(),
         }
     }
@@ -85,6 +86,10 @@ impl Type {
 
     pub fn new_contract(ty: Self) -> Self {
         Self::Contract(Box::new(ty))
+    }
+
+    pub fn new_lambda(ty1: Self, ty2: Self) -> Self {
+        Self::Lambda(Box::new((ty1, ty2)))
     }
 }
 
