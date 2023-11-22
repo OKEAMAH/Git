@@ -229,13 +229,6 @@ let check_constants constants =
       (Invalid_protocol_constants
          "The minimal participation ratio must be less than or equal to 100%.")
   in
-  (* The [limit_of_delegation_over_baking] should be non-negative. *)
-  let* () =
-    error_unless
-      Compare.Int.(constants.limit_of_delegation_over_baking >= 0)
-      (Invalid_protocol_constants
-         "The delegation over baking limit must be greater than or equal to 0.")
-  in
   let* () =
     error_unless
       (let snapshot_frequence =

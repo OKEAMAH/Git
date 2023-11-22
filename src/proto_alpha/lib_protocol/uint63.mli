@@ -17,11 +17,17 @@ include module type of Cmp with type t := t
 
 val encoding : t Data_encoding.t
 
+val uint8_encoding : t Data_encoding.t
+
 val pp : Format.formatter -> t -> unit
 
 val zero : t
 
 val one : t
+
+val nine : t
+
+val nineteen : t
 
 val fifty : t
 
@@ -45,6 +51,8 @@ module Div_safe : sig
 
   val one_million : t
 end
+
+val to_int : t -> int
 
 val of_int : int -> t option
 

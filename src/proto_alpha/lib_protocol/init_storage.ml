@@ -158,12 +158,12 @@ let clear_staking_balance_snapshots_for_o ctxt =
 let migrate_stake_distribution_for_o ctxt =
   let open Lwt_result_syntax in
   let convert =
-    let limit_of_delegation_over_baking =
-      Constants_storage.limit_of_delegation_over_baking ctxt
+    let limit_of_delegation_over_baking_plus_one =
+      Uint63.to_int (Constants_storage.limit_of_delegation_over_baking ctxt) + 1
     in
     fun old_stake ->
       let frozen =
-        Tez_repr.div_exn old_stake (limit_of_delegation_over_baking + 1)
+        Tez_repr.div_exn old_stake limit_of_delegation_over_baking_plus_one
       in
       match Tez_repr.sub_opt old_stake frozen with
       | Some delegated -> Stake_repr.make ~frozen ~weighted_delegated:delegated

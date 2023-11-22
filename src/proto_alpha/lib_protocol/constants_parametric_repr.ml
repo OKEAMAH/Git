@@ -192,7 +192,7 @@ type t = {
   minimal_participation_ratio : Ratio_repr.t;
   consensus_committee_size : int;
   consensus_threshold : int;
-  limit_of_delegation_over_baking : int;
+  limit_of_delegation_over_baking : Uint63.t;
   percentage_of_frozen_deposits_slashed_per_double_baking : Int_percentage.t;
   percentage_of_frozen_deposits_slashed_per_double_attestation :
     Int_percentage.t;
@@ -630,7 +630,7 @@ let encoding =
              (merge_objs
                 (obj6
                    (req "minimal_participation_ratio" Ratio_repr.encoding)
-                   (req "limit_of_delegation_over_baking" uint8)
+                   (req "limit_of_delegation_over_baking" Uint63.uint8_encoding)
                    (req
                       "percentage_of_frozen_deposits_slashed_per_double_baking"
                       Int_percentage.encoding)

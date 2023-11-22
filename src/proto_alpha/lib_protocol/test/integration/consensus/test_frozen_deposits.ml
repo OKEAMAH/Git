@@ -139,7 +139,7 @@ let test_invariants () =
       (* in this particular example, if we follow the calculation of the active
          stake, it is precisely the new_staking_balance *)
       new_staking_balance
-      /! Int64.of_int (constants.limit_of_delegation_over_baking + 1))
+      /! Int64.add (constants.limit_of_delegation_over_baking :> Int64.t) 1L)
   in
   Assert.equal_tez ~loc:__LOC__ new_frozen_deposits expected_new_frozen_deposits
 
@@ -179,7 +179,7 @@ let test_limit_with_overdelegation () =
           Default_parameters.constants_test.adaptive_issuance with
           autostaking_enable = false;
         };
-      limit_of_delegation_over_baking = 9;
+      limit_of_delegation_over_baking = Protocol.Uint63.nine;
     }
   in
   let* genesis, contracts = Context.init_with_constants2 constants in
@@ -385,8 +385,11 @@ let test_set_limit balance_percentage () =
   let* frozen_deposits =
     Context.Delegate.current_frozen_deposits (B genesis) account1
   in
+  let limit_of_delegation_over_baking_plus_one =
+    Int64.add (constants.limit_of_delegation_over_baking :> Int64.t) 1L
+  in
   let expected_deposits =
-    full_balance /! Int64.of_int (constants.limit_of_delegation_over_baking + 1)
+    full_balance /! limit_of_delegation_over_baking_plus_one
   in
   let* () = Assert.equal_tez ~loc:__LOC__ frozen_deposits expected_deposits in
   (* Bake until end of first cycle *)
@@ -396,7 +399,7 @@ let test_set_limit balance_percentage () =
     Context.Delegate.current_frozen_deposits (B genesis) account1
   in
   let expected_deposits =
-    full_balance /! Int64.of_int (constants.limit_of_delegation_over_baking + 1)
+    full_balance /! limit_of_delegation_over_baking_plus_one
   in
   let* () = Assert.equal_tez ~loc:__LOC__ frozen_deposits expected_deposits in
   (* set deposits limit to balance_percentage out of the balance *)
@@ -721,7 +724,7 @@ let test_frozen_deposits_with_delegation () =
     Test_tez.(
       initial_frozen_deposits
       +! delegated_amount
-         /! Int64.of_int (constants.limit_of_delegation_over_baking + 1))
+         /! Int64.add (constants.limit_of_delegation_over_baking :> Int64.t) 1L)
   in
   let* new_frozen_deposits =
     Context.Delegate.current_frozen_deposits (B b) account1
@@ -865,7 +868,9 @@ let test_frozen_deposits_with_overdelegation () =
 
 let test_set_limit_with_overdelegation () =
   let open Lwt_result_syntax in
-  let constants = {constants with limit_of_delegation_over_baking = 9} in
+  let constants =
+    {constants with limit_of_delegation_over_baking = Uint63.nine}
+  in
   let* genesis, contracts = Context.init_with_constants2 constants in
   let (contract1, account1), (contract2, account2) =
     get_first_2_accounts_contracts contracts

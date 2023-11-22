@@ -13,6 +13,10 @@ let zero = Int64.zero
 
 let one = Int64.one
 
+let nine = 9L
+
+let nineteen = 19L
+
 let fifty = 50L
 
 let one_hundred = 100L
@@ -54,6 +58,8 @@ module Div_safe = struct
   let one_million = With_exceptions.of_int64 1_000_000L
 end
 
+let to_int = Int64.to_int
+
 let of_int64 i = if i >= 0L then Some i else None
 
 let abs_of_int64 i = if i >= 0L then `Pos i else `Neg (Int64.neg i)
@@ -74,6 +80,16 @@ let encoding =
       | None -> Error "Non-negative integer expected"
       | Some i -> Ok i)
     int64
+
+let uint8_encoding =
+  let open Data_encoding in
+  conv_with_guard
+    (fun i -> Int64.to_int i)
+    (fun i ->
+      match of_int i with
+      | None -> Error "Non-negative integer expected"
+      | Some i -> Ok i)
+    uint8
 
 let pp fp i = Format.fprintf fp "%Ld" i
 

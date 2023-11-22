@@ -516,7 +516,10 @@ module State = struct
         Tez.of_z
           (Z.cdiv
              power
-             (Z.of_int (state.constants.limit_of_delegation_over_baking + 1)))
+             (Z.of_int
+                (Protocol.Uint63.to_int
+                   state.constants.limit_of_delegation_over_baking
+                + 1)))
       in
       let autostaked =
         Int64.(sub (Tez.to_mutez optimal) (Tez.to_mutez current_frozen))

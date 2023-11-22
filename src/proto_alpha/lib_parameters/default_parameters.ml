@@ -189,7 +189,7 @@ let constants_mainnet =
     consensus_threshold;
     (* 4667 slots *)
     minimal_participation_ratio = {numerator = 2; denominator = 3};
-    limit_of_delegation_over_baking = 9;
+    limit_of_delegation_over_baking = Protocol.Uint63.nine;
     percentage_of_frozen_deposits_slashed_per_double_baking =
       Protocol.Int_percentage.p5;
     percentage_of_frozen_deposits_slashed_per_double_attestation =
@@ -325,7 +325,7 @@ let constants_sandbox =
     delay_increment_per_round = Period.one_second;
     consensus_committee_size = 256;
     consensus_threshold = 0;
-    limit_of_delegation_over_baking = 19;
+    limit_of_delegation_over_baking = Protocol.Uint63.nineteen;
   }
 
 let constants_test =
@@ -359,7 +359,7 @@ let constants_test =
     consensus_committee_size;
     consensus_threshold (* 17 slots *);
     limit_of_delegation_over_baking =
-      19
+      Protocol.Uint63.nineteen
       (* Not 9 so that multiplication by a percentage and
          divisions by a limit do not easily get intermingled. *);
   }

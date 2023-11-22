@@ -910,7 +910,7 @@ module Constants : sig
       minimal_participation_ratio : Ratio.t;
       consensus_committee_size : int;
       consensus_threshold : int;
-      limit_of_delegation_over_baking : int;
+      limit_of_delegation_over_baking : Uint63.t;
       percentage_of_frozen_deposits_slashed_per_double_baking :
         Int_percentage.t;
       percentage_of_frozen_deposits_slashed_per_double_attestation :
@@ -995,7 +995,7 @@ module Constants : sig
 
   val minimal_participation_ratio : context -> Ratio.t
 
-  val limit_of_delegation_over_baking : context -> int
+  val limit_of_delegation_over_baking : context -> Uint63.t
 
   val percentage_of_frozen_deposits_slashed_per_double_baking :
     context -> Int_percentage.t

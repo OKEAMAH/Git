@@ -27,7 +27,7 @@ let apply_limits ctxt staking_parameters
     {Full_staking_balance_repr.own_frozen; staked_frozen; delegated} =
   let open Result_syntax in
   let limit_of_delegation_over_baking =
-    Int64.of_int (Constants_storage.limit_of_delegation_over_baking ctxt)
+    (Constants_storage.limit_of_delegation_over_baking ctxt :> Int64.t)
   in
   let global_limit_of_staking_over_baking_millionth =
     Int64.(
@@ -87,7 +87,7 @@ let optimal_frozen_wrt_delegated_without_ai ctxt
     {Full_staking_balance_repr.delegated; own_frozen; _} =
   let open Result_syntax in
   let limit_of_delegation_over_baking =
-    Int64.of_int (Constants_storage.limit_of_delegation_over_baking ctxt)
+    (Constants_storage.limit_of_delegation_over_baking ctxt :> Int64.t)
   in
   (* Without AI, frozen deposit is optimal when `delegated =
      limit_of_delegation_over_baking * frozen`. Freezing more would

@@ -1105,11 +1105,14 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
             c.ratio_of_frozen_deposits_slashed_per_double_attestation
         in
         let limit_of_delegation_over_baking =
-          (100 / c.frozen_deposits_percentage) - 1
+          Uint63.of_int ((100 / c.frozen_deposits_percentage) - 1)
+          |> Option.value ~default:Uint63.nine
         in
         let minimal_frozen_stake =
           Tez_repr.(
-            div_exn c.minimal_stake (limit_of_delegation_over_baking + 1))
+            div_exn
+              c.minimal_stake
+              (Uint63.to_int limit_of_delegation_over_baking + 1))
         in
         let constants =
           Constants_parametric_repr.
