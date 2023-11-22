@@ -19,6 +19,7 @@ let execute ?(commit = false) ctxt inbox =
       ~preimage_directory:ctxt.Sequencer_context.preimages
       ~kernel_debug:true
       ~destination:ctxt.Sequencer_context.smart_rollup_address
+      ~storage_completions:false
       ()
   in
   let* evm_state, _, _, _ =
