@@ -37,6 +37,8 @@ let default_dal_pages_directory = "dal_pages"
 
 let default_kernel_debug = false
 
+let default_storage_completions = false
+
 type config = {
   sender : Protocol.Contract_hash.t;
   source : Tezos_crypto.Signature.public_key_hash;
@@ -44,13 +46,15 @@ type config = {
   preimage_directory : string;
   dal_pages_directory : string;
   kernel_debug : bool;
+  storage_completions : bool;
 }
 
 let config ?(sender = default_sender) ?(source = default_source)
     ?(destination = default_destination)
     ?(preimage_directory = default_preimage_directory)
     ?(dal_pages_directory = default_dal_pages_directory)
-    ?(kernel_debug = default_kernel_debug) () =
+    ?(kernel_debug = default_kernel_debug)
+    ?(storage_completions = default_storage_completions) () =
   {
     sender;
     source;
@@ -58,4 +62,5 @@ let config ?(sender = default_sender) ?(source = default_source)
     preimage_directory;
     dal_pages_directory;
     kernel_debug;
+    storage_completions;
   }

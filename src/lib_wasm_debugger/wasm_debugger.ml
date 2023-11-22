@@ -133,7 +133,10 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
   let repl tree inboxes level config history =
     let open Lwt_result_syntax in
     let rec loop term tree inboxes level =
-      let*! keys = Cmds.get_keys tree in
+      let*! keys =
+        if config.Config.storage_completions then Cmds.get_keys tree
+        else Lwt.return []
+      in
       let*! input =
         Option.catch_s (fun () ->
             let rl =
@@ -323,9 +326,16 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
       ~placeholder:"plugin1.cmxs,plugin2.cmxs"
       plugins_parameter
 
+  let no_storage_completions_flag =
+    let open Tezos_clic in
+    switch
+      ~doc:"Disables completions for paths in the storage."
+      ~long:"no-storage-completions"
+      ()
+
   let global_options =
     Tezos_clic.(
-      args9
+      args10
         wasm_arg
         input_arg
         rollup_arg
@@ -334,6 +344,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
         version_arg
         no_kernel_debug_flag
         plugins_arg
+        no_storage_completions_flag
         installer_config_arg)
 
   let handle_plugin_file f =
@@ -357,6 +368,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
              version,
              no_kernel_debug_flag,
              plugins,
+             no_storage_completions_flag,
              installer_config ),
            _ ) =
       Tezos_clic.parse_global_options global_options () args
@@ -373,6 +385,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
         ?preimage_directory
         ?dal_pages_directory
         ~kernel_debug:(not no_kernel_debug_flag)
+        ~storage_completions:(not no_storage_completions_flag)
         ()
     in
     let*? wasm_file =
