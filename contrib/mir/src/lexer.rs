@@ -122,6 +122,7 @@ defprim! {
     LAMBDA,
     LAMBDA_REC,
     EXEC,
+    APPLY,
 }
 
 defprim! {

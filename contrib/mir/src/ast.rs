@@ -26,7 +26,7 @@ use crate::{ast::annotations::NO_ANNS, lexer::Prim};
 pub use micheline::IntoMicheline;
 pub use michelson_address::*;
 pub use michelson_key::Key;
-pub use michelson_lambda::Lambda;
+pub use michelson_lambda::{Closure, Lambda};
 pub use michelson_list::MichelsonList;
 pub use michelson_signature::Signature;
 pub use or::Or;
@@ -182,7 +182,7 @@ pub enum TypedValue<'a> {
     Bytes(Vec<u8>),
     Key(Key),
     Signature(Signature),
-    Lambda(Lambda<'a>),
+    Lambda(Closure<'a>),
 }
 
 impl<'a> IntoMicheline<'a> for TypedValue<'a> {
@@ -221,12 +221,7 @@ impl<'a> IntoMicheline<'a> for TypedValue<'a> {
             TV::Bytes(x) => V::Bytes(x),
             TV::Key(k) => V::Bytes(k.to_bytes_vec()),
             TV::Signature(s) => V::Bytes(s.to_bytes_vec()),
-            TV::Lambda(lam) => match lam {
-                Lambda::Lambda { micheline_code, .. } => micheline_code,
-                Lambda::LambdaRec { micheline_code, .. } => {
-                    V::prim1(arena, Prim::Lambda_rec, micheline_code)
-                }
-            },
+            TV::Lambda(lam) => lam.into_micheline(arena),
         }
     }
 }
@@ -282,6 +277,9 @@ pub enum Instruction<'a> {
     CheckSignature,
     Lambda(Lambda<'a>),
     Exec,
+    Apply {
+        arg_ty: Type,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

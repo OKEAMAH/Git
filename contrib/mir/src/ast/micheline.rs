@@ -180,6 +180,7 @@ macro_rules! micheline_instructions {
                 | Prim::LAMBDA
                 | Prim::LAMBDA_REC
                 | Prim::EXEC
+                | Prim::APPLY
                 | Prim::CHECK_SIGNATURE,
             ..,
         )
