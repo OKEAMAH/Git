@@ -20,10 +20,10 @@ const STDERR: u64 = 2;
 
 // Named register mapping, named after RISC-V Spec ABI
 // E.g. a7 => x17
-const A0: u64 = 10;
-const A1: u64 = 11;
-const A2: u64 = 12;
-const A7: u64 = 17;
+pub const A0: u64 = 10;
+pub const A1: u64 = 11;
+pub const A2: u64 = 12;
+pub const A7: u64 = 17;
 
 /// Handle a system call originating from the user program.
 pub fn handle(emu: &mut Emulator) -> Result<(), Box<dyn Error>> {
