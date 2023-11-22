@@ -27,7 +27,7 @@ let apply_limits ctxt staking_parameters
     {Full_staking_balance_repr.own_frozen; staked_frozen; delegated} =
   let open Result_syntax in
   let limit_of_delegation_over_baking =
-    (Constants_storage.limit_of_delegation_over_baking ctxt :> Int64.t)
+    Constants_storage.limit_of_delegation_over_baking ctxt
   in
   let global_limit_of_staking_over_baking_millionth =
     Int64.(
@@ -66,7 +66,7 @@ let apply_limits ctxt staking_parameters
   let* delegated = Tez_repr.(delegated +? overstaked) in
   (* Overdelegated tez don't count. *)
   let delegated =
-    match Tez_repr.(own_frozen *? limit_of_delegation_over_baking) with
+    match Tez_repr.(own_frozen *!? limit_of_delegation_over_baking) with
     | Ok max_allowed_delegated -> Tez_repr.min max_allowed_delegated delegated
     | Error _max_allowed_delegated_overflows -> delegated
   in

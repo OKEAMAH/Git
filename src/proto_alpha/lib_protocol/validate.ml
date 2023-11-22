@@ -1741,7 +1741,7 @@ module Anonymous = struct
       else
         let cost_per_byte = Constants.cost_per_byte info.ctxt in
         let origination_size = Constants.origination_size info.ctxt in
-        Tez.(cost_per_byte *? (origination_size :> Int64.t))
+        Tez.(cost_per_byte *!? origination_size)
     in
     let* drain_fees =
       let*? one_percent = Tez.(balance /? 100L) in

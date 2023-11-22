@@ -64,13 +64,12 @@ let bonus_baking_reward ctxt ~attestation_power =
   let baking_reward_bonus_per_slot =
     Delegate.Rewards.baking_reward_bonus_per_slot ctxt
   in
-  let extra_attestation_power = attestation_power - consensus_threshold in
-  let* () =
-    error_when
-      Compare.Int.(extra_attestation_power < 0)
-      (Insufficient_attestation_power {attestation_power; consensus_threshold})
-  in
-  Tez.(baking_reward_bonus_per_slot *? Int64.of_int extra_attestation_power)
+  match Uint63.of_int (attestation_power - consensus_threshold) with
+  | None ->
+      tzfail
+        (Insufficient_attestation_power {attestation_power; consensus_threshold})
+  | Some extra_attestation_power ->
+      Tez.(baking_reward_bonus_per_slot *!? extra_attestation_power)
 
 type ordered_slots = {
   delegate : Signature.public_key_hash;
