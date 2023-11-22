@@ -338,7 +338,7 @@ type 'accounts init :=
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->
   ?issuance_weights:Constants.Parametric.issuance_weights ->
-  ?origination_size:int ->
+  ?origination_size:Uint63.t ->
   ?blocks_per_cycle:int32 ->
   ?cycles_per_voting_period:int32 ->
   ?sc_rollup_arith_pvm_enable:bool ->

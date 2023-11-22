@@ -178,7 +178,7 @@ type t = {
   minimal_stake : Tez_repr.t;
   minimal_frozen_stake : Tez_repr.t;
   vdf_difficulty : int64;
-  origination_size : int;
+  origination_size : Uint63.t;
   issuance_weights : issuance_weights;
   cost_per_byte : Tez_repr.t;
   hard_storage_limit_per_operation : Z.t;
@@ -612,7 +612,7 @@ let encoding =
           (obj7
              (req "minimal_frozen_stake" Tez_repr.encoding)
              (req "vdf_difficulty" int64)
-             (req "origination_size" int31)
+             (req "origination_size" Uint63.uint30_encoding)
              (req "issuance_weights" issuance_weights_encoding)
              (req "cost_per_byte" Tez_repr.encoding)
              (req "hard_storage_limit_per_operation" z)

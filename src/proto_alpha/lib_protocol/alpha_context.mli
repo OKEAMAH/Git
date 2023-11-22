@@ -896,7 +896,7 @@ module Constants : sig
       minimal_stake : Tez.t;
       minimal_frozen_stake : Tez.t;
       vdf_difficulty : int64;
-      origination_size : int;
+      origination_size : Uint63.t;
       issuance_weights : issuance_weights;
       cost_per_byte : Tez.t;
       hard_storage_limit_per_operation : Z.t;
@@ -970,7 +970,7 @@ module Constants : sig
 
   val vdf_difficulty : context -> int64
 
-  val origination_size : context -> int
+  val origination_size : context -> Uint63.t
 
   val issuance_weights : context -> Parametric.issuance_weights
 

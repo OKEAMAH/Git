@@ -21,6 +21,8 @@ let fifty = 50L
 
 let one_hundred = 100L
 
+let two_hundred_fifty_seven = 257L
+
 let ten_thousand = 10_000L
 
 let max_int = Int64.max_int
@@ -60,6 +62,8 @@ end
 
 let to_int = Int64.to_int
 
+let to_z = Z.of_int64
+
 let of_int64 i = if i >= 0L then Some i else None
 
 let abs_of_int64 i = if i >= 0L then `Pos i else `Neg (Int64.neg i)
@@ -71,25 +75,21 @@ let of_string_opt s =
   let* i = Int64.of_string_opt s in
   of_int64 i
 
-let encoding =
+let mk_encoding f g enc =
   let open Data_encoding in
   conv_with_guard
-    (fun i -> i)
+    f
     (fun i ->
-      match of_int64 i with
+      match g i with
       | None -> Error "Non-negative integer expected"
       | Some i -> Ok i)
-    int64
+    enc
 
-let uint8_encoding =
-  let open Data_encoding in
-  conv_with_guard
-    (fun i -> Int64.to_int i)
-    (fun i ->
-      match of_int i with
-      | None -> Error "Non-negative integer expected"
-      | Some i -> Ok i)
-    uint8
+let encoding = mk_encoding (fun i -> i) of_int64 Data_encoding.int64
+
+let uint8_encoding = mk_encoding Int64.to_int of_int Data_encoding.uint8
+
+let uint30_encoding = mk_encoding Int64.to_int of_int Data_encoding.int31
 
 let pp fp i = Format.fprintf fp "%Ld" i
 

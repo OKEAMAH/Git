@@ -58,7 +58,7 @@ val minimal_frozen_stake : Raw_context.t -> Tez_repr.t
 
 val vdf_difficulty : Raw_context.t -> int64
 
-val origination_size : Raw_context.t -> int
+val origination_size : Raw_context.t -> Uint63.t
 
 val issuance_weights :
   Raw_context.t -> Constants_parametric_repr.issuance_weights

@@ -149,7 +149,7 @@ let constants_mainnet =
           - 5: security factor (strictly higher than the ratio between highest CPU
          clock rate and benchmark machine that is 8.43/2.8 ~= 3 *)
     vdf_difficulty = 8_000_000_000L;
-    origination_size = 257;
+    origination_size = Protocol.Uint63.two_hundred_fifty_seven;
     issuance_weights =
       {
         base_total_issued_per_minute;

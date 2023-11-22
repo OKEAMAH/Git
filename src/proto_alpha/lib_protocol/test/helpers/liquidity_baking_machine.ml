@@ -904,7 +904,7 @@ module ConcreteBaseMachine :
             vdf_revelation_tip_weight = 0;
             liquidity_baking_subsidy_weight = 1;
           }
-        ~origination_size:0
+        ~origination_size:Uint63.zero
         ~blocks_per_cycle:10_000l
         ~cycles_per_voting_period:1l
         ()

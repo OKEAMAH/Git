@@ -45,7 +45,7 @@ let total_fees_for_origination ?(fee = Tez.zero) ?(credit = Tez.zero) b =
   let* {parametric = {origination_size; cost_per_byte; _}; _} =
     Context.get_constants (B b)
   in
-  let*? origination_burn = cost_per_byte *? Int64.of_int origination_size in
+  let*? origination_burn = cost_per_byte *? (origination_size :> Int64.t) in
   let*? t = credit +? fee in
   let*? t = origination_burn +? t in
   let*? total_fee = Op.dummy_script_cost +? t in

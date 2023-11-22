@@ -1114,6 +1114,11 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
               c.minimal_stake
               (Uint63.to_int limit_of_delegation_over_baking + 1))
         in
+
+        let origination_size =
+          Uint63.of_int c.origination_size |> Option.value ~default:Uint63.zero
+        in
+
         let constants =
           Constants_parametric_repr.
             {
@@ -1129,7 +1134,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
               minimal_stake = c.minimal_stake;
               minimal_frozen_stake;
               vdf_difficulty = c.vdf_difficulty;
-              origination_size = c.origination_size;
+              origination_size;
               max_operations_time_to_live = c.max_operations_time_to_live;
               issuance_weights;
               cost_per_byte = c.cost_per_byte;

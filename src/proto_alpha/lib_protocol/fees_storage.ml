@@ -134,7 +134,12 @@ let burn_storage_increase_fees ?(origin = Receipt_repr.Block_application) c
 let burn_origination_fees ?(origin = Receipt_repr.Block_application) c
     ~storage_limit ~payer =
   let origination_size = Constants_storage.origination_size c in
-  burn_storage_fees ~origin c ~storage_limit ~payer (Z.of_int origination_size)
+  burn_storage_fees
+    ~origin
+    c
+    ~storage_limit
+    ~payer
+    (Uint63.to_z origination_size)
 
 let burn_sc_rollup_origination_fees ?(origin = Receipt_repr.Block_application) c
     ~storage_limit ~payer consumed =

@@ -43,7 +43,7 @@ let constants =
         base_total_issued_per_minute = Tez.zero;
       };
     consensus_threshold = 0;
-    origination_size = 0;
+    origination_size = Uint63.zero;
   }
 
 (** Checks that staking balance is sum of delegators' stake. *)

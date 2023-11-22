@@ -269,7 +269,7 @@ let delegate_to_bootstrap_by_origination ~fee () =
     Context.get_constants (I i)
   in
   (* 0.257tz *)
-  let*? origination_burn = cost_per_byte *? Int64.of_int origination_size in
+  let*? origination_burn = cost_per_byte *? (origination_size :> Int64.t) in
   let*? t = fee +? origination_burn in
   let*? total_fee = Op.dummy_script_cost +? t in
   if fee > balance then expect_too_low_balance_error i op
@@ -517,7 +517,7 @@ let test_unregistered_delegate_key_init_origination ~fee () =
   let* {parametric = {origination_size; cost_per_byte; _}; _} =
     Context.get_constants (I i)
   in
-  let*? origination_burn = cost_per_byte *? Int64.of_int origination_size in
+  let*? origination_burn = cost_per_byte *? (origination_size :> Int64.t) in
   let*? (_total_fee : Tez.t) = fee +? origination_burn in
   (* FIXME unused variable *)
   let* balance = Context.Contract.balance (I i) bootstrap in

@@ -896,7 +896,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
           if user_storage_limit_needs_patching c.storage_limit then
             let*? storage =
               estimated_storage_single
-                ~origination_size:(Z.of_int origination_size)
+                ~origination_size:(Uint63.to_z origination_size)
                 ~force
                 result
             in
@@ -979,7 +979,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
       let* () =
         let*? storage =
           estimated_storage
-            ~origination_size:(Z.of_int origination_size)
+            ~origination_size:(Uint63.to_z origination_size)
             ~force
             result.contents
         in

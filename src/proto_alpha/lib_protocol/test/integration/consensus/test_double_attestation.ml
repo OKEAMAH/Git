@@ -705,7 +705,7 @@ let test_freeze_more_with_low_balance =
             base_total_issued_per_minute = Tez.zero;
           };
         consensus_threshold = 0;
-        origination_size = 0;
+        origination_size = Uint63.zero;
         preserved_cycles = 5;
         percentage_of_frozen_deposits_slashed_per_double_attestation =
           (* enforce that percentage is 50% in the test's params. *)

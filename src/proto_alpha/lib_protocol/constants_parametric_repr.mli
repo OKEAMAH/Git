@@ -165,7 +165,7 @@ type t = {
   minimal_stake : Tez_repr.t;
   minimal_frozen_stake : Tez_repr.t;
   vdf_difficulty : int64;
-  origination_size : int;
+  origination_size : Uint63.t;
   issuance_weights : issuance_weights;
   cost_per_byte : Tez_repr.t;
   hard_storage_limit_per_operation : Z.t;

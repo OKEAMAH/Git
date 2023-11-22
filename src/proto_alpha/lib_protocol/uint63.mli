@@ -19,6 +19,8 @@ val encoding : t Data_encoding.t
 
 val uint8_encoding : t Data_encoding.t
 
+val uint30_encoding : t Data_encoding.t
+
 val pp : Format.formatter -> t -> unit
 
 val zero : t
@@ -32,6 +34,8 @@ val nineteen : t
 val fifty : t
 
 val one_hundred : t
+
+val two_hundred_fifty_seven : t
 
 val ten_thousand : t
 
@@ -53,6 +57,8 @@ module Div_safe : sig
 end
 
 val to_int : t -> int
+
+val to_z : t -> Z.t
 
 val of_int : int -> t option
 

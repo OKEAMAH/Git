@@ -295,7 +295,7 @@ let drain ctxt ~delegate ~destination =
     if not is_destination_allocated then
       Fees_storage.burn_origination_fees
         ctxt
-        ~storage_limit:(Z.of_int (Constants_storage.origination_size ctxt))
+        ~storage_limit:(Uint63.to_z (Constants_storage.origination_size ctxt))
         ~payer:(`Contract delegate_contract)
     else return (ctxt, Z.zero, [])
   in

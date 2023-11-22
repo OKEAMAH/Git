@@ -44,7 +44,7 @@ let constants =
         base_total_issued_per_minute = Tez.zero;
       };
     consensus_threshold = 0;
-    origination_size = 0;
+    origination_size = Uint63.zero;
   }
 
 let get_first_2_accounts_contracts (a1, a2) =
