@@ -119,6 +119,8 @@ defprim! {
     CHECK_SIGNATURE,
     lambda,
     Lambda_rec,
+    LAMBDA,
+    LAMBDA_REC,
 }
 
 defprim! {

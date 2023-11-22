@@ -386,6 +386,10 @@ fn interpret_one<'a>(
                 .consume(interpret_cost::check_signature(&key, &msg)?)?;
             stack.push(V::Bool(sig.check(&key, &msg)));
         }
+        I::Lambda(lam) => {
+            ctx.gas.consume(interpret_cost::LAMBDA)?;
+            stack.push(V::Lambda(lam.clone()));
+        }
         I::Seq(nested) => interpret(nested, ctx, stack)?,
     }
     Ok(())

@@ -157,6 +157,8 @@ macro_rules! micheline_instructions {
                 | Prim::CHAIN_ID
                 | Prim::SELF
                 | Prim::SWAP
+                | Prim::LAMBDA
+                | Prim::LAMBDA_REC
                 | Prim::CHECK_SIGNATURE,
             ..,
         )
