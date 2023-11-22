@@ -139,15 +139,18 @@ let ( +? ) tez1 tez2 =
   | None -> tzfail (Addition_overflow (tez1, tez2))
   | Some t -> return (Tez_tag t)
 
+let ( *!? ) tez m =
+  let open Result_syntax in
+  let (Tez_tag t) = tez in
+  match Uint63.mul t m with
+  | None -> tzfail (Multiplication_overflow (tez, m))
+  | Some res -> return (Tez_tag res)
+
 let ( *? ) tez m =
   let open Result_syntax in
   match Uint63.of_int64 m with
   | None -> tzfail (Negative_multiplicator (tez, m))
-  | Some m -> (
-      let (Tez_tag t) = tez in
-      match Uint63.mul t m with
-      | None -> tzfail (Multiplication_overflow (tez, m))
-      | Some res -> return (Tez_tag res))
+  | Some m -> tez *!? m
 
 let ( /? ) tez d =
   let open Result_syntax in

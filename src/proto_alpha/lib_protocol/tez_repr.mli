@@ -64,6 +64,8 @@ val sub_opt : t -> t -> t option
 
 val ( +? ) : t -> t -> t tzresult
 
+val ( *!? ) : t -> Uint63.t -> t tzresult
+
 val ( *? ) : t -> int64 -> t tzresult
 
 val ( /? ) : t -> int64 -> t tzresult
