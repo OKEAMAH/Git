@@ -1111,10 +1111,15 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
           Tez_repr.(
             div_exn c.minimal_stake (limit_of_delegation_over_baking + 1))
         in
+
+        let preserved_cycles =
+          if Compare.Int.(c.preserved_cycles = 5) then 4 else c.preserved_cycles
+        in
+
         let constants =
           Constants_parametric_repr.
             {
-              preserved_cycles = c.preserved_cycles;
+              preserved_cycles;
               blocks_per_cycle = c.blocks_per_cycle;
               blocks_per_commitment = c.blocks_per_commitment;
               nonce_revelation_threshold = c.nonce_revelation_threshold;

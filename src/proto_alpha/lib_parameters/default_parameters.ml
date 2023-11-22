@@ -128,7 +128,7 @@ let constants_mainnet =
       Raw_level.of_int32_exn Int32.(pred max_int)
   in
   {
-    Constants.Parametric.preserved_cycles = 5;
+    Constants.Parametric.preserved_cycles = 4;
     blocks_per_cycle = 16384l;
     blocks_per_commitment = 128l;
     nonce_revelation_threshold = 512l;
