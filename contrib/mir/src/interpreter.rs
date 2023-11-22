@@ -545,28 +545,54 @@ fn interpret_one<'a>(
         }
         I::Lambda(lam) => {
             ctx.gas.consume(interpret_cost::LAMBDA)?;
-            stack.push(V::Lambda(lam.clone()));
+            stack.push(V::Lambda(Closure::Lambda(lam.clone())));
         }
         I::Exec => {
             ctx.gas.consume(interpret_cost::EXEC)?;
-            let arg = pop!();
-            let lam = pop!(V::Lambda);
-            let mut res_stk = match &lam {
-                Lambda::LambdaRec { code, .. } => {
-                    // NB: this `clone` is constant-time as `code` is Rc
-                    // See Note: Rc in lambdas
-                    let code = Rc::clone(code);
-                    let mut stk = stk![V::Lambda(lam), arg];
-                    interpret(&code, ctx, &mut stk)?;
-                    stk
+            let mut arg = pop!();
+            let mut closure = pop!(V::Lambda);
+            loop {
+                match closure {
+                    Closure::Lambda(ref lam) => {
+                        let mut res_stk = match &lam {
+                            Lambda::LambdaRec { code, .. } => {
+                                // NB: this `clone` is constant-time as `code` is Rc
+                                // See Note: Rc in lambdas
+                                let code = Rc::clone(code);
+                                let mut stk = stk![V::Lambda(closure), arg];
+                                interpret(&code, ctx, &mut stk)?;
+                                stk
+                            }
+                            Lambda::Lambda { code, .. } => {
+                                let mut stk = stk![arg];
+                                interpret(code, ctx, &mut stk)?;
+                                stk
+                            }
+                        };
+                        stack.push(res_stk.pop().unwrap_or_else(|| unreachable_state()));
+                        break;
+                    }
+                    Closure::Apply {
+                        arg_val,
+                        closure: inner,
+                        ..
+                    } => {
+                        ctx.gas.consume(interpret_cost::PAIR)?; // reasonable estimation
+                        arg = V::new_pair(*arg_val, arg);
+                        closure = *inner;
+                    }
                 }
-                Lambda::Lambda { code, .. } => {
-                    let mut stk = stk![arg];
-                    interpret(code, ctx, &mut stk)?;
-                    stk
-                }
-            };
-            stack.push(res_stk.pop().unwrap_or_else(|| unreachable_state()));
+            }
+        }
+        I::Apply { arg_ty } => {
+            let arg_val = pop!();
+            let closure = pop!(V::Lambda);
+            ctx.gas.consume(interpret_cost::APPLY)?;
+            stack.push(V::Lambda(Closure::Apply {
+                arg_ty: arg_ty.clone(),
+                arg_val: Box::new(arg_val),
+                closure: Box::new(closure),
+            }))
         }
         I::Seq(nested) => interpret(nested, ctx, stack)?,
     }
@@ -1979,10 +2005,10 @@ mod interpreter_tests {
     #[test]
     fn exec() {
         let mut stack = stk![
-            TypedValue::Lambda(Lambda::Lambda {
+            TypedValue::Lambda(Closure::Lambda(Lambda::Lambda {
                 micheline_code: Micheline::Seq(&[]), // ignored by the interpreter
                 code: vec![Unpair, Add(overloads::Add::IntNat)].into(),
-            }),
+            })),
             TypedValue::new_pair(TypedValue::int(1), TypedValue::nat(5))
         ];
         assert_eq!(
@@ -1994,7 +2020,9 @@ mod interpreter_tests {
 
     #[test]
     fn exec_rec_1() {
-        let lam = Lambda::LambdaRec {
+        let lam = Closure::Lambda(Lambda::LambdaRec {
+            in_ty: Type::new_pair(Type::Bool, Type::Nat),
+            out_ty: Type::Nat,
             micheline_code: Micheline::Seq(&[]),
             code: vec![
                 Unpair,
@@ -2010,7 +2038,7 @@ mod interpreter_tests {
                 ),
             ]
             .into(),
-        };
+        });
         let mut stack = stk![
             TypedValue::Lambda(lam.clone()),
             TypedValue::new_pair(TypedValue::Bool(true), TypedValue::nat(5))
@@ -2024,7 +2052,9 @@ mod interpreter_tests {
 
     #[test]
     fn exec_rec_2() {
-        let lam = Lambda::LambdaRec {
+        let lam = Closure::Lambda(Lambda::LambdaRec {
+            in_ty: Type::new_pair(Type::Bool, Type::Nat),
+            out_ty: Type::Nat,
             micheline_code: Micheline::Seq(&[]),
             code: vec![
                 Unpair,
@@ -2040,11 +2070,134 @@ mod interpreter_tests {
                 ),
             ]
             .into(),
-        };
+        });
         let mut stack = stk![
             TypedValue::Lambda(lam.clone()),
             TypedValue::new_pair(TypedValue::Bool(false), TypedValue::nat(5))
         ];
+        assert_eq!(
+            interpret_one(&Exec, &mut Ctx::default(), &mut stack),
+            Ok(())
+        );
+        assert_eq!(stack, stk![TypedValue::nat(5)]);
+    }
+
+    #[test]
+    fn apply_exec() {
+        let lam = Closure::Lambda(Lambda::Lambda {
+            micheline_code: Micheline::Seq(&[]),
+            code: vec![Unpair, Add(overloads::Add::IntNat)].into(),
+        });
+        let mut stack = stk![TypedValue::Lambda(lam.clone()), TypedValue::int(1)];
+        assert_eq!(
+            interpret_one(
+                &Apply { arg_ty: Type::Int },
+                &mut Ctx::default(),
+                &mut stack
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            stack,
+            stk![TypedValue::Lambda(Closure::Apply {
+                arg_ty: Type::Int,
+                arg_val: Box::new(TypedValue::int(1)),
+                closure: Box::new(lam),
+            })]
+        );
+        stack.push(TypedValue::nat(5));
+        assert_eq!(
+            interpret_one(&Exec, &mut Ctx::default(), &mut stack),
+            Ok(())
+        );
+        assert_eq!(stack, stk![TypedValue::int(6)]);
+    }
+
+    #[test]
+    fn apply_exec_rec_1() {
+        let lam = Closure::Lambda(Lambda::LambdaRec {
+            in_ty: Type::new_pair(Type::Bool, Type::Nat),
+            out_ty: Type::Nat,
+            micheline_code: Micheline::Seq(&[]),
+            code: vec![
+                Unpair,
+                If(
+                    vec![
+                        Dup(None),
+                        Add(overloads::Add::NatNat),
+                        Push(TypedValue::Bool(false)),
+                        Pair,
+                        Exec,
+                    ],
+                    vec![Dip(None, vec![Drop(None)])],
+                ),
+            ]
+            .into(),
+        });
+        let mut stack = stk![TypedValue::Lambda(lam.clone()), TypedValue::Bool(true)];
+        assert_eq!(
+            interpret_one(
+                &Apply { arg_ty: Type::Bool },
+                &mut Ctx::default(),
+                &mut stack
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            stack,
+            stk![TypedValue::Lambda(Closure::Apply {
+                arg_ty: Type::Bool,
+                arg_val: Box::new(TypedValue::Bool(true)),
+                closure: Box::new(lam),
+            })]
+        );
+        stack.push(TypedValue::nat(5));
+        assert_eq!(
+            interpret_one(&Exec, &mut Ctx::default(), &mut stack),
+            Ok(())
+        );
+        assert_eq!(stack, stk![TypedValue::nat(10)]);
+    }
+
+    #[test]
+    fn apply_exec_rec_2() {
+        let lam = Closure::Lambda(Lambda::LambdaRec {
+            in_ty: Type::new_pair(Type::Bool, Type::Nat),
+            out_ty: Type::Nat,
+            micheline_code: Micheline::Seq(&[]),
+            code: vec![
+                Unpair,
+                If(
+                    vec![
+                        Dup(None),
+                        Add(overloads::Add::NatNat),
+                        Push(TypedValue::Bool(false)),
+                        Pair,
+                        Exec,
+                    ],
+                    vec![Dip(None, vec![Drop(None)])],
+                ),
+            ]
+            .into(),
+        });
+        let mut stack = stk![TypedValue::Lambda(lam.clone()), TypedValue::Bool(false)];
+        assert_eq!(
+            interpret_one(
+                &Apply { arg_ty: Type::Bool },
+                &mut Ctx::default(),
+                &mut stack
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            stack,
+            stk![TypedValue::Lambda(Closure::Apply {
+                arg_ty: Type::Bool,
+                arg_val: Box::new(TypedValue::Bool(false)),
+                closure: Box::new(lam),
+            })]
+        );
+        stack.push(TypedValue::nat(5));
         assert_eq!(
             interpret_one(&Exec, &mut Ctx::default(), &mut stack),
             Ok(())

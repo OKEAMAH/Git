@@ -1136,6 +1136,27 @@ pub(crate) fn typecheck_instruction<'a>(
         (App(EXEC, [], _), [] | [_]) => no_overload!(EXEC, len 2),
         (App(EXEC, expect_args!(0), _), _) => unexpected_micheline!(),
 
+        (App(APPLY, [], _), [.., T::Lambda(_), _]) => {
+            let ty = pop!();
+            let (in_ty, out_ty) = *pop!(T::Lambda);
+            let (p1, p2) = match in_ty {
+                T::Pair(p) => *p,
+                t => {
+                    return Err(TcError::NoMatchingOverload {
+                        instr: APPLY,
+                        stack: stack.clone(),
+                        reason: Option::Some(NMOR::ExpectedPair(t)),
+                    })
+                }
+            };
+            ensure_ty_eq(ctx, &p1, &ty)?;
+            stack.push(T::new_lambda(p2, out_ty));
+            I::Apply { arg_ty: ty }
+        }
+        (App(APPLY, [], _), [.., _, _]) => no_overload!(APPLY),
+        (App(APPLY, [], _), [] | [_]) => no_overload!(APPLY, len 2),
+        (App(APPLY, expect_args!(0), _), _) => unexpected_micheline!(),
+
         (App(other, ..), _) => todo!("Unhandled instruction {other}"),
 
         (Seq(nested), _) => I::Seq(typecheck(nested, ctx, self_entrypoints, opt_stack)?),
@@ -1320,13 +1341,13 @@ pub(crate) fn typecheck_value<'a>(
             raw @ (V::Seq(instrs) | V::App(Prim::Lambda_rec, [V::Seq(instrs)], _)),
         ) => {
             let (in_ty, out_ty) = tys.as_ref();
-            TV::Lambda(typecheck_lambda(
+            TV::Lambda(Closure::Lambda(typecheck_lambda(
                 instrs,
                 ctx,
                 in_ty.clone(),
                 out_ty.clone(),
                 matches!(raw, V::App(Prim::Lambda_rec, ..)),
-            )?)
+            )?))
         }
         (t, v) => return Err(TcError::InvalidValueForType(format!("{v:?}"), t.clone())),
     })
@@ -1341,17 +1362,19 @@ fn typecheck_lambda<'a>(
 ) -> Result<Lambda<'a>, TcError> {
     let stk = &mut if recursive {
         let self_ty = Type::new_lambda(in_ty.clone(), out_ty.clone());
-        tc_stk![self_ty, in_ty]
+        tc_stk![self_ty, in_ty.clone()]
     } else {
-        tc_stk![in_ty]
+        tc_stk![in_ty.clone()]
     };
     let code = Rc::from(typecheck(instrs, ctx, None, stk)?);
-    unify_stacks(ctx, stk, tc_stk![out_ty])?;
+    unify_stacks(ctx, stk, tc_stk![out_ty.clone()])?;
     let micheline_code = Micheline::Seq(instrs);
     Ok(if recursive {
         Lambda::LambdaRec {
             micheline_code,
             code,
+            in_ty,
+            out_ty,
         }
     } else {
         Lambda::Lambda {
@@ -4195,10 +4218,10 @@ mod typecheck_tests {
             parse("PUSH (lambda unit unit) { DROP ; UNIT }")
                 .unwrap()
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
-            Ok(Push(TypedValue::Lambda(Lambda::Lambda {
+            Ok(Push(TypedValue::Lambda(Closure::Lambda(Lambda::Lambda {
                 micheline_code: seq! { app!(DROP); app!(UNIT) },
                 code: vec![Drop(None), Unit].into()
-            })))
+            }))))
         );
         assert_eq!(
             parse("LAMBDA unit unit { DROP ; UNIT }")
@@ -4297,10 +4320,14 @@ mod typecheck_tests {
             parse("PUSH (lambda unit unit) (Lambda_rec { SWAP ; DROP })")
                 .unwrap()
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
-            Ok(Push(TypedValue::Lambda(Lambda::LambdaRec {
-                micheline_code: seq! { app!(SWAP) ; app!(DROP) },
-                code: vec![Swap, Drop(None)].into()
-            })))
+            Ok(Push(TypedValue::Lambda(Closure::Lambda(
+                Lambda::LambdaRec {
+                    micheline_code: seq! { app!(SWAP) ; app!(DROP) },
+                    code: vec![Swap, Drop(None)].into(),
+                    in_ty: Type::Unit,
+                    out_ty: Type::Unit
+                }
+            ))))
         );
         assert_eq!(
             parse("LAMBDA_REC unit unit { SWAP ; DROP }")
@@ -4308,7 +4335,9 @@ mod typecheck_tests {
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
             Ok(Lambda(Lambda::LambdaRec {
                 micheline_code: seq! { app!(SWAP) ; app!(DROP) },
-                code: vec![Swap, Drop(None)].into()
+                code: vec![Swap, Drop(None)].into(),
+                in_ty: Type::Unit,
+                out_ty: Type::Unit,
             }))
         );
     }
