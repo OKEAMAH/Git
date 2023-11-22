@@ -20,6 +20,8 @@ oc.unified_coverage:
       changes:
         paths:
           - src/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
   variables:
     # This inhibites the Makefile's opam version check, which this

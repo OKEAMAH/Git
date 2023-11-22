@@ -10,6 +10,8 @@ build_get_contracts:
         paths:
           - src/**/*
           - devtools/get_contracts/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
   script:
     - dune build @devtools/get_contracts/check

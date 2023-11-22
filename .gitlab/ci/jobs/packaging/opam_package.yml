@@ -26,6 +26,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 1 minutes
     - when: never # default
@@ -55,6 +57,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 1 minutes
     - when: never # default
@@ -84,6 +88,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 2 minutes
     - when: never # default
@@ -113,6 +119,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 2 minutes
     - when: never # default
@@ -142,6 +150,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 3 minutes
     - when: never # default
@@ -171,6 +181,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 3 minutes
     - when: never # default
@@ -200,6 +212,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 4 minutes
     - when: never # default
@@ -229,6 +243,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 4 minutes
     - when: never # default
@@ -258,6 +274,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 5 minutes
     - when: never # default
@@ -287,6 +305,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 5 minutes
     - when: never # default
@@ -316,6 +336,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 6 minutes
     - when: never # default
@@ -345,6 +367,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 6 minutes
     - when: never # default
@@ -374,6 +398,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 7 minutes
     - when: never # default
@@ -403,6 +429,8 @@
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: 7 minutes
     - when: never # default

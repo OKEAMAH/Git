@@ -18,6 +18,8 @@ include: .gitlab/ci/jobs/build/common.yml
       changes:
         paths:
           - src/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: manual
       allow_failure: true
 

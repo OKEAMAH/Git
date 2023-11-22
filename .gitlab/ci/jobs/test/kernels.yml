@@ -12,3 +12,5 @@ test_kernels:
     - changes:
         - src/kernel_*/**/*
         - src/risc_v/**/*
+        - .gitlab/**/*
+        - .gitlab-ci.yml

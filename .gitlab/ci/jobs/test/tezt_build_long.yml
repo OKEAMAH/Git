@@ -9,6 +9,8 @@ tezt:build-long:
         paths:
           - src/**/*
           - tezt/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
   stage: test
   # Artificial needs for ordering.

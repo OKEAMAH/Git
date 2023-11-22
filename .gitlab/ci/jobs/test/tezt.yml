@@ -13,6 +13,8 @@ include: .gitlab/ci/jobs/test/common.yml
         paths:
           - src/**/*
           - tezt/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
   variables:
     JUNIT: "tezt-junit.xml"

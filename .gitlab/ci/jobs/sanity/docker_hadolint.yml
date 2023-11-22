@@ -9,6 +9,8 @@ docker:hadolint:
       changes:
         - build.Dockerfile
         - Dockerfile
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       allow_failure: true
   script:
     - hadolint build.Dockerfile
