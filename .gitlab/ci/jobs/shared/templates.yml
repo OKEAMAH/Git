@@ -32,6 +32,8 @@
       changes:
         paths:
           - src/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
 
 # Only if octez source code has changed or Marge Bot is the trigger
@@ -41,6 +43,8 @@
       changes:
         paths:
           - src/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
     - if: '$GITLAB_USER_LOGIN == "nomadic-margebot"'
       when: on_success
@@ -53,6 +57,8 @@
         paths:
           - docs/**/*
           - src/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
       when: on_success
 
 # Add variables for bisect_ppx instrumentation
