@@ -190,6 +190,7 @@ pub mod interpret_cost {
     pub const CHAIN_ID: u32 = 15;
     pub const SELF: u32 = 10;
     pub const LAMBDA: u32 = 10;
+    pub const EXEC: u32 = 10;
 
     pub const INTERPRET_RET: u32 = 15; // corresponds to KNil in the Tezos protocol
     pub const LOOP_ENTER: u32 = 10; // corresponds to KLoop_in in the Tezos protocol

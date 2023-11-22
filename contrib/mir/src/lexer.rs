@@ -121,6 +121,7 @@ defprim! {
     Lambda_rec,
     LAMBDA,
     LAMBDA_REC,
+    EXEC,
 }
 
 defprim! {

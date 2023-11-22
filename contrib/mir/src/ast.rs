@@ -155,17 +155,12 @@ pub fn typed_value_to_value_optimized<'a>(
         TV::Bytes(x) => V::Bytes(x),
         TV::Key(k) => V::Bytes(k.to_bytes_vec()),
         TV::Signature(s) => V::Bytes(s.to_bytes_vec()),
-        TV::Lambda(Lambda {
-            recursive,
-            micheline_code,
-            ..
-        }) => {
-            if recursive {
+        TV::Lambda(lam) => match lam {
+            Lambda::Lambda { micheline_code, .. } => micheline_code,
+            Lambda::LambdaRec { micheline_code, .. } => {
                 V::prim1(arena, Prim::Lambda_rec, micheline_code)
-            } else {
-                micheline_code
             }
-        }
+        },
     }
 }
 
@@ -219,6 +214,7 @@ pub enum Instruction<'a> {
     ISelf(Entrypoint),
     CheckSignature,
     Lambda(Lambda<'a>),
+    Exec,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

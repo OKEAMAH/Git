@@ -390,6 +390,26 @@ fn interpret_one<'a>(
             ctx.gas.consume(interpret_cost::LAMBDA)?;
             stack.push(V::Lambda(lam.clone()));
         }
+        I::Exec => {
+            ctx.gas.consume(interpret_cost::EXEC)?;
+            let arg = pop!();
+            let lam = pop!(V::Lambda);
+            let mut res_stk = match &lam {
+                Lambda::LambdaRec { code, .. } => {
+                    // NB: this `clone` is constant-time as `code` is Rc
+                    let code = code.clone();
+                    let mut stk = stk![V::Lambda(lam), arg];
+                    interpret(&code, ctx, &mut stk)?;
+                    stk
+                }
+                Lambda::Lambda { code, .. } => {
+                    let mut stk = stk![arg];
+                    interpret(code, ctx, &mut stk)?;
+                    stk
+                }
+            };
+            stack.push(res_stk.pop().unwrap_or_else(|| unreachable_state()));
+        }
         I::Seq(nested) => interpret(nested, ctx, stack)?,
     }
     Ok(())
@@ -399,6 +419,7 @@ fn interpret_one<'a>(
 mod interpreter_tests {
     use std::collections::BTreeMap;
 
+    use super::Lambda;
     use super::*;
     use crate::gas::Gas;
     use Instruction::*;
@@ -1380,5 +1401,81 @@ mod interpreter_tests {
             );
             assert_eq!(stack, stk![V::Bool(res)])
         }
+    }
+
+    #[test]
+    fn exec() {
+        let mut stack = stk![
+            TypedValue::Lambda(Lambda::Lambda {
+                micheline_code: Micheline::Seq(&[]), // ignored by the interpreter
+                code: vec![Unpair, Add(overloads::Add::IntNat)].into(),
+            }),
+            TypedValue::new_pair(TypedValue::Int(1), TypedValue::Nat(5))
+        ];
+        assert_eq!(
+            interpret_one(&Exec, &mut Ctx::default(), &mut stack),
+            Ok(())
+        );
+        assert_eq!(stack, stk![TypedValue::Int(6)]);
+    }
+
+    #[test]
+    fn exec_rec_1() {
+        let lam = Lambda::LambdaRec {
+            micheline_code: Micheline::Seq(&[]),
+            code: vec![
+                Unpair,
+                If(
+                    vec![
+                        Dup(None),
+                        Add(overloads::Add::NatNat),
+                        Push(TypedValue::Bool(false)),
+                        Pair,
+                        Exec,
+                    ],
+                    vec![Dip(None, vec![Drop(None)])],
+                ),
+            ]
+            .into(),
+        };
+        let mut stack = stk![
+            TypedValue::Lambda(lam.clone()),
+            TypedValue::new_pair(TypedValue::Bool(true), TypedValue::Nat(5))
+        ];
+        assert_eq!(
+            interpret_one(&Exec, &mut Ctx::default(), &mut stack),
+            Ok(())
+        );
+        assert_eq!(stack, stk![TypedValue::Nat(10)]);
+    }
+
+    #[test]
+    fn exec_rec_2() {
+        let lam = Lambda::LambdaRec {
+            micheline_code: Micheline::Seq(&[]),
+            code: vec![
+                Unpair,
+                If(
+                    vec![
+                        Dup(None),
+                        Add(overloads::Add::NatNat),
+                        Push(TypedValue::Bool(false)),
+                        Pair,
+                        Exec,
+                    ],
+                    vec![Dip(None, vec![Drop(None)])],
+                ),
+            ]
+            .into(),
+        };
+        let mut stack = stk![
+            TypedValue::Lambda(lam.clone()),
+            TypedValue::new_pair(TypedValue::Bool(false), TypedValue::Nat(5))
+        ];
+        assert_eq!(
+            interpret_one(&Exec, &mut Ctx::default(), &mut stack),
+            Ok(())
+        );
+        assert_eq!(stack, stk![TypedValue::Nat(5)]);
     }
 }

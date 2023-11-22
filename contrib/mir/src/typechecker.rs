@@ -950,6 +950,17 @@ pub(crate) fn typecheck_instruction<'a>(
         }
         (App(LAMBDA | LAMBDA_REC, expect_args!(3 last_seq), _), _) => unexpected_micheline!(),
 
+        (App(EXEC, [], _), [.., T::Lambda(_), _]) => {
+            let ty = pop!();
+            let (in_ty, out_ty) = *pop!(T::Lambda);
+            ensure_ty_eq(ctx, &in_ty, &ty)?;
+            stack.push(out_ty);
+            I::Exec
+        }
+        (App(EXEC, [], _), [.., _, _]) => no_overload!(EXEC),
+        (App(EXEC, [], _), [] | [_]) => no_overload!(EXEC, len 2),
+        (App(EXEC, expect_args!(0), _), _) => unexpected_micheline!(),
+
         (Seq(nested), _) => I::Seq(typecheck(nested, ctx, self_entrypoints, opt_stack)?),
     })
 }
@@ -1131,12 +1142,19 @@ fn typecheck_lambda<'a>(
     } else {
         tc_stk![in_ty]
     };
-    let code = typecheck(instrs, ctx, None, stk)?;
+    let code = typecheck(instrs, ctx, None, stk)?.into();
     unify_stacks(ctx, stk, tc_stk![out_ty])?;
-    Ok(Lambda {
-        recursive,
-        micheline_code: Micheline::Seq(instrs),
-        code,
+    let micheline_code = Micheline::Seq(instrs);
+    Ok(if recursive {
+        Lambda::LambdaRec {
+            micheline_code,
+            code,
+        }
+    } else {
+        Lambda::Lambda {
+            micheline_code,
+            code,
+        }
     })
 }
 
@@ -3326,20 +3344,18 @@ mod typecheck_tests {
             parse("PUSH (lambda unit unit) { DROP ; UNIT }")
                 .unwrap()
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
-            Ok(Push(TypedValue::Lambda(Lambda {
-                recursive: false,
+            Ok(Push(TypedValue::Lambda(Lambda::Lambda {
                 micheline_code: seq! { app!(DROP); app!(UNIT) },
-                code: vec![Drop(None), Unit]
+                code: vec![Drop(None), Unit].into()
             })))
         );
         assert_eq!(
             parse("LAMBDA unit unit { DROP ; UNIT }")
                 .unwrap()
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
-            Ok(Lambda(Lambda {
-                recursive: false,
+            Ok(Lambda(Lambda::Lambda {
                 micheline_code: seq! { app!(DROP); app!(UNIT) },
-                code: vec![Drop(None), Unit]
+                code: vec![Drop(None), Unit].into()
             }))
         );
     }
@@ -3398,20 +3414,18 @@ mod typecheck_tests {
             parse("PUSH (lambda unit unit) (Lambda_rec { DIP { DROP } })")
                 .unwrap()
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
-            Ok(Push(TypedValue::Lambda(Lambda {
-                recursive: true,
+            Ok(Push(TypedValue::Lambda(Lambda::LambdaRec {
                 micheline_code: seq! { app!(DIP[seq! { app!(DROP) } ]) },
-                code: vec![Dip(None, vec![Drop(None)])]
+                code: vec![Dip(None, vec![Drop(None)])].into()
             })))
         );
         assert_eq!(
             parse("LAMBDA_REC unit unit { DIP { DROP } }")
                 .unwrap()
                 .typecheck_instruction(&mut Ctx::default(), None, &[]),
-            Ok(Lambda(Lambda {
-                recursive: true,
+            Ok(Lambda(Lambda::LambdaRec {
                 micheline_code: seq! { app!(DIP[seq! { app!(DROP) } ]) },
-                code: vec![Dip(None, vec![Drop(None)])]
+                code: vec![Dip(None, vec![Drop(None)])].into()
             }))
         );
     }

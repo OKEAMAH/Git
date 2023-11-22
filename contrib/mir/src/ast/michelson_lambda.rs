@@ -5,11 +5,18 @@
 /*                                                                            */
 /******************************************************************************/
 
+use std::rc::Rc;
+
 use super::{Instruction, Micheline};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Lambda<'a> {
-    pub recursive: bool,
-    pub micheline_code: Micheline<'a>,
-    pub code: Vec<Instruction<'a>>,
+pub enum Lambda<'a> {
+    Lambda {
+        micheline_code: Micheline<'a>,
+        code: Rc<[Instruction<'a>]>,
+    },
+    LambdaRec {
+        micheline_code: Micheline<'a>,
+        code: Rc<[Instruction<'a>]>,
+    },
 }
