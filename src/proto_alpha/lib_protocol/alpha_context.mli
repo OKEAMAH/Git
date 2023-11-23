@@ -151,8 +151,6 @@ module Tez : sig
   val of_mutez_exn : int64 -> t
 
   val mul_exn : t -> int -> t
-
-  val div_exn : t -> int -> t
 end
 
 (** This module re-exports definitions from {!Staking_pseudotoken_repr}. *)

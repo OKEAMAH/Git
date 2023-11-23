@@ -162,11 +162,6 @@ let ( *?? ) t m ~default =
 let mul_exn t m =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> invalid_arg "mul_exn"
 
-let div_exn t d =
-  match Uint63.Div_safe.of_int d with
-  | Some d -> t /! d
-  | None -> invalid_arg "div_exn"
-
 let mul_ratio ~rounding tez ~num ~den =
   let open Result_syntax in
   let (Tez_tag t) = tez in

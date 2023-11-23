@@ -96,9 +96,6 @@ val of_mutez_exn : int64 -> t
 (** It should only be used at toplevel for constants. *)
 val mul_exn : t -> int -> t
 
-(** It should only be used at toplevel for constants. *)
-val div_exn : t -> int -> t
-
 val encoding : t Data_encoding.t
 
 val balance_update_encoding : [`Credited of t | `Debited of t] Data_encoding.t
