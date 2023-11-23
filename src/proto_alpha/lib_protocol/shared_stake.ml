@@ -54,7 +54,8 @@ Rounding favors:
 In case the delegate's stake is zero, everything goes to the spendable balance.
 *)
 let compute_reward_distrib ~full_staking_balance ~stake
-    ~edge_of_baking_over_staking_billionth ~(rewards : Tez_repr.t) =
+    ~(edge_of_baking_over_staking_billionth : Uint63.t) ~(rewards : Tez_repr.t)
+    =
   let open Result_syntax in
   let ({frozen; weighted_delegated} : Stake_repr.t) = stake in
   let* total_stake = Tez_repr.(frozen +? weighted_delegated) in
@@ -83,7 +84,7 @@ let compute_reward_distrib ~full_staking_balance ~stake
       Tez_repr.mul_ratio
         ~rounding:`Up
         stakers_part
-        ~num:(Int64.of_int32 edge_of_baking_over_staking_billionth)
+        ~num:(edge_of_baking_over_staking_billionth :> Int64.t)
         ~den:1_000_000_000L
     in
     let* to_stakers =

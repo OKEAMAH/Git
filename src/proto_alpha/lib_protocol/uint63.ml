@@ -29,6 +29,8 @@ let two_hundred_fifty_seven = 257L
 
 let ten_thousand = 10_000L
 
+let one_billion = 1_000_000_000L
+
 let max_int = Int64.max_int
 
 let mk_encoding ~err f g enc =
@@ -128,6 +130,8 @@ let of_int32 i =
   if Compare.Int32.(i >= 0l) then Some (Int64.of_int32 i) else None
 
 let of_int64 i = if i >= 0L then Some i else None
+
+let of_z z = if Z.fits_int64 z then of_int64 (Z.to_int64 z) else None
 
 let abs_of_int64 i = if i >= 0L then `Pos i else `Neg (Int64.neg i)
 

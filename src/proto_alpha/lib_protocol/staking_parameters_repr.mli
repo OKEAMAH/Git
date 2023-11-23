@@ -25,7 +25,7 @@
 
 type t = private {
   limit_of_staking_over_baking_millionth : int32;
-  edge_of_baking_over_staking_billionth : int32;
+  edge_of_baking_over_staking_billionth : Uint63.t;
 }
 
 (** Value used when unset *)

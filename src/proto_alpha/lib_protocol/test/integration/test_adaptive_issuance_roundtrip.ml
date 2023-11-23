@@ -156,7 +156,9 @@ let default_params =
     limit_of_staking_over_baking =
       Q.(Int32.to_int limit_of_staking_over_baking_millionth // 1_000_000);
     edge_of_baking_over_staking =
-      Q.(Int32.to_int edge_of_baking_over_staking_billionth // 1_000_000_000);
+      Q.(
+        Protocol.Uint63.to_int edge_of_baking_over_staking_billionth
+        // 1_000_000_000);
   }
 
 type double_signing_kind =

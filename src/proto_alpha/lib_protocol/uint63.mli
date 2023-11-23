@@ -45,6 +45,8 @@ val two_hundred_fifty_seven : t
 
 val ten_thousand : t
 
+val one_billion : t
+
 val max_int : t
 
 module Div_safe : sig
@@ -101,6 +103,8 @@ val of_int : int -> t option
 val of_int32 : Int32.t -> t option
 
 val of_int64 : int64 -> t option
+
+val of_z : Z.t -> t option
 
 val of_list_length : 'a list -> t
 
