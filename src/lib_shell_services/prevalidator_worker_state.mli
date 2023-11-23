@@ -25,11 +25,6 @@
 (*****************************************************************************)
 
 module Request : sig
-  type aggregated_mempools = {
-    notified_pending : P2p_peer_id.Set.t Operation_hash.Map.t;
-    notified_known_valid : P2p_peer_id.Set.t Operation_hash.Map.t;
-  }
-
   type ('a, 'b) t =
     | Flush :
         Block_hash.t
@@ -38,7 +33,8 @@ module Request : sig
         * Operation_hash.Set.t
         -> (unit, error trace) t
         (** The chain changed, the mempool is being notified of the new state. *)
-    | Notify : aggregated_mempools -> (unit, Empty.t) t  (** TODO. *)
+    | Notify : P2p_peer.Id.t * Mempool.t -> (unit, Empty.t) t
+        (** The given peer sent this mempool. *)
     | Leftover : (unit, Empty.t) t
         (** Operations not yet processed should be processed. *)
     | Inject : {op : Operation.t; force : bool} -> (unit, error trace) t

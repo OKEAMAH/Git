@@ -71,7 +71,7 @@ module type T = sig
        and type Request.view = Request.view
        and type Types.state = types_state
 
-  type worker = Worker.prio_merge_queue Worker.t
+  type worker = Worker.infinite Worker.queue Worker.t
 
   val worker : worker Lazy.t
 end
@@ -149,16 +149,10 @@ module Tools = struct
 
       Also see the enclosing module documentation as to why we have this record. *)
   type worker_tools = {
-    push_high_priority_request :
+    push_request :
       (unit, Empty.t) Prevalidator_worker_state.Request.t -> bool Lwt.t;
         (** Adds a message to the queue. *)
-    push_high_priority_request_now :
-      (unit, Empty.t) Prevalidator_worker_state.Request.t -> unit;
-        (** Adds a message to the queue immediately. *)
-    push_low_priority_request :
-      (unit, Empty.t) Prevalidator_worker_state.Request.t -> bool Lwt.t;
-        (** Adds a message to the queue. *)
-    push_low_priority_request_now :
+    push_request_now :
       (unit, Empty.t) Prevalidator_worker_state.Request.t -> unit;
         (** Adds a message to the queue immediately. *)
   }
@@ -258,7 +252,7 @@ module type S = sig
       to be exposed here. *)
   val may_fetch_operation :
     (protocol_operation, prevalidation_t) types_state_shell ->
-    ?peers:P2p_peer_id.Set.t ->
+    P2p_peer_id.t option ->
     Operation_hash.t ->
     unit
 
@@ -294,11 +288,7 @@ module type S = sig
     val on_inject :
       types_state -> force:bool -> Operation.t -> unit tzresult Lwt.t
 
-    val on_notify :
-      types_state ->
-      pending:P2p_peer_id.Set.t Operation_hash.Map.t ->
-      known_valid:P2p_peer_id.Set.t Operation_hash.Map.t ->
-      unit
+    val on_notify : _ types_state_shell -> P2p_peer_id.t -> Mempool.t -> unit
   end
 end
 
@@ -383,7 +373,7 @@ module Make_s
         Lwt.dont_wait
           (fun () ->
             let* () = Lwt_unix.sleep advertisement_delay in
-            shell.worker.push_high_priority_request_now Advertise ;
+            shell.worker.push_request_now Advertise ;
             Lwt.return_unit)
           (fun exc ->
             Format.eprintf "Uncaught exception: %s\n%!" (Printexc.to_string exc))
@@ -521,17 +511,15 @@ module Make_s
      all our pending operations. *)
   let classify_pending_operations ~notifier shell config state =
     let open Lwt_syntax in
-    let last_operation_was_high_prio = ref false in
     let* r =
       Pending_ops.fold_es
         (fun priority
              oph
              op
              (acc_validation_state, new_mempool, all_mempool, limit) ->
-          if limit <= 0 then (
-            if prio = `High then last_operation_was_high_prio := true ;
+          if limit <= 0 then
             (* Using Error as an early-return mechanism *)
-            Lwt.return_error (acc_validation_state, new_mempool, all_mempool))
+            Lwt.return_error (acc_validation_state, new_mempool, all_mempool)
           else
             let section =
               match priority with
@@ -572,9 +560,7 @@ module Make_s
     | Error (state, new_mempool, all_mempool) ->
         (* Early return after iteration limit was reached *)
         let* (_was_pushed : bool) =
-          if !last_operation_was_high_prio then
-            shell.worker.push_high_priority_request Request.Leftover
-          else shell.worker.push_low_priority_request Request.Leftover
+          shell.worker.push_request Request.Leftover
         in
         Lwt.return (state, new_mempool, all_mempool)
     | Ok (state, new_mempool, all_mempool, _) ->
@@ -640,8 +626,7 @@ module Make_s
     in
     match r with
     | Ok op ->
-        if notify_arrival then
-          shell.worker.push_high_priority_request_now (Arrived (oph, op)) ;
+        if notify_arrival then shell.worker.push_request_now (Arrived (oph, op)) ;
         Lwt.return_unit
     | Error err -> (
         (* Make sure to remove the operation from fetching if the
@@ -655,54 +640,6 @@ module Make_s
             (* This may happen if the peer timed out for example. *)
             Events.(emit operation_not_fetched) oph)
 
-  let spawn_fetch_operation =
-    let rng = Random.get_state () in
-    fun (shell : ('operation_data, _) types_state_shell)
-        ~notify_arrival
-        ?peers
-        oph ->
-      Profiler.mark
-        [
-          "spawn fetching thread";
-          (if notify_arrival then "first reception" else "already fetching");
-        ] ;
-      match peers with
-      | None ->
-          ignore
-            (Unit.catch_s (fun () -> fetch_operation ~notify_arrival shell oph))
-      | Some peers when P2p_peer_id.Set.is_empty peers ->
-          ignore
-            (Unit.catch_s (fun () -> fetch_operation ~notify_arrival shell oph))
-      | Some peers ->
-          let peers = P2p_peer_id.Set.elements peers in
-          assert (List.compare_length_with peers 1 >= 0) ;
-          if notify_arrival then (
-            let random_peer, remaining_peers =
-              match List.shuffle ~rng peers with
-              | [] -> assert false
-              | h :: t -> (h, t)
-            in
-            ignore
-              (Unit.catch_s (fun () ->
-                   fetch_operation
-                     ~notify_arrival:true
-                     shell
-                     ~peer:random_peer
-                     oph)) ;
-            ignore
-              (List.iter_s
-                 (fun peer ->
-                   Unit.catch_s (fun () ->
-                       fetch_operation ~notify_arrival:false shell ~peer oph))
-                 remaining_peers))
-          else
-            ignore
-              (List.iter_s
-                 (fun peer ->
-                   Unit.catch_s (fun () ->
-                       fetch_operation ~notify_arrival:false shell ~peer oph))
-                 peers)
-
   (* This function fetches an operation if it is not already handled
      by the mempool. To ensure we fetch at most a given operation,
      we record it in the [pv.fetching] field.
@@ -714,26 +651,31 @@ module Make_s
      promise [p] is terminated, we remove the operation from the
      fetching operations. This is to ensure that if an error
      happened, we can still fetch this operation in the future. *)
-  let may_fetch_operation (shell : ('operation_data, _) types_state_shell)
-      ?peers oph =
+  let may_fetch_operation (shell : ('operation_data, _) types_state_shell) peer
+      oph =
     Profiler.mark ["may fetch operation"] ;
     let origin =
-      match peers with
-      | Some peers -> (
-          match P2p_peer_id.Set.choose peers with
-          | Some peer -> Events.Peer peer
-          | None -> Leftover)
-      | None -> Leftover
+      match peer with Some peer -> Events.Peer peer | None -> Leftover
+    in
+    let spawn_fetch_operation ~notify_arrival =
+      Profiler.mark
+        [
+          "spawn fetching thread";
+          (if notify_arrival then "first reception" else "already fetching");
+        ] ;
+      ignore
+        (Unit.catch_s (fun () ->
+             fetch_operation ~notify_arrival shell ?peer oph))
     in
     if Operation_hash.Set.mem oph shell.fetching then
       (* If the operation is already being fetched, we notify the DDB
          that another peer may also be requested for the resource. In
          any case, the initial fetching thread will still be resolved
          and push an arrived worker request. *)
-      spawn_fetch_operation shell ~notify_arrival:false ?peers oph
+      spawn_fetch_operation ~notify_arrival:false
     else if not (already_handled ~origin shell oph) then (
       shell.fetching <- Operation_hash.Set.add oph shell.fetching ;
-      spawn_fetch_operation shell ~notify_arrival:true ?peers oph)
+      spawn_fetch_operation ~notify_arrival:true)
 
   (** Module containing functions that are the internal transitions
       of the mempool. These functions are called by the {!Worker} when
@@ -891,15 +833,15 @@ module Make_s
                     Operation_hash.pp
                     oph)
 
-    let on_notify pv ~pending ~known_valid =
+    let on_notify (shell : ('operation_data, _) types_state_shell) peer mempool
+        =
+      let may_fetch_operation = may_fetch_operation shell (Some peer) in
       let () =
-        Operation_hash.Map.iter
-          (fun oph peers -> may_fetch_operation pv.shell ~peers oph)
-          known_valid
+        Operation_hash.Set.iter may_fetch_operation mempool.Mempool.known_valid
       in
-      Operation_hash.Map.iter
-        (fun oph peers -> may_fetch_operation pv.shell ~peers oph)
-        pending
+      Seq.iter
+        may_fetch_operation
+        (Operation_hash.Set.to_seq mempool.Mempool.pending)
 
     let on_flush ~handle_branch_refused pv new_predecessor new_live_blocks
         new_live_operations =
@@ -1072,7 +1014,7 @@ module Make
 
   open Types
 
-  type worker = Worker.prio_merge_queue Worker.t
+  type worker = Worker.infinite Worker.queue Worker.t
 
   (** Return a json describing the prevalidator's [config].
       The boolean [include_default] ([true] by default) indicates
@@ -1142,11 +1084,7 @@ module Make
           (Proto_services.S.Mempool.ban_operation Tezos_rpc.Path.open_root)
           (fun _pv () oph ->
             let open Lwt_result_syntax in
-            let*! r =
-              Worker.Priority_merge_queue.push_high_priority_request_and_wait
-                w
-                (Request.Ban oph)
-            in
+            let*! r = Worker.Queue.push_request_and_wait w (Request.Ban oph) in
             match r with
             | Error (Closed None) -> fail [Worker_types.Terminated]
             | Error (Closed (Some errs)) -> fail errs
@@ -1417,12 +1355,9 @@ module Make
             block
             live_blocks
             live_operations
-      | Request.Notify aggregated_mempools ->
+      | Request.Notify (peer, mempool) ->
           Profiler.aggregate_f "on_notify" @@ fun () ->
-          Requests.on_notify
-            pv
-            ~pending:aggregated_mempools.Request.notified_pending
-            ~known_valid:aggregated_mempools.Request.notified_known_valid ;
+          Requests.on_notify pv.shell peer mempool ;
           return_unit
       | Request.Leftover ->
           (* unprocessed ops are handled just below *)
@@ -1482,24 +1417,9 @@ module Make
       }
 
     let mk_worker_tools w : Tools.worker_tools =
-      let push_high_priority_request r =
-        Worker.Priority_merge_queue.push_high_priority_request w r
-      in
-      let push_high_priority_request_now r =
-        Worker.Priority_merge_queue.push_high_priority_request_now w r
-      in
-      let push_low_priority_request r =
-        Worker.Priority_merge_queue.push_low_priority_request w r
-      in
-      let push_low_priority_request_now r =
-        Worker.Priority_merge_queue.push_low_priority_request_now w r
-      in
-      {
-        push_high_priority_request;
-        push_high_priority_request_now;
-        push_low_priority_request;
-        push_low_priority_request_now;
-      }
+      let push_request r = Worker.Queue.push_request w r in
+      let push_request_now r = Worker.Queue.push_request_now w r in
+      {push_request; push_request_now}
 
     type launch_error = error trace
 
@@ -1580,7 +1500,7 @@ module Make
         }
       in
       Seq.iter
-        (may_fetch_operation pv.shell)
+        (may_fetch_operation pv.shell None)
         (Operation_hash.Set.to_seq fetching) ;
       return pv
 
@@ -1616,46 +1536,7 @@ module Make
     let on_no_request _ = Lwt.return_unit
   end
 
-  let merge_notify_requests _w (Worker.Any_request neu) old =
-    match neu with
-    | Inject _ | Ban _ | Flush _ | Leftover | Arrived _ | Advertise ->
-        assert false
-    | Notify
-        {
-          notified_pending = new_notified_pending;
-          notified_known_valid = new_notified_known_valid;
-        } ->
-        let updated_notify =
-          match (old : Worker.any_request option) with
-          | None -> neu
-          | Some
-              (Worker.Any_request
-                (Inject _ | Ban _ | Flush _ | Leftover | Arrived _ | Advertise))
-            ->
-              assert false
-          | Some (Any_request (Notify {notified_pending; notified_known_valid}))
-            ->
-              Profiler.mark ["merge notifed pending"] ;
-              let notified_pending =
-                Operation_hash.Map.union
-                  (fun _oph peer_s peer_s' ->
-                    Some (P2p_peer_id.Set.union peer_s peer_s'))
-                  notified_pending
-                  new_notified_pending
-              in
-              let notified_known_valid =
-                Operation_hash.Map.union
-                  (fun _oph peer_s peer_s' ->
-                    Some (P2p_peer_id.Set.union peer_s peer_s'))
-                  notified_known_valid
-                  new_notified_known_valid
-              in
-              Request.Notify {notified_pending; notified_known_valid}
-        in
-        Some (Worker.Any_request updated_notify)
-
-  let table =
-    Worker.create_table (Prio_merge_queue {merge = merge_notify_requests})
+  let table = Worker.create_table Queue
 
   (* NOTE: we register a single worker for each instantiation of this Make
    * functor (and thus a single worker for the single instantiation of Worker).
@@ -1732,7 +1613,7 @@ let flush (t : t) event head live_blocks live_operations =
   let module Prevalidator : T = (val t) in
   let w = Lazy.force Prevalidator.worker in
   let*! r =
-    Prevalidator.Worker.Priority_merge_queue.push_high_priority_request_and_wait
+    Prevalidator.Worker.Queue.push_request_and_wait
       w
       (Request.Flush (head, event, live_blocks, live_operations))
   in
@@ -1743,38 +1624,21 @@ let flush (t : t) event head live_blocks live_operations =
   | Error (Any exn) -> fail [Exn exn]
   | Error (Request_error error_trace) -> fail error_trace
 
-let notify_operations (t : t) peer (mempool : Mempool.t) =
+let notify_operations (t : t) peer mempool =
   let module Prevalidator : T = (val t) in
   let w = Lazy.force Prevalidator.worker in
-  let notified_mempool =
-    let notified_pending =
-      Operation_hash.Set.fold
-        (fun oph acc ->
-          Operation_hash.Map.add oph (P2p_peer_id.Set.singleton peer) acc)
-        mempool.pending
-        Operation_hash.Map.empty
-    in
-    let notified_known_valid =
-      Operation_hash.Set.fold
-        (fun oph acc ->
-          Operation_hash.Map.add oph (P2p_peer_id.Set.singleton peer) acc)
-        mempool.known_valid
-        Operation_hash.Map.empty
-    in
-    {Request.notified_pending; notified_known_valid}
+  let open Lwt_result_syntax in
+  let*! (_was_pushed : bool) =
+    Prevalidator.Worker.Queue.push_request w (Request.Notify (peer, mempool))
   in
-  Prevalidator.Worker.Priority_merge_queue.put_mergeable_request
-    w
-    (Request.Notify notified_mempool)
+  Lwt.return_unit
 
 let inject_operation (t : t) ~force op =
   let module Prevalidator : T = (val t) in
   let open Lwt_result_syntax in
   let w = Lazy.force Prevalidator.worker in
   let*! r =
-    Prevalidator.Worker.Priority_merge_queue.push_high_priority_request_and_wait
-      w
-      (Inject {op; force})
+    Prevalidator.Worker.Queue.push_request_and_wait w (Inject {op; force})
   in
   match r with
   | Ok r -> Lwt.return_ok r
@@ -1797,7 +1661,7 @@ let running_workers () =
 let pending_requests (t : t) =
   let module Prevalidator : T = (val t) in
   let w = Lazy.force Prevalidator.worker in
-  Prevalidator.Worker.Priority_merge_queue.pending_requests w
+  Prevalidator.Worker.Queue.pending_requests w
 
 let current_request (t : t) =
   let module Prevalidator : T = (val t) in
@@ -1812,7 +1676,7 @@ let information (t : t) =
 let pipeline_length (t : t) =
   let module Prevalidator : T = (val t) in
   let w = Lazy.force Prevalidator.worker in
-  Prevalidator.Worker.Priority_merge_queue.pending_requests_length w
+  Prevalidator.Worker.Queue.pending_requests_length w
 
 let empty_rpc_directory : unit Tezos_rpc.Directory.t =
   Tezos_rpc.Directory.gen_register

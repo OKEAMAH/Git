@@ -71,7 +71,7 @@ val shutdown : t -> unit Lwt.t
 
 (** Notify the prevalidator that the identified peer has sent a bunch of
     operations relevant to the specified context. *)
-val notify_operations : t -> P2p_peer.Id.t -> Mempool.t -> unit
+val notify_operations : t -> P2p_peer.Id.t -> Mempool.t -> unit Lwt.t
 
 (** [inject_operation t ~force op] notifies the prevalidator worker of a new
     injected operation. If [force] is set to [true] the operation is injected

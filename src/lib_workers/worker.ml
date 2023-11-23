@@ -51,8 +51,6 @@ module type T = sig
 
   type dropbox
 
-  type prio_merge_queue
-
   type 'a message_error =
     | Closed of error list option
     | Request_error of 'a
@@ -67,14 +65,6 @@ module type T = sig
           dropbox t -> any_request -> any_request option -> any_request option;
       }
         -> dropbox buffer_kind
-    | Prio_merge_queue : {
-        merge :
-          prio_merge_queue t ->
-          any_request ->
-          any_request option ->
-          any_request option;
-      }
-        -> prio_merge_queue buffer_kind
 
   and any_request = Any_request : _ Request.t -> any_request
 
@@ -188,42 +178,6 @@ module type T = sig
       infinite queue t -> ('a, 'request_error) Request.t -> unit
   end
 
-  module Priority_merge_queue : sig
-    val push_high_priority_request_and_wait :
-      prio_merge_queue t ->
-      ('a, 'request_error) Request.t ->
-      ('a, 'request_error message_error) result Lwt.t
-
-    val push_low_priority_request_and_wait :
-      prio_merge_queue t ->
-      ('a, 'request_error) Request.t ->
-      ('a, 'request_error message_error) result Lwt.t
-
-    val push_high_priority_request_now :
-      prio_merge_queue t -> ('a, 'request_error) Request.t -> unit
-
-    val push_low_priority_request_now :
-      prio_merge_queue t -> ('a, 'request_error) Request.t -> unit
-
-    val push_high_priority_request :
-      prio_merge_queue t -> ('a, 'request_error) Request.t -> bool Lwt.t
-
-    val push_low_priority_request :
-      prio_merge_queue t -> ('a, 'request_error) Request.t -> bool Lwt.t
-
-    val put_mergeable_request :
-      prio_merge_queue t -> ('a, 'request_error) Request.t -> unit
-
-    val put_mergeable_request_and_wait :
-      prio_merge_queue t ->
-      ('a, 'request_error) Request.t ->
-      ('a, 'request_error message_error) result Lwt.t
-
-    val pending_requests : prio_merge_queue t -> (Ptime.t * Request.view) trace
-
-    val pending_requests_length : prio_merge_queue t -> int
-  end
-
   (** Exports the canceler to allow cancellation of other tasks when this
       worker is shut down or when it dies. *)
   val canceler : _ t -> Lwt_canceler.t
@@ -306,8 +260,6 @@ struct
 
   type dropbox
 
-  type prio_merge_queue
-
   type _ buffer_kind =
     | Queue : infinite queue buffer_kind
     | Bounded : {size : int} -> bounded queue buffer_kind
@@ -316,20 +268,6 @@ struct
           dropbox t -> any_request -> any_request option -> any_request option;
       }
         -> dropbox buffer_kind
-    | Prio_merge_queue : {
-        merge :
-          prio_merge_queue t ->
-          any_request ->
-          any_request option ->
-          any_request option;
-      }
-        -> prio_merge_queue buffer_kind
-
-  and prio_merge_queue_buffer = {
-    high_prio_tasks : (Time.System.t * message) Lwt_pipe.Unbounded.t;
-    mid_prio_dropbox : (Time.System.t * message) Lwt_dropbox.t;
-    low_prio_tasks : (Time.System.t * message) Lwt_pipe.Unbounded.t;
-  }
 
   and any_request = Any_request : _ Request.t -> any_request
 
@@ -341,9 +279,6 @@ struct
         (Time.System.t * message) Lwt_pipe.Bounded.t
         -> bounded queue buffer
     | Dropbox_buffer : (Time.System.t * message) Lwt_dropbox.t -> dropbox buffer
-    | Prio_merge_queue_buffer :
-        prio_merge_queue_buffer
-        -> prio_merge_queue buffer
 
   and 'kind t = {
     timeout : Time.System.Span.t option;
@@ -437,20 +372,6 @@ struct
       drop_request_and_wait w message_box request
   end
 
-  let pending_requests_length (type a) (w : a t) =
-    let pipe_length (type a) (q : a buffer) =
-      match q with
-      | Queue_buffer queue -> Lwt_pipe.Unbounded.length queue
-      | Bounded_buffer queue -> Lwt_pipe.Bounded.length queue
-      | Dropbox_buffer _ -> 1
-      | Prio_merge_queue_buffer
-          {high_prio_tasks; mid_prio_dropbox = _; low_prio_tasks} ->
-          Lwt_pipe.Unbounded.length high_prio_tasks
-          + 1
-          + Lwt_pipe.Unbounded.length low_prio_tasks
-    in
-    pipe_length w.buffer
-
   module Queue = struct
     let push_request (type a) (w : a queue t) request =
       match w.buffer with
@@ -508,82 +429,13 @@ struct
       List.map (function t, Message (req, _) -> (t, Request.view req)) peeked
 
     let pending_requests_length (type a) (w : a queue t) =
-      pending_requests_length w
-  end
-
-  module Priority_merge_queue = struct
-    let push_high_priority_request_and_wait (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer {high_prio_tasks; _}) = w.buffer in
-      try
-        let t, u = Lwt.wait () in
-        Lwt_pipe.Unbounded.push high_prio_tasks (queue_item ~u request) ;
-        t
-      with Lwt_pipe.Closed ->
-        Lwt.return_error (Closed (extract_status_errors w))
-
-    let push_low_priority_request_and_wait (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      try
-        let t, u = Lwt.wait () in
-        Lwt_pipe.Unbounded.push pmqb.low_prio_tasks (queue_item ~u request) ;
-        t
-      with Lwt_pipe.Closed ->
-        Lwt.return_error (Closed (extract_status_errors w))
-
-    let push_high_priority_request_now (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      if Lwt_pipe.Unbounded.is_closed pmqb.high_prio_tasks then ()
-      else Lwt_pipe.Unbounded.push pmqb.high_prio_tasks (queue_item request)
-
-    let push_low_priority_request_now (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      if Lwt_pipe.Unbounded.is_closed pmqb.low_prio_tasks then ()
-      else Lwt_pipe.Unbounded.push pmqb.low_prio_tasks (queue_item request)
-
-    let push_high_priority_request (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      if Lwt_pipe.Unbounded.is_closed pmqb.high_prio_tasks then Lwt.return_false
-      else (
-        Lwt_pipe.Unbounded.push pmqb.high_prio_tasks (queue_item request) ;
-        (* because pushing on an unbounded pipe is immediate, we return within
-           Lwt explicitly for compatibility with the other case *)
-        Lwt.return_true)
-
-    let push_low_priority_request (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      if Lwt_pipe.Unbounded.is_closed pmqb.low_prio_tasks then Lwt.return_false
-      else (
-        Lwt_pipe.Unbounded.push pmqb.low_prio_tasks (queue_item request) ;
-        (* because pushing on an unbounded pipe is immediate, we return within
-           Lwt explicitly for compatibility with the other case *)
-        Lwt.return_true)
-
-    let put_mergeable_request (w : prio_merge_queue t) request =
-      let (Prio_merge_queue {merge}) = w.table.buffer_kind in
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      drop_request w merge pmqb.mid_prio_dropbox request
-
-    let put_mergeable_request_and_wait (w : prio_merge_queue t) request =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      drop_request_and_wait w pmqb.mid_prio_dropbox request
-
-    let pending_requests (w : prio_merge_queue t) =
-      let (Prio_merge_queue_buffer pmqb) = w.buffer in
-      let peeked =
-        try
-          List.rev_append
-            (List.rev
-               (let l = Lwt_pipe.Unbounded.peek_all_now pmqb.high_prio_tasks in
-                match Lwt_dropbox.peek pmqb.mid_prio_dropbox with
-                | None -> l
-                | Some x -> x :: l))
-            (Lwt_pipe.Unbounded.peek_all_now pmqb.low_prio_tasks)
-        with Lwt_pipe.Closed -> []
+      let pipe_length (type a) (q : a buffer) =
+        match q with
+        | Queue_buffer queue -> Lwt_pipe.Unbounded.length queue
+        | Bounded_buffer queue -> Lwt_pipe.Bounded.length queue
+        | Dropbox_buffer _ -> 1
       in
-      List.map (function t, Message (req, _) -> (t, Request.view req)) peeked
-
-    let pending_requests_length (w : prio_merge_queue t) =
-      pending_requests_length w
+      pipe_length w.buffer
   end
 
   let close (type a) (w : a t) =
@@ -602,20 +454,13 @@ struct
       List.iter wakeup messages ;
       Lwt_pipe.Unbounded.close message_queue
     in
-    let close_dropbox message_box =
-      (try Option.iter wakeup (Lwt_dropbox.peek message_box)
-       with Lwt_dropbox.Closed -> ()) ;
-      Lwt_dropbox.close message_box
-    in
     match w.buffer with
     | Queue_buffer message_queue -> close_unbounded_queue message_queue
     | Bounded_buffer message_queue -> close_queue message_queue
-    | Dropbox_buffer message_box -> close_dropbox message_box
-    | Prio_merge_queue_buffer
-        {high_prio_tasks; mid_prio_dropbox; low_prio_tasks} ->
-        close_unbounded_queue high_prio_tasks ;
-        close_dropbox mid_prio_dropbox ;
-        close_unbounded_queue low_prio_tasks
+    | Dropbox_buffer message_box ->
+        (try Option.iter wakeup (Lwt_dropbox.peek message_box)
+         with Lwt_dropbox.Closed -> ()) ;
+        Lwt_dropbox.close message_box
 
   let pop (type a) (w : a t) =
     let open Lwt_syntax in
@@ -639,45 +484,17 @@ struct
             (Systime_os.sleep timeout)
             message_queue
     in
-    let pop_dropbox message_box =
-      match w.timeout with
-      | None ->
-          let* m = Lwt_dropbox.take message_box in
-          return_some m
-      | Some timeout ->
-          Lwt_dropbox.take_with_timeout (Systime_os.sleep timeout) message_box
-    in
-    let pop_prio_merge_queue {high_prio_tasks; mid_prio_dropbox; low_prio_tasks}
-        =
-      match w.timeout with
-      | None ->
-          if not (Lwt_pipe.Unbounded.is_empty high_prio_tasks) then
-            let* m = Lwt_pipe.Unbounded.pop high_prio_tasks in
-            return_some m
-          else if Lwt_dropbox.peek mid_prio_dropbox <> None then
-            let* m = Lwt_dropbox.take mid_prio_dropbox in
-            return_some m
-          else if not (Lwt_pipe.Unbounded.is_empty low_prio_tasks) then
-            let* m = Lwt_pipe.Unbounded.pop low_prio_tasks in
-            return_some m
-          else
-            let* m =
-              Lwt.pick
-                [
-                  Lwt_pipe.Unbounded.pop high_prio_tasks;
-                  Lwt_dropbox.take mid_prio_dropbox;
-                  Lwt_pipe.Unbounded.pop low_prio_tasks;
-                ]
-            in
-            return_some m
-      | Some _timeout -> (* TODO *) assert false
-    in
     match w.buffer with
     | Queue_buffer message_queue -> pop_unbounded_queue message_queue
     | Bounded_buffer message_queue -> pop_queue message_queue
-    | Dropbox_buffer message_box -> pop_dropbox message_box
-    | Prio_merge_queue_buffer prio_merge_queue ->
-        pop_prio_merge_queue prio_merge_queue
+    | Dropbox_buffer message_box -> (
+        match w.timeout with
+        | None ->
+            let* m = Lwt_dropbox.take message_box in
+            return_some m
+        | Some timeout ->
+            Lwt_dropbox.take_with_timeout (Systime_os.sleep timeout) message_box
+        )
 
   let trigger_shutdown w = Lwt.ignore_result (Lwt_canceler.cancel w.canceler)
 
@@ -877,13 +694,6 @@ struct
                  ~compute_size:(fun _ -> 1)
                  ())
         | Dropbox _ -> Dropbox_buffer (Lwt_dropbox.create ())
-        | Prio_merge_queue _ ->
-            Prio_merge_queue_buffer
-              {
-                high_prio_tasks = Lwt_pipe.Unbounded.create ();
-                mid_prio_dropbox = Lwt_dropbox.create ();
-                low_prio_tasks = Lwt_pipe.Unbounded.create ();
-              }
       in
       let w =
         {
@@ -968,12 +778,7 @@ struct
         (match w.buffer with
         | Queue_buffer pipe -> Lwt_pipe.Unbounded.length pipe
         | Bounded_buffer pipe -> Lwt_pipe.Bounded.length pipe
-        | Dropbox_buffer _ -> 1
-        | Prio_merge_queue_buffer
-            {high_prio_tasks; mid_prio_dropbox = _; low_prio_tasks} ->
-            Lwt_pipe.Unbounded.length high_prio_tasks
-            + 1
-            + Lwt_pipe.Unbounded.length low_prio_tasks);
+        | Dropbox_buffer _ -> 1);
     }
 
   let list {instances; _} =

@@ -25,11 +25,6 @@
 (*****************************************************************************)
 
 module Request = struct
-  type aggregated_mempools = {
-    notified_pending : P2p_peer_id.Set.t Operation_hash.Map.t;
-    notified_known_valid : P2p_peer_id.Set.t Operation_hash.Map.t;
-  }
-
   type ('a, 'b) t =
     | Flush :
         Block_hash.t
@@ -37,7 +32,7 @@ module Request = struct
         * Block_hash.Set.t
         * Operation_hash.Set.t
         -> (unit, error trace) t
-    | Notify : aggregated_mempools -> (unit, Empty.t) t
+    | Notify : P2p_peer.Id.t * Mempool.t -> (unit, Empty.t) t
     | Leftover : (unit, Empty.t) t
     | Inject : {op : Operation.t; force : bool} -> (unit, error trace) t
     | Arrived : Operation_hash.t * Operation.t -> (unit, Empty.t) t
@@ -47,21 +42,6 @@ module Request = struct
   type view = View : _ t -> view
 
   let view req = View req
-
-  let aggregated_mempools_encoding : aggregated_mempools Data_encoding.t =
-    let open Data_encoding in
-    conv
-      (fun {notified_pending; notified_known_valid} ->
-        (notified_pending, notified_known_valid))
-      (fun (notified_pending, notified_known_valid) ->
-        {notified_pending; notified_known_valid})
-      (obj2
-         (req
-            "notified_pending"
-            (Operation_hash.Map.encoding P2p_peer_id.Set.encoding))
-         (req
-            "notified_known_valid"
-            (Operation_hash.Map.encoding P2p_peer_id.Set.encoding)))
 
   let encoding =
     let open Data_encoding in
@@ -84,13 +64,14 @@ module Request = struct
         case
           (Tag 1)
           ~title:"Notify"
-          (obj2
+          (obj3
              (req "request" (constant "notify"))
-             (req "aggregated_mempools" aggregated_mempools_encoding))
+             (req "peer" P2p_peer.Id.encoding)
+             (req "mempool" Mempool.encoding))
           (function
-            | View (Notify notified_mempools) -> Some ((), notified_mempools)
+            | View (Notify (peer, mempool)) -> Some ((), peer, mempool)
             | _ -> None)
-          (fun ((), notified_mempools) -> View (Notify notified_mempools));
+          (fun ((), peer, mempool) -> View (Notify (peer, mempool)));
         case
           (Tag 2)
           ~title:"Inject"
@@ -137,19 +118,20 @@ module Request = struct
     match r with
     | Flush (hash, _, _, _) ->
         Format.fprintf ppf "switching to new head %a" Block_hash.pp hash
-    | Notify notified_mempools ->
-        let nb_pending =
-          Operation_hash.Map.cardinal notified_mempools.notified_pending
-        in
-        let nb_known_valid =
-          Operation_hash.Map.cardinal notified_mempools.notified_known_valid
-        in
+    | Notify (id, {Mempool.known_valid; pending}) ->
         Format.fprintf
           ppf
-          "notified %d (pending=%d, known_valid=%d) operations"
-          (nb_pending + nb_known_valid)
-          nb_pending
-          nb_known_valid
+          "@[<v 2>notified by %a of operations"
+          P2p_peer.Id.pp
+          id ;
+        Operation_hash.Set.iter
+          (fun oph ->
+            Format.fprintf ppf "@,%a (known_valid)" Operation_hash.pp oph)
+          known_valid ;
+        Operation_hash.Set.iter
+          (fun oph -> Format.fprintf ppf "@,%a (pending)" Operation_hash.pp oph)
+          pending ;
+        Format.fprintf ppf "@]"
     | Leftover -> Format.fprintf ppf "process next batch of operation"
     | Inject {op; force} ->
         Format.fprintf
