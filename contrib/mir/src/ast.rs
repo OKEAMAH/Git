@@ -56,6 +56,13 @@ pub struct OperationInfo {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Ticket {
+    pub ticketer: AddressHash,
+    pub content: TypedValue,
+    pub amount: BigUint,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Type {
     Nat,
     Int,
@@ -149,6 +156,7 @@ pub enum TypedValue {
     Signature(Signature),
     KeyHash(KeyHash),
     Operation(Box<OperationInfo>),
+    Ticket(Box<Ticket>),
 }
 
 /// Untypes a value using optimized representation in legacy mode.
@@ -215,6 +223,7 @@ pub fn typed_value_to_value_optimized_legacy<'a>(
                 annotations::NO_ANNS,
             ),
         },
+        TV::Ticket(..) => todo!(),
     }
 }
 
@@ -248,6 +257,10 @@ impl TypedValue {
     /// useful in tests.
     pub fn nat(n: u32) -> Self {
         Self::Nat(n.into())
+    }
+
+    pub fn new_ticket(t: Ticket) -> Self {
+        Self::Ticket(Box::new(t))
     }
 }
 
