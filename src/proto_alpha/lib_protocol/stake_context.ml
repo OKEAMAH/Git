@@ -70,15 +70,13 @@ let apply_limits ctxt staking_parameters
     | Ok max_allowed_delegated -> Tez_repr.min max_allowed_delegated delegated
     | Error _max_allowed_delegated_overflows -> delegated
   in
-  let* weighted_delegated =
+  let weighted_delegated =
     if Constants_storage.adaptive_issuance_enable ctxt then
       let edge_of_staking_over_delegation =
-        (Constants_storage.adaptive_issuance_edge_of_staking_over_delegation
-           ctxt
-          :> Int64.t)
+        Constants_storage.adaptive_issuance_edge_of_staking_over_delegation ctxt
       in
-      Tez_repr.(delegated /? edge_of_staking_over_delegation)
-    else return delegated
+      Tez_repr.(delegated /! edge_of_staking_over_delegation)
+    else delegated
   in
   let+ frozen = Tez_repr.(own_frozen +? allowed_staked_frozen) in
   Stake_repr.make ~frozen ~weighted_delegated

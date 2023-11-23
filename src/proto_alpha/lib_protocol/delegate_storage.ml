@@ -300,7 +300,7 @@ let drain ctxt ~delegate ~destination =
     else return (ctxt, Z.zero, [])
   in
   let* manager_balance = spendable_balance ctxt delegate in
-  let*? one_percent = Tez_repr.(manager_balance /? 100L) in
+  let one_percent = Tez_repr.(manager_balance /! Uint63.Div_safe.one_hundred) in
   let fees = Tez_repr.(max one one_percent) in
   let*? transferred = Tez_repr.(manager_balance -? fees) in
   let* ctxt, balance_updates2 =

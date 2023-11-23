@@ -49,13 +49,19 @@ module Div_safe : sig
 
   val of_int64 : int64 -> t option
 
+  val of_int : int -> t option
+
   val two : t
 
   val sixty : t
 
+  val one_hundred : t
+
   val one_thousand : t
 
   val one_million : t
+
+  val max_int : t
 
   val uint8_encoding : t Data_encoding.t
 end

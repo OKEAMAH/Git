@@ -518,10 +518,9 @@ let timeout ctxt rollup stakers =
   return (game_result, ctxt)
 
 let reward ctxt winner =
-  let open Lwt_result_syntax in
   let winner_contract = Contract_repr.Implicit winner in
   let stake = Constants_storage.sc_rollup_stake_amount ctxt in
-  let*? reward = Tez_repr.(stake /? 2L) in
+  let reward = Tez_repr.(stake /! Uint63.Div_safe.two) in
   Token.transfer
     ctxt
     `Sc_rollup_refutation_rewards

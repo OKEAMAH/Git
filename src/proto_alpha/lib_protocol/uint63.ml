@@ -68,9 +68,13 @@ module Div_safe = struct
 
   let sixty = With_exceptions.of_int64 60L
 
+  let one_hundred = With_exceptions.of_int64 100L
+
   let one_thousand = With_exceptions.of_int64 1000L
 
   let one_million = With_exceptions.of_int64 1_000_000L
+
+  let max_int = With_exceptions.of_int64 Int64.max_int
 
   let mk_encoding f g enc = mk_encoding ~err:"Positive integer expected" f g enc
 

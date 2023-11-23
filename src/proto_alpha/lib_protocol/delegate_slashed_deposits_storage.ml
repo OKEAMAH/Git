@@ -168,7 +168,8 @@ let apply_and_clear_current_cycle_denunciations ctxt =
       Constants_storage.adaptive_issuance_global_limit_of_staking_over_baking
         ctxt
     in
-    Int64.add (Int64.of_int global_limit_of_staking_over_baking) 2L
+    Uint63.Div_safe.of_int (global_limit_of_staking_over_baking + 2)
+    |> Option.value ~default:Uint63.Div_safe.max_int
   in
   let compute_reward_and_burn slashing_percentage
       (frozen_deposits : Deposits_repr.t) =
@@ -182,9 +183,9 @@ let apply_and_clear_current_cycle_denunciations ctxt =
     let punishing_amount =
       Tez_repr.min punish_value frozen_deposits.current_amount
     in
-    let* reward =
+    let reward =
       Tez_repr.(
-        punishing_amount /? global_limit_of_staking_over_baking_plus_two)
+        punishing_amount /! global_limit_of_staking_over_baking_plus_two)
     in
     let+ amount_to_burn = Tez_repr.(punishing_amount -? reward) in
     {reward; amount_to_burn}
