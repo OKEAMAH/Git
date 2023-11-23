@@ -98,13 +98,19 @@ let to_int i32 =
   let i = Int32.to_int i32 in
   if Int32.(equal (of_int i) i32) then return i else tzfail (Round_overflow i)
 
+let to_uint63 i32 =
+  let open Result_syntax in
+  match Uint63.of_int32 i32 with
+  | Some i -> return i
+  | None -> tzfail (Round_overflow (Int32.to_int i32))
+
 let to_int32 t = t [@@inline]
 
 let to_slot round ~committee_size =
   let open Result_syntax in
-  let* r = to_int round in
-  let slot = r mod committee_size in
-  Slot_repr.of_int slot
+  let* r = to_uint63 round in
+  let slot = Uint63.rem r committee_size in
+  Slot_repr.of_int (Uint63.to_int slot)
 
 let encoding =
   Data_encoding.conv_with_guard

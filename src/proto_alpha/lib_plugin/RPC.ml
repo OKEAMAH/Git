@@ -3746,7 +3746,8 @@ module Baking_rights = struct
             | Some max_round ->
                 Compare.Int.min
                   max_round
-                  (Constants.consensus_committee_size ctxt))
+                  (Uint63.Div_safe.to_int
+                     (Constants.consensus_committee_size ctxt)))
         in
         let+ _ctxt, rights =
           List.fold_left_map_es

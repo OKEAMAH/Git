@@ -31,7 +31,7 @@ let expected_slots_for_given_active_stake ctxt ~total_active_stake_weight
     Int32.to_int (Constants_storage.blocks_per_cycle ctxt)
   in
   let consensus_committee_size =
-    Constants_storage.consensus_committee_size ctxt
+    Uint63.Div_safe.to_int @@ Constants_storage.consensus_committee_size ctxt
   in
   let number_of_attestations_per_cycle =
     blocks_per_cycle * consensus_committee_size

@@ -191,7 +191,8 @@ let liquidity_baking_subsidy_param () =
   in
   let*? baking_reward_bonus =
     baking_reward_bonus_per_slot
-    *? Int64.of_int (constants.consensus_committee_size / 3)
+    *!? Protocol.Uint63.(
+          div (constants.consensus_committee_size :> t) Div_safe.three)
   in
   let baking_reward_fixed_portion =
     get_reward ~reward_kind:Baking_reward_fixed_portion
@@ -201,7 +202,8 @@ let liquidity_baking_subsidy_param () =
     get_reward ~reward_kind:Attesting_reward_per_slot
   in
   let*? validators_rewards =
-    attesting_reward_per_slot *? Int64.of_int constants.consensus_committee_size
+    attesting_reward_per_slot
+    *!? (constants.consensus_committee_size :> Protocol.Uint63.t)
   in
   let*? total_rewards = baking_rewards +? validators_rewards in
   let expected_subsidy = total_rewards /! 16L in

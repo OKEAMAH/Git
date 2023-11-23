@@ -178,7 +178,7 @@ type t = {
   minimal_block_delay : Period_repr.t;
   delay_increment_per_round : Period_repr.t;
   minimal_participation_ratio : Ratio_repr.t;
-  consensus_committee_size : int;
+  consensus_committee_size : Uint63.Div_safe.t;
   (* in slots *)
   consensus_threshold : Uint63.t;
   (* in slots *)

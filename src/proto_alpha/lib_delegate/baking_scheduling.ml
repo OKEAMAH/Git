@@ -336,7 +336,8 @@ let first_potential_round_at_next_level state ~earliest_round =
         state.level_state.next_level_delegate_slots
         ~committee_size
         ~included_min:earliest_round
-        ~excluded_max:(earliest_round + committee_size)
+        ~excluded_max:
+          (earliest_round + Protocol.Uint63.Div_safe.to_int committee_size)
 (* If no own round is found between [earliest_round] included and
    [earliest_round + committee_size] excluded, then we can stop
    searching, because baking slots repeat themselves modulo the

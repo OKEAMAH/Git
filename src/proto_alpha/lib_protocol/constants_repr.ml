@@ -199,15 +199,9 @@ let check_constants constants =
   in
   let* () =
     error_unless
-      Compare.Int.(constants.consensus_committee_size > 0)
-      (Invalid_protocol_constants
-         "The consensus committee size must be strictly greater than 0.")
-  in
-  let* () =
-    error_unless
-      Compare.Int.(
-        Uint63.to_int constants.consensus_threshold
-        <= constants.consensus_committee_size)
+      Uint63.(
+        constants.consensus_threshold
+        <= (constants.consensus_committee_size :> t))
       (Invalid_protocol_constants
          "The consensus threshold must be smaller than or equal to the \
           consensus committee size.")
@@ -359,6 +353,9 @@ module Generated = struct
   }
 
   let generate ~consensus_committee_size =
+    let consensus_committee_size =
+      Uint63.Div_safe.to_int consensus_committee_size
+    in
     (* The weights are expressed in [(256 * 80)]th of the total
        reward, because it is the smallest proportion used so far*)
     let consensus_threshold = (consensus_committee_size * 2 / 3) + 1 in

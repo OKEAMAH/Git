@@ -10,6 +10,8 @@
 
 type t = private Int64.t
 
+type uint63 := t
+
 (** {!Compare.Int64} *)
 module Cmp : Compare.S with type t = t
 
@@ -53,19 +55,33 @@ module Div_safe : sig
 
   val of_int : int -> t option
 
+  val to_int : t -> int
+
   val two : t
+
+  val three : t
+
+  val twenty_five : t
 
   val sixty : t
 
   val one_hundred : t
 
+  val two_hundred_fifty_six : t
+
   val one_thousand : t
+
+  val seven_thousand : t
 
   val one_million : t
 
   val max_int : t
 
   val uint8_encoding : t Data_encoding.t
+
+  val uint30_encoding : t Data_encoding.t
+
+  val sub : t -> uint63 -> t option
 
   module With_exceptions : sig
     val of_int : int -> t
@@ -74,9 +90,13 @@ end
 
 val to_int : t -> int
 
+val to_int32 : t -> Int32.t option
+
 val to_z : t -> Z.t
 
 val of_int : int -> t option
+
+val of_int32 : Int32.t -> t option
 
 val of_int64 : int64 -> t option
 

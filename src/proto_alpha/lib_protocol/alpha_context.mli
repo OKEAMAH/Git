@@ -86,7 +86,7 @@ module Slot : sig
   module Range : sig
     type t
 
-    val create : min:int -> count:int -> t tzresult
+    val create : min:int -> count:Uint63.Div_safe.t -> t tzresult
 
     val fold : ('a -> slot -> 'a) -> 'a -> t -> 'a
 
@@ -317,7 +317,7 @@ module Round : sig
 
   val to_int : t -> int tzresult
 
-  val to_slot : t -> committee_size:int -> Slot.t tzresult
+  val to_slot : t -> committee_size:Uint63.Div_safe.t -> Slot.t tzresult
 
   val pp : Format.formatter -> t -> unit
 
@@ -910,7 +910,7 @@ module Constants : sig
       minimal_block_delay : Period.t;
       delay_increment_per_round : Period.t;
       minimal_participation_ratio : Ratio.t;
-      consensus_committee_size : int;
+      consensus_committee_size : Uint63.Div_safe.t;
       consensus_threshold : Uint63.t;
       limit_of_delegation_over_baking : Uint63.t;
       percentage_of_frozen_deposits_slashed_per_double_baking :
@@ -937,7 +937,7 @@ module Constants : sig
       issuance_weights : Parametric.issuance_weights;
     }
 
-    val generate : consensus_committee_size:int -> t
+    val generate : consensus_committee_size:Uint63.Div_safe.t -> t
   end
 
   val parametric : context -> Parametric.t
@@ -991,7 +991,7 @@ module Constants : sig
   (** See {!Raw_context.round_durations}. *)
   val round_durations : context -> Round.round_durations
 
-  val consensus_committee_size : context -> int
+  val consensus_committee_size : context -> Uint63.Div_safe.t
 
   val consensus_threshold : context -> Uint63.t
 

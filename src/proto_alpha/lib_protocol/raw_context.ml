@@ -1066,6 +1066,10 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
             }
         in
 
+        let consensus_committee_size =
+          Uint63.Div_safe.With_exceptions.of_int c.consensus_committee_size
+        in
+
         let adaptive_rewards_params =
           Constants_parametric_repr.
             {
@@ -1095,8 +1099,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
         in
         let issuance_weights =
           let c_gen =
-            Constants_repr.Generated.generate
-              ~consensus_committee_size:c.consensus_committee_size
+            Constants_repr.Generated.generate ~consensus_committee_size
           in
           c_gen.issuance_weights
         in
@@ -1122,11 +1125,9 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
         let origination_size =
           Uint63.of_int c.origination_size |> Option.value ~default:Uint63.zero
         in
-
         let consensus_threshold =
           Uint63.With_exceptions.of_int c.consensus_threshold
         in
-
         let constants =
           Constants_parametric_repr.
             {
@@ -1155,7 +1156,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
                 c.liquidity_baking_toggle_ema_threshold;
               minimal_block_delay = c.minimal_block_delay;
               delay_increment_per_round = c.delay_increment_per_round;
-              consensus_committee_size = c.consensus_committee_size;
+              consensus_committee_size;
               consensus_threshold;
               minimal_participation_ratio = c.minimal_participation_ratio;
               limit_of_delegation_over_baking;
@@ -1801,6 +1802,9 @@ module Dal = struct
             committee.shard_to_pkh
             Misc.(slot_index --> (slot_index + (power - 1)));
       }
+    in
+    let consensus_committee_size =
+      Uint63.Div_safe.to_int consensus_committee_size
     in
     let rec compute_power index committee =
       if Compare.Int.(index < 0) then return committee

@@ -97,7 +97,7 @@ let default_dal =
     }
 
 let constants_mainnet =
-  let consensus_committee_size = 7000 in
+  let consensus_committee_size = Protocol.Uint63.Div_safe.seven_thousand in
   let block_time = 15 in
   let Constants.Generated.
         {
@@ -294,7 +294,9 @@ let derive_cryptobox_parameters ~redundancy_factor ~mainnet_constants_divider =
   }
 
 let constants_sandbox =
-  let consensus_committee_size = 256 in
+  let consensus_committee_size =
+    Protocol.Uint63.Div_safe.two_hundred_fifty_six
+  in
   let block_time = 1 in
   let Constants.Generated.{consensus_threshold = _; issuance_weights} =
     Constants.Generated.generate ~consensus_committee_size
@@ -323,13 +325,13 @@ let constants_sandbox =
     vdf_difficulty = 50_000L;
     minimal_block_delay = Period.of_seconds_exn (Int64.of_int block_time);
     delay_increment_per_round = Period.one_second;
-    consensus_committee_size = 256;
+    consensus_committee_size = Protocol.Uint63.Div_safe.two_hundred_fifty_six;
     consensus_threshold = Protocol.Uint63.zero;
     limit_of_delegation_over_baking = Protocol.Uint63.nineteen;
   }
 
 let constants_test =
-  let consensus_committee_size = 25 in
+  let consensus_committee_size = Protocol.Uint63.Div_safe.twenty_five in
   let Constants.Generated.{consensus_threshold; issuance_weights} =
     Constants.Generated.generate ~consensus_committee_size
   in

@@ -99,7 +99,9 @@ let compose_preludes nb_cycles descrs =
 
 (** Agregate the parameters of several {! Generator_descriptors.descriptor}.*)
 let initiated_params descrs nb_accounts =
-  let consensus_committee_size = nb_accounts in
+  let consensus_committee_size =
+    Uint63.Div_safe.With_exceptions.of_int nb_accounts
+  in
   let initial_params =
     Tezos_protocol_alpha_parameters.Default_parameters.parameters_of_constants
       {

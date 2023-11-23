@@ -1235,7 +1235,7 @@ type config = {
   timeout : int;
   delegate_selection : (int32 * (int32 * Signature.public_key_hash) list) list;
   initial_seed : State_hash.t option;
-  consensus_committee_size : int;
+  consensus_committee_size : Uint63.Div_safe.t;
   consensus_threshold : Uint63.t;
 }
 

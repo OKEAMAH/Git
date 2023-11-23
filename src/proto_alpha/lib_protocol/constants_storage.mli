@@ -75,7 +75,7 @@ val parametric : Raw_context.t -> Constants_parametric_repr.t
 
 val sc_rollup : Raw_context.t -> Constants_parametric_repr.sc_rollup
 
-val consensus_committee_size : Raw_context.t -> int
+val consensus_committee_size : Raw_context.t -> Uint63.Div_safe.t
 
 val consensus_threshold : Raw_context.t -> Uint63.t
 

@@ -102,15 +102,17 @@ module M = struct
     in
     let base_rewards =
       match reward_kind with
-      | Baking_reward_bonus_per_slot ->
-          let bonus_committee_size =
-            csts.consensus_committee_size
-            - Uint63.to_int csts.consensus_threshold
-          in
-          if Compare.Int.(bonus_committee_size <= 0) then Tez_repr.zero
-          else Tez_repr.div_exn rewards bonus_committee_size
+      | Baking_reward_bonus_per_slot -> (
+          match
+            Uint63.Div_safe.sub
+              csts.consensus_committee_size
+              csts.consensus_threshold
+          with
+          | None -> Tez_repr.zero
+          | Some bonus_committee_size ->
+              Tez_repr.(rewards /! bonus_committee_size))
       | Attesting_reward_per_slot ->
-          Tez_repr.div_exn rewards csts.consensus_committee_size
+          Tez_repr.(rewards /! csts.consensus_committee_size)
       | _ -> rewards
     in
     let mutez_base_rewards = Tez_repr.to_mutez base_rewards |> Z.of_int64 in

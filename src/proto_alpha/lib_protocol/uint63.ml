@@ -72,11 +72,19 @@ module Div_safe = struct
 
   let two = of_int64_exn 2L
 
+  let three = of_int64_exn 3L
+
+  let twenty_five = of_int64_exn 25L
+
   let sixty = of_int64_exn 60L
 
   let one_hundred = of_int64_exn 100L
 
+  let two_hundred_fifty_six = of_int64_exn 256L
+
   let one_thousand = of_int64_exn 1000L
+
+  let seven_thousand = of_int64_exn 7000L
 
   let one_million = of_int64_exn 1_000_000L
 
@@ -85,6 +93,10 @@ module Div_safe = struct
   let mk_encoding f g enc = mk_encoding ~err:"Positive integer expected" f g enc
 
   let uint8_encoding = mk_encoding to_int of_int Data_encoding.uint8
+
+  let uint30_encoding = mk_encoding to_int of_int Data_encoding.int31
+
+  let sub (a : t) b = of_int64 (Int64.sub (a :> Int64.t) b)
 
   module With_exceptions = struct
     include B.With_exceptions
@@ -98,7 +110,14 @@ end
 
 let to_int = Int64.to_int
 
+let to_int32 (i : t) =
+  let i32 = Int64.to_int32 i in
+  if i = Int64.of_int32 i32 then Some i32 else None
+
 let to_z = Z.of_int64
+
+let of_int32 i =
+  if Compare.Int32.(i >= 0l) then Some (Int64.of_int32 i) else None
 
 let of_int64 i = if i >= 0L then Some i else None
 

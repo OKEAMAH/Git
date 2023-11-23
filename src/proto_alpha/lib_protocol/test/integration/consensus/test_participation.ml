@@ -75,7 +75,9 @@ let test_participation ~sufficient_participation () =
   let mpr = csts.parametric.minimal_participation_ratio in
   assert (blocks_per_cycle mod mpr.denominator = 0) ;
   (* if this assertion does not hold, then the test might be incorrect *)
-  let committee_size = csts.parametric.consensus_committee_size in
+  let committee_size =
+    Uint63.Div_safe.to_int csts.parametric.consensus_committee_size
+  in
   let expected_nb_slots = blocks_per_cycle * committee_size / n_accounts in
   let minimal_nb_active_slots =
     mpr.numerator * expected_nb_slots / mpr.denominator
@@ -162,8 +164,11 @@ let test_participation_rpc () =
   let Ratio.{numerator; denominator} =
     csts.parametric.minimal_participation_ratio
   in
+  let consensus_committee_size =
+    Uint63.Div_safe.to_int csts.parametric.consensus_committee_size
+  in
   let expected_cycle_activity =
-    blocks_per_cycle * csts.parametric.consensus_committee_size / n_accounts
+    blocks_per_cycle * consensus_committee_size / n_accounts
   in
   let minimal_cycle_activity =
     expected_cycle_activity * numerator / denominator

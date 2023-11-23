@@ -146,7 +146,9 @@ let slot_owner c level slot = Random.owner c level (Slot_repr.to_int slot)
 let baking_rights_owner c (level : Level_repr.t) ~round =
   let open Lwt_result_syntax in
   let*? round = Round_repr.to_int round in
-  let consensus_committee_size = Constants_storage.consensus_committee_size c in
+  let consensus_committee_size =
+    Uint63.Div_safe.to_int @@ Constants_storage.consensus_committee_size c
+  in
   let*? slot = Slot_repr.of_int (round mod consensus_committee_size) in
   let+ ctxt, pk = slot_owner c level slot in
   (ctxt, slot, pk)

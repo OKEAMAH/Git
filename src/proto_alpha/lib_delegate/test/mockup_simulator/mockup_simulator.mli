@@ -152,7 +152,7 @@ type config = {
       (** Desired selection of delegates per level/round *)
   initial_seed : State_hash.t option;
       (** Optional initial seed for protocol (used to control delegate selection) *)
-  consensus_committee_size : int;
+  consensus_committee_size : Uint63.Div_safe.t;
       (** Size of the committee for tenderbake in number of slots *)
   consensus_threshold : Uint63.t;
       (** Threshold, in number of slots, for the quorum to be considered

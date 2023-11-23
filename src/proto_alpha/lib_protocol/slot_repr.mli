@@ -94,10 +94,9 @@ module Range : sig
 
       [create] errors if
       - [min < 0]
-      - [count < 1]
       - [min + count - 1 > max_value]
    *)
-  val create : min:int -> count:int -> t tzresult
+  val create : min:int -> count:Uint63.Div_safe.t -> t tzresult
 
   (** {3 Iterators} *)
 

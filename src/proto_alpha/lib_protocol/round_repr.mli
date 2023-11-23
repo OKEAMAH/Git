@@ -70,7 +70,7 @@ val to_int : t -> int tzresult
 
 (** Returns the slot corresponding to the given round [r], that is [r
    mod committee_size]. *)
-val to_slot : t -> committee_size:int -> Slot_repr.t tzresult
+val to_slot : t -> committee_size:Uint63.Div_safe.t -> Slot_repr.t tzresult
 
 (** Round encoding.
     Be aware that decoding a negative 32 bit integer would lead to an

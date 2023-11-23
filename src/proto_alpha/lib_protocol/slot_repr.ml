@@ -80,7 +80,7 @@ module Range = struct
     let open Result_syntax in
     let* () = error_when (min < 0) (Invalid_slot min) in
     let* () = error_when (min > max_value) (Invalid_slot min) in
-    let* () = error_when (count < 1) (Invalid_slot count) in
+    let count = Uint63.Div_safe.to_int count in
     let* () = error_when (count > max_value) (Invalid_slot count) in
     let max = min + count - 1 in
     let* () = error_when (max > max_value) (Invalid_slot max) in
