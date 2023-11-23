@@ -3,7 +3,7 @@ documentation:linkcheck:
     - .default_settings_template
     - .image_template__runtime_build_test_dependencies
   stage: doc
-  needs: []
+  needs: [trigger]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $TZ_SCHEDULE_KIND == "EXTENDED_TESTS"'
       when: always
