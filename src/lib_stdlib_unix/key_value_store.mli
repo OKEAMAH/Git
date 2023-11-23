@@ -140,3 +140,5 @@ val values_exist :
   ('file, 'key, 'value) t ->
   ('file * 'key) Seq.t ->
   ('file * 'key * bool) Seq_s.t
+
+val remove_file : ('file, 'key, 'value) t -> 'file -> unit Lwt.t
