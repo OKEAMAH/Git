@@ -48,6 +48,7 @@ module Plugin = struct
     } =
       parametric.dal
     in
+
     return
       {
         Dal_plugin.feature_enable;
@@ -56,6 +57,8 @@ module Plugin = struct
         attestation_threshold;
         cryptobox_parameters;
         blocks_per_epoch;
+        sc_rollup_challenge_window_in_blocks =
+          parametric.sc_rollup.challenge_window_in_blocks;
       }
 
   let block_info ?chain ?block ~metadata ctxt =
