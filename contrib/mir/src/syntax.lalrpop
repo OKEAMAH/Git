@@ -66,9 +66,21 @@ MichelineAtomic: Micheline<'a> = {
   Prim => Micheline::App(<>, &[], NO_ANNS),
 }
 
+MichelineArgs: &'a [Micheline<'a>] = {
+  <arg1:Micheline> => {
+    arena.alloc_extend([arg1])
+  },
+  <arg1:Micheline> <arg2:Micheline> => {
+    arena.alloc_extend([arg1, arg2])
+  },
+  <arg1:Micheline> <arg2:Micheline> <arg3:Micheline> <args:Micheline*> => {
+    arena.alloc_extend([arg1, arg2, arg3].into_iter().chain(args))
+  },
+}
+
 MichelineComplex: Micheline<'a> = {
   <prim:Prim> <anns:ann+> => Micheline::App(prim, &[], anns.into()),
-  <prim:Prim> <anns:ann*> <args:Micheline+> => Micheline::App(prim, arena.alloc_extend(args), anns.into()),
+  <prim:Prim> <anns:ann*> <args:MichelineArgs> => Micheline::App(prim, args, anns.into()),
 }
 
 pub MichelineNaked: Micheline<'a> = {
