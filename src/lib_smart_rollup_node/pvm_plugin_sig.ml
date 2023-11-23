@@ -78,6 +78,14 @@ module type FUELED_PVM = sig
 end
 
 module type S = sig
+  val context : (module Context.CONTEXT)
+
+  module Context :
+    Context.CONTEXT
+      with type 'a index = 'a Irmin_context.index
+       and type 'a t = 'a Irmin_context.t
+       and type tree = Irmin_context.tree
+
   val get_tick : Kind.t -> Context.tree -> Z.t Lwt.t
 
   val state_hash : Kind.t -> Context.tree -> State_hash.t Lwt.t
