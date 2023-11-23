@@ -140,7 +140,8 @@ val adaptive_issuance_enable : Raw_context.t -> bool
 
 val adaptive_issuance_global_limit_of_staking_over_baking : Raw_context.t -> int
 
-val adaptive_issuance_edge_of_staking_over_delegation : Raw_context.t -> int
+val adaptive_issuance_edge_of_staking_over_delegation :
+  Raw_context.t -> Uint63.Div_safe.t
 
 val adaptive_issuance_launch_ema_threshold : Raw_context.t -> int32
 

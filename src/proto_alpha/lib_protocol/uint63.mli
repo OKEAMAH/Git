@@ -56,6 +56,8 @@ module Div_safe : sig
   val one_thousand : t
 
   val one_million : t
+
+  val uint8_encoding : t Data_encoding.t
 end
 
 val to_int : t -> int

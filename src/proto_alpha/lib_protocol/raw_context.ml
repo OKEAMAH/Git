@@ -1079,7 +1079,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
           Constants_parametric_repr.
             {
               global_limit_of_staking_over_baking = 5;
-              edge_of_staking_over_delegation = 2;
+              edge_of_staking_over_delegation = Uint63.Div_safe.two;
               launch_ema_threshold =
                 (if Chain_id.equal Constants_repr.mainnet_id chain_id then
                  (* 80% of the max ema (which is 2 billion) *) 1_600_000_000l

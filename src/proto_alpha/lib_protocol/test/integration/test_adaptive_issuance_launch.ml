@@ -82,8 +82,8 @@ let assert_voting_power ~loc block delegate ~ai_enabled ~expected_staked
   let expected_frozen = Int64.add expected_staked expected_ext_staked in
   let* constants = Context.get_constants (B block) in
   let edge_of_staking_over_delegation =
-    Int64.of_int
-      constants.parametric.adaptive_issuance.edge_of_staking_over_delegation
+    (constants.parametric.adaptive_issuance.edge_of_staking_over_delegation
+      :> Int64.t)
   in
   let expected_voting_power = Int64.add expected_frozen expected_liquid in
   let expected_baking_power =

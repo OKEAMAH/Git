@@ -73,9 +73,9 @@ let apply_limits ctxt staking_parameters
   let* weighted_delegated =
     if Constants_storage.adaptive_issuance_enable ctxt then
       let edge_of_staking_over_delegation =
-        Int64.of_int
-          (Constants_storage.adaptive_issuance_edge_of_staking_over_delegation
-             ctxt)
+        (Constants_storage.adaptive_issuance_edge_of_staking_over_delegation
+           ctxt
+          :> Int64.t)
       in
       Tez_repr.(delegated /? edge_of_staking_over_delegation)
     else return delegated

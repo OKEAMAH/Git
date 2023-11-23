@@ -121,7 +121,7 @@ type adaptive_issuance = {
     (* Global maximum stake tokens taken into account per baking token. Each baker can set their own lower limit. *) :
     int;
   edge_of_staking_over_delegation :
-    (* Weight of staking over delegation. *) int;
+    (* Weight of staking over delegation. *) Uint63.Div_safe.t;
   launch_ema_threshold : (* Threshold of the activation vote *) int32;
   adaptive_rewards_params :
     (* Parameters for the reward mechanism *) adaptive_rewards_params;

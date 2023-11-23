@@ -29,6 +29,13 @@ let ten_thousand = 10_000L
 
 let max_int = Int64.max_int
 
+let mk_encoding ~err f g enc =
+  let open Data_encoding in
+  conv_with_guard
+    f
+    (fun i -> match g i with None -> Error err | Some i -> Ok i)
+    enc
+
 module Div_safe_base : sig
   type nonrec t = private t
 
@@ -53,6 +60,10 @@ end
 module Div_safe = struct
   include Div_safe_base
 
+  let of_int i = of_int64 (Int64.of_int i)
+
+  let to_int (i : t) = Int64.to_int (i :> Int64.t)
+
   let two = With_exceptions.of_int64 2L
 
   let sixty = With_exceptions.of_int64 60L
@@ -60,6 +71,10 @@ module Div_safe = struct
   let one_thousand = With_exceptions.of_int64 1000L
 
   let one_million = With_exceptions.of_int64 1_000_000L
+
+  let mk_encoding f g enc = mk_encoding ~err:"Positive integer expected" f g enc
+
+  let uint8_encoding = mk_encoding to_int of_int Data_encoding.uint8
 end
 
 let to_int = Int64.to_int
@@ -78,14 +93,7 @@ let of_string_opt s =
   of_int64 i
 
 let mk_encoding f g enc =
-  let open Data_encoding in
-  conv_with_guard
-    f
-    (fun i ->
-      match g i with
-      | None -> Error "Non-negative integer expected"
-      | Some i -> Ok i)
-    enc
+  mk_encoding ~err:"Non-negative integer expected" f g enc
 
 let encoding = mk_encoding (fun i -> i) of_int64 Data_encoding.int64
 
