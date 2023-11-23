@@ -148,3 +148,12 @@ val values_exist :
   ('file, 'key, 'value) t ->
   ('file * 'key) Seq.t ->
   ('file * 'key * bool) Seq_s.t
+
+(** [remove_file t file] removes the corresponding physical file of
+    [file] from the disk as well as the corresponding keys/values of
+    the store. In case of concurrent read/write, this function should
+    succeed no matter what. The result of [read/write] depends on
+    which function was issued first. For example if the [read] was
+    issued before the [remove_file], it will returns the corresponding
+    value that was stored, and then the file will be removed. *)
+val remove_file : ('file, 'key, 'value) t -> 'file -> unit Lwt.t

@@ -83,6 +83,8 @@ module Files : sig
   val read : 'value t -> ('key, 'value) layout -> 'key -> 'value tzresult Lwt.t
 
   val value_exists : 'value t -> ('key, 'value) layout -> 'key -> bool Lwt.t
+
+  val remove : 'value t -> ('key, 'value) layout -> unit Lwt.t
 end = struct
   module LRU = Ringo.LRU_Collection
 
@@ -159,6 +161,7 @@ end = struct
         mutable pending_callbacks : unit Lwt.t list;
       }
     | Being_evicted of unit Lwt.t
+    | Being_evicted_and_removed of unit Lwt.t
 
   let keep_pending l =
     List.filter
@@ -192,6 +195,7 @@ end = struct
     Table.iter_p
       (fun _ entry ->
         match entry with
+        | Being_evicted_and_removed p -> p
         | Being_evicted p -> p
         | Entry
             {
@@ -221,6 +225,7 @@ end = struct
     match Table.find files.handles removed with
     | None -> assert false
     | Some (Being_evicted _) -> assert false
+    | Some (Being_evicted_and_removed _) -> assert false
     | Some
         (Entry
           {handle; accessed = _; cached = _; pending_callbacks; lru_node = _})
@@ -299,6 +304,11 @@ end = struct
         (* We can't directly [put_and_bind] because several threads may be
            waiting here. *)
         bind_and_lock_file files layout index f
+    | Some (Being_evicted_and_removed await_eviction) ->
+        let* () = await_eviction in
+        (* We can't directly [put_and_bind] because several threads may be
+           waiting here. *)
+        bind_and_lock_file files layout index f
     | None -> put_then_bind ()
 
   let write ?(override = false) files layout key data =
@@ -370,6 +380,31 @@ end = struct
     let index = layout.index_of key in
     bind_and_lock_file files layout index @@ fun _cached handle ->
     return @@ key_exists handle index
+
+  let remove files layout =
+    let open Lwt_syntax in
+    (* TODO: Check on disk *)
+    match Table.find files.handles layout.filepath with
+    | None -> Lwt.return_unit
+    | Some (Being_evicted p) ->
+        let* () = p in
+        Lwt_unix.unlink layout.filepath
+    | Some (Being_evicted_and_removed p) -> p
+    | Some
+        (Entry {handle; accessed = _; cached = _; pending_callbacks; lru_node})
+      ->
+        let await_close, resolve_close = Lwt.task () in
+        Table.replace
+          files.handles
+          layout.filepath
+          (Being_evicted_and_removed await_close) ;
+        let* handle and* () = Lwt.join pending_callbacks in
+        let* () = close_file handle in
+        let* () = Lwt_unix.unlink layout.filepath in
+        Table.remove files.handles layout.filepath ;
+        LRU.remove files.lru lru_node ;
+        Lwt.wakeup resolve_close () ;
+        Lwt.return_unit
 end
 
 type ('file, 'key, 'value) t =
@@ -451,3 +486,7 @@ let values_exist t seq =
   |> Seq_s.S.map (fun (file, key) ->
          let* maybe_value = value_exists t file key in
          return (file, key, maybe_value))
+
+let remove_file (E {files; layout_of}) file =
+  let layout = layout_of file in
+  Files.remove files layout
