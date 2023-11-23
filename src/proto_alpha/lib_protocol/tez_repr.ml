@@ -154,12 +154,6 @@ let ( *? ) tez m =
 
 let ( /! ) (Tez_tag t) d = Tez_tag (Uint63.div t d)
 
-let ( /? ) tez d =
-  let open Result_syntax in
-  match Uint63.Div_safe.of_int64 d with
-  | None -> tzfail (Invalid_divisor (tez, d))
-  | Some d -> return (tez /! d)
-
 let div2 tez = tez /! Uint63.Div_safe.two
 
 let ( *?? ) t m ~default =

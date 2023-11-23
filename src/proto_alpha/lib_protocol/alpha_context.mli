@@ -138,8 +138,6 @@ module Tez : sig
 
   val ( *?? ) : t -> int -> default:t -> t
 
-  val ( /? ) : t -> int64 -> t tzresult
-
   val ( /! ) : t -> Uint63.Div_safe.t -> t
 
   val of_string : string -> t option

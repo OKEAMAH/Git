@@ -97,11 +97,6 @@ module Test_tez_repr = struct
     let*?@ res = Tez_repr.(one *? 1L) in
     Assert.equal_int64 ~loc:__LOC__ (Tez_repr.to_mutez res) 1000000L
 
-  let test_div_by_zero () =
-    match Tez_repr.(one /? 0L) with
-    | Ok _ -> failwith "Expected to overflow"
-    | Error _ -> return_unit
-
   let test_to_mutez () =
     let int64v = Tez_repr.(to_mutez one) in
     Assert.equal_int64 ~loc:__LOC__ int64v 1000000L
@@ -188,7 +183,6 @@ let tests =
       `Quick
       Test_tez_repr.test_mul_bang_overflow;
     tztest "Tez.div: basic case" `Quick Test_tez_repr.test_div;
-    tztest "Tez.div: division by zero" `Quick Test_tez_repr.test_div_by_zero;
     tztest "Tez.to_mutez: basic assertion" `Quick Test_tez_repr.test_to_mutez;
     tztest
       "Tez.of_mutez: of non-negative ints"
