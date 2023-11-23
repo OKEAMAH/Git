@@ -7,6 +7,7 @@
 
 use std::env;
 use std::fs::read_to_string;
+use std::panic::catch_unwind;
 
 use mir::tzt::*;
 
@@ -27,14 +28,21 @@ fn main() {
     // Print the result for each run.
     let mut exit_code = 0;
     for test in test_files {
-        print!("Running {} : ", test);
-        match run_test(test) {
-            Ok(_) => println!("Ok"),
+        print!("- Running {} : ", test);
+        match catch_unwind(|| run_test(test)) {
             Err(e) => {
+                let msg = panic_message::get_panic_message(&e).unwrap_or("some error");
                 exit_code = 1;
-                println!("{}", e);
+                println!("Running test panicked: {msg}")
             }
-        }
+            Ok(result) => match result {
+                Ok(_) => println!("Ok"),
+                Err(e) => {
+                    exit_code = 1;
+                    println!("{}", e);
+                }
+            },
+        };
     }
     std::process::exit(exit_code)
 }

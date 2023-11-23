@@ -45,6 +45,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5024ee8015f02155eee35c711107ddd9a9bf3cb689cf2a9089c97e79b6e1ae83"
 
 [[package]]
+name = "base58"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6107fe1be6682a68940da878d9e9f5e90ca5745b3dec9fd1bb393c8777d4f581"
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -684,13 +690,17 @@ checksum = "8f232d6ef707e1956a43342693d2a31e72989554d58299d7a88738cc95b0d35c"
 name = "mir"
 version = "0.1.0"
 dependencies = [
+ "base58 0.2.0",
  "checked",
+ "cryptoxide",
  "hex",
  "lalrpop",
  "lalrpop-util",
  "logos",
+ "panic-message",
  "tezos_crypto_rs",
  "thiserror",
+ "typed-arena",
 ]
 
 [[package]]
@@ -764,6 +774,12 @@ dependencies = [
  "elliptic-curve",
  "sha2 0.9.9",
 ]
+
+[[package]]
+name = "panic-message"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "384e52fd8fbd4cbe3c317e8216260c21a0f9134de108cea8a4dd4e7e152c472d"
 
 [[package]]
 name = "parking_lot"
@@ -1233,7 +1249,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "576b69129eabf1edca392ff5e763610d448275fd2724d05464bb3542829c6d64"
 dependencies = [
  "anyhow",
- "base58",
+ "base58 0.1.0",
  "blst",
  "byteorder",
  "cryptoxide",
@@ -1289,6 +1305,12 @@ checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
 dependencies = [
  "crunchy",
 ]
+
+[[package]]
+name = "typed-arena"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "typenum"

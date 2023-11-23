@@ -10,9 +10,13 @@ lalrpop = "0.20.0"
 lalrpop-util = "0.20.0"
 checked = "0.5"
 thiserror = "1.0"
+panic-message = "0.3"
 logos = "0.13"
 hex = "0.4"
 tezos_crypto_rs = "0.5"
+typed-arena = "2"
+base58 = "0.2"
+cryptoxide = "0.4"
 
 [[bin]]
 name = "tzt_runner"
