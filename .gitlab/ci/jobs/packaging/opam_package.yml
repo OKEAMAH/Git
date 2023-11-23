@@ -716,10 +716,6 @@ opam:octez-proxy-server:
   variables:
     package: octez-proxy-server
 
-# Ignoring unreleased package octez-risc-v-pvm.
-
-# Ignoring unreleased package octez-risc-v-pvm-test.
-
 opam:octez-rpc-process:
   extends:
     - .opam_template
@@ -1116,8 +1112,6 @@ opam:tezos-proxy-server-config:
 # Ignoring unreleased package tezos-tree-encoding-test.
 
 # Ignoring unreleased package tezt-ethereum.
-
-# Ignoring unreleased package tezt-risc-v-sandbox.
 
 opam:tezt-tezos:
   extends:

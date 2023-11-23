@@ -55,8 +55,6 @@
 (package (name octez-protocol-alpha-libs))
 (package (name octez-protocol-compiler))
 (package (name octez-proxy-server))
-(package (name octez-risc-v-pvm))
-(package (name octez-risc-v-pvm-test)(allow_empty))
 (package (name octez-rpc-process))
 (package (name octez-shell-libs))
 (package (name octez-shell-tests)(allow_empty))
@@ -140,7 +138,6 @@
 (package (name tezos-tps-evaluation))
 (package (name tezos-tree-encoding-test)(allow_empty))
 (package (name tezt-ethereum)(allow_empty))
-(package (name tezt-risc-v-sandbox)(allow_empty))
 (package (name tezt-tezos))
 (package (name tezt-tx-kernel)(allow_empty))
 ; This file was automatically generated, do not edit.
