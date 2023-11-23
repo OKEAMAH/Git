@@ -634,7 +634,7 @@ module Stake_storage_tests = struct
              min_expected_balance = stake;
            })
     in
-    let*?@ staker_balance = Tez_repr.(stake /? 2L) in
+    let staker_balance = Tez_repr.(stake /! Uint63.Div_safe.two) in
     let staker_contract = Contract_repr.Implicit staker in
     let*@ ctxt, _ =
       Token.transfer ctxt `Minted (`Contract staker_contract) staker_balance

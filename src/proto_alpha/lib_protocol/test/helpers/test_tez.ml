@@ -51,10 +51,10 @@ let ( *! ) t1 t2 =
   | Ok r -> r
   | Error _ -> Pervasives.failwith "multiplying tez"
 
-let ( /! ) t1 t2 =
-  match t1 /? t2 with
-  | Ok r -> r
-  | Error _ -> Pervasives.failwith "dividing tez"
+let ( /! ) n d =
+  match Uint63.Div_safe.of_int64 d with
+  | Some d -> n /! d
+  | None -> Pervasives.failwith "dividing tez"
 
 let of_int x =
   match Tez.of_mutez (Int64.mul (Int64.of_int x) 1_000_000L) with
