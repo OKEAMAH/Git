@@ -147,9 +147,7 @@ let test_multiple_origination_and_delegation () =
       tickets
   in
   (* Previous balance - (Credit (n * 10tz) + Origination cost (n tz)) *)
-  let*? origination_burn =
-    Test_tez.(cost_per_byte *? (origination_size :> Int64.t))
-  in
+  let*? origination_burn = Test_tez.(cost_per_byte *!? origination_size) in
   let*? origination_total_cost =
     Test_tez.(origination_burn *? Int64.of_int n)
   in

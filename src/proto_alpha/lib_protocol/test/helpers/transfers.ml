@@ -47,7 +47,7 @@ let transfer_and_check_balances ?(with_burn = false) ~loc b ?(fee = Tez.zero)
   let* {parametric = {origination_size; cost_per_byte; _}; _} =
     Context.get_constants (I b)
   in
-  let*? origination_burn = cost_per_byte *? (origination_size :> Int64.t) in
+  let*? origination_burn = cost_per_byte *!? origination_size in
   let*? amount_fee_burn = amount_fee +? origination_burn in
   let amount_fee_maybe_burn =
     if with_burn then amount_fee_burn else amount_fee

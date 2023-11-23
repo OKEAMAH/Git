@@ -238,7 +238,7 @@ let test_deactivation_then_empty_then_self_delegation () =
   let* {parametric = {origination_size; cost_per_byte; _}; _} =
     Context.get_constants (B b)
   in
-  let*? origination_burn = cost_per_byte *? (origination_size :> Int64.t) in
+  let*? origination_burn = cost_per_byte *!? origination_size in
   let amount =
     match balance -? origination_burn with Ok r -> r | Error _ -> assert false
   in
@@ -285,7 +285,7 @@ let test_deactivation_then_empty_then_self_delegation_then_recredit () =
   let* {parametric = {origination_size; cost_per_byte; _}; _} =
     Context.get_constants (B b)
   in
-  let*? origination_burn = cost_per_byte *? (origination_size :> Int64.t) in
+  let*? origination_burn = cost_per_byte *!? origination_size in
   let amount =
     match balance -? origination_burn with Ok r -> r | Error _ -> assert false
   in
