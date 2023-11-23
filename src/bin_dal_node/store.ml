@@ -117,6 +117,8 @@ module Shards = struct
     |> Seq.map (fun shard_index -> (commitment, shard_index))
     |> read_values shards_store
 
+  let remove shards_store commitment = remove shards_store commitment
+
   let init node_store_dir shard_store_dir =
     let open Lwt_syntax in
     let ( // ) = Filename.concat in

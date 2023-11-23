@@ -121,6 +121,8 @@ val get_tezos_node_cctxt : t -> Tezos_rpc.Context.generic
 (** [get_neighbors_cctxts ctxt] returns the dal node neighbors client contexts *)
 val get_neighbors_cctxts : t -> Dal_node_client.cctxt list
 
+val get_last_allowed_shard_level : t -> current_level:int32 -> int32
+
 (** [fetch_assigned_shard_indices ctxt ~level ~pkh] fetches from L1 the shard
     indices assigned to [pkh] at [level].  It internally caches the DAL
     committee with [level] as the key with FIFO strategy. *)
