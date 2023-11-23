@@ -3766,6 +3766,8 @@ let print_opam_job_rules fmt batch_index pipeline_type marge_restriction =
         - manifest/main.ml
         - scripts/opam-prepare-repo.sh
         - scripts/version.sh
+        - .gitlab/**/*
+        - .gitlab-ci.yml
       when: delayed
       start_in: %d minutes
     - when: never # default
