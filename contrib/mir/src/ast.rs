@@ -78,6 +78,7 @@ pub enum Type {
     Key,
     Signature,
     KeyHash,
+    Ticket(Box<Type>),
 }
 
 impl Type {
@@ -89,7 +90,7 @@ impl Type {
             Nat | Int | Bool | Mutez | String | Unit | Never | Operation | Address | ChainId
             | Bytes | Key | Signature | KeyHash => 1,
             Pair(p) | Or(p) | Map(p) => 1 + p.0.size_for_gas() + p.1.size_for_gas(),
-            Option(x) | List(x) | Set(x) | Contract(x) => 1 + x.size_for_gas(),
+            Option(x) | List(x) | Set(x) | Contract(x) | Ticket(x) => 1 + x.size_for_gas(),
         }
     }
 
@@ -119,6 +120,10 @@ impl Type {
 
     pub fn new_contract(ty: Self) -> Self {
         Self::Contract(Box::new(ty))
+    }
+
+    pub fn new_ticket(ty: Self) -> Self {
+        Self::Ticket(Box::new(ty))
     }
 }
 
