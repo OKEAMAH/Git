@@ -2327,11 +2327,7 @@ module Registration_section = struct
           in
           fun () ->
             let a = Samplers.Random_value.value mutez rng_state in
-            let b =
-              match Alpha_context.Tez.(a /? 2L) with
-              | Error _ -> assert false
-              | Ok x -> x
-            in
+            let b = Alpha_context.Tez.(a /! Uint63.Div_safe.two) in
             (a, (b, eos)))
         ()
 
@@ -2346,11 +2342,7 @@ module Registration_section = struct
           in
           fun () ->
             let a = Samplers.Random_value.value mutez rng_state in
-            let b =
-              match Alpha_context.Tez.(a /? 2L) with
-              | Error _ -> assert false
-              | Ok x -> x
-            in
+            let b = Alpha_context.Tez.(a /! Uint63.Div_safe.two) in
             (a, (b, eos)))
         ()
 
