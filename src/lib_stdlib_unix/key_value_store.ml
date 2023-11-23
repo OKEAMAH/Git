@@ -151,6 +151,7 @@ end = struct
     | Entry of {
         handle : handle Lwt.t;
         accessed : Lwt_mutex.t File_table.t;
+        lru_node : string LRU.node;
         cached : 'value File_table.t;
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/6033
            Should we use a weak table to automatically collect dangling promises?
@@ -192,7 +193,14 @@ end = struct
       (fun _ entry ->
         match entry with
         | Being_evicted p -> p
-        | Entry {handle; pending_callbacks = _; accessed = _; cached = _} ->
+        | Entry
+            {
+              handle;
+              pending_callbacks = _;
+              accessed = _;
+              cached = _;
+              lru_node = _;
+            } ->
             (* TODO https://gitlab.com/tezos/tezos/-/issues/6033
                Should we lock access to [accessed]; then lock on
                all mutex in [accessed], then close? This would ensure that we wait until
@@ -213,7 +221,10 @@ end = struct
     match Table.find files.handles removed with
     | None -> assert false
     | Some (Being_evicted _) -> assert false
-    | Some (Entry {handle; accessed = _; cached = _; pending_callbacks}) ->
+    | Some
+        (Entry
+          {handle; accessed = _; cached = _; pending_callbacks; lru_node = _})
+      ->
         Table.replace files.handles removed (Being_evicted await_close) ;
         let* handle and* () = Lwt.join pending_callbacks in
         let+ () = close_file handle in
@@ -239,7 +250,7 @@ end = struct
     in
     let put_then_bind () =
       (* Precondition: [layout.filepath] not in [files.handle] *)
-      let _node, erased_opt =
+      let lru_node, erased_opt =
         LRU.add_and_return_erased files.lru layout.filepath
       in
       (* Here, [layout.filepath] is in the LRU but not in the table yet.
@@ -270,6 +281,7 @@ end = struct
              handle;
              accessed;
              cached;
+             lru_node;
              pending_callbacks = [Lwt.map ignore callback];
            }) ;
       callback
