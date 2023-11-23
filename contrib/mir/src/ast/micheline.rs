@@ -78,6 +78,16 @@ impl<'a> From<&str> for Micheline<'a> {
     }
 }
 
+pub trait IntoMicheline<'a> {
+    fn into_micheline(self, arena: &'a typed_arena::Arena<Micheline<'a>>) -> Micheline<'a>;
+}
+
+impl<'a> IntoMicheline<'a> for Micheline<'a> {
+    fn into_micheline(self, _: &'a typed_arena::Arena<Micheline<'a>>) -> Micheline<'a> {
+        self
+    }
+}
+
 /// Pattern synonym matching all type primitive applications. Useful for total
 /// matches.
 macro_rules! micheline_types {

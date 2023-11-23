@@ -23,6 +23,7 @@ use typed_arena::Arena;
 
 use crate::lexer::Prim;
 
+pub use micheline::IntoMicheline;
 pub use michelson_address::*;
 pub use michelson_key::Key;
 pub use michelson_lambda::Lambda;
@@ -117,50 +118,49 @@ pub enum TypedValue<'a> {
     Lambda(Lambda<'a>),
 }
 
-pub fn typed_value_to_value_optimized<'a>(
-    arena: &'a Arena<Micheline<'a>>,
-    tv: TypedValue<'a>,
-) -> Micheline<'a> {
-    use Micheline as V;
-    use TypedValue as TV;
-    let go = |x| typed_value_to_value_optimized(arena, x);
-    match tv {
-        TV::Int(i) => V::Int(i),
-        TV::Nat(u) => V::Int(u.try_into().unwrap()),
-        TV::Mutez(u) => V::Int(u.try_into().unwrap()),
-        TV::Bool(true) => V::prim0(Prim::True),
-        TV::Bool(false) => V::prim0(Prim::False),
-        TV::String(s) => V::String(s),
-        TV::Unit => V::prim0(Prim::Unit),
-        // This transformation for pairs deviates from the optimized representation of the
-        // reference implementation, because reference implementation optimizes the size of combs
-        // and uses an untyped representation that is the shortest.
-        TV::Pair(b) => V::prim2(arena, Prim::Pair, go(b.0), go(b.1)),
-        TV::List(l) => V::Seq(arena.alloc_extend(l.into_iter().map(go))),
-        TV::Map(m) => V::Seq(
-            arena.alloc_extend(
-                m.into_iter()
-                    .map(|(key, val)| V::prim2(arena, Prim::Elt, go(key), go(val))),
+impl<'a> IntoMicheline<'a> for TypedValue<'a> {
+    fn into_micheline(self, arena: &'a Arena<Micheline<'a>>) -> Micheline<'a> {
+        use Micheline as V;
+        use TypedValue as TV;
+        let go = |x: Self| x.into_micheline(arena);
+        match self {
+            TV::Int(i) => V::Int(i),
+            TV::Nat(u) => V::Int(u.try_into().unwrap()),
+            TV::Mutez(u) => V::Int(u.try_into().unwrap()),
+            TV::Bool(true) => V::prim0(Prim::True),
+            TV::Bool(false) => V::prim0(Prim::False),
+            TV::String(s) => V::String(s),
+            TV::Unit => V::prim0(Prim::Unit),
+            // This transformation for pairs deviates from the optimized representation of the
+            // reference implementation, because reference implementation optimizes the size of combs
+            // and uses an untyped representation that is the shortest.
+            TV::Pair(b) => V::prim2(arena, Prim::Pair, go(b.0), go(b.1)),
+            TV::List(l) => V::Seq(arena.alloc_extend(l.into_iter().map(go))),
+            TV::Map(m) => V::Seq(
+                arena.alloc_extend(
+                    m.into_iter()
+                        .map(|(key, val)| V::prim2(arena, Prim::Elt, go(key), go(val))),
+                ),
             ),
-        ),
-        TV::Option(None) => V::prim0(Prim::None),
-        TV::Option(Some(x)) => V::prim1(arena, Prim::Some, go(*x)),
-        TV::Or(or) => match *or {
-            Or::Left(x) => V::prim1(arena, Prim::Left, go(x)),
-            Or::Right(x) => V::prim1(arena, Prim::Right, go(x)),
-        },
-        TV::Address(x) => V::Bytes(x.to_bytes_vec()),
-        TV::ChainId(x) => V::Bytes(x.into()),
-        TV::Contract(x) => go(TV::Address(x)),
-        TV::Bytes(x) => V::Bytes(x),
-        TV::Key(k) => V::Bytes(k.to_bytes_vec()),
-        TV::Signature(s) => V::Bytes(s.to_bytes_vec()),
-        TV::Lambda(lam) => match lam {
-            Lambda::Lambda { micheline_code, .. } => micheline_code,
-            Lambda::LambdaRec { micheline_code, .. } => {
-                V::prim1(arena, Prim::Lambda_rec, micheline_code)
-            }
-        },
+            TV::Option(None) => V::prim0(Prim::None),
+            TV::Option(Some(x)) => V::prim1(arena, Prim::Some, go(*x)),
+            TV::Or(or) => match *or {
+                Or::Left(x) => V::prim1(arena, Prim::Left, go(x)),
+                Or::Right(x) => V::prim1(arena, Prim::Right, go(x)),
+            },
+            TV::Address(x) => V::Bytes(x.to_bytes_vec()),
+            TV::ChainId(x) => V::Bytes(x.into()),
+            TV::Contract(x) => go(TV::Address(x)),
+            TV::Bytes(x) => V::Bytes(x),
+            TV::Key(k) => V::Bytes(k.to_bytes_vec()),
+            TV::Signature(s) => V::Bytes(s.to_bytes_vec()),
+            TV::Lambda(lam) => match lam {
+                Lambda::Lambda { micheline_code, .. } => micheline_code,
+                Lambda::LambdaRec { micheline_code, .. } => {
+                    V::prim1(arena, Prim::Lambda_rec, micheline_code)
+                }
+            },
+        }
     }
 }
 

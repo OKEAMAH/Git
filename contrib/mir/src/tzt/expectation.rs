@@ -5,6 +5,8 @@
 /*                                                                            */
 /******************************************************************************/
 
+use crate::ast::IntoMicheline;
+
 use super::*;
 
 fn check_error_expectation<'a>(
@@ -52,8 +54,8 @@ fn unify_interpreter_error(
                     // both values being compared, so it is probably safe to compare typed
                     // representation as well.
                     let arena = typed_arena::Arena::new();
-                    typed_value_to_value_optimized(&arena, exp_typed_val)
-                        == typed_value_to_value_optimized(&arena, failed_typed_value.clone())
+                    exp_typed_val.into_micheline(&arena)
+                        == failed_typed_value.clone().into_micheline(&arena)
                 }
                 Err(_) => false,
             }
