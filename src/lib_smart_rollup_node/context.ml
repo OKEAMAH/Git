@@ -1,249 +1,139 @@
-(*****************************************************************************)
-(*                                                                           *)
-(* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
-(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
-(*                                                                           *)
-(* Permission is hereby granted, free of charge, to any person obtaining a   *)
-(* copy of this software and associated documentation files (the "Software"),*)
-(* to deal in the Software without restriction, including without limitation *)
-(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
-(* and/or sell copies of the Software, and to permit persons to whom the     *)
-(* Software is furnished to do so, subject to the following conditions:      *)
-(*                                                                           *)
-(* The above copyright notice and this permission notice shall be included   *)
-(* in all copies or substantial portions of the Software.                    *)
-(*                                                                           *)
-(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
-(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
-(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
-(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
-(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
-(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
-(* DEALINGS IN THE SOFTWARE.                                                 *)
-(*                                                                           *)
-(*****************************************************************************)
-
 open Store_sigs
-module Context_encoding = Tezos_context_encoding.Context_binary
 
-(* We shadow [Tezos_context_encoding] to prevent accidentally using
-   [Tezos_context_encoding.Context] instead of
-   [Tezos_context_encoding.Context_binary] during a future
-   refactoring.*)
-module Tezos_context_encoding = struct end
+module type CONTEXT = sig
+  type 'a index constraint 'a = [< `Read | `Write > `Read]
 
-module Maker = Irmin_pack_unix.Maker (Context_encoding.Conf)
+  type 'a t constraint 'a = [< `Read | `Write > `Read]
 
-module IStore = struct
-  include Maker.Make (Context_encoding.Schema)
-  module Schema = Context_encoding.Schema
-end
+  type tree
 
-module IStoreTree =
-  Tezos_context_helpers.Context.Make_tree (Context_encoding.Conf) (IStore)
+  type hash = Smart_rollup_context_hash.t
 
-type tree = IStore.tree
+  (** [load cache_size path] initializes from disk a context from [path].
+    [cache_size] allows to change the LRU cache size of Irmin
+    (100_000 by default at irmin-pack/config.ml *)
+  val load : cache_size:int -> 'a mode -> string -> 'a index tzresult Lwt.t
 
-type 'a raw_index = {path : string; repo : IStore.Repo.t}
+  (** [index context] is the repository of the context [context]. *)
+  val index : 'a t -> 'a index
 
-type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
+  (** [close ctxt] closes the context index [ctxt]. *)
+  val close : _ index -> unit Lwt.t
 
-type rw_index = [`Read | `Write] index
+  (** [readonly index] returns a read-only version of the index. *)
+  val readonly : [> `Read] index -> [`Read] index
 
-type ro_index = [`Read] index
+  (** [checkout ctxt hash] checkouts the content that corresponds to the commit
+    hash [hash] in the repository [ctxt] and returns the corresponding
+    context. If there is no commit that corresponds to [hash], it returns
+    [None].  *)
+  val checkout : 'a index -> hash -> 'a t option Lwt.t
 
-type 'a t = {index : 'a index; tree : tree}
+  (** [empty ctxt] is the context with an empty content for the repository [ctxt]. *)
+  val empty : 'a index -> 'a t
 
-type rw = [`Read | `Write] t
+  (** [commit ?message context] commits content of the context [context] on disk,
+    and return the commit hash. *)
+  val commit : ?message:string -> [> `Write] t -> hash Lwt.t
 
-type ro = [`Read] t
+  (** [is_gc_finished index] returns true if a GC is finished (or idle) and false
+    if a GC is running for [index]. *)
+  val is_gc_finished : [> `Write] index -> bool
 
-type commit = IStore.commit
+  (** [gc index ?callback hash] removes all data older than [hash] from disk.
+    If passed, [callback] will be executed when garbage collection finishes. *)
+  val gc :
+    [> `Write] index -> ?callback:(unit -> unit Lwt.t) -> hash -> unit Lwt.t
 
-type hash = Smart_rollup_context_hash.t
+  (** [wait_gc_completion index] will return a blocking thread if a
+    GC run is currently ongoing. *)
+  val wait_gc_completion : [> `Write] index -> unit Lwt.t
 
-type path = string list
+  (** State of the PVM that this rollup node deals with *)
+  module PVMState : sig
+    (** The value of a PVM state *)
+    type value = tree
 
-let () = assert (Smart_rollup_context_hash.size = IStore.Hash.hash_size)
+    (** [empty ()] is the empty PVM state. *)
+    val empty : unit -> value
 
-let hash_to_istore_hash h =
-  Smart_rollup_context_hash.to_string h |> IStore.Hash.unsafe_of_raw_string
+    (** [find context] returns the PVM state stored in the [context], if any. *)
+    val find : _ t -> value option Lwt.t
 
-let istore_hash_to_hash h =
-  IStore.Hash.to_raw_string h |> Smart_rollup_context_hash.of_string_exn
+    (** [lookup state path] returns the data stored for the path [path] in the PVM
+      state [state].  *)
+    val lookup : value -> string list -> bytes option Lwt.t
 
-let load : type a. cache_size:int -> a mode -> string -> a raw_index Lwt.t =
- fun ~cache_size mode path ->
-  let open Lwt_syntax in
-  let readonly = match mode with Read_only -> true | Read_write -> false in
-  let+ repo =
-    IStore.Repo.v
-      (Irmin_pack.config
-         ~readonly
-           (* Note that the use of GC in the context requires that
-            * the [always] indexing strategy not be used. *)
-         ~indexing_strategy:Irmin_pack.Indexing_strategy.minimal
-         ~lru_size:cache_size
-         path)
-  in
-  {path; repo}
-
-let close ctxt =
-  let _interrupted_gc = IStore.Gc.cancel ctxt.repo in
-  IStore.Repo.close ctxt.repo
-
-let readonly (index : [> `Read] index) = (index :> [`Read] index)
-
-let raw_commit ?(message = "") index tree =
-  let info = IStore.Info.v ~author:"Tezos" 0L ~message in
-  IStore.Commit.v index.repo ~info ~parents:[] tree
-
-let commit ?message ctxt =
-  let open Lwt_syntax in
-  let+ commit = raw_commit ?message ctxt.index ctxt.tree in
-  IStore.Commit.hash commit |> istore_hash_to_hash
-
-let checkout index key =
-  let open Lwt_syntax in
-  let* o = IStore.Commit.of_hash index.repo (hash_to_istore_hash key) in
-  match o with
-  | None -> return_none
-  | Some commit ->
-      let tree = IStore.Commit.tree commit in
-      return_some {index; tree}
-
-let empty index = {index; tree = IStore.Tree.empty ()}
-
-let is_empty ctxt = IStore.Tree.is_empty ctxt.tree
-
-(* adapted from lib_context/disk/context.ml *)
-let gc index ?(callback : unit -> unit Lwt.t = fun () -> Lwt.return ())
-    (hash : hash) =
-  let open Lwt_syntax in
-  let repo = index.repo in
-  let istore_hash = hash_to_istore_hash hash in
-  let* commit_opt = IStore.Commit.of_hash index.repo istore_hash in
-  match commit_opt with
-  | None ->
-      Fmt.failwith "%a: unknown context hash" Smart_rollup_context_hash.pp hash
-  | Some commit -> (
-      let finished = function
-        | Ok (stats : Irmin_pack_unix.Stats.Latest_gc.stats) ->
-            let total_duration =
-              Irmin_pack_unix.Stats.Latest_gc.total_duration stats
-            in
-            let finalise_duration =
-              Irmin_pack_unix.Stats.Latest_gc.finalise_duration stats
-            in
-            let* () = callback () in
-            Event.ending_context_gc
-              ( Time.System.Span.of_seconds_exn total_duration,
-                Time.System.Span.of_seconds_exn finalise_duration )
-        | Error (`Msg err) -> Event.context_gc_failure err
-      in
-      let commit_key = IStore.Commit.key commit in
-      let* launch_result = IStore.Gc.run ~finished repo commit_key in
-      match launch_result with
-      | Error (`Msg err) -> Event.context_gc_launch_failure err
-      | Ok false -> Event.context_gc_already_launched ()
-      | Ok true -> Event.starting_context_gc hash)
-
-let wait_gc_completion index =
-  let open Lwt_syntax in
-  let* r = IStore.Gc.wait index.repo in
-  match r with
-  | Ok _stats_opt -> return_unit
-  | Error (`Msg _msg) ->
-      (* Logs will be printed by the [gc] caller. *)
-      return_unit
-
-let is_gc_finished index = IStore.Gc.is_finished index.repo
-
-let index context = context.index
-
-module Proof (Hash : sig
-  type t
-
-  val of_context_hash : Context_hash.t -> t
-end) (Proof_encoding : sig
-  val proof_encoding :
-    Tezos_context_sigs.Context.Proof_types.tree
-    Tezos_context_sigs.Context.Proof_types.t
-    Data_encoding.t
-end) =
-struct
-  module IStoreProof =
-    Tezos_context_helpers.Context.Make_proof (IStore) (Context_encoding.Conf)
-
-  module Tree = struct
-    include IStoreTree
-
-    type t = rw_index
-
-    type tree = IStore.tree
-
-    type key = path
-
-    type value = bytes
+    (** [set context state] saves the PVM state [state] in the context and returns
+      the updated context. Note: [set] does not perform any write on disk, this
+      information must be committed using {!val:commit}. *)
+    val set : 'a t -> value -> 'a t Lwt.t
   end
 
-  type tree = Tree.tree
-
-  type proof = IStoreProof.Proof.tree IStoreProof.Proof.t
-
-  let hash_tree tree = Hash.of_context_hash (Tree.hash tree)
-
-  let proof_encoding = Proof_encoding.proof_encoding
-
-  let proof_before proof =
-    let (`Value hash | `Node hash) = proof.IStoreProof.Proof.before in
-    Hash.of_context_hash hash
-
-  let proof_after proof =
-    let (`Value hash | `Node hash) = proof.IStoreProof.Proof.after in
-    Hash.of_context_hash hash
-
-  let produce_proof index tree step =
-    let open Lwt_syntax in
-    (* Committing the context is required by Irmin to produce valid proofs. *)
-    let* _commit_key = raw_commit index tree in
-    match Tree.kinded_key tree with
-    | Some k ->
-        let* p = IStoreProof.produce_tree_proof index.repo k step in
-        return_some p
-    | None -> return_none
-
-  let verify_proof proof step =
-    (* The rollup node is not supposed to verify proof. We keep
-       this part in case this changes in the future. *)
-    let open Lwt_syntax in
-    let* result = IStoreProof.verify_tree_proof proof step in
-    match result with
-    | Ok v -> return_some v
-    | Error _ ->
-        (* We skip the error analysis here since proof verification is not a
-           job for the rollup node. *)
-        return_none
+  module Internal_for_tests : sig
+    (** [get_a_tree key] provides a value of internal type [tree] which can be
+      used as a state to be set in the context directly. *)
+    val get_a_tree : string -> tree Lwt.t
+  end
 end
 
-(** State of the PVM that this rollup node deals with. *)
-module PVMState = struct
-  type value = tree
+module Context (C : CONTEXT) = struct
+  type 'a index = 'a C.index
 
-  let key = ["pvm_state"]
+  type 'a t = 'a C.t
 
-  let empty () = IStore.Tree.empty ()
+  type tree = C.tree
 
-  let find ctxt = IStore.Tree.find_tree ctxt.tree key
+  (** Read/write {!type:index}. *)
+  type rw_index = [`Read | `Write] index
 
-  let lookup tree path = IStore.Tree.find tree path
+  (** Read/write context {!t}. *)
+  type rw = [`Read | `Write] t
 
-  let set ctxt state =
-    let open Lwt_syntax in
-    let+ tree = IStore.Tree.add_tree ctxt.tree key state in
-    {ctxt with tree}
+  (** Read-only context {!t}. *)
+  type ro = [`Read] t
+
+  type hash = Smart_rollup_context_hash.t
+
+  let load = C.load
+
+  let index = C.index
+
+  let close = C.close
+
+  let checkout = C.checkout
+
+  let empty = C.empty
+
+  let commit = C.commit
+
+  let readonly = C.readonly
+
+  let is_gc_finished = C.is_gc_finished
+
+  let gc = C.gc
+
+  let wait_gc_completion = C.wait_gc_completion
+
+  (** State of the PVM that this rollup node deals with. *)
+  module PVMState = struct
+    type value = tree
+
+    let empty = C.PVMState.empty
+
+    let find = C.PVMState.find
+
+    let lookup = C.PVMState.lookup
+
+    let set = C.PVMState.set
+  end
+
+  module Internal_for_tests = struct
+    let get_a_tree = C.Internal_for_tests.get_a_tree
+  end
 end
+
+include Context (Irmin_context)
 
 module Version = struct
   type t = V0
@@ -260,17 +150,4 @@ module Version = struct
       int31
 
   let check = function V0 -> Result.return_unit
-end
-
-let load :
-    type a. cache_size:int -> a mode -> string -> a raw_index tzresult Lwt.t =
- fun ~cache_size mode path ->
-  let open Lwt_result_syntax in
-  let*! index = load ~cache_size mode path in
-  return index
-
-module Internal_for_tests = struct
-  let get_a_tree key =
-    let tree = IStore.Tree.empty () in
-    IStore.Tree.add tree [key] Bytes.empty
 end

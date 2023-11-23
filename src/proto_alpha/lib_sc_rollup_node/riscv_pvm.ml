@@ -15,7 +15,7 @@ module type Serializable_state_S = sig
 
   val empty : unit -> state
 
-  val of_index : Context.rw_index -> context
+  val of_index : Irmin_context.rw_index -> context
 
   val state_encoding : state Data_encoding.t
 
@@ -29,15 +29,15 @@ module Embed_into_Irmin
             and type state = P.state) : sig
   include
     Sc_rollup.PVM.S
-      with type context = Context.rw_index
-       and type state = Context.tree
+      with type context = Irmin_context.rw_index
+       and type state = Irmin_context.tree
        and type hash = Sc_rollup.State_hash.t
 
-  val decode : Context.tree -> P.state Lwt.t
+  val decode : Irmin_context.tree -> P.state Lwt.t
 end = struct
   (* We need to instantiate this functor to access the underlying Tree module. *)
   module Irmin_proof_format =
-    Context.Proof
+    Irmin_context.Proof
       (struct
         include Sc_rollup.State_hash
 
@@ -77,13 +77,13 @@ end = struct
     in
     Tree.add state [S.directory] bytes
 
-  type context = Context.rw_index
+  type context = Irmin_context.rw_index
 
   let parse_boot_sector = P.parse_boot_sector
 
   let pp_boot_sector = P.pp_boot_sector
 
-  type state = Context.tree
+  type state = Irmin_context.tree
 
   type hash = Sc_rollup.State_hash.t
 
@@ -194,7 +194,7 @@ let eval_many ~reveal_builtins:_ ~write_debug:_ ~is_reveal_enabled
 
 let new_dissection = Game_helpers.default_new_dissection
 
-module State = Context.PVMState
+module State = Irmin_context.PVMState
 
 module Inspect_durable_state = struct
   let lookup _state _keys =

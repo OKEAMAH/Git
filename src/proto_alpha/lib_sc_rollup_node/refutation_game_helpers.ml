@@ -141,7 +141,7 @@ let generate_proof (node_ctxt : _ Node_context.t)
   let* context =
     let* start_hash = Node_context.hash_of_level node_ctxt game.inbox_level in
     let+ context = Node_context.checkout_context node_ctxt start_hash in
-    Context.index context
+    Irmin_context.index context
   in
   let* dal_slots_history =
     if Node_context.dal_supported node_ctxt then
