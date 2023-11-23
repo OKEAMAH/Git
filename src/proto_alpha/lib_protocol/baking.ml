@@ -141,7 +141,7 @@ let attesting_rights_by_first_slot ctxt level =
             (function
               | None -> Some (consensus_pk, Uint63.one)
               | Some (consensus_pk, count) ->
-                  Some (consensus_pk, Uint63.With_exceptions.succ count))
+                  Some (consensus_pk, Uint63.((With_exceptions.succ count :> t))))
             slots_map
         in
         (ctxt, (delegates_map, slots_map)))

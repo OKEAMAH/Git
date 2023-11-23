@@ -9,6 +9,8 @@
 module Cmp = Compare.Int64
 include Cmp
 
+type uint63 = t
+
 let zero = Int64.zero
 
 let one = Int64.one
@@ -41,6 +43,8 @@ module Div_safe_base : sig
 
   val of_int64 : int64 -> t option
 
+  val of_succ_uint63 : uint63 -> t option
+
   module With_exceptions : sig
     val of_int64 : int64 -> t
   end
@@ -48,6 +52,8 @@ end = struct
   type nonrec t = t
 
   let of_int64 i = if i > 0L then Some i else None
+
+  let of_succ_uint63 i = if i < max_int then Some (Int64.succ i) else None
 
   module With_exceptions = struct
     let of_int64 i =
@@ -149,8 +155,6 @@ let add (a : t) (b : t) =
   let s = Int64.add a b in
   if s < a then None else Some s
 
-let succ (a : t) = if a < max_int then Some (Int64.succ a) else None
-
 let sub (a : t) (b : t) = if a >= b then Some (Int64.sub a b) else None
 
 let div (a : t) (b : Div_safe.t) = Int64.div a (b :> Int64.t)
@@ -196,7 +200,7 @@ module With_exceptions = struct
     | None -> invalid_arg "Uint63.With_exceptions.of_int"
 
   let succ a =
-    match succ a with
+    match Div_safe_base.of_succ_uint63 a with
     | Some res -> res
     | None -> invalid_arg "Uint63.With_exceptions.succ"
 

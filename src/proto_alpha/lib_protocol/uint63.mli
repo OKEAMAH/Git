@@ -130,7 +130,7 @@ module With_exceptions : sig
 
   val of_int : int -> t
 
-  val succ : t -> t
+  val succ : t -> Div_safe.t
 
   val add : t -> t -> t
 
