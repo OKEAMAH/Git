@@ -72,6 +72,8 @@ module Div_safe = struct
 
   let of_int i = of_int64 (Int64.of_int i)
 
+  let of_z z = if Z.fits_int64 z then of_int64 (Z.to_int64 z) else None
+
   let of_int64_exn = B.With_exceptions.of_int64
 
   let to_int (i : t) = Int64.to_int (i :> Int64.t)

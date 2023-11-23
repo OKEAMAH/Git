@@ -156,6 +156,8 @@ let ( /! ) (Tez_tag t) d = Tez_tag (Uint63.div t d)
 
 let div2 tez = tez /! Uint63.Div_safe.two
 
+let rem (Tez_tag t) d = Tez_tag (Uint63.rem t d)
+
 let ( *?? ) t m ~default =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> default
 

@@ -140,6 +140,8 @@ module Tez : sig
 
   val ( /! ) : t -> Uint63.Div_safe.t -> t
 
+  val rem : t -> Uint63.Div_safe.t -> t
+
   val of_string : string -> t option
 
   val to_string : t -> string
