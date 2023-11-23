@@ -1142,12 +1142,24 @@ module type WORKER = sig
     | P2P_input of p2p_input
     | App_input of app_input
 
+  type automaton_output = Output : 'a GS.output -> automaton_output
+
   (** [make ~events_logging rng limits parameters] initializes a new Gossipsub
       automaton with the given arguments. Then, it initializes and returns a
       worker for it. The [events_logging] function can be used to define a
       handler for logging the worker's events. *)
   val make :
     ?events_logging:(event -> unit Monad.t) ->
+    ?automaton_output_logging:
+      (?heartbeat:bool ->
+      ?mesh:bool ->
+      ?metadata:bool ->
+      ?connection:bool ->
+      ?messages:bool ->
+      ?regular:bool ->
+      ?from_peer:GS.Peer.t ->
+      automaton_output ->
+      unit Monad.t) ->
     Random.State.t ->
     (GS.Topic.t, GS.Peer.t, GS.Message_id.t, GS.span) limits ->
     (GS.Peer.t, GS.Message_id.t) parameters ->

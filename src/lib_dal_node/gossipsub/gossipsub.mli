@@ -54,7 +54,18 @@ module Worker : sig
        and type GS.Time.t = Types.Time.t
 
   module Logging : sig
-    val event : event -> unit Monad.t
+    val _event : event -> unit Monad.t
+
+    val _output :
+      ?heartbeat:bool ->
+      ?mesh:bool ->
+      ?metadata:bool ->
+      ?connection:bool ->
+      ?messages:bool ->
+      ?regular:bool ->
+      ?from_peer:P2p_peer.Id.t ->
+      automaton_output ->
+      unit Monad.t
   end
 
   (** A hook to set or update messages and messages IDs validation

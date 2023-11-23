@@ -26,7 +26,7 @@
 
 open Gs_interface.Worker_instance
 
-module Events = struct
+module Worker_events = struct
   include Internal_event.Simple
   open Data_encoding
 
@@ -185,8 +185,32 @@ module Events = struct
       ("message_ids", list Types.Message_id.encoding)
 end
 
-let event =
-  let open Events in
+module Automaton_events = struct
+  include Internal_event.Simple
+  open Data_encoding
+
+  let section = ["gossipsub"; "automaton"; "event"]
+
+  let prefix =
+    let prefix = String.concat "_" section in
+    fun s -> prefix ^ "-" ^ s
+
+  let output =
+    declare_2
+      ~section
+      ~name:(prefix "output")
+      ~msg:"Output {output} after event from {peer}"
+      ~level:Info
+      ~pp1:(fun fmt opt ->
+        match opt with
+        | None -> Format.fprintf fmt "app"
+        | Some p -> Format.fprintf fmt "peer %a" P2p_peer.Id.pp p)
+      ("peer", option P2p_peer.Id.encoding)
+      ("output", Data_encoding.string)
+end
+
+let _event =
+  let open Worker_events in
   function
   | Heartbeat -> emit heartbeat ()
   | App_input event -> (
@@ -212,3 +236,90 @@ let event =
           | IHave {topic; message_ids} ->
               emit ihave (from_peer, topic, message_ids)
           | IWant {message_ids} -> emit iwant (from_peer, message_ids)))
+
+let _output =
+  let open Automaton_events in
+  let open GS in
+  fun ?(heartbeat = false)
+      ?(mesh = true)
+      ?(metadata = true)
+      ?(connection = true)
+      ?(messages = true)
+      ?(regular = false)
+      ?from_peer
+      (Output o) ->
+    match o with
+    (* IHave *)
+    | Ihave_from_peer_with_low_score _ when metadata ->
+        emit output (from_peer, "Ihave_from_peer_with_low_score")
+    | Too_many_recv_ihave_messages _ when metadata ->
+        emit output (from_peer, "Too_many_recv_ihave_messages")
+    | Too_many_sent_iwant_messages _ when metadata ->
+        emit output (from_peer, "Too_many_sent_iwant_messages")
+    | Message_topic_not_tracked when metadata ->
+        emit output (from_peer, "Message_topic_not_tracked")
+    | Message_requested_message_ids _ when metadata && regular ->
+        emit output (from_peer, "Message_requested_message_ids")
+    | Invalid_message_id when metadata ->
+        emit output (from_peer, "Invalid_message_id")
+    | Iwant_from_peer_with_low_score _ when metadata ->
+        emit output (from_peer, "Iwant_from_peer_with_low_score")
+    | On_iwant_messages_to_route _ when metadata ->
+        emit output (from_peer, "On_iwant_messages_to_route")
+    | Peer_filtered when mesh -> emit output (from_peer, "Peer_filtered")
+    | Unsubscribed_topic when mesh ->
+        emit output (from_peer, "Unsubscribed_topic")
+    | Peer_already_in_mesh when mesh ->
+        emit output (from_peer, "Peer_already_in_mesh")
+    | Grafting_direct_peer when mesh ->
+        emit output (from_peer, "Grafting_direct_peer")
+    | Unexpected_grafting_peer when mesh ->
+        emit output (from_peer, "Unexpected_grafting_peer")
+    | Grafting_peer_with_negative_score when mesh ->
+        emit output (from_peer, "Grafting_peer_with_negative_score")
+    | Grafting_successfully when mesh && regular ->
+        emit output (from_peer, "Grafting_successfully")
+    | Peer_backed_off when mesh -> emit output (from_peer, "Peer_backed_off")
+    | Mesh_full when metadata -> emit output (from_peer, "Mesh_full")
+    | Prune_topic_not_tracked ->
+        emit output (from_peer, "Prune_topic_not_tracked")
+    | Peer_not_in_mesh when mesh -> emit output (from_peer, "Peer_not_in_mesh")
+    | Ignore_PX_score_too_low _ when mesh ->
+        emit output (from_peer, "Ignore_PX_score_too_low")
+    | No_PX when mesh -> emit output (from_peer, "No_PX")
+    | PX _ when mesh && regular -> emit output (from_peer, "PX")
+    | Publish_message _ when messages && regular ->
+        emit output (from_peer, "Publish_message")
+    | Already_published when messages && regular ->
+        emit output (from_peer, "Already_published")
+    | Route_message _ when messages && regular ->
+        emit output (from_peer, "Route_message")
+    | Already_received when messages && regular ->
+        emit output (from_peer, "Already_received")
+    | Not_subscribed when messages -> emit output (from_peer, "Not_subscribed")
+    | Invalid_message when messages -> emit output (from_peer, "Invalid_message")
+    | Unknown_validity when messages ->
+        emit output (from_peer, "Unknown_validity")
+    | Already_joined when connection -> emit output (from_peer, "Already_joined")
+    | Joining_topic _ when connection && regular ->
+        emit output (from_peer, "Joining_topic")
+    | Not_joined when connection -> emit output (from_peer, "Not_joined")
+    | Leaving_topic _ when connection && regular ->
+        emit output (from_peer, "Leaving_topic")
+    | Heartbeat _ when heartbeat -> emit output (from_peer, "Heartbeat")
+    | Peer_added when connection && regular ->
+        emit output (from_peer, "Peer_added")
+    | Peer_already_known when connection ->
+        emit output (from_peer, "Peer_already_known")
+    | Removing_peer when connection && regular ->
+        emit output (from_peer, "Removing_peer")
+    | Subscribed when connection && regular ->
+        emit output (from_peer, "Subscribed")
+    | Subscribe_to_unknown_peer when connection ->
+        emit output (from_peer, "Subscribe_to_unknown_peer")
+    | Unsubscribed when connection && regular ->
+        emit output (from_peer, "Unsubscribed")
+    | Unsubscribe_from_unknown_peer when connection ->
+        emit output (from_peer, "Unsubscribe_from_unknown_peer")
+    | Set_application_score -> emit output (from_peer, "Set_application_score")
+    | _ -> Lwt.return_unit

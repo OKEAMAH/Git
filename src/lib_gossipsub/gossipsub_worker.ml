@@ -209,9 +209,12 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
   (** The different kinds of events the Gossipsub worker handles. *)
   type event = Heartbeat | P2P_input of p2p_input | App_input of app_input
 
+  type automaton_output = Output : 'a GS.output -> automaton_output
+
   (** The worker's state is made of the gossipsub automaton's state,
       and a stream of events to process. It also has two output streams to
       communicate with the application and P2P layers. *)
+
   type worker_state = {
     stats : Introspection.stats;
     gossip_state : GS.state;
@@ -221,6 +224,16 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
     p2p_output_stream : p2p_output Stream.t;
     app_output_stream : app_output Stream.t;
     events_logging : event -> unit Monad.t;
+    automaton_output_logging :
+      ?heartbeat:bool ->
+      ?mesh:bool ->
+      ?metadata:bool ->
+      ?connection:bool ->
+      ?messages:bool ->
+      ?regular:bool ->
+      ?from_peer:GS.Peer.t ->
+      automaton_output ->
+      unit Monad.t;
   }
 
   (** A worker instance is made of its status and state. *)
@@ -588,7 +601,9 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
         state
 
   let update_gossip_state state (gossip_state, output) =
-    ({state with gossip_state}, output)
+    let open Monad in
+    let* () = state.automaton_output_logging (Output output) in
+    return ({state with gossip_state}, output)
 
   (** Handling application events. *)
   let apply_app_event ({gossip_state; _} as state) = function
@@ -761,8 +776,17 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
            resolved. *)
         event_loop_promise
 
-  let make ?(events_logging = fun _event -> Monad.return ()) rng limits
-      parameters =
+  let make ?(events_logging = fun _event -> Monad.return ())
+      ?(automaton_output_logging =
+        fun ?heartbeat:_
+            ?mesh:_
+            ?metadata:_
+            ?connection:_
+            ?messages:_
+            ?regular:_
+            ?from_peer:_
+            _output ->
+          Monad.return ()) rng limits parameters =
     {
       status = Starting;
       state =
@@ -775,6 +799,7 @@ module Make (C : Gossipsub_intf.WORKER_CONFIGURATION) :
           p2p_output_stream = Stream.empty ();
           app_output_stream = Stream.empty ();
           events_logging;
+          automaton_output_logging;
         };
     }
 

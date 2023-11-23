@@ -25,4 +25,15 @@
 (*****************************************************************************)
 
 (** [event e] logs the event [e] of the Gossipsub worker *)
-val event : Gs_interface.Worker_instance.event -> unit Lwt.t
+val _event : Gs_interface.Worker_instance.event -> unit Lwt.t
+
+val _output :
+  ?heartbeat:bool ->
+  ?mesh:bool ->
+  ?metadata:bool ->
+  ?connection:bool ->
+  ?messages:bool ->
+  ?regular:bool ->
+  ?from_peer:P2p_peer.Id.t ->
+  Gs_interface.Worker_instance.automaton_output ->
+  unit Lwt.t
