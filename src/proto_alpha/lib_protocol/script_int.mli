@@ -77,6 +77,9 @@ val of_int32 : int32 -> z num
 (** Conversion to an OCaml [int64], returns [None] on overflow. *)
 val to_int64 : _ num -> int64 option
 
+(** Conversion from a [Uint63.t]. *)
+val of_uint63 : Uint63.t -> n num
+
 (** Conversion from an OCaml [int64]. *)
 val of_int64 : int64 -> z num
 

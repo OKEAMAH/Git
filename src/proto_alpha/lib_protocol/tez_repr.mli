@@ -86,6 +86,8 @@ val mul_ratio :
     No errors can happen. *)
 val mul_percentage : rounding:[`Down | `Up] -> t -> Int_percentage.t -> t
 
+val to_mutez' : t -> Uint63.t
+
 val to_mutez : t -> int64
 
 (** [of_mutez n] (micro tez) is None if n is negative *)

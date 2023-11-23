@@ -55,6 +55,8 @@ let of_int32 n = Num_tag (Z.of_int64 @@ Int64.of_int32 n)
 
 let to_int64 (Num_tag x) = Option.catch (fun () -> Z.to_int64 x)
 
+let of_uint63 (n : Uint63.t) = Num_tag (Z.of_int64 (n :> Int64.t))
+
 let of_int64 n = Num_tag (Z.of_int64 n)
 
 let to_int (Num_tag x) = Option.catch (fun () -> Z.to_int x)

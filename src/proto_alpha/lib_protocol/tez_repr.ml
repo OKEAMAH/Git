@@ -185,7 +185,9 @@ let of_mutez t = Uint63.of_int64 t |> Option.map wrap
 let of_mutez_exn x =
   match of_mutez x with None -> invalid_arg "Tez.of_mutez" | Some v -> v
 
-let to_mutez (Tez_tag t) = (t :> Int64.t)
+let to_mutez' (Tez_tag t) = t
+
+let to_mutez tez = (to_mutez' tez :> Int64.t)
 
 let encoding =
   let open Data_encoding in

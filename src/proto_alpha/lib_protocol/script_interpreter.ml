@@ -1081,18 +1081,13 @@ module Raw = struct
               (step [@ocaml.tailcall]) g gas k ks result stack
           | IEdiv_tez (_, k) ->
               let x = accu and y, stack = stack in
-              let x = Script_int.abs (Script_int.of_int64 (Tez.to_mutez x)) in
-              let y = Script_int.abs (Script_int.of_int64 (Tez.to_mutez y)) in
               let result =
-                match Script_int.ediv_n x y with
+                match Uint63.Div_safe.of_int64 (Tez.to_mutez y :> Int64.t) with
                 | None -> None
-                | Some (q, r) -> (
-                    match Script_int.to_int64 r with
-                    | None -> assert false (* Cannot overflow *)
-                    | Some r -> (
-                        match Tez.of_mutez r with
-                        | None -> assert false (* Cannot overflow *)
-                        | Some r -> Some (q, r)))
+                | Some y ->
+                    let q = Tez.(x /! y |> to_mutez') |> Script_int.of_uint63 in
+                    let r = Tez.(rem x y) in
+                    Some (q, r)
               in
               (step [@ocaml.tailcall]) g gas k ks result stack
           | IEdiv_int (_, k) ->

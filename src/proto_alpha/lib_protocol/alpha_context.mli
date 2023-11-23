@@ -150,6 +150,8 @@ module Tez : sig
 
   val to_mutez : t -> int64
 
+  val to_mutez' : t -> Uint63.t
+
   val of_mutez_exn : int64 -> t
 
   val mul_exn : t -> int -> t
