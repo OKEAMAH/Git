@@ -58,6 +58,15 @@ mod tests {
     }
 
     #[test]
+    fn bench_parser() {
+        let time = std::time::Instant::now();
+        for _ in 0..100_000 {
+            crate::parser::Parser::new().parse(VOTE_SRC).unwrap();
+        }
+        dbg!(time.elapsed());
+    }
+
+    #[test]
     fn interpret_test_gas_consumption() {
         let ast = parse(FIBONACCI_SRC).unwrap();
         let ast = ast
