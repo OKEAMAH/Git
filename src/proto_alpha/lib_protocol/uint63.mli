@@ -27,6 +27,8 @@ val zero : t
 
 val one : t
 
+val two : t
+
 val nine : t
 
 val nineteen : t

@@ -13,6 +13,8 @@ let zero = Int64.zero
 
 let one = Int64.one
 
+let two = 2L
+
 let nine = 9L
 
 let nineteen = 19L

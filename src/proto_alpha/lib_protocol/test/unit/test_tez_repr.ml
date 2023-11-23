@@ -82,6 +82,16 @@ module Test_tez_repr = struct
     | Ok _ -> failwith "Expected to overflow"
     | Error _ -> return_unit
 
+  let test_mul_bang () =
+    let open Lwt_result_wrap_syntax in
+    let*?@ res = Tez_repr.(zero *!? Uint63.one) in
+    Assert.equal_int64 ~loc:__LOC__ (Tez_repr.to_mutez res) 0L
+
+  let test_mul_bang_overflow () =
+    match Tez_repr.(of_mutez_exn 0x7fffffffffffffffL *!? Uint63.two) with
+    | Ok _ -> failwith "Expected to overflow"
+    | Error _ -> return_unit
+
   let test_div () =
     let open Lwt_result_wrap_syntax in
     let*?@ res = Tez_repr.(one *? 1L) in
@@ -172,6 +182,11 @@ let tests =
     tztest "Tez.add: overflow" `Quick Test_tez_repr.test_addition_overflow;
     tztest "Tez.mul: basic case" `Quick Test_tez_repr.test_mul;
     tztest "Tez.mul: overflow case" `Quick Test_tez_repr.test_mul_overflow;
+    tztest "Tez.mul_bang: basic case" `Quick Test_tez_repr.test_mul_bang;
+    tztest
+      "Tez.mul_bang: overflow case"
+      `Quick
+      Test_tez_repr.test_mul_bang_overflow;
     tztest "Tez.div: basic case" `Quick Test_tez_repr.test_div;
     tztest "Tez.div: division by zero" `Quick Test_tez_repr.test_div_by_zero;
     tztest "Tez.to_mutez: basic assertion" `Quick Test_tez_repr.test_to_mutez;
