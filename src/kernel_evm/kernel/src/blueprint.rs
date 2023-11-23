@@ -201,8 +201,9 @@ pub fn fetch_inbox_blueprints<Host: Runtime>(
 
 fn fetch_sequencer_blueprints<Host: Runtime>(
     host: &mut Host,
+    chain_id: U256,
 ) -> Result<Queue, anyhow::Error> {
-    let seq_blueprints = sequencer_blueprint::fetch(host)?;
+    let seq_blueprints = sequencer_blueprint::fetch(host, chain_id)?;
     let proposals = seq_blueprints
         .into_iter()
         .map(|sb| QueueElement::Blueprint(From::from(sb)))
@@ -222,7 +223,7 @@ pub fn fetch<Host: Runtime>(
     is_sequencer: bool,
 ) -> Result<Queue, anyhow::Error> {
     if is_sequencer {
-        fetch_sequencer_blueprints(host)
+        fetch_sequencer_blueprints(host, chain_id)
     } else {
         fetch_inbox_blueprints(host, smart_rollup_address, chain_id, ticketer, admin)
     }
