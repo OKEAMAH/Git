@@ -1117,9 +1117,8 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
         in
         let minimal_frozen_stake =
           Tez_repr.(
-            div_exn
-              c.minimal_stake
-              (Uint63.to_int limit_of_delegation_over_baking + 1))
+            c.minimal_stake
+            /! Uint63.With_exceptions.succ limit_of_delegation_over_baking)
         in
 
         let origination_size =

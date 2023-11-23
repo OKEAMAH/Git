@@ -97,9 +97,9 @@ let init_account (ctxt, balance_updates)
                 Tez_repr.max minimal_stake minimal_frozen_stake
               in
               let minimal_to_not_be_overdelegated =
-                Tez_repr.div_exn
+                Tez_repr.(
                   amount
-                  (Uint63.to_int limit_of_delegation_over_baking + 1)
+                  /! Uint63.With_exceptions.succ limit_of_delegation_over_baking)
               in
               Tez_repr.(
                 min amount (max minimal_to_bake minimal_to_not_be_overdelegated))

@@ -54,9 +54,8 @@ let tez_from_weights
   in
   let weighted_rewards_per_block =
     Tez_repr.(
-      div_exn
-        ((weighted_rewards_per_minute *?? block_delay) ~default:max_mutez)
-        60)
+      (weighted_rewards_per_minute *?? block_delay) ~default:max_mutez
+      /! Uint63.Div_safe.sixty)
   in
   let normalized_rewards_per_block =
     Tez_repr.(weighted_rewards_per_block /! sum_weights)
