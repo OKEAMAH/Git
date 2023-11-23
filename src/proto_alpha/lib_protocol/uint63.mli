@@ -64,6 +64,10 @@ module Div_safe : sig
   val max_int : t
 
   val uint8_encoding : t Data_encoding.t
+
+  module With_exceptions : sig
+    val of_int : int -> t
+  end
 end
 
 val to_int : t -> int

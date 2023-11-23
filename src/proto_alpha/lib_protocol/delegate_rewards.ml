@@ -31,8 +31,7 @@ let sum_weights (rewards : Constants_parametric_repr.issuance_weights) =
   let r = rewards.liquidity_baking_subsidy_weight + r in
   let r = rewards.seed_nonce_revelation_tip_weight + r in
   let r = rewards.vdf_revelation_tip_weight + r in
-  assert (Compare.Int.(r > 0)) ;
-  r
+  Uint63.Div_safe.With_exceptions.of_int r
 
 (* [tez_from_weights] returns an amount of rewards in [Tez.t],
    given a couple of parameters:
@@ -60,7 +59,7 @@ let tez_from_weights
         60)
   in
   let normalized_rewards_per_block =
-    Tez_repr.div_exn weighted_rewards_per_block sum_weights
+    Tez_repr.(weighted_rewards_per_block /! sum_weights)
   in
   normalized_rewards_per_block
 

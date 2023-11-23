@@ -58,27 +58,42 @@ end = struct
 end
 
 module Div_safe = struct
-  include Div_safe_base
+  module B = Div_safe_base
+
+  type t = B.t
+
+  let of_int64 = B.of_int64
 
   let of_int i = of_int64 (Int64.of_int i)
 
+  let of_int64_exn = B.With_exceptions.of_int64
+
   let to_int (i : t) = Int64.to_int (i :> Int64.t)
 
-  let two = With_exceptions.of_int64 2L
+  let two = of_int64_exn 2L
 
-  let sixty = With_exceptions.of_int64 60L
+  let sixty = of_int64_exn 60L
 
-  let one_hundred = With_exceptions.of_int64 100L
+  let one_hundred = of_int64_exn 100L
 
-  let one_thousand = With_exceptions.of_int64 1000L
+  let one_thousand = of_int64_exn 1000L
 
-  let one_million = With_exceptions.of_int64 1_000_000L
+  let one_million = of_int64_exn 1_000_000L
 
-  let max_int = With_exceptions.of_int64 Int64.max_int
+  let max_int = of_int64_exn Int64.max_int
 
   let mk_encoding f g enc = mk_encoding ~err:"Positive integer expected" f g enc
 
   let uint8_encoding = mk_encoding to_int of_int Data_encoding.uint8
+
+  module With_exceptions = struct
+    include B.With_exceptions
+
+    let of_int i =
+      match of_int i with
+      | Some res -> res
+      | None -> invalid_arg "Uint63.Div_safe.With_exceptions.of_int"
+  end
 end
 
 let to_int = Int64.to_int
