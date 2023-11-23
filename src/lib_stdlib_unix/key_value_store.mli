@@ -46,49 +46,50 @@ type error += Missing_stored_kvs_data of string * int
     in virtual files, which are mapped sequentially in their virtual directory.  *)
 
 (** An abstract representation of a key-value store. *)
-type ('dir, 'file, 'value) t
+type ('file, 'key, 'value) t
 
-(** A [directory_spec] specifies the layout of virtual files storing data of type ['value],
+(** A [layout] specifies the layout of virtual files storing data of type ['value],
     as well as the name of the underlying physical file. *)
-type ('file, 'value) directory_spec
+type ('key, 'value) layout
 
-(** [directory ?encoded_value_size value_encoding path eq index_of] describes a virtual directory.
+(** [layout ?encoded_value_size value_encoding path eq index_of] describes a layout.
     - [encoded_value_size] is the size in bytes of values encoded with [value_encoding].
       If [value_encoding] does not respect this property, the behaviour of the store
       is undefined. If [encoded_value_size] is not given, [value_encoding] must be of fixed length.
-    - [value_encoding] is an encoding for the content of virtual files.
-    - [path] is the path of the physical file in which the directory is to be stored.
-    - [eq] is an equality function on the contents of virtual files.
-    - [index_of] gives the index of a given file in the directory.
+    - [value_encoding] is an encoding for the content of values
+    - [path] is the path of the physical file
+    - [eq] is an equality function on the values.
+    - [index_of] gives the index of a given key in the file.
 
    @raise Invalid_argument if [encoded_value_size=None] and [value_encoding] does not have a fixed length.
  *)
-val directory :
+val layout :
   ?encoded_value_size:int ->
-  'value Data_encoding.t ->
-  string ->
-  ('value -> 'value -> bool) ->
-  ('file -> int) ->
-  ('file, 'value) directory_spec
+  encoding:'value Data_encoding.t ->
+  filepath:string ->
+  eq:('value -> 'value -> bool) ->
+  index_of:('key -> int) ->
+  unit ->
+  ('key, 'value) layout
 
-(** [init ~lru_size directory_of] initialises a key-value store. This
-   is a design where each directory is stored into a single file.
+(** [init ~lru_size layout] initialises a key-value store. This is a
+    design where all keys/values are stored into a single physical
+    file.
 
-    For each virtual [directory], we use [directory_of] to get its specification,
-   including its physical location and how data is layed out in its backing file.
+    For each file, we rely on a [layout] to explaining where to find
+    the values. The layout also specify the physical location of the
+    file.
 
     [lru_size] is a parameter that represents the number of different
    [values] that can be in memory. It is up to the user of this
    library to decide this number depending on the sizes of the values.
 *)
 val init :
-  lru_size:int ->
-  ('dir -> ('file, 'value) directory_spec) ->
-  ('dir, 'file, 'value) t
+  lru_size:int -> ('file -> ('key, 'value) layout) -> ('file, 'key, 'value) t
 
 (** [close kvs] waits until all pending reads and writes are completed
     and closes the key-value store. *)
-val close : ('dir, 'file, 'value) t -> unit Lwt.t
+val close : ('file, 'key, 'value) t -> unit Lwt.t
 
 (** [write_value ?(override=false) t key value] writes a value in the
    [key] value store. If a previous writing or read failed, the
@@ -97,9 +98,9 @@ val close : ('dir, 'file, 'value) t -> unit Lwt.t
    value for this key.  *)
 val write_value :
   ?override:bool ->
-  ('dir, 'file, 'value) t ->
-  'dir ->
+  ('file, 'key, 'value) t ->
   'file ->
+  'key ->
   'value ->
   unit tzresult Lwt.t
 
@@ -110,32 +111,32 @@ val write_value :
    onto the disk. *)
 val write_values :
   ?override:bool ->
-  ('dir, 'file, 'value) t ->
-  ('dir * 'file * 'value) Seq.t ->
+  ('file, 'key, 'value) t ->
+  ('file * 'key * 'value) Seq.t ->
   unit tzresult Lwt.t
 
 (** [read_value t key] reads the value associated to [key] in the
    store. Fails if no value where attached to this [key]. The value
    read is the last one that was produced by a successful write. *)
 val read_value :
-  ('dir, 'file, 'value) t -> 'dir -> 'file -> 'value tzresult Lwt.t
+  ('file, 'key, 'value) t -> 'file -> 'key -> 'value tzresult Lwt.t
 
 (** [read_values t keys] produces a sequence of [values] associaed to
     the sequence of [keys]. This function is almost instantaneous
     since no reads are performed. Reads are done when the caller
     consumes the values of the sequence returned. *)
 val read_values :
-  ('dir, 'file, 'value) t ->
-  ('dir * 'file) Seq.t ->
-  ('dir * 'file * 'value tzresult) Seq_s.t
+  ('file, 'key, 'value) t ->
+  ('file * 'key) Seq.t ->
+  ('file * 'key * 'value tzresult) Seq_s.t
 
 (** Same as {!read_value} expect that this function returns whether the given
     entry exists without reading it. *)
-val value_exists : ('dir, 'file, 'value) t -> 'dir -> 'file -> bool Lwt.t
+val value_exists : ('file, 'key, 'value) t -> 'file -> 'key -> bool Lwt.t
 
 (** Same as {!read_values} expect that this function returns whether the given
     entries exist without reading them. *)
 val values_exist :
-  ('dir, 'file, 'value) t ->
-  ('dir * 'file) Seq.t ->
-  ('dir * 'file * bool) Seq_s.t
+  ('file, 'key, 'value) t ->
+  ('file * 'key) Seq.t ->
+  ('file * 'key * bool) Seq_s.t
