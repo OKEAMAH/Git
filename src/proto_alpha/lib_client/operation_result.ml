@@ -996,13 +996,14 @@ let pp_contents_and_result :
            Level: %a@,\
            Balance updates:%a@,\
            Delegate: %a@,\
-           Consensus Power: %d@]"
+           Consensus Power: %a@]"
           Raw_level.pp
           level
           pp_balance_updates
           balance_updates
           Consensus_key.pp
           {delegate; consensus_pkh = consensus_key}
+          Uint63.pp
           consensus_power
     | ( Attestation {level; _},
         Attestation_result
@@ -1013,13 +1014,14 @@ let pp_contents_and_result :
            Level: %a@,\
            Balance updates:%a@,\
            Delegate: %a@,\
-           Consensus Power: %d@]"
+           Consensus Power: %a@]"
           Raw_level.pp
           level
           pp_balance_updates
           balance_updates
           Consensus_key.pp
           {delegate; consensus_pkh = consensus_key}
+          Uint63.pp
           consensus_power
     | Dal_attestation _, Dal_attestation_result {delegate} ->
         Format.fprintf

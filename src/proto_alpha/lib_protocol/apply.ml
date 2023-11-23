@@ -2178,7 +2178,6 @@ let record_preattestation ctxt (mode : mode) (content : consensus_content) :
       let*? consensus_key, power =
         find_in_slot_map content.slot (Consensus.allowed_preattestations ctxt)
       in
-      let power = Uint63.to_int power in
       let*? ctxt =
         Consensus.record_preattestation
           ctxt
@@ -2199,7 +2198,10 @@ let record_preattestation ctxt (mode : mode) (content : consensus_content) :
         let level = Level.from_raw ctxt content.level in
         Stake_distribution.slot_owner ctxt level content.slot
       in
-      return (ctxt, mk_preattestation_result consensus_key 0 (* Fake power. *))
+      return
+        ( ctxt,
+          mk_preattestation_result consensus_key Uint63.zero (* Fake power. *)
+        )
 
 let record_attestation ctxt (mode : mode) (content : consensus_content) :
     (context * Kind.attestation contents_result_list) tzresult Lwt.t =
@@ -2220,7 +2222,6 @@ let record_attestation ctxt (mode : mode) (content : consensus_content) :
       let*? consensus_key, power =
         find_in_slot_map content.slot (Consensus.allowed_attestations ctxt)
       in
-      let power = Uint63.to_int power in
       let*? ctxt =
         Consensus.record_attestation ctxt ~initial_slot:content.slot ~power
       in
@@ -2237,7 +2238,8 @@ let record_attestation ctxt (mode : mode) (content : consensus_content) :
         let level = Level.from_raw ctxt content.level in
         Stake_distribution.slot_owner ctxt level content.slot
       in
-      return (ctxt, mk_attestation_result consensus_key 0 (* Fake power. *))
+      return
+        (ctxt, mk_attestation_result consensus_key Uint63.zero (* Fake power. *))
 
 let apply_manager_contents_list ctxt ~payload_producer chain_id
     ~gas_cost_for_sig_check fees_updated_contents_list =

@@ -85,7 +85,7 @@ module Raw_consensus = struct
       this delegate. *)
 
   type t = {
-    current_attestation_power : int;
+    current_attestation_power : Uint63.t;
         (** Number of attestation slots recorded for the current block. *)
     allowed_attestations : (consensus_pk * Uint63.t) Slot_repr.Map.t option;
         (** Attestations rights for the current block. Only an attestation
@@ -108,7 +108,7 @@ module Raw_consensus = struct
     preattestations_seen : Slot_repr.Set.t;
         (** Record the preattestations already seen. Only initial slots
             are indexed. *)
-    locked_round_evidence : (Round_repr.t * int) option;
+    locked_round_evidence : (Round_repr.t * Uint63.t) option;
         (** Record the preattestation power for a locked round. *)
     preattestations_quorum_round : Round_repr.t option;
         (** in block construction mode, record the round of preattestations
@@ -128,7 +128,7 @@ module Raw_consensus = struct
 
   let empty : t =
     {
-      current_attestation_power = 0;
+      current_attestation_power = Uint63.zero;
       allowed_attestations = Some Slot_repr.Map.empty;
       allowed_preattestations = Some Slot_repr.Map.empty;
       forbidden_delegates = Signature.Public_key_hash.Set.empty;
@@ -161,9 +161,12 @@ module Raw_consensus = struct
         (Slot_repr.Set.mem initial_slot t.attestations_seen)
         Double_inclusion_of_consensus_operation
     in
+    let current_attestation_power =
+      Uint63.With_exceptions.add t.current_attestation_power power
+    in
     {
       t with
-      current_attestation_power = t.current_attestation_power + power;
+      current_attestation_power;
       attestations_seen = Slot_repr.Set.add initial_slot t.attestations_seen;
     }
 
@@ -182,7 +185,8 @@ module Raw_consensus = struct
              It doesn't matter in that case since quorum certificates
              are not used in mempool.
              For other cases [Apply.check_round] verifies it. *)
-          Some (round, evidences + power)
+          let evidences = Uint63.With_exceptions.add evidences power in
+          Some (round, evidences)
     in
     {
       t with
@@ -1552,7 +1556,7 @@ module type CONSENSUS = sig
 
   type error += Slot_map_not_found of {loc : string}
 
-  val current_attestation_power : t -> int
+  val current_attestation_power : t -> Uint63.t
 
   val initialize_consensus_operation :
     t ->
@@ -1560,10 +1564,11 @@ module type CONSENSUS = sig
     allowed_preattestations:(consensus_pk * Uint63.t) slot_map option ->
     t
 
-  val record_attestation : t -> initial_slot:slot -> power:int -> t tzresult
+  val record_attestation :
+    t -> initial_slot:slot -> power:Uint63.t -> t tzresult
 
   val record_preattestation :
-    t -> initial_slot:slot -> power:int -> round -> t tzresult
+    t -> initial_slot:slot -> power:Uint63.t -> round -> t tzresult
 
   val forbid_delegate : t -> Signature.Public_key_hash.t -> t
 
@@ -1575,7 +1580,7 @@ module type CONSENSUS = sig
 
   val set_preattestations_quorum_round : t -> round -> t
 
-  val locked_round_evidence : t -> (round * int) option
+  val locked_round_evidence : t -> (round * Uint63.t) option
 
   val set_attestation_branch : t -> Block_hash.t * Block_payload_hash.t -> t
 

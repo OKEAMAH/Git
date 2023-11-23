@@ -29,7 +29,7 @@ open Alpha_context
 type error +=
   | (* `Permanent *)
       Insufficient_attestation_power of {
-      attestation_power : int;
+      attestation_power : Uint63.t;
       consensus_threshold : int;
     }
 
@@ -44,12 +44,15 @@ let () =
     ~pp:(fun ppf (attestation_power, consensus_threshold) ->
       Format.fprintf
         ppf
-        "The attestation power (%d) is insufficient to satisfy the consensus \
+        "The attestation power (%a) is insufficient to satisfy the consensus \
          threshold (%d)."
+        Uint63.pp
         attestation_power
         consensus_threshold)
     Data_encoding.(
-      obj2 (req "attestation_power" int31) (req "consensus_threshold" int31))
+      obj2
+        (req "attestation_power" Uint63.uint30_encoding)
+        (req "consensus_threshold" int31))
     (function
       | Insufficient_attestation_power {attestation_power; consensus_threshold}
         ->
@@ -64,7 +67,9 @@ let bonus_baking_reward ctxt ~attestation_power =
   let baking_reward_bonus_per_slot =
     Delegate.Rewards.baking_reward_bonus_per_slot ctxt
   in
-  match Uint63.of_int (attestation_power - consensus_threshold) with
+  match
+    Uint63.of_int (Uint63.to_int attestation_power - consensus_threshold)
+  with
   | None ->
       tzfail
         (Insufficient_attestation_power {attestation_power; consensus_threshold})

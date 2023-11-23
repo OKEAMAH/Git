@@ -62,14 +62,14 @@ and 'kind contents_result =
       balance_updates : Receipt.balance_updates;
       delegate : Signature.public_key_hash;
       consensus_key : Signature.public_key_hash;
-      consensus_power : int;
+      consensus_power : Uint63.t;
     }
       -> Kind.preattestation contents_result
   | Attestation_result : {
       balance_updates : Receipt.balance_updates;
       delegate : Signature.public_key_hash;
       consensus_key : Signature.public_key_hash;
-      consensus_power : int;
+      consensus_power : Uint63.t;
     }
       -> Kind.attestation contents_result
   | Dal_attestation_result : {

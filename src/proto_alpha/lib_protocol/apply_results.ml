@@ -915,14 +915,14 @@ type 'kind contents_result =
       balance_updates : Receipt.balance_updates;
       delegate : Signature.public_key_hash;
       consensus_key : Signature.public_key_hash;
-      consensus_power : int;
+      consensus_power : Uint63.t;
     }
       -> Kind.preattestation contents_result
   | Attestation_result : {
       balance_updates : Receipt.balance_updates;
       delegate : Signature.public_key_hash;
       consensus_key : Signature.public_key_hash;
-      consensus_power : int;
+      consensus_power : Uint63.t;
     }
       -> Kind.attestation contents_result
   | Dal_attestation_result : {
@@ -1062,7 +1062,7 @@ module Encoding = struct
          Receipt.balance_updates_encoding_with_legacy_attestation_name
          [])
       (req "delegate" Signature.Public_key_hash.encoding)
-      (req (Format.asprintf "%s_power" power_name) int31)
+      (req (Format.asprintf "%s_power" power_name) Uint63.uint30_encoding)
       (req "consensus_key" Signature.Public_key_hash.encoding)
 
   let consensus_result_encoding_legacy power_name =

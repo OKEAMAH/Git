@@ -347,7 +347,7 @@ module type CONSENSUS = sig
 
   (** [attestation power ctx] returns the attestation power of the
      current block. *)
-  val current_attestation_power : t -> int
+  val current_attestation_power : t -> Uint63.t
 
   (** Initializes the map of allowed attestations and preattestations, this
       function must be called only once and before applying any consensus
@@ -364,7 +364,8 @@ module type CONSENSUS = sig
       The attestation should be valid in the sense that
       [Int_map.find_opt initial_slot allowed_attestation ctx = Some
       (pkh, power)].  *)
-  val record_attestation : t -> initial_slot:slot -> power:int -> t tzresult
+  val record_attestation :
+    t -> initial_slot:slot -> power:Uint63.t -> t tzresult
 
   (** [record_preattestation ctx ~initial_slot ~power round
      payload_hash power] records a preattestation for a proposal at
@@ -374,7 +375,7 @@ module type CONSENSUS = sig
      [Int_map.find_opt initial_slot allowed_preattestation ctx = Some
      (pkh, power)].  *)
   val record_preattestation :
-    t -> initial_slot:slot -> power:int -> round -> t tzresult
+    t -> initial_slot:slot -> power:Uint63.t -> round -> t tzresult
 
   (** [forbid_delegate ctx delegate] adds [delegate] to the set of
       forbidden delegates, which prevents this delegate from baking or
@@ -402,7 +403,7 @@ module type CONSENSUS = sig
 
   (** [locked_round_evidence ctx] returns the round of the recorded
      preattestations as well as their power. *)
-  val locked_round_evidence : t -> (round * int) option
+  val locked_round_evidence : t -> (round * Uint63.t) option
 
   val set_attestation_branch : t -> Block_hash.t * Block_payload_hash.t -> t
 

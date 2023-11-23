@@ -29,7 +29,7 @@ open Alpha_context
 type error +=
   | (* `Permanent *)
       Insufficient_attestation_power of {
-      attestation_power : int;
+      attestation_power : Uint63.t;
       consensus_threshold : int;
     }
 
@@ -61,4 +61,5 @@ val attesting_rights_by_first_slot :
   (context * (Consensus_key.pk * Uint63.t) Slot.Map.t) tzresult Lwt.t
 
 (** Computes the bonus baking reward depending on the attestation power. *)
-val bonus_baking_reward : context -> attestation_power:int -> Tez.t tzresult
+val bonus_baking_reward :
+  context -> attestation_power:Uint63.t -> Tez.t tzresult
