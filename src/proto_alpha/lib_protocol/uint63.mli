@@ -88,5 +88,7 @@ val mul_ratio : rounding:rounding -> t -> num:t -> den:Div_safe.t -> t option
 
 (** Exception-raising, use at top-level only. *)
 module With_exceptions : sig
+  val of_int64 : Int64.t -> t
+
   val mul : t -> t -> t
 end

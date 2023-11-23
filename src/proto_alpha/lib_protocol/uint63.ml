@@ -131,6 +131,11 @@ let mul_ratio ~rounding x ~(num : t) ~(den : Div_safe.t) =
   if Z.fits_int64 z then Some (Z.to_int64 z) else None
 
 module With_exceptions = struct
+  let of_int64 i =
+    match of_int64 i with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.of_int64"
+
   let mul a b =
     match mul a b with
     | Some res -> res

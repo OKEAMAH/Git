@@ -33,6 +33,7 @@
 
 open Protocol.Alpha_context
 open Test_tez
+module Uint63 = Protocol.Uint63
 
 let z_mutez_min = Z.zero
 
@@ -75,6 +76,12 @@ let prop_binop64 (f : Tez.t -> int64 -> Tez.t tzresult) (f' : Z.t -> Z.t -> Z.t)
     ((a, b) : Tez.t * int64) : bool =
   compare (f' (tez_to_z a) (Z.of_int64 b)) (f a b)
 
+(* [prop_binopu63 f f' (a, b)] is a [prop_binop] but for binary operations
+   where the second operand is of type [Uint63.t]. *)
+let prop_binopu63 (f : Tez.t -> Uint63.t -> Tez.t tzresult)
+    (f' : Z.t -> Z.t -> Z.t) ((a, b) : Tez.t * Uint63.t) : bool =
+  compare (f' (tez_to_z a) (Uint63.to_z b)) (f a b)
+
 (** Generator for int64 by conversion from int32 *)
 let gen_int64_of32 : int64 QCheck2.Gen.t =
   QCheck2.Gen.(map Int64.of_int32 int32)
@@ -96,6 +103,11 @@ let gen_ui64_sizes : int64 QCheck2.Gen.t =
       v)
     gen_int64_sizes
 
+(** Generator for Uint63, mixing small positive integers,
+    Uint63 for int32 and arbitrary Uint63 with equal frequency. *)
+let gen_uint63_sizes : Uint63.t QCheck2.Gen.t =
+  QCheck2.Gen.map Uint63.With_exceptions.of_int64 gen_ui64_sizes
+
 (** Generator for tez based on [gen_tez_sizes] *)
 let gen_tez_sizes =
   let open QCheck2.Gen in
@@ -106,6 +118,12 @@ let test_coherent_mul =
     ~name:"Tez.(*?) is coherent w.r.t. Z.(*)"
     QCheck2.Gen.(pair gen_tez_sizes gen_ui64_sizes)
     (prop_binop64 ( *? ) Z.( * ))
+
+let test_coherent_mul_bang =
+  QCheck2.Test.make
+    ~name:"Tez.( *!? ) is coherent w.r.t. Z.( * )"
+    QCheck2.Gen.(pair gen_tez_sizes gen_uint63_sizes)
+    (prop_binopu63 ( *!? ) Z.( * ))
 
 let test_coherent_sub =
   QCheck2.Test.make
@@ -129,7 +147,13 @@ let test_coherent_div =
       prop_binop64 ( /! ) Z.( / ) (a, b))
 
 let tests =
-  [test_coherent_mul; test_coherent_sub; test_coherent_add; test_coherent_div]
+  [
+    test_coherent_mul;
+    test_coherent_mul_bang;
+    test_coherent_sub;
+    test_coherent_add;
+    test_coherent_div;
+  ]
 
 let () =
   Alcotest.run
