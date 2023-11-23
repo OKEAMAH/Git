@@ -1266,7 +1266,7 @@ let () =
 module Block = struct
   (* All block errors are permanent. *)
   type error +=
-    | Not_enough_attestations of {required : int; provided : int}
+    | Not_enough_attestations of {required : Uint63.t; provided : Uint63.t}
     | Inconsistent_validation_passes_in_block of {
         expected : int;
         provided : int;
@@ -1280,8 +1280,8 @@ module Block = struct
         round : Round.t;
       }
     | Insufficient_locked_round_evidence of {
-        voting_power : int;
-        consensus_threshold : int;
+        voting_power : Uint63.t;
+        consensus_threshold : Uint63.t;
       }
 
   let () =
@@ -1295,10 +1295,15 @@ module Block = struct
       ~pp:(fun ppf (required, provided) ->
         Format.fprintf
           ppf
-          "Wrong number of attestations (%i), at least %i are expected"
+          "Wrong number of attestations (%a), at least %a are expected"
+          Uint63.pp
           provided
+          Uint63.pp
           required)
-      Data_encoding.(obj2 (req "required" int31) (req "provided" int31))
+      Data_encoding.(
+        obj2
+          (req "required" Uint63.uint30_encoding)
+          (req "provided" Uint63.uint30_encoding))
       (function
         | Not_enough_attestations {required; provided} ->
             Some (required, provided)
@@ -1378,12 +1383,16 @@ module Block = struct
       ~pp:(fun ppf (voting_power, consensus_threshold) ->
         Format.fprintf
           ppf
-          "The provided locked round evidence is not sufficient: provided %d \
-           voting power but was expecting at least %d."
+          "The provided locked round evidence is not sufficient: provided %a \
+           voting power but was expecting at least %a."
+          Uint63.pp
           voting_power
+          Uint63.pp
           consensus_threshold)
       Data_encoding.(
-        obj2 (req "voting_power" int31) (req "consensus_threshold" int31))
+        obj2
+          (req "voting_power" Uint63.uint30_encoding)
+          (req "consensus_threshold" Uint63.uint30_encoding))
       (function
         | Insufficient_locked_round_evidence {voting_power; consensus_threshold}
           ->

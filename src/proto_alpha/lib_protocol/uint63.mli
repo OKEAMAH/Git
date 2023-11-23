@@ -19,6 +19,8 @@ val encoding : t Data_encoding.t
 
 val uint8_encoding : t Data_encoding.t
 
+val uint16_encoding : t Data_encoding.t
+
 val uint30_encoding : t Data_encoding.t
 
 val pp : Format.formatter -> t -> unit
@@ -103,6 +105,12 @@ val mul_ratio : rounding:rounding -> t -> num:t -> den:Div_safe.t -> t option
 (** Exception-raising, use at top-level only. *)
 module With_exceptions : sig
   val of_int64 : Int64.t -> t
+
+  val of_int : int -> t
+
+  val succ : t -> t
+
+  val add : t -> t -> t
 
   val mul : t -> t -> t
 end

@@ -135,8 +135,9 @@ let attesting_rights_by_first_slot ctxt level =
           Slot.Map.update
             initial_slot
             (function
-              | None -> Some (consensus_pk, 1)
-              | Some (consensus_pk, count) -> Some (consensus_pk, count + 1))
+              | None -> Some (consensus_pk, Uint63.one)
+              | Some (consensus_pk, count) ->
+                  Some (consensus_pk, Uint63.With_exceptions.succ count))
             slots_map
         in
         (ctxt, (delegates_map, slots_map)))

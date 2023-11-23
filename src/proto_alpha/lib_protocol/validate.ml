@@ -29,8 +29,8 @@ open Alpha_context
 type consensus_info = {
   predecessor_level : Raw_level.t;
   predecessor_round : Round.t;
-  preattestation_slot_map : (Consensus_key.pk * int) Slot.Map.t option;
-  attestation_slot_map : (Consensus_key.pk * int) Slot.Map.t option;
+  preattestation_slot_map : (Consensus_key.pk * Uint63.t) Slot.Map.t option;
+  attestation_slot_map : (Consensus_key.pk * Uint63.t) Slot.Map.t option;
 }
 
 let init_consensus_info ctxt (predecessor_level, predecessor_round) =
@@ -386,8 +386,8 @@ type block_state = {
   remaining_block_gas : Gas.Arith.fp;
   recorded_operations_rev : Operation_hash.t list;
   last_op_validation_pass : int option;
-  locked_round_evidence : (Round.t * int) option;
-  attestation_power : int;
+  locked_round_evidence : (Round.t * Uint63.t) option;
+  attestation_power : Uint63.t;
 }
 
 type validation_state = {
@@ -435,7 +435,7 @@ let init_block_state vi =
     recorded_operations_rev = [];
     last_op_validation_pass = None;
     locked_round_evidence = None;
-    attestation_power = 0;
+    attestation_power = Uint63.zero;
   }
 
 let get_initial_ctxt {info; _} = info.ctxt
@@ -593,7 +593,7 @@ module Consensus = struct
     let* (_ctxt : t), consensus_key =
       Stake_distribution.slot_owner vi.ctxt (Level.from_raw vi.ctxt level) slot
     in
-    return (consensus_key, 0 (* Fake voting power *))
+    return (consensus_key, Uint63.zero (* Fake voting power *))
   (* We do not check that the frozen deposits are positive because this
      only needs to be true in the context of a block that actually
      contains the operation, which may not be the same as the current
@@ -689,7 +689,10 @@ module Consensus = struct
                  application and partial validation modes, and by
                  {!check_construction_preattestation_round_consistency} in
                  construction mode. *)
-              Some (consensus_content.round, evidences + voting_power))
+              let evidences =
+                Uint63.With_exceptions.add evidences voting_power
+              in
+              Some (consensus_content.round, evidences))
     in
     {block_state with locked_round_evidence}
 
@@ -804,10 +807,10 @@ module Consensus = struct
     match vi.mode with
     | Mempool -> (* The block_state is not relevant. *) block_state
     | Application _ | Partial_validation _ | Construction _ ->
-        {
-          block_state with
-          attestation_power = block_state.attestation_power + voting_power;
-        }
+        let attestation_power =
+          Uint63.With_exceptions.add block_state.attestation_power voting_power
+        in
+        {block_state with attestation_power}
 
   (* Hypothesis: this function will only be called in mempool mode *)
   let remove_attestation vs (operation : Kind.attestation operation) =
@@ -2515,12 +2518,12 @@ let check_operation ?(check_signature = true) info (type kind)
   let open Lwt_result_syntax in
   match operation.protocol_data.contents with
   | Single (Preattestation _) ->
-      let* (_voting_power : int) =
+      let* (_voting_power : Uint63.t) =
         Consensus.check_preattestation info ~check_signature operation
       in
       return_unit
   | Single (Attestation _) ->
-      let* (_voting_power : int) =
+      let* (_voting_power : Uint63.t) =
         Consensus.check_attestation info ~check_signature operation
       in
       return_unit
@@ -2928,10 +2931,12 @@ let check_attestation_power vi bs =
     return Compare.Int32.(level_position_in_protocol > 1l)
   in
   if are_attestations_required then
-    let required = Constants.consensus_threshold vi.ctxt in
+    let required =
+      Uint63.With_exceptions.of_int @@ Constants.consensus_threshold vi.ctxt
+    in
     let provided = bs.attestation_power in
     fail_unless
-      Compare.Int.(provided >= required)
+      Uint63.(provided >= required)
       (Not_enough_attestations {required; provided})
   else return_unit
 
@@ -2975,9 +2980,11 @@ let check_preattestation_round_and_power vi vs round =
           (Locked_round_after_block_round
              {locked_round = preattestation_round; round})
       in
-      let consensus_threshold = Constants.consensus_threshold vi.ctxt in
+      let consensus_threshold =
+        Uint63.With_exceptions.of_int @@ Constants.consensus_threshold vi.ctxt
+      in
       error_when
-        Compare.Int.(preattestation_count < consensus_threshold)
+        Uint63.(preattestation_count < consensus_threshold)
         (Insufficient_locked_round_evidence
            {voting_power = preattestation_count; consensus_threshold})
 

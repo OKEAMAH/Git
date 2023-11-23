@@ -87,12 +87,12 @@ module Raw_consensus = struct
   type t = {
     current_attestation_power : int;
         (** Number of attestation slots recorded for the current block. *)
-    allowed_attestations : (consensus_pk * int) Slot_repr.Map.t option;
+    allowed_attestations : (consensus_pk * Uint63.t) Slot_repr.Map.t option;
         (** Attestations rights for the current block. Only an attestation
             for the lowest slot in the block can be recorded. The map
             associates to each initial slot the [pkh] associated to this
             slot with its power. This is [None] only in mempool mode. *)
-    allowed_preattestations : (consensus_pk * int) Slot_repr.Map.t option;
+    allowed_preattestations : (consensus_pk * Uint63.t) Slot_repr.Map.t option;
         (** Preattestations rights for the current block. Only a preattestation
             for the lowest slot in the block can be recorded. The map
             associates to each initial slot the [pkh] associated to this
@@ -1544,9 +1544,9 @@ module type CONSENSUS = sig
 
   type consensus_pk
 
-  val allowed_attestations : t -> (consensus_pk * int) slot_map option
+  val allowed_attestations : t -> (consensus_pk * Uint63.t) slot_map option
 
-  val allowed_preattestations : t -> (consensus_pk * int) slot_map option
+  val allowed_preattestations : t -> (consensus_pk * Uint63.t) slot_map option
 
   val forbidden_delegates : t -> Signature.Public_key_hash.Set.t
 
@@ -1556,8 +1556,8 @@ module type CONSENSUS = sig
 
   val initialize_consensus_operation :
     t ->
-    allowed_attestations:(consensus_pk * int) slot_map option ->
-    allowed_preattestations:(consensus_pk * int) slot_map option ->
+    allowed_attestations:(consensus_pk * Uint63.t) slot_map option ->
+    allowed_preattestations:(consensus_pk * Uint63.t) slot_map option ->
     t
 
   val record_attestation : t -> initial_slot:slot -> power:int -> t tzresult

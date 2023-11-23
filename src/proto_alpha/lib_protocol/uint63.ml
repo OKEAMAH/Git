@@ -118,6 +118,8 @@ let encoding = mk_encoding (fun i -> i) of_int64 Data_encoding.int64
 
 let uint8_encoding = mk_encoding Int64.to_int of_int Data_encoding.uint8
 
+let uint16_encoding = mk_encoding Int64.to_int of_int Data_encoding.uint16
+
 let uint30_encoding = mk_encoding Int64.to_int of_int Data_encoding.int31
 
 let pp fp i = Format.fprintf fp "%Ld" i
@@ -125,6 +127,8 @@ let pp fp i = Format.fprintf fp "%Ld" i
 let add (a : t) (b : t) =
   let s = Int64.add a b in
   if s < a then None else Some s
+
+let succ (a : t) = if a < max_int then Some (Int64.succ a) else None
 
 let sub (a : t) (b : t) = if a >= b then Some (Int64.sub a b) else None
 
@@ -164,6 +168,21 @@ module With_exceptions = struct
     match of_int64 i with
     | Some res -> res
     | None -> invalid_arg "Uint63.With_exceptions.of_int64"
+
+  let of_int i =
+    match of_int i with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.of_int"
+
+  let succ a =
+    match succ a with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.succ"
+
+  let add a b =
+    match add a b with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.add"
 
   let mul a b =
     match mul a b with

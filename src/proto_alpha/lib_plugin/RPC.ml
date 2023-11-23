@@ -3797,7 +3797,7 @@ module Attestation_rights = struct
     delegate : Signature.Public_key_hash.t;
     consensus_key : Signature.Public_key_hash.t;
     first_slot : Slot.t;
-    attestation_power : int;
+    attestation_power : Uint63.t;
   }
 
   type t = {
@@ -3819,7 +3819,7 @@ module Attestation_rights = struct
          (req
             (if use_legacy_attestation_name then "endorsing_power"
             else "attestation_power")
-            uint16)
+            Uint63.uint16_encoding)
          (req "consensus_key" Signature.Public_key_hash.encoding))
 
   let encoding ~use_legacy_attestation_name =

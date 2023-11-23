@@ -2178,6 +2178,7 @@ let record_preattestation ctxt (mode : mode) (content : consensus_content) :
       let*? consensus_key, power =
         find_in_slot_map content.slot (Consensus.allowed_preattestations ctxt)
       in
+      let power = Uint63.to_int power in
       let*? ctxt =
         Consensus.record_preattestation
           ctxt
@@ -2219,6 +2220,7 @@ let record_attestation ctxt (mode : mode) (content : consensus_content) :
       let*? consensus_key, power =
         find_in_slot_map content.slot (Consensus.allowed_attestations ctxt)
       in
+      let power = Uint63.to_int power in
       let*? ctxt =
         Consensus.record_attestation ctxt ~initial_slot:content.slot ~power
       in
@@ -2716,6 +2718,7 @@ let record_attesting_participation ctxt =
               Delegate.Participated
             else Delegate.Didn't_participate
           in
+          let power = Uint63.to_int power in
           Delegate.record_attesting_participation
             ctxt
             ~delegate:consensus_pk.delegate

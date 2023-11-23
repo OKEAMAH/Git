@@ -199,7 +199,7 @@ type error += Failing_noop_error
 
 module Block : sig
   type error +=
-    | Not_enough_attestations of {required : int; provided : int}
+    | Not_enough_attestations of {required : Uint63.t; provided : Uint63.t}
     | Inconsistent_validation_passes_in_block of {
         expected : int;
         provided : int;
@@ -213,7 +213,7 @@ module Block : sig
         round : Round.t;
       }
     | Insufficient_locked_round_evidence of {
-        voting_power : int;
-        consensus_threshold : int;
+        voting_power : Uint63.t;
+        consensus_threshold : Uint63.t;
       }
 end

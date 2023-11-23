@@ -330,12 +330,12 @@ module type CONSENSUS = sig
   (** Returns a map where each attester's pkh is associated to the
      list of its attesting slots (in decreasing order) for a given
      level. *)
-  val allowed_attestations : t -> (consensus_pk * int) slot_map option
+  val allowed_attestations : t -> (consensus_pk * Uint63.t) slot_map option
 
   (** Returns a map where each attester's pkh is associated to the
      list of its attesting slots (in decreasing order) for a given
      level. *)
-  val allowed_preattestations : t -> (consensus_pk * int) slot_map option
+  val allowed_preattestations : t -> (consensus_pk * Uint63.t) slot_map option
 
   (** Returns the set of delegates that are not allowed to bake or
       attest blocks; i.e., delegates which have zero frozen deposit
@@ -354,8 +354,8 @@ module type CONSENSUS = sig
       operation. *)
   val initialize_consensus_operation :
     t ->
-    allowed_attestations:(consensus_pk * int) slot_map option ->
-    allowed_preattestations:(consensus_pk * int) slot_map option ->
+    allowed_attestations:(consensus_pk * Uint63.t) slot_map option ->
+    allowed_preattestations:(consensus_pk * Uint63.t) slot_map option ->
     t
 
   (** [record_attestation ctx ~initial_slot ~power] records an
