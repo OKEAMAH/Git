@@ -97,7 +97,7 @@ module SlotMap : Map.S with type key = Slot.t
 type delegate_slot = {
   consensus_key_and_delegate : consensus_key_and_delegate;
   first_slot : Slot.t;
-  attesting_power : int;
+  attesting_power : Uint63.t;
 }
 
 module Delegate_slots : sig
@@ -115,7 +115,7 @@ module Delegate_slots : sig
 
   (** Returns the voting power of the delegate whose first slot is the given
       slot. Returns [None] if the slot is not the first slot of any delegate. *)
-  val voting_power : t -> slot:Slot.t -> int option
+  val voting_power : t -> slot:Slot.t -> Uint63.t option
 end
 
 type delegate_slots = Delegate_slots.t

@@ -106,6 +106,8 @@ let abs_of_int64 i = if i >= 0L then `Pos i else `Neg (Int64.neg i)
 
 let of_int i = of_int64 (Int64.of_int i)
 
+let of_list_length l = Int64.of_int (List.length l)
+
 let of_string_opt s =
   let open Option_syntax in
   let* i = Int64.of_string_opt s in

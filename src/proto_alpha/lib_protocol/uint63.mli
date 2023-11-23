@@ -80,6 +80,8 @@ val of_int : int -> t option
 
 val of_int64 : int64 -> t option
 
+val of_list_length : 'a list -> t
+
 val abs_of_int64 : Int64.t -> [`Pos of t | `Neg of t]
 
 val of_string_opt : string -> t option

@@ -233,7 +233,7 @@ module SlotMap : Map.S with type key = Slot.t = Map.Make (Slot)
 type delegate_slot = {
   consensus_key_and_delegate : consensus_key_and_delegate;
   first_slot : Slot.t;
-  attesting_power : int;
+  attesting_power : Uint63.t;
 }
 
 module Delegate_slots = struct
@@ -244,7 +244,7 @@ module Delegate_slots = struct
         (* This map cannot have as keys just the first slot of delegates,
            because it is used in [round_proposer] for which we need all slots,
            as the round can be arbitrary. *)
-    all_delegate_voting_power : int SlotMap.t;
+    all_delegate_voting_power : Uint63.t SlotMap.t;
         (* This is a map having as keys the first slot of all delegates, and as
            values their attesting power.
            This map contains just the first slot for a delegate, because it is
@@ -693,7 +693,7 @@ let delegate_slots attesting_rights delegates =
       (fun (own_list, own_map, all_map) slot ->
         let {Plugin.RPC.Validators.consensus_key; delegate; slots; _} = slot in
         let first_slot = Stdlib.List.hd slots in
-        let attesting_power = List.length slots in
+        let attesting_power = Uint63.of_list_length slots in
         let all_map = SlotMap.add first_slot attesting_power all_map in
         let own_list, own_map =
           match DelegateSet.find_pkh consensus_key own_delegates with
@@ -854,11 +854,12 @@ let pp_delegate_slot fmt
     {consensus_key_and_delegate; first_slot; attesting_power} =
   Format.fprintf
     fmt
-    "slots: @[<h>first_slot: %a@],@ delegate: %a,@ attesting_power: %d"
+    "slots: @[<h>first_slot: %a@],@ delegate: %a,@ attesting_power: %a"
     Slot.pp
     first_slot
     pp_consensus_key_and_delegate
     consensus_key_and_delegate
+    Uint63.pp
     attesting_power
 
 let pp_delegate_slots fmt Delegate_slots.{own_delegate_slots; _} =

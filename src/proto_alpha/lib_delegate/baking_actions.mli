@@ -118,7 +118,7 @@ val get_dal_attestations :
   Lwt.t
 
 val prepare_waiting_for_quorum :
-  state -> int * (slot:Slot.t -> int option) * Operation_worker.candidate
+  state -> int * (slot:Slot.t -> Uint63.t option) * Operation_worker.candidate
 
 val start_waiting_for_preattestation_quorum : state -> unit Lwt.t
 

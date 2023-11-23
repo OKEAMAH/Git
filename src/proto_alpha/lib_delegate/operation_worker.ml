@@ -59,8 +59,8 @@ module Events = struct
       ~msg:
         "prequorum reached (voting power: {voting_power}, {preattestations} \
          preattestations)"
-      ~pp1:pp_int
-      ("voting_power", Data_encoding.int31)
+      ~pp1:Uint63.pp
+      ("voting_power", Uint63.uint30_encoding)
       ~pp2:pp_int
       ("preattestations", Data_encoding.int31)
 
@@ -74,10 +74,10 @@ module Events = struct
          power: {voting_power}, {preattestations} preattestations)"
       ~pp1:pp_int
       ("count", Data_encoding.int31)
-      ~pp2:pp_int
-      ("delta_power", Data_encoding.int31)
-      ~pp3:pp_int
-      ("voting_power", Data_encoding.int31)
+      ~pp2:Uint63.pp
+      ("delta_power", Uint63.uint30_encoding)
+      ~pp3:Uint63.pp
+      ("voting_power", Uint63.uint30_encoding)
       ~pp4:pp_int
       ("preattestations", Data_encoding.int31)
 
@@ -89,8 +89,8 @@ module Events = struct
       ~msg:
         "quorum reached (voting power: {voting_power}, {attestations} \
          attestations)"
-      ~pp1:pp_int
-      ("voting_power", Data_encoding.int31)
+      ~pp1:Uint63.pp
+      ("voting_power", Uint63.uint30_encoding)
       ~pp2:pp_int
       ("attestations", Data_encoding.int31)
 
@@ -104,10 +104,10 @@ module Events = struct
          power: {voting_power}, {attestations} attestations)"
       ~pp1:pp_int
       ("count", Data_encoding.int31)
-      ~pp2:pp_int
-      ("delta_power", Data_encoding.int31)
-      ~pp3:pp_int
-      ("voting_power", Data_encoding.int31)
+      ~pp2:Uint63.pp
+      ("delta_power", Uint63.uint30_encoding)
+      ~pp3:Uint63.pp
+      ("voting_power", Uint63.uint30_encoding)
       ~pp4:pp_int
       ("attestations", Data_encoding.int31)
 
@@ -190,18 +190,18 @@ end)
 
 type pqc_watched = {
   candidate_watched : candidate;
-  get_slot_voting_power : slot:Slot.t -> int option;
+  get_slot_voting_power : slot:Slot.t -> Uint63.t option;
   consensus_threshold : int;
-  mutable current_voting_power : int;
+  mutable current_voting_power : Uint63.t;
   mutable preattestations_received : Preattestation_set.t;
   mutable preattestations_count : int;
 }
 
 type qc_watched = {
   candidate_watched : candidate;
-  get_slot_voting_power : slot:Slot.t -> int option;
+  get_slot_voting_power : slot:Slot.t -> Uint63.t option;
   consensus_threshold : int;
-  mutable current_voting_power : int;
+  mutable current_voting_power : Uint63.t;
   mutable attestations_received : Attestation_set.t;
   mutable attestations_count : int;
 }
@@ -284,12 +284,12 @@ let reset_monitoring state =
   match state.proposal_watched with
   | None -> Lwt.return_unit
   | Some (Pqc_watch pqc_watched) ->
-      pqc_watched.current_voting_power <- 0 ;
+      pqc_watched.current_voting_power <- Uint63.zero ;
       pqc_watched.preattestations_count <- 0 ;
       pqc_watched.preattestations_received <- Preattestation_set.empty ;
       Lwt.return_unit
   | Some (Qc_watch qc_watched) ->
-      qc_watched.current_voting_power <- 0 ;
+      qc_watched.current_voting_power <- Uint63.zero ;
       qc_watched.attestations_count <- 0 ;
       qc_watched.attestations_received <- Attestation_set.empty ;
       Lwt.return_unit
@@ -339,20 +339,27 @@ let update_monitoring ?(should_lock = true) state ops =
                     Preattestation_set.add
                       op
                       proposal_watched.preattestations_received ;
-                  (succ count, power + op_power)
+                  let power = Uint63.With_exceptions.add power op_power in
+                  (succ count, power)
               | None ->
                   (* preattestations that do not use the first slot of a
                      delegate are not added to the quorum *)
                   (count, power)
             else (count, power))
-          (0, 0)
+          (0, Uint63.zero)
           preattestations
       in
       proposal_watched.current_voting_power <-
-        proposal_watched.current_voting_power + voting_power ;
+        Uint63.With_exceptions.add
+          proposal_watched.current_voting_power
+          voting_power ;
       proposal_watched.preattestations_count <-
         proposal_watched.preattestations_count + preattestations_count ;
-      if proposal_watched.current_voting_power >= consensus_threshold then (
+      if
+        Uint63.(
+          proposal_watched.current_voting_power
+          >= With_exceptions.of_int consensus_threshold)
+      then (
         let* () =
           Events.(
             emit
@@ -412,20 +419,27 @@ let update_monitoring ?(should_lock = true) state ops =
                     Attestation_set.add
                       op
                       proposal_watched.attestations_received ;
-                  (succ count, power + op_power)
+                  let power = Uint63.With_exceptions.add power op_power in
+                  (succ count, power)
               | None ->
                   (* attestations that do not use the first slot of a delegate
                      are not added to the quorum *)
                   (count, power)
             else (count, power))
-          (0, 0)
+          (0, Uint63.zero)
           attestations
       in
       proposal_watched.current_voting_power <-
-        proposal_watched.current_voting_power + voting_power ;
+        Uint63.With_exceptions.add
+          proposal_watched.current_voting_power
+          voting_power ;
       proposal_watched.attestations_count <-
         proposal_watched.attestations_count + attestations_count ;
-      if proposal_watched.current_voting_power >= consensus_threshold then (
+      if
+        Uint63.(
+          proposal_watched.current_voting_power
+          >= With_exceptions.of_int consensus_threshold)
+      then (
         let* () =
           Events.(
             emit
@@ -471,7 +485,7 @@ let monitor_preattestation_quorum state ~consensus_threshold
            candidate_watched;
            get_slot_voting_power;
            consensus_threshold;
-           current_voting_power = 0;
+           current_voting_power = Uint63.zero;
            preattestations_received = Preattestation_set.empty;
            preattestations_count = 0;
          })
@@ -487,7 +501,7 @@ let monitor_attestation_quorum state ~consensus_threshold ~get_slot_voting_power
            candidate_watched;
            get_slot_voting_power;
            consensus_threshold;
-           current_voting_power = 0;
+           current_voting_power = Uint63.zero;
            attestations_received = Attestation_set.empty;
            attestations_count = 0;
          })

@@ -159,15 +159,16 @@ let extract_pqc state (new_proposal : proposal) =
         | None ->
             (* cannot happen if the map is correctly populated *)
             acc
-        | Some attesting_power -> acc + attesting_power
+        | Some attesting_power -> Uint63.With_exceptions.add acc attesting_power
       in
       let voting_power =
-        List.fold_left add_voting_power 0 pqc.preattestations
+        List.fold_left add_voting_power Uint63.zero pqc.preattestations
       in
       let consensus_threshold =
-        state.global_state.constants.parametric.consensus_threshold
+        Uint63.With_exceptions.of_int
+        @@ state.global_state.constants.parametric.consensus_threshold
       in
-      if Compare.Int.(voting_power >= consensus_threshold) then
+      if Uint63.(voting_power >= consensus_threshold) then
         Some (pqc.preattestations, pqc.round)
       else None
 
