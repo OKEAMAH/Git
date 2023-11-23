@@ -162,6 +162,9 @@ let ( /? ) tez d =
 
 let div2 (Tez_tag t) = Tez_tag Uint63.(div t Div_safe.two)
 
+let ( *?? ) t m ~default =
+  match t *? Int64.of_int m with Ok v -> v | Error _ -> default
+
 let mul_exn t m =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> invalid_arg "mul_exn"
 

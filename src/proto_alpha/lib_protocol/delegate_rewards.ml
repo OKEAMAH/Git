@@ -49,10 +49,15 @@ let tez_from_weights
     minimal_block_delay |> Period_repr.to_seconds |> Int64.to_int
   in
   let weighted_rewards_per_minute =
-    Tez_repr.mul_exn issuance_weights.base_total_issued_per_minute weight
+    Tez_repr.(
+      (issuance_weights.base_total_issued_per_minute *?? weight)
+        ~default:max_mutez)
   in
   let weighted_rewards_per_block =
-    Tez_repr.(div_exn (mul_exn weighted_rewards_per_minute block_delay) 60)
+    Tez_repr.(
+      div_exn
+        ((weighted_rewards_per_minute *?? block_delay) ~default:max_mutez)
+        60)
   in
   let normalized_rewards_per_block =
     Tez_repr.div_exn weighted_rewards_per_block sum_weights

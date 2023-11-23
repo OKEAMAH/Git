@@ -213,7 +213,9 @@ let participation_info ctxt delegate =
         expected_cycle_activity - minimal_cycle_activity
       in
       let expected_attesting_rewards =
-        Tez_repr.mul_exn attesting_reward_per_slot expected_cycle_activity
+        Tez_repr.(
+          (attesting_reward_per_slot *?? expected_cycle_activity)
+            ~default:max_mutez)
       in
       let contract = Contract_repr.Implicit delegate in
       let* missed_attestations =

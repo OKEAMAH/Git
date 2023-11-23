@@ -136,6 +136,8 @@ module Tez : sig
 
   val ( *? ) : t -> int64 -> t tzresult
 
+  val ( *?? ) : t -> int -> default:t -> t
+
   val ( /? ) : t -> int64 -> t tzresult
 
   val of_string : string -> t option

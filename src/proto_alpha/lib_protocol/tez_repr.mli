@@ -68,6 +68,8 @@ val ( *!? ) : t -> Uint63.t -> t tzresult
 
 val ( *? ) : t -> int64 -> t tzresult
 
+val ( *?? ) : t -> int -> default:t -> t
+
 val ( /? ) : t -> int64 -> t tzresult
 
 val div2 : t -> t

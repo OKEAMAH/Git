@@ -88,7 +88,10 @@ let distribute_attesting_rewards ctxt last_cycle unrevealed_nonces =
           ~total_active_stake_weight
           ~active_stake_weight
       in
-      let rewards = Tez_repr.mul_exn attesting_reward_per_slot expected_slots in
+      let rewards =
+        Tez_repr.(
+          (attesting_reward_per_slot *?? expected_slots) ~default:max_mutez)
+      in
       if sufficient_participation && has_revealed_nonces then
         (* Sufficient participation: we pay the rewards *)
         let+ ctxt, payed_rewards_receipts =
