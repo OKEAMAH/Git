@@ -1,0 +1,14 @@
+# Phony merged_result pipeline to make sure the CI is green in order to add
+# the MR to the merge train
+phony-ready-for-merge:
+  extends: .image_template__alpine
+  variables:
+    # No need to fetch a working copy for this job.
+    GIT_STRATEGY: "none"
+  allow_failure: false
+  stage: trigger
+  timeout: "10m"
+  script:
+    - 'echo "The MR is ready and not await to be merged."'
+    - 'echo "Remove the label MR_IS_READY to get back to a manual trigger"'
+    - 'echo "Trigger pipeline 🤠. Always succeed."'
