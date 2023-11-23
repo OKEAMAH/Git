@@ -152,15 +152,15 @@ let ( *? ) tez m =
   | None -> tzfail (Negative_multiplicator (tez, m))
   | Some m -> tez *!? m
 
+let ( /! ) (Tez_tag t) d = Tez_tag (Uint63.div t d)
+
 let ( /? ) tez d =
   let open Result_syntax in
   match Uint63.Div_safe.of_int64 d with
   | None -> tzfail (Invalid_divisor (tez, d))
-  | Some d ->
-      let (Tez_tag t) = tez in
-      return (Tez_tag (Uint63.div t d))
+  | Some d -> return (tez /! d)
 
-let div2 (Tez_tag t) = Tez_tag Uint63.(div t Div_safe.two)
+let div2 tez = tez /! Uint63.Div_safe.two
 
 let ( *?? ) t m ~default =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> default
@@ -169,7 +169,9 @@ let mul_exn t m =
   match t *? Int64.of_int m with Ok v -> v | Error _ -> invalid_arg "mul_exn"
 
 let div_exn t d =
-  match t /? Int64.of_int d with Ok v -> v | Error _ -> invalid_arg "div_exn"
+  match Uint63.Div_safe.of_int d with
+  | Some d -> t /! d
+  | None -> invalid_arg "div_exn"
 
 let mul_ratio ~rounding tez ~num ~den =
   let open Result_syntax in

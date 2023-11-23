@@ -72,6 +72,8 @@ val ( *?? ) : t -> int -> default:t -> t
 
 val ( /? ) : t -> int64 -> t tzresult
 
+val ( /! ) : t -> Uint63.Div_safe.t -> t
+
 val div2 : t -> t
 
 (** [mul_ratio ~rounding tez ~num ~den] returns [tez * num / den] without failing
