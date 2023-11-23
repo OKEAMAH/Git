@@ -1236,7 +1236,7 @@ type config = {
   delegate_selection : (int32 * (int32 * Signature.public_key_hash) list) list;
   initial_seed : State_hash.t option;
   consensus_committee_size : int;
-  consensus_threshold : int;
+  consensus_threshold : Uint63.t;
 }
 
 let default_config =

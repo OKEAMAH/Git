@@ -104,7 +104,8 @@ module M = struct
       match reward_kind with
       | Baking_reward_bonus_per_slot ->
           let bonus_committee_size =
-            csts.consensus_committee_size - csts.consensus_threshold
+            csts.consensus_committee_size
+            - Uint63.to_int csts.consensus_threshold
           in
           if Compare.Int.(bonus_committee_size <= 0) then Tez_repr.zero
           else Tez_repr.div_exn rewards bonus_committee_size

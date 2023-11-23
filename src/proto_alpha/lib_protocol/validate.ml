@@ -2931,9 +2931,7 @@ let check_attestation_power vi bs =
     return Compare.Int32.(level_position_in_protocol > 1l)
   in
   if are_attestations_required then
-    let required =
-      Uint63.With_exceptions.of_int @@ Constants.consensus_threshold vi.ctxt
-    in
+    let required = Constants.consensus_threshold vi.ctxt in
     let provided = bs.attestation_power in
     fail_unless
       Uint63.(provided >= required)
@@ -2980,9 +2978,7 @@ let check_preattestation_round_and_power vi vs round =
           (Locked_round_after_block_round
              {locked_round = preattestation_round; round})
       in
-      let consensus_threshold =
-        Uint63.With_exceptions.of_int @@ Constants.consensus_threshold vi.ctxt
-      in
+      let consensus_threshold = Constants.consensus_threshold vi.ctxt in
       error_when
         Uint63.(preattestation_count < consensus_threshold)
         (Insufficient_locked_round_evidence

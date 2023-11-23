@@ -281,9 +281,7 @@ let attestation_quorum state =
   let power, attestations = state_attesting_power state in
   if
     Uint63.(
-      power
-      >= With_exceptions.of_int
-           state.global_state.constants.parametric.consensus_threshold)
+      power >= state.global_state.constants.parametric.consensus_threshold)
   then Some (power, attestations)
   else None
 
@@ -524,8 +522,7 @@ let rec baking_minimal_timestamp ~count state
     |> attestations_attesting_power state
   in
   let consensus_threshold =
-    Uint63.With_exceptions.of_int
-      state.global_state.constants.parametric.consensus_threshold
+    state.global_state.constants.parametric.consensus_threshold
   in
   let* () =
     if Uint63.(total_voting_power < consensus_threshold) then

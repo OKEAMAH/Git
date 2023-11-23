@@ -623,6 +623,7 @@ let test_attestation_threshold ~sufficient_threshold () =
   let* {parametric = {consensus_threshold; _}; _} =
     Context.get_constants (B b)
   in
+  let consensus_threshold = Uint63.to_int consensus_threshold in
   let* attesters_list = Context.get_attesters (B b) in
   let*?@ round = Block.get_round b in
   let* _, attestations =

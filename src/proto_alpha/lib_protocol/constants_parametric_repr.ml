@@ -191,7 +191,7 @@ type t = {
   delay_increment_per_round : Period_repr.t;
   minimal_participation_ratio : Ratio_repr.t;
   consensus_committee_size : int;
-  consensus_threshold : int;
+  consensus_threshold : Uint63.t;
   limit_of_delegation_over_baking : Uint63.t;
   percentage_of_frozen_deposits_slashed_per_double_baking : Int_percentage.t;
   percentage_of_frozen_deposits_slashed_per_double_attestation :
@@ -626,7 +626,7 @@ let encoding =
                 (req "minimal_block_delay" Period_repr.encoding)
                 (req "delay_increment_per_round" Period_repr.encoding)
                 (req "consensus_committee_size" int31)
-                (req "consensus_threshold" int31))
+                (req "consensus_threshold" Uint63.uint30_encoding))
              (merge_objs
                 (obj6
                    (req "minimal_participation_ratio" Ratio_repr.encoding)

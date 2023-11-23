@@ -324,7 +324,7 @@ let constants_sandbox =
     minimal_block_delay = Period.of_seconds_exn (Int64.of_int block_time);
     delay_increment_per_round = Period.one_second;
     consensus_committee_size = 256;
-    consensus_threshold = 0;
+    consensus_threshold = Protocol.Uint63.zero;
     limit_of_delegation_over_baking = Protocol.Uint63.nineteen;
   }
 

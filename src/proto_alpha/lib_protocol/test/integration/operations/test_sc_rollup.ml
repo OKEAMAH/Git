@@ -169,7 +169,7 @@ let context_init ?commitment_period_in_blocks
     tup
     {
       Context.default_test_constants with
-      consensus_threshold = 0;
+      consensus_threshold = Uint63.zero;
       hard_gas_limit_per_operation =
         Option.value
           hard_gas_limit_per_operation

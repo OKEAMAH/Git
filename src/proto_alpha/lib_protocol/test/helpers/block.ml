@@ -585,7 +585,8 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
       cycles_per_voting_period
   in
   let consensus_threshold =
-    Option.value ~default:constants.consensus_threshold consensus_threshold
+    Option.bind consensus_threshold Uint63.of_int
+    |> Option.value ~default:constants.consensus_threshold
   in
   let sc_rollup_arith_pvm_enable =
     Option.value

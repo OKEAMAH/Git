@@ -165,8 +165,7 @@ let extract_pqc state (new_proposal : proposal) =
         List.fold_left add_voting_power Uint63.zero pqc.preattestations
       in
       let consensus_threshold =
-        Uint63.With_exceptions.of_int
-        @@ state.global_state.constants.parametric.consensus_threshold
+        state.global_state.constants.parametric.consensus_threshold
       in
       if Uint63.(voting_power >= consensus_threshold) then
         Some (pqc.preattestations, pqc.round)

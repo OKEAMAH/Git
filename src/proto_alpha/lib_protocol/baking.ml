@@ -30,7 +30,7 @@ type error +=
   | (* `Permanent *)
       Insufficient_attestation_power of {
       attestation_power : Uint63.t;
-      consensus_threshold : int;
+      consensus_threshold : Uint63.t;
     }
 
 let () =
@@ -45,14 +45,15 @@ let () =
       Format.fprintf
         ppf
         "The attestation power (%a) is insufficient to satisfy the consensus \
-         threshold (%d)."
+         threshold (%a)."
         Uint63.pp
         attestation_power
+        Uint63.pp
         consensus_threshold)
     Data_encoding.(
       obj2
         (req "attestation_power" Uint63.uint30_encoding)
-        (req "consensus_threshold" int31))
+        (req "consensus_threshold" Uint63.uint30_encoding))
     (function
       | Insufficient_attestation_power {attestation_power; consensus_threshold}
         ->
@@ -67,9 +68,7 @@ let bonus_baking_reward ctxt ~attestation_power =
   let baking_reward_bonus_per_slot =
     Delegate.Rewards.baking_reward_bonus_per_slot ctxt
   in
-  match
-    Uint63.of_int (Uint63.to_int attestation_power - consensus_threshold)
-  with
+  match Uint63.sub attestation_power consensus_threshold with
   | None ->
       tzfail
         (Insufficient_attestation_power {attestation_power; consensus_threshold})

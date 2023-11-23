@@ -379,7 +379,7 @@ let test_committee_sampling () =
       {
         Default_parameters.constants_test with
         consensus_committee_size;
-        consensus_threshold = 0;
+        consensus_threshold = Uint63.zero;
       }
     in
     let parameters =

@@ -191,7 +191,7 @@ end)
 type pqc_watched = {
   candidate_watched : candidate;
   get_slot_voting_power : slot:Slot.t -> Uint63.t option;
-  consensus_threshold : int;
+  consensus_threshold : Uint63.t;
   mutable current_voting_power : Uint63.t;
   mutable preattestations_received : Preattestation_set.t;
   mutable preattestations_count : int;
@@ -200,7 +200,7 @@ type pqc_watched = {
 type qc_watched = {
   candidate_watched : candidate;
   get_slot_voting_power : slot:Slot.t -> Uint63.t option;
-  consensus_threshold : int;
+  consensus_threshold : Uint63.t;
   mutable current_voting_power : Uint63.t;
   mutable attestations_received : Attestation_set.t;
   mutable attestations_count : int;
@@ -355,10 +355,7 @@ let update_monitoring ?(should_lock = true) state ops =
           voting_power ;
       proposal_watched.preattestations_count <-
         proposal_watched.preattestations_count + preattestations_count ;
-      if
-        Uint63.(
-          proposal_watched.current_voting_power
-          >= With_exceptions.of_int consensus_threshold)
+      if Uint63.(proposal_watched.current_voting_power >= consensus_threshold)
       then (
         let* () =
           Events.(
@@ -435,10 +432,7 @@ let update_monitoring ?(should_lock = true) state ops =
           voting_power ;
       proposal_watched.attestations_count <-
         proposal_watched.attestations_count + attestations_count ;
-      if
-        Uint63.(
-          proposal_watched.current_voting_power
-          >= With_exceptions.of_int consensus_threshold)
+      if Uint63.(proposal_watched.current_voting_power >= consensus_threshold)
       then (
         let* () =
           Events.(

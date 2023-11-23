@@ -40,7 +40,7 @@ let context_init_with_sc_rollup_arith_enabled tup =
     tup
     {
       Context.default_test_constants with
-      consensus_threshold = 0;
+      consensus_threshold = Uint63.zero;
       sc_rollup =
         {Context.default_test_constants.sc_rollup with arith_pvm_enable = true};
     }

@@ -108,7 +108,7 @@ let test_valid_double_attestation_evidence () =
           Default_parameters.constants_test.issuance_weights with
           base_total_issued_per_minute = Tez.zero;
         };
-      consensus_threshold = 0;
+      consensus_threshold = Uint63.zero;
     }
   in
   let* genesis, _contracts = Context.init_with_constants2 constants in
@@ -704,7 +704,7 @@ let test_freeze_more_with_low_balance =
             Default_parameters.constants_test.issuance_weights with
             base_total_issued_per_minute = Tez.zero;
           };
-        consensus_threshold = 0;
+        consensus_threshold = Uint63.zero;
         origination_size = Uint63.zero;
         preserved_cycles = 5;
         percentage_of_frozen_deposits_slashed_per_double_attestation =

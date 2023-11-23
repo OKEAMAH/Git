@@ -206,11 +206,11 @@ let check_constants constants =
   let* () =
     error_unless
       Compare.Int.(
-        constants.consensus_threshold >= 0
-        && constants.consensus_threshold <= constants.consensus_committee_size)
+        Uint63.to_int constants.consensus_threshold
+        <= constants.consensus_committee_size)
       (Invalid_protocol_constants
-         "The consensus threshold must be greater than or equal to 0 and less \
-          than or equal to the consensus commitee size.")
+         "The consensus threshold must be smaller than or equal to the \
+          consensus committee size.")
   in
   let* () =
     error_unless
@@ -354,7 +354,7 @@ let check_constants constants =
 
 module Generated = struct
   type t = {
-    consensus_threshold : int;
+    consensus_threshold : Uint63.t;
     issuance_weights : Constants_parametric_repr.issuance_weights;
   }
 
@@ -368,6 +368,9 @@ module Generated = struct
     let reward_parts_half = 10240 (* = reward_parts_whole / 2 *) in
     let reward_parts_quarter = 5120 (* = reward_parts_whole / 4 *) in
     let reward_parts_16th = 1280 (* = reward_parts_whole / 16 *) in
+    let consensus_threshold =
+      Uint63.With_exceptions.of_int consensus_threshold
+    in
     {
       consensus_threshold;
       issuance_weights =

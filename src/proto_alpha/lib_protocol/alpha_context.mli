@@ -911,7 +911,7 @@ module Constants : sig
       delay_increment_per_round : Period.t;
       minimal_participation_ratio : Ratio.t;
       consensus_committee_size : int;
-      consensus_threshold : int;
+      consensus_threshold : Uint63.t;
       limit_of_delegation_over_baking : Uint63.t;
       percentage_of_frozen_deposits_slashed_per_double_baking :
         Int_percentage.t;
@@ -933,7 +933,7 @@ module Constants : sig
 
   module Generated : sig
     type t = {
-      consensus_threshold : int;
+      consensus_threshold : Uint63.t;
       issuance_weights : Parametric.issuance_weights;
     }
 
@@ -993,7 +993,7 @@ module Constants : sig
 
   val consensus_committee_size : context -> int
 
-  val consensus_threshold : context -> int
+  val consensus_threshold : context -> Uint63.t
 
   val minimal_participation_ratio : context -> Ratio.t
 

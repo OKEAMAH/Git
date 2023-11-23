@@ -305,7 +305,7 @@ let test_unrevealed () =
           vdf_revelation_tip_weight = 0;
           liquidity_baking_subsidy_weight = 0;
         };
-      consensus_threshold = 0;
+      consensus_threshold = Uint63.zero;
       minimal_participation_ratio = Ratio.{numerator = 0; denominator = 1};
     }
   in

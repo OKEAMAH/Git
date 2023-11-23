@@ -30,7 +30,7 @@ type error +=
   | (* `Permanent *)
       Insufficient_attestation_power of {
       attestation_power : Uint63.t;
-      consensus_threshold : int;
+      consensus_threshold : Uint63.t;
     }
 
 type ordered_slots = private {

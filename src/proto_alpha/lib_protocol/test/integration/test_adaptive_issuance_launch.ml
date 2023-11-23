@@ -138,7 +138,7 @@ let test_launch threshold expected_vote_duration () =
         base_total_issued_per_minute = Tez.zero;
       }
     in
-    let consensus_threshold = 0 in
+    let consensus_threshold = Protocol.Uint63.zero in
     {
       default_constants with
       consensus_threshold;
@@ -410,7 +410,7 @@ let test_does_not_launch_without_feature_flag threshold vote_duration () =
         activation_vote_enable = false;
       }
     in
-    let consensus_threshold = 0 in
+    let consensus_threshold = Protocol.Uint63.zero in
     {default_constants with consensus_threshold; adaptive_issuance}
   in
   let* block, _delegate = Context.init_with_constants1 constants in

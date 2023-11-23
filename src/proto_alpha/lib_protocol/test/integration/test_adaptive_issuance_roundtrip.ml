@@ -1813,7 +1813,7 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false)
   in
   let minimal_block_delay = Protocol.Alpha_context.Period.one_minute in
   let cost_per_byte = Tez.zero in
-  let consensus_threshold = 0 in
+  let consensus_threshold = Protocol.Uint63.zero in
   let adaptive_issuance = default_constants.adaptive_issuance in
   let adaptive_rewards_params =
     if deactivate_dynamic then

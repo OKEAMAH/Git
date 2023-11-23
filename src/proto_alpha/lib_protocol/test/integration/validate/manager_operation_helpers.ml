@@ -420,7 +420,7 @@ let init_ctxt_only ctxtreq =
   let open Lwt_result_syntax in
   let initial_params =
     Tezos_protocol_alpha_parameters.Default_parameters.parameters_of_constants
-      {Context.default_test_constants with consensus_threshold = 0}
+      {Context.default_test_constants with consensus_threshold = Uint63.zero}
   in
   let*? _cryptobox =
     Dal_helpers.mk_cryptobox initial_params.constants.dal.cryptobox_parameters
