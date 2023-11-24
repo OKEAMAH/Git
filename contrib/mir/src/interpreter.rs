@@ -547,6 +547,19 @@ fn interpret_one(i: &Instruction, ctx: &mut Ctx, stack: &mut IStack) -> Result<(
                 stack.push(V::new_option(Some(V::new_ticket(ticket))));
             }
         }
+        I::ReadTicket => {
+            ctx.gas.consume(interpret_cost::READ_TICKET)?;
+            let t = irrefutable_match!(&stack[0]; V::Ticket);
+            let ticketer_address = Address {
+                hash: t.ticketer.clone(),
+                entrypoint: Entrypoint::default(),
+            };
+            let ticket_data = V::new_pair(
+                V::Address(ticketer_address),
+                V::new_pair(t.content.clone(), V::Nat(t.amount.clone())),
+            );
+            stack.push(ticket_data);
+        }
         I::Seq(nested) => interpret(nested, ctx, stack)?,
     }
     Ok(())
@@ -1973,6 +1986,38 @@ mod interpreter_tests {
         assert_eq!(
             start_milligas - ctx.gas.milligas(),
             interpret_cost::TICKET + interpret_cost::INTERPRET_RET
+        );
+    }
+
+    #[test]
+    fn read_ticket() {
+        let mut ctx = Ctx::default();
+        let ticket = crate::ast::Ticket {
+            ticketer: ctx.self_address.clone(),
+            amount: 100u32.into(),
+            content: V::Unit,
+        };
+        let ticket_val = V::new_ticket(ticket.clone());
+        let mut stack = stk![ticket_val.clone()];
+        let start_milligas = ctx.gas.milligas();
+        assert_eq!(interpret(&vec![ReadTicket], &mut ctx, &mut stack), Ok(()));
+        let ticketer_address = super::Address {
+            hash: ticket.ticketer,
+            entrypoint: Entrypoint::default(),
+        };
+        assert_eq!(
+            stack,
+            stk![
+                ticket_val,
+                V::new_pair(
+                    V::Address(ticketer_address),
+                    V::new_pair(V::Unit, V::nat(100))
+                ),
+            ]
+        );
+        assert_eq!(
+            start_milligas - ctx.gas.milligas(),
+            interpret_cost::READ_TICKET + interpret_cost::INTERPRET_RET
         );
     }
 }
