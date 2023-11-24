@@ -389,7 +389,7 @@ fn interpret_one(i: &Instruction, ctx: &mut Ctx, stack: &mut IStack) -> Result<(
             let param = pop!();
             let mutez_amount = pop!(V::Mutez);
             let contract_address = pop!(V::Contract);
-            let counter: u64 = ctx.counter;
+            let counter = ctx.operation_counter();
             ctx.gas.consume(interpret_cost::TRANSFER_TOKENS)?;
             stack.push(TypedValue::new_operation(
                 Operation::TransferTokens(TransferTokens {
@@ -402,7 +402,7 @@ fn interpret_one(i: &Instruction, ctx: &mut Ctx, stack: &mut IStack) -> Result<(
         }
         I::SetDelegate => {
             let opt_keyhash = pop!(V::Option).map(|kh| irrefutable_match!(*kh; V::KeyHash));
-            let counter: u64 = ctx.counter;
+            let counter: u128 = ctx.operation_counter();
             ctx.gas.consume(interpret_cost::SET_DELEGATE)?;
             stack.push(TypedValue::new_operation(
                 Operation::SetDelegate(SetDelegate(opt_keyhash)),
@@ -1433,14 +1433,14 @@ mod interpreter_tests {
             tt.param.clone()
         ];
         let ctx = &mut Ctx::default();
-        ctx.counter = 100;
+        ctx._operation_counter = 100;
         let start_milligas = ctx.gas.milligas();
         assert_eq!(interpret(&vec![TransferTokens], ctx, stk), Ok(()));
         assert_eq!(
             stk,
             &stk![TypedValue::new_operation(
                 Operation::TransferTokens(tt),
-                100
+                101
             )]
         );
         assert_eq!(
@@ -1459,12 +1459,12 @@ mod interpreter_tests {
             sd.0.clone().unwrap()
         )))];
         let ctx = &mut Ctx::default();
-        ctx.counter = 100;
+        ctx._operation_counter = 100;
         let start_milligas = ctx.gas.milligas();
         assert_eq!(interpret(&vec![I::SetDelegate], ctx, stk), Ok(()));
         assert_eq!(
             stk,
-            &stk![TypedValue::new_operation(Operation::SetDelegate(sd), 100)]
+            &stk![TypedValue::new_operation(Operation::SetDelegate(sd), 101)]
         );
         assert_eq!(
             start_milligas - ctx.gas.milligas(),
