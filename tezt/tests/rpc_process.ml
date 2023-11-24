@@ -214,7 +214,7 @@ let test_forward =
 
 let wait_for_RPC_process_sync node =
   let filter json = JSON.(json |-> "level" |> as_int_opt) in
-  Node.wait_for node "synchronized.v0" filter
+  Node.wait_for node "store_synchronized_on_head.v0" filter
 
 let wait_for_local_rpc_server node =
   Node.wait_for node "starting_local_rpc_server.v0" (fun _ -> Some ())
