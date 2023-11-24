@@ -177,8 +177,10 @@ let check_bootstrap_with_history_modes hmode1 hmode2 =
       ]
   @@ fun protocol ->
   (* Initialize nodes and client. *)
-  let* node_1 =
-    Node.init [Synchronisation_threshold 0; Connections 1; History_mode hmode1]
+  let node_1_args =
+    Node.[Synchronisation_threshold 0; Connections 1; History_mode hmode1]
+  in
+  let* node_1 = Node.init node_1_args
   and* node_2 = Node.init [Connections 1; History_mode hmode2] in
   let endpoint_1 = Client.(Node node_1) in
   let* node2_identity = Node.wait_for_identity node_2 in
@@ -212,6 +214,17 @@ let check_bootstrap_with_history_modes hmode1 hmode2 =
   let final_level = 1 + bakes_before_kill + bakes_during_kill in
   let* _ = Node.wait_for_level node_1 final_level in
   let* () = wait_for_last_cycle in
+  (* Restarting node_1 to make sure that the store invariant are well
+     synchronized. Indeed, these invariant are synchronized with the
+     RPC-process in a best effort way and as the RPC-process
+     synchronization can be faster than a store merge, it can return
+     an unexpected value (the value before the last expected
+     update). *)
+  let* () =
+    let* () = Node.terminate node_1 in
+    let* () = Node.run node_1 node_1_args in
+    Node.wait_for_ready node_1
+  in
   let* () = Node.run node_2 [Synchronisation_threshold 1; Connections 1] in
   let* _ = Node.wait_for_ready node_2 in
   (* Register the unknown ancestor event before connecting node 2 to node 1
