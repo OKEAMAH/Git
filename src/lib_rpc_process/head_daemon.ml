@@ -65,10 +65,18 @@ module Events = struct
       ~pp2:Block_hash.pp_short
       ("hash", Block_hash.encoding)
 
-  let synchronized =
+  let store_synchronized =
+    declare_0
+      ~section
+      ~name:"store_synchronized"
+      ~msg:"Store synchronized"
+      ~level:Notice
+      ()
+
+  let store_synchronized_on_head =
     declare_2
       ~section
-      ~name:"synchronized"
+      ~name:"store_synchronized_on_head"
       ~msg:"Store synchronized on head {hash} ({level})"
       ~level:Notice
       ~pp1:Block_hash.pp_short
@@ -195,7 +203,7 @@ let sync_store (dynamic_store : Store.t option ref) last_status parameters
       last_status := current_status ;
       dynamic_store := Some store ;
       let*! () = cleanups () in
-      let*! () = Events.(emit synchronized) (block_hash, block_level) in
+      let*! () = Events.(emit store_synchronized) () in
       return store
   | None ->
       let* store =
@@ -213,6 +221,9 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
   let* (_ : Store.t) =
     sync_store dynamic_store last_status parameters (block_hash, header)
   in
+  let*! () =
+    Events.(emit store_synchronized_on_head) (block_hash, block_level)
+  in
   Lwt_watcher.notify head_watcher (block_hash, header) ;
   return_unit
 
@@ -220,19 +231,18 @@ let handle_new_applied_block (dynamic_store : Store.t option ref) last_status
     parameters (applied_block_watcher : Directory.applied_watcher_kind ref)
     _stopper (block_hash, (header : Tezos_base.Block_header.t)) =
   let open Lwt_result_syntax in
-  let block_level = header.shell.level in
-  let*! () = Events.(emit new_applied_block) block_level in
-  let* store =
-    sync_store dynamic_store last_status parameters (block_hash, header)
-  in
-  let chain_store = Store.main_chain_store store in
-  let* block = Store.Block.read_block chain_store block_hash in
-  let () =
-    match !applied_block_watcher with
-    | Empty -> ()
-    | Filled w -> Lwt_watcher.notify w (chain_store, block)
-  in
-  return_unit
+  match !applied_block_watcher with
+  | Empty -> return_unit
+  | Filled w ->
+      let block_level = header.shell.level in
+      let*! () = Events.(emit new_applied_block) block_level in
+      let* store =
+        sync_store dynamic_store last_status parameters (block_hash, header)
+      in
+      let chain_store = Store.main_chain_store store in
+      let* block = Store.Block.read_block chain_store block_hash in
+      Lwt_watcher.notify w (chain_store, block) ;
+      return_unit
 
 let init (dynamic_store : Store.t option ref) parameters
     (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input)
