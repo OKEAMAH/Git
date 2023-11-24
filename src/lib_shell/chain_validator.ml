@@ -517,6 +517,8 @@ let on_validation_request w peer start_testchain active_chains spawn_child block
       if is_bootstrapped nv then
         Distributed_db.Advertise.current_head nv.chain_db block
     in
+    (* TODO/FIXME: remove? Already done when storing the block. Could
+       this overwrite/update the stored value?*)
     let* () =
       may_update_protocol_level chain_store block resulting_context_hash
     in
