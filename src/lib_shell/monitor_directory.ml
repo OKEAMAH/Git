@@ -35,24 +35,18 @@ let monitor_head
   let shutdown () = Lwt_watcher.shutdown stopper in
   let within_protocols header =
     let find_protocol protocol_level =
-      let () = Format.printf "find_protocol %d %s@." protocol_level __LOC__ in
       (* Here, we need to resolve given store ref to make sure that we
          are accessing the latest store value. *)
       let* updated_chain_store =
         Chain_directory.get_chain_store_exn !store chain
       in
-      let () = Format.printf "%s@." __LOC__ in
       let+ p = Store.Chain.find_protocol updated_chain_store ~protocol_level in
-      let () = Format.printf "%s@." __LOC__ in
       WithExceptions.Option.to_exn
         ~none:
           (Failure (Format.sprintf "Cannot find protocol %d" protocol_level))
         p
     in
     let next_protocol (header : Block_header.t) =
-      let () =
-        Format.printf "next_protocol %ld %s@." header.shell.level __LOC__
-      in
       find_protocol header.shell.proto_level
     in
     let current_protocol (header : Block_header.t) =
@@ -66,51 +60,22 @@ let monitor_head
             e
       | Ok pred_block ->
           let pred_header = Store.Block.header pred_block in
-          let () =
-            Format.printf
-              "current_protocol %ld %s@."
-              pred_header.shell.level
-              __LOC__
-          in
           find_protocol pred_header.shell.proto_level
     in
     let within protocols get_protocol header =
       match protocols with
-      | [] ->
-          let () = Format.printf "I know nothing %s@." __LOC__ in
-          return_true
-      | pts ->
-          let () = Format.printf "%s@." __LOC__ in
+      | [] -> return_true
+      | _ ->
           let+ p = get_protocol header in
-          let () = Format.printf "%s@." __LOC__ in
-          let () =
-            Format.printf "Searching for %a %s@." Protocol_hash.pp p __LOC__
-          in
-          let () =
-            Format.printf
-              "Known protocols (%a) %s@."
-              (Format.pp_print_list Protocol_hash.pp)
-              pts
-              __LOC__
-          in
           List.exists (Protocol_hash.equal p) protocols
     in
-    let () = Format.printf "Looking for next proto %s@." __LOC__ in
     let* ok_next = within q#next_protocols next_protocol header in
-    let () = Format.printf "Ok %s@." __LOC__ in
-    let () = Format.printf "Looking for current proto %s@." __LOC__ in
     let* ok_current = within q#protocols current_protocol header in
-    let () = Format.printf "Ok %s@." __LOC__ in
     return (ok_current && ok_next)
   in
   let stream =
     Lwt_stream.filter_map_s
       (fun (hash, header) ->
-        Format.printf
-          "Dealing with block %ld (%a)@."
-          header.Block_header.shell.level
-          Block_hash.pp
-          hash ;
         let* within_protocols = within_protocols header in
         if within_protocols then Lwt.return_some (hash, header)
         else Lwt.return_none)
@@ -304,9 +269,7 @@ let build_rpc_directory ~(commit_info : Node_version.commit_info) validator
       Tezos_rpc.Answer.return_stream {next; shutdown}) ;
   gen_register1 Monitor_services.S.heads (fun chain q () ->
       let open Lwt_syntax in
-      let () = Format.printf "%s@." __LOC__ in
       let* chain_store = Chain_directory.get_chain_store_exn store chain in
-      let () = Format.printf "%s@." __LOC__ in
       (* TODO: when `chain = `Test`, should we reset then stream when
          the `testnet` change, or dias we currently do ?? *)
       match Validator.get validator (Store.Chain.chain_id chain_store) with
