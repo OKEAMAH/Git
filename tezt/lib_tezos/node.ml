@@ -582,7 +582,7 @@ let handle_event node {name; value; timestamp = _} =
             ()
         | Some level -> update_level node level
       else ()
-  | "synchronized.v0" -> (
+  | "store_synchronized_on_head.v0" -> (
       match JSON.(value |-> "level" |> as_int_opt) with
       | None ->
           (* There are several kinds of events and maybe
