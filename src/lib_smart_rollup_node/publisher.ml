@@ -87,7 +87,7 @@ let sc_rollup_challenge_window node_ctxt =
 let next_commitment_level node_ctxt last_commitment_level =
   add_level last_commitment_level (sc_rollup_commitment_period node_ctxt)
 
-type state = Node_context.ro
+type 'repo state = 'repo Node_context.ro
 
 let tick_of_level (node_ctxt : _ Node_context.t) inbox_level =
   let open Lwt_result_syntax in

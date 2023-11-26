@@ -30,4 +30,4 @@
     message to execute. It publishes and executes the most
     recent/closest one. *)
 val publish_execute_whitelist_update_message :
-  Node_context.rw -> unit tzresult Lwt.t
+  _ Node_context.rw -> unit tzresult Lwt.t

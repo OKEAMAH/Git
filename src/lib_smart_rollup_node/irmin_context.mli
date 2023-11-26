@@ -26,18 +26,22 @@
 
 open Store_sigs
 
+type repo
+
+(** The type of trees stored in the context, i.e. the actual data. *)
+type tree
+
+type 'a raw_index = {path : string; repo : repo}
+
 (** The type of indexed repository for contexts. The parameter indicates if the
     index can be written or only read. *)
-type 'a index constraint 'a = [< `Read | `Write > `Read]
+type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
 
 (** Read/write {!type:index}. *)
 type rw_index = [`Read | `Write] index
 
 (** Read only {!type:index}. *)
 type ro_index = [`Read] index
-
-(** The type of trees stored in the context, i.e. the actual data. *)
-type tree
 
 (** The type of context with its content. *)
 type 'a t constraint 'a = [< `Read | `Write > `Read]

@@ -1,11 +1,76 @@
 open Store_sigs
 
-module type CONTEXT = sig
-  type 'a index constraint 'a = [< `Read | `Write > `Read]
+module Witness = struct
+  type (_, _) t = ..
+end
 
-  type 'a t constraint 'a = [< `Read | `Write > `Read]
+module type Witness = sig
+  type repo
 
   type tree
+
+  type (_, _) Witness.t += Id : (repo, tree) Witness.t
+end
+
+type ('repo, 'tree) witness =
+  (module Witness with type repo = 'repo and type tree = 'tree)
+
+let witness () (type repo tree) =
+  let module M = struct
+    type nonrec repo = repo
+
+    type nonrec tree = tree
+
+    type (_, _) Witness.t += Id : (repo, tree) Witness.t
+  end in
+  (module M : Witness with type repo = repo and type tree = tree)
+
+type ('repo1, 'tree1, 'repo2, 'tree2) eq =
+  | Equal : ('repo1, 'tree1, 'repo1, 'tree1) eq
+
+let try_cast :
+    type a b c d. (a, b) witness -> (c, d) witness -> (a, b, c, d) eq option =
+ fun x y ->
+  let module X : Witness with type repo = a and type tree = b = (val x) in
+  let module Y : Witness with type repo = c and type tree = d = (val y) in
+  match X.Id with Y.Id -> Some Equal | _ -> None
+
+type ('a, 'repo) raw_index = {path : string; repo : 'repo}
+
+type ('a, 'repo) index = ('a, 'repo) raw_index
+  constraint 'a = [< `Read | `Write > `Read]
+
+type ('a, 'repo, 'tree) context = {index : ('a, 'repo) index; tree : 'tree}
+
+module type CONTEXT = sig
+  type repo
+
+  type tree
+
+  type nonrec 'a raw_index = ('a, repo) raw_index
+
+  type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
+
+  type 'a t = {index : 'a index; tree : tree}
+
+  (** Read/write {!type:index}. *)
+  type rw_index = [`Read | `Write] index
+
+  (** Read/write context {!t}. *)
+  type rw = [`Read | `Write] t
+
+  (** Read-only context {!t}. *)
+  type ro = [`Read] t
+
+  val witness : (repo, tree) witness
+
+  (* val t_of_context : 'a t -> _ context *)
+
+  (* val context_of_t : _ context -> 'a t *)
+
+  (* val index_of_context : ('a, 'repo) raw_index -> ('a, 'repo) context *)
+
+  (* val context_of_index : ('a, 'repo) context -> ('a, 'repo) raw_index *)
 
   type hash = Smart_rollup_context_hash.t
 
@@ -27,7 +92,7 @@ module type CONTEXT = sig
     hash [hash] in the repository [ctxt] and returns the corresponding
     context. If there is no commit that corresponds to [hash], it returns
     [None].  *)
-  val checkout : 'a index -> hash -> 'a t option Lwt.t
+  val checkout : 'a index -> hash -> ('a, repo, tree) context option Lwt.t
 
   (** [empty ctxt] is the context with an empty content for the repository [ctxt]. *)
   val empty : 'a index -> 'a t
@@ -58,7 +123,7 @@ module type CONTEXT = sig
     val empty : unit -> value
 
     (** [find context] returns the PVM state stored in the [context], if any. *)
-    val find : _ t -> value option Lwt.t
+    val find : ('a, repo, tree) context -> value option Lwt.t
 
     (** [lookup state path] returns the data stored for the path [path] in the PVM
       state [state].  *)
@@ -67,7 +132,8 @@ module type CONTEXT = sig
     (** [set context state] saves the PVM state [state] in the context and returns
       the updated context. Note: [set] does not perform any write on disk, this
       information must be committed using {!val:commit}. *)
-    val set : 'a t -> value -> 'a t Lwt.t
+    val set :
+      ('a, repo, tree) context -> value -> ('a, repo, tree) context Lwt.t
   end
 
   module Internal_for_tests : sig
@@ -77,63 +143,79 @@ module type CONTEXT = sig
   end
 end
 
-module Context (C : CONTEXT) = struct
-  type 'a index = 'a C.index
+(* module Context (C : CONTEXT) = struct *)
 
-  type 'a t = 'a C.t
+(*   type ('a, 'repo) index = ('a, 'repo) C.index *)
 
-  type tree = C.tree
+(*   type 'a t = 'a C.t *)
 
-  (** Read/write {!type:index}. *)
-  type rw_index = [`Read | `Write] index
+(*   type (_,_) context += Index : ('a, 'repo) C.raw_index -> ('repo , 'tree) context *)
 
-  (** Read/write context {!t}. *)
-  type rw = [`Read | `Write] t
+(*   let t_of_context (Index *)
 
-  (** Read-only context {!t}. *)
-  type ro = [`Read] t
+(*   val context_of_t : _ context -> 'a t *)
 
-  type hash = Smart_rollup_context_hash.t
+(*   val index_of_context : 'a index -> _ context *)
 
-  let load = C.load
+(*   val context_of_index : _ context -> 'a index *)
 
-  let index = C.index
+(*   (\** Read/write {!type:index}. *\) *)
+(*   type rw_index = [`Read | `Write] index *)
 
-  let close = C.close
+(*   (\** Read/write context {!t}. *\) *)
+(*   type rw = [`Read | `Write] t *)
 
-  let checkout = C.checkout
+(*   (\** Read-only context {!t}. *\) *)
+(*   type ro = [`Read] t *)
 
-  let empty = C.empty
+(*   type hash = Smart_rollup_context_hash.t *)
 
-  let commit = C.commit
+(*   let load = C.load *)
 
-  let readonly = C.readonly
+(*   let index = C.index *)
 
-  let is_gc_finished = C.is_gc_finished
+(*   let close = C.close *)
 
-  let gc = C.gc
+(*   let checkout = C.checkout *)
 
-  let wait_gc_completion = C.wait_gc_completion
+(*   let empty = C.empty *)
 
-  (** State of the PVM that this rollup node deals with. *)
-  module PVMState = struct
-    type value = tree
+(*   let commit = C.commit *)
 
-    let empty = C.PVMState.empty
+(*   let readonly = C.readonly *)
 
-    let find = C.PVMState.find
+(*   let is_gc_finished = C.is_gc_finished *)
 
-    let lookup = C.PVMState.lookup
+(*   let gc = C.gc *)
 
-    let set = C.PVMState.set
-  end
+(*   let wait_gc_completion = C.wait_gc_completion *)
 
-  module Internal_for_tests = struct
-    let get_a_tree = C.Internal_for_tests.get_a_tree
-  end
-end
+(*   (\** State of the PVM that this rollup node deals with. *\) *)
+(*   module PVMState = struct *)
+(*     type value = tree *)
 
-include Context (Irmin_context)
+(*     let empty = C.PVMState.empty *)
+
+(*     let find = C.PVMState.find *)
+
+(*     let lookup = C.PVMState.lookup *)
+
+(*     let set = C.PVMState.set *)
+(*   end *)
+
+(*   module Internal_for_tests = struct *)
+(*     let get_a_tree = C.Internal_for_tests.get_a_tree *)
+(*   end *)
+(* end *)
+
+(* include Context (Irmin_context) *)
+
+let cast_context (type repo tree) (t : (repo, tree) witness)
+    (module C : CONTEXT) :
+    (module CONTEXT with type repo = repo and type tree = tree) =
+  match try_cast t C.witness with
+  | Some Equal -> (module C)
+  | None -> assert false
 
 module Version = struct
   type t = V0
@@ -151,3 +233,29 @@ module Version = struct
 
   let check = function V0 -> Result.return_unit
 end
+
+(* module Context : CONTEXT = Irmin_context *)
+
+(* include Context *)
+
+(* module PVMState = struct *)
+(*   let set : *)
+(*       type repo tree. *)
+(*       (module Protocol_plugin_sig.PARTIAL) -> *)
+(*       (([< `Read | `Write > `Read] as 'a), repo, tree) context -> *)
+(*       tree -> *)
+(*       ('a, repo, tree) context Lwt.t = *)
+(*    fun (module Plugin) ctxt state -> *)
+(*     let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = *)
+(*       Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm) *)
+(*     in *)
+(*     Pvm.Context.PVMState.set ctxt state *)
+(* end *)
+
+type ('a, 'repo, 'tree) t = ('a, 'repo, 'tree) context
+
+(** Read/write context {!t}. *)
+type ('repo, 'tree) rw = ([`Read | `Write], 'repo, 'tree) t
+
+(** Read-only context {!t}. *)
+type ('repo, 'tree) ro = ([`Read], 'repo, 'tree) t

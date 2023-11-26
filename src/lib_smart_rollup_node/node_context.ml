@@ -24,57 +24,58 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+(* type lcc = Store.Lcc.lcc = {commitment : Commitment.Hash.t; level : int32} *)
 
-type lcc = Store.Lcc.lcc = {commitment : Commitment.Hash.t; level : int32}
+(* type genesis_info = Metadata.genesis_info = { *)
+(*   level : int32; *)
+(*   commitment_hash : Commitment.Hash.t; *)
+(* } *)
 
-type genesis_info = Metadata.genesis_info = {
-  level : int32;
-  commitment_hash : Commitment.Hash.t;
-}
+(* type 'a store = 'a Store.t *)
 
-type 'a store = 'a Store.t
+(* type debug_logger = string -> unit Lwt.t *)
 
-type debug_logger = string -> unit Lwt.t
+(* type current_protocol = { *)
+(*   hash : Protocol_hash.t; *)
+(*   proto_level : int; *)
+(*   constants : Rollup_constants.protocol_constants; *)
+(* } *)
 
-type current_protocol = {
-  hash : Protocol_hash.t;
-  proto_level : int;
-  constants : Rollup_constants.protocol_constants;
-}
+(* type last_whitelist_update = {message_index : int; outbox_level : Int32.t} *)
 
-type last_whitelist_update = {message_index : int; outbox_level : Int32.t}
+(* type private_info = { *)
+(*   last_whitelist_update : last_whitelist_update; *)
+(*   last_outbox_level_searched : int32; *)
+(* } *)
 
-type private_info = {
-  last_whitelist_update : last_whitelist_update;
-  last_outbox_level_searched : int32;
-}
+(* type ('a, 'repo) t = { *)
+(*   config : Configuration.t; *)
+(*   cctxt : Client_context.full; *)
+(*   dal_cctxt : Dal_node_client.cctxt option; *)
+(*   dac_client : Dac_observer_client.t option; *)
+(*   data_dir : string; *)
+(*   l1_ctxt : Layer1.t; *)
+(*   genesis_info : genesis_info; *)
+(*   injector_retention_period : int; *)
+(*   block_finality_time : int; *)
+(*   kind : Kind.t; *)
+(*   lockfile : Lwt_unix.file_descr; *)
+(*   store : 'a store; *)
+(*   context : ('a, 'repo) Context.index; *)
+(*   lcc : ('a, lcc) Reference.t; *)
+(*   lpc : ('a, Commitment.t option) Reference.t; *)
+(*   private_info : ('a, private_info option) Reference.t; *)
+(*   kernel_debug_logger : debug_logger; *)
+(*   finaliser : unit -> unit Lwt.t; *)
+(*   mutable current_protocol : current_protocol; *)
+(*   global_block_watcher : Sc_rollup_block.t Lwt_watcher.input; *)
+(* } *)
 
-type 'a t = {
-  config : Configuration.t;
-  cctxt : Client_context.full;
-  dal_cctxt : Dal_node_client.cctxt option;
-  dac_client : Dac_observer_client.t option;
-  data_dir : string;
-  l1_ctxt : Layer1.t;
-  genesis_info : genesis_info;
-  injector_retention_period : int;
-  block_finality_time : int;
-  kind : Kind.t;
-  lockfile : Lwt_unix.file_descr;
-  store : 'a store;
-  context : 'a Context.index;
-  lcc : ('a, lcc) Reference.t;
-  lpc : ('a, Commitment.t option) Reference.t;
-  private_info : ('a, private_info option) Reference.t;
-  kernel_debug_logger : debug_logger;
-  finaliser : unit -> unit Lwt.t;
-  mutable current_protocol : current_protocol;
-  global_block_watcher : Sc_rollup_block.t Lwt_watcher.input;
-}
+(* type 'repo rw = ([`Read | `Write], 'repo) t *)
 
-type rw = [`Read | `Write] t
+(* type 'repo ro = ([`Read], 'repo) t *)
 
-type ro = [`Read] t
+open Node_context_types
 
 let get_operator node_ctxt purpose =
   Purpose.find_operator purpose node_ctxt.config.operators
@@ -220,9 +221,10 @@ let update_metadata rollup_address kind genesis_info ~data_dir =
           genesis_info;
         }
 
-let init (cctxt : #Client_context.full) ~data_dir ~irmin_cache_size
-    ~index_buffer_size ?log_kernel_debug_file ?last_whitelist_update mode
-    l1_ctxt genesis_info ~lcc ~lpc kind current_protocol
+let init (type repo tree) (cctxt : #Client_context.full) ~data_dir
+    ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
+    ?last_whitelist_update mode l1_ctxt genesis_info ~lcc ~lpc kind
+    current_protocol
     Configuration.(
       {
         sc_rollup_address = rollup_address;
@@ -248,8 +250,10 @@ let init (cctxt : #Client_context.full) ~data_dir ~irmin_cache_size
       ~l2_blocks_cache_size
       Configuration.(default_storage_dir data_dir)
   in
+  let* pvm = Protocol_plugins.pvm_plugin_for_protocol current_protocol.hash in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
   let* context =
-    Context.load
+    Pvm.Context.load
       ~cache_size:irmin_cache_size
       mode
       (Configuration.default_context_dir data_dir)
@@ -313,7 +317,9 @@ let init (cctxt : #Client_context.full) ~data_dir ~irmin_cache_size
       global_block_watcher;
     }
 
-let close ({cctxt; store; context; l1_ctxt; finaliser; _} as node_ctxt) =
+let close (type repo tree)
+    ({cctxt; store; context; l1_ctxt; finaliser; current_protocol; _} as
+    node_ctxt) =
   let open Lwt_result_syntax in
   let message = cctxt#message in
   let*! () = message "Running finaliser@." in
@@ -321,14 +327,21 @@ let close ({cctxt; store; context; l1_ctxt; finaliser; _} as node_ctxt) =
   let*! () = message "Shutting down L1@." in
   let*! () = Layer1.shutdown l1_ctxt in
   let*! () = message "Closing context@." in
-  let*! () = Context.close context in
+  let* pvm = Protocol_plugins.pvm_plugin_for_protocol current_protocol.hash in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
+  let*! () = Pvm.Context.close context in
   let*! () = message "Closing store@." in
   let* () = Store.close store in
   let*! () = message "Releasing lock@." in
   let*! () = unlock node_ctxt in
   return_unit
 
-let checkout_context node_ctxt block_hash =
+let checkout_context :
+    type repo tree.
+    ('a, repo) t ->
+    Block_hash.t ->
+    ('a, repo, tree) Context.context tzresult Lwt.t =
+ fun node_ctxt block_hash ->
   let open Lwt_result_syntax in
   let* l2_header =
     Store.L2_blocks.header node_ctxt.store.l2_blocks block_hash
@@ -340,7 +353,12 @@ let checkout_context node_ctxt block_hash =
         tzfail (Rollup_node_errors.Cannot_checkout_context (block_hash, None))
     | Some {context; _} -> return context
   in
-  let*! ctxt = Context.checkout node_ctxt.context context_hash in
+  let* pvm =
+    Protocol_plugins.pvm_plugin_for_protocol node_ctxt.current_protocol.hash
+  in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
+
+  let*! ctxt = Pvm.Context.checkout node_ctxt.context context_hash in
   match ctxt with
   | None ->
       tzfail
@@ -352,17 +370,21 @@ let dal_supported node_ctxt =
   node_ctxt.dal_cctxt <> None
   && node_ctxt.current_protocol.constants.dal.feature_enable
 
-let readonly (node_ctxt : _ t) =
-  {
-    node_ctxt with
-    store = Store.readonly node_ctxt.store;
-    context = Context.readonly node_ctxt.context;
-    lcc = Reference.readonly node_ctxt.lcc;
-    lpc = Reference.readonly node_ctxt.lpc;
-    private_info = Reference.readonly node_ctxt.private_info;
-  }
-
-type 'a delayed_write = ('a, rw) Delayed_write_monad.t
+let readonly (type repo tree) (node_ctxt : _ t) =
+  let open Lwt_result_syntax in
+  let* pvm =
+    Protocol_plugins.pvm_plugin_for_protocol node_ctxt.current_protocol.hash
+  in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
+  return
+    {
+      node_ctxt with
+      store = Store.readonly node_ctxt.store;
+      context = Pvm.Context.readonly node_ctxt.context;
+      lcc = Reference.readonly node_ctxt.lcc;
+      lpc = Reference.readonly node_ctxt.lpc;
+      private_info = Reference.readonly node_ctxt.private_info;
+    }
 
 (** Abstraction over store  *)
 
@@ -857,46 +879,46 @@ let get_full_l2_block node_ctxt block_hash =
   in
   return {block with content = {Sc_rollup_block.inbox; messages; commitment}}
 
-type proto_info = {
-  proto_level : int;
-  first_level_of_protocol : bool;
-  protocol : Protocol_hash.t;
-}
+(* type proto_info = { *)
+(*   proto_level : int; *)
+(*   first_level_of_protocol : bool; *)
+(*   protocol : Protocol_hash.t; *)
+(* } *)
 
-let protocol_of_level_with_store (store : _ Store.t) level =
-  let open Lwt_result_syntax in
-  let* protocols = Store.Protocols.read store.protocols in
-  let*? protocols =
-    match protocols with
-    | None | Some [] ->
-        error_with "Cannot infer protocol for level %ld: no protocol info" level
-    | Some protos -> Ok protos
-  in
-  let rec find = function
-    | [] ->
-        error_with "Cannot infer protocol for level %ld: no information" level
-    | {Store.Protocols.level = p_level; proto_level; protocol} :: protos -> (
-        (* Latest protocols appear first in the list *)
-        match p_level with
-        | First_known l when level >= l ->
-            Ok {protocol; proto_level; first_level_of_protocol = false}
-        | Activation_level l when level > l ->
-            (* The block at the activation level is of the previous protocol, so
-               we are in the protocol that was activated at [l] only when the
-               level we query is after [l]. *)
-            Ok
-              {
-                protocol;
-                proto_level;
-                first_level_of_protocol = level = Int32.succ l;
-              }
-        | _ -> (find [@tailcall]) protos)
-  in
-  Lwt.return (find protocols)
+(* let protocol_of_level_with_store (store : _ Store.t) level = *)
+(*   let open Lwt_result_syntax in *)
+(*   let* protocols = Store.Protocols.read store.protocols in *)
+(*   let*? protocols = *)
+(*     match protocols with *)
+(*     | None | Some [] -> *)
+(*         error_with "Cannot infer protocol for level %ld: no protocol info" level *)
+(*     | Some protos -> Ok protos *)
+(*   in *)
+(*   let rec find = function *)
+(*     | [] -> *)
+(*         error_with "Cannot infer protocol for level %ld: no information" level *)
+(*     | {Store.Protocols.level = p_level; proto_level; protocol} :: protos -> ( *)
+(*         (\* Latest protocols appear first in the list *\) *)
+(*         match p_level with *)
+(*         | First_known l when level >= l -> *)
+(*             Ok {protocol; proto_level; first_level_of_protocol = false} *)
+(*         | Activation_level l when level > l -> *)
+(*             (\* The block at the activation level is of the previous protocol, so *)
+(*                we are in the protocol that was activated at [l] only when the *)
+(*                level we query is after [l]. *\) *)
+(*             Ok *)
+(*               { *)
+(*                 protocol; *)
+(*                 proto_level; *)
+(*                 first_level_of_protocol = level = Int32.succ l; *)
+(*               } *)
+(*         | _ -> (find [@tailcall]) protos) *)
+(*   in *)
+(*   Lwt.return (find protocols) *)
 
-let protocol_of_level node_ctxt level =
-  assert (level >= node_ctxt.genesis_info.level) ;
-  protocol_of_level_with_store node_ctxt.store level
+(* let protocol_of_level node_ctxt level = *)
+(*   assert (level >= node_ctxt.genesis_info.level) ; *)
+(*   protocol_of_level_with_store node_ctxt.store level *)
 
 let last_seen_protocol node_ctxt =
   let open Lwt_result_syntax in
@@ -1129,10 +1151,15 @@ let get_gc_level node_ctxt =
       let+ lcc = last_seen_lcc node_ctxt in
       Some lcc.level
 
-let gc node_ctxt ~(level : int32) =
+let gc (type repo tree) node_ctxt ~(level : int32) =
   let open Lwt_result_syntax in
   (* [gc_level] is the level corresponding to the hash on which GC will be
      called. *)
+  let* pvm =
+    Protocol_plugins.pvm_plugin_for_protocol node_ctxt.current_protocol.hash
+  in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
+
   let* gc_level = get_gc_level node_ctxt in
   let frequency = node_ctxt.config.gc_parameters.frequency_in_blocks in
   let* {last_gc_level; first_available_level} = get_gc_levels node_ctxt in
@@ -1141,7 +1168,7 @@ let gc node_ctxt ~(level : int32) =
   | Some gc_level
     when gc_level > first_available_level
          && Int32.(sub level last_gc_level >= frequency)
-         && Context.is_gc_finished node_ctxt.context
+         && Pvm.Context.is_gc_finished node_ctxt.context
          && Store.is_gc_finished node_ctxt.store -> (
       let* hash = hash_of_level node_ctxt gc_level in
       let* header = Store.L2_blocks.header node_ctxt.store.l2_blocks hash in
@@ -1158,11 +1185,11 @@ let gc node_ctxt ~(level : int32) =
           let*! () = Event.calling_gc ~gc_level ~head_level:level in
           let*! () = save_gc_info node_ctxt ~at_level:level ~gc_level in
           (* Start both node and context gc asynchronously *)
-          let*! () = Context.gc node_ctxt.context context in
+          let*! () = Pvm.Context.gc node_ctxt.context context in
           let* () = Store.gc node_ctxt.store ~level:gc_level in
           let gc_waiter () =
             let open Lwt_syntax in
-            let* () = Context.wait_gc_completion node_ctxt.context
+            let* () = Pvm.Context.wait_gc_completion node_ctxt.context
             and* () = Store.wait_gc_completion node_ctxt.store in
             let* () = Event.gc_finished ~gc_level ~head_level:level in
             Utils.unlock gc_lockfile
@@ -1180,8 +1207,8 @@ let check_level_available node_ctxt accessed_level =
        {first_available_level; accessed_level})
 
 module Internal_for_tests = struct
-  let create_node_context cctxt (current_protocol : current_protocol) ~data_dir
-      kind =
+  let create_node_context (type repo tree) cctxt
+      (current_protocol : current_protocol) ~data_dir kind =
     let open Lwt_result_syntax in
     let rollup_address = Address.zero in
     let mode = Configuration.Observer in
@@ -1233,8 +1260,10 @@ module Internal_for_tests = struct
         ~l2_blocks_cache_size
         Configuration.(default_storage_dir data_dir)
     in
+    let* pvm = Protocol_plugins.pvm_plugin_for_protocol current_protocol.hash in
+    let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
     let* context =
-      Context.load
+      Pvm.Context.load
         Read_write
         (Configuration.default_context_dir data_dir)
         ~cache_size:irmin_cache_size

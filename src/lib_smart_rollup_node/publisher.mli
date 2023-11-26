@@ -49,10 +49,10 @@
     compute the hash of to be included in the commitment.  *)
 val process_head :
   (module Protocol_plugin_sig.S) ->
-  Node_context.rw ->
+  'repo Node_context.rw ->
   predecessor:Block_hash.t ->
   Layer1.header ->
-  Context.rw ->
+  ('repo, 'tree) Context.rw ->
   Commitment.Hash.t option tzresult Lwt.t
 
 (** [publish_single_commitment node_ctxt commitment] publishes a single

@@ -33,12 +33,12 @@
     the PVM after the evaluation. *)
 val process_head :
   (module Protocol_plugin_sig.PARTIAL) ->
-  Node_context.rw ->
-  'a Context.t ->
+  'repo Node_context.rw ->
+  ('a, 'repo, 'tree) Context.t ->
   predecessor:Layer1.header ->
   Layer1.header ->
   Octez_smart_rollup.Inbox.t * string list ->
-  ('a Context.t * int * int64 * Z.t) tzresult Lwt.t
+  (('a, 'repo, 'tree) Context.t * int * int64 * Z.t) tzresult Lwt.t
 
 (** [state_of_tick plugin node_ctxt ?start_state ~tick level] returns [Some
     (state, hash)] for a given [tick] if this [tick] happened before
@@ -46,18 +46,18 @@ val process_head :
     from [start_state]. *)
 val state_of_tick :
   (module Protocol_plugin_sig.PARTIAL) ->
-  _ Node_context.t ->
-  ?start_state:Fuel.Accounted.t Pvm_plugin_sig.eval_state ->
+  (_, 'repo) Node_context.t ->
+  ?start_state:(Fuel.Accounted.t, 'repo) Pvm_plugin_sig.eval_state ->
   tick:Z.t ->
   int32 ->
-  Fuel.Accounted.t Pvm_plugin_sig.eval_state option tzresult Lwt.t
+  (Fuel.Accounted.t, 'repo) Pvm_plugin_sig.eval_state option tzresult Lwt.t
 
 (** [state_of_head plugin node_ctxt ctxt head] returns the state corresponding
     to the block [head], or the state at rollup genesis if the block is before
     the rollup origination. *)
 val state_of_head :
   (module Protocol_plugin_sig.PARTIAL) ->
-  'a Node_context.t ->
-  'a Context.t ->
+  ('a, 'repo) Node_context.t ->
+  ('a, 'repo, 'tree) Context.t ->
   Layer1.head ->
-  ('a Context.t * Context.tree) tzresult Lwt.t
+  (('a, 'repo, 'tree) Context.t * 'tree) tzresult Lwt.t

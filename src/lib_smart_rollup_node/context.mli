@@ -1,13 +1,50 @@
 open Store_sigs
 
-module type CONTEXT = sig
-  type 'a index constraint 'a = [< `Read | `Write > `Read]
+module Witness : sig
+  type (_, _) t = ..
+end
 
-  type 'a t constraint 'a = [< `Read | `Write > `Read]
+module type Witness = sig
+  type repo
 
   type tree
 
+  type (_, _) Witness.t += Id : (repo, tree) Witness.t
+end
+
+type ('repo, 'tree) witness =
+  (module Witness with type repo = 'repo and type tree = 'tree)
+
+type ('a, 'repo) raw_index = {path : string; repo : 'repo}
+
+type ('a, 'repo) index = ('a, 'repo) raw_index
+  constraint 'a = [< `Read | `Write > `Read]
+
+type ('a, 'repo, 'tree) context = {index : ('a, 'repo) index; tree : 'tree}
+
+module type CONTEXT = sig
+  type repo
+
+  type nonrec 'a raw_index = ('a, repo) raw_index
+
+  type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
+
+  type tree
+
+  type 'a t = {index : 'a index; tree : tree}
+
+  (** Read/write {!type:index}. *)
+  type rw_index = [`Read | `Write] index
+
+  (** Read/write context {!t}. *)
+  type rw = [`Read | `Write] t
+
+  (** Read-only context {!t}. *)
+  type ro = [`Read] t
+
   type hash = Smart_rollup_context_hash.t
+
+  val witness : (repo, tree) witness
 
   (** [load cache_size path] initializes from disk a context from [path].
     [cache_size] allows to change the LRU cache size of Irmin
@@ -27,7 +64,7 @@ module type CONTEXT = sig
     hash [hash] in the repository [ctxt] and returns the corresponding
     context. If there is no commit that corresponds to [hash], it returns
     [None].  *)
-  val checkout : 'a index -> hash -> 'a t option Lwt.t
+  val checkout : 'a index -> hash -> ('a, repo, tree) context option Lwt.t
 
   (** [empty ctxt] is the context with an empty content for the repository [ctxt]. *)
   val empty : 'a index -> 'a t
@@ -58,7 +95,7 @@ module type CONTEXT = sig
     val empty : unit -> value
 
     (** [find context] returns the PVM state stored in the [context], if any. *)
-    val find : _ t -> value option Lwt.t
+    val find : ('a, repo, tree) context -> value option Lwt.t
 
     (** [lookup state path] returns the data stored for the path [path] in the PVM
       state [state].  *)
@@ -67,7 +104,8 @@ module type CONTEXT = sig
     (** [set context state] saves the PVM state [state] in the context and returns
       the updated context. Note: [set] does not perform any write on disk, this
       information must be committed using {!val:commit}. *)
-    val set : 'a t -> value -> 'a t Lwt.t
+    val set :
+      ('a, repo, tree) context -> value -> ('a, repo, tree) context Lwt.t
   end
 
   module Internal_for_tests : sig
@@ -77,20 +115,18 @@ module type CONTEXT = sig
   end
 end
 
-include
-  CONTEXT
-    with type 'a index = 'a Irmin_context.index
-     and type 'a t = 'a Irmin_context.t
-     and type tree = Irmin_context.tree
+type ('repo1, 'tree1, 'repo2, 'tree2) eq =
+  | Equal : ('repo1, 'tree1, 'repo1, 'tree1) eq
 
-(** Read/write {!type:index}. *)
-type rw_index = [`Read | `Write] index
+val try_cast :
+  ('a, 'b) witness -> ('c, 'd) witness -> ('a, 'b, 'c, 'd) eq option
 
-(** Read/write context {!t}. *)
-type rw = [`Read | `Write] t
+val cast_context :
+  ('repo, 'tree) witness ->
+  (module CONTEXT) ->
+  (module CONTEXT with type repo = 'repo and type tree = 'tree)
 
-(** Read-only context {!t}. *)
-type ro = [`Read] t
+(* include CONTEXT *)
 
 (** Version of thecontext  *)
 module Version : sig
@@ -106,3 +142,19 @@ module Version : sig
       context. *)
   val check : t -> unit tzresult
 end
+
+(* module PVMState : sig *)
+(*   val set : *)
+(*     (module Protocol_plugin_sig.PARTIAL) -> *)
+(*     (([< `Read | `Write > `Read] as 'a), 'repo, 'tree) context -> *)
+(*     'tree -> *)
+(*     ('a, 'repo, 'tree) context Lwt.t *)
+(* end *)
+
+type ('a, 'repo, 'tree) t = ('a, 'repo, 'tree) context
+
+(** Read/write context {!t}. *)
+type ('repo, 'tree) rw = ([`Read | `Write], 'repo, 'tree) t
+
+(** Read-only context {!t}. *)
+type ('repo, 'tree) ro = ([`Read], 'repo, 'tree) t

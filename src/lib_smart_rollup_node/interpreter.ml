@@ -40,32 +40,62 @@ let get_boot_sector (module Plugin : Protocol_plugin_sig.PARTIAL) block_hash
       in
       return boot_sector
 
-let genesis_state (module Plugin : Protocol_plugin_sig.PARTIAL) block_hash
-    node_ctxt ctxt =
-  let open Lwt_result_syntax in
-  let* boot_sector = get_boot_sector (module Plugin) block_hash node_ctxt in
-  let*! initial_state = Plugin.Pvm.initial_state node_ctxt.kind in
-  let*! genesis_state =
-    Plugin.Pvm.install_boot_sector node_ctxt.kind initial_state boot_sector
-  in
-  let*! ctxt = Context.PVMState.set ctxt genesis_state in
-  return (ctxt, genesis_state)
+let genesis_state :
+    type repo tree.
+    (module Protocol_plugin_sig.PARTIAL) ->
+    Block_hash.t ->
+    ('a, repo) Node_context.t ->
+    ('a, repo, tree) Context.t ->
+    (('a, repo, tree) Context.t * tree) tzresult Lwt.t =
+  fun (type repo tree)
+      (module Plugin : Protocol_plugin_sig.PARTIAL)
+      block_hash
+      node_ctxt
+      ctxt ->
+   let open Lwt_result_syntax in
+   let* boot_sector = get_boot_sector (module Plugin) block_hash node_ctxt in
+   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+     Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+   in
+   let*! initial_state = Pvm.initial_state node_ctxt.kind in
+   let*! (genesis_state : tree) =
+     Pvm.install_boot_sector node_ctxt.kind initial_state boot_sector
+   in
 
-let state_of_head plugin node_ctxt ctxt Layer1.{hash; level} =
-  let open Lwt_result_syntax in
-  let*! state = Context.PVMState.find ctxt in
-  match state with
-  | None ->
-      let genesis_level = node_ctxt.Node_context.genesis_info.level in
-      if level = genesis_level then genesis_state plugin hash node_ctxt ctxt
-      else tzfail (Rollup_node_errors.Missing_PVM_state (hash, level))
-  | Some state -> return (ctxt, state)
+   let*! ctxt = Pvm.Context.PVMState.set ctxt genesis_state in
+   return (ctxt, genesis_state)
+
+let state_of_head :
+    type repo tree.
+    (module Protocol_plugin_sig.PARTIAL) ->
+    ('a, repo) Node_context.t ->
+    ('a, repo, tree) Context.t ->
+    Layer1.head ->
+    (('a, repo, tree) Context.t * tree) tzresult Lwt.t =
+  fun (type repo tree)
+      (module Plugin : Protocol_plugin_sig.PARTIAL)
+      node_ctxt
+      ctxt
+      Layer1.{hash; level} ->
+   let open Lwt_result_syntax in
+   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+     Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+   in
+   let*! state = Pvm.Context.PVMState.find ctxt in
+   match state with
+   | None ->
+       let genesis_level = node_ctxt.Node_context.genesis_info.level in
+       if level = genesis_level then
+         genesis_state (module Plugin) hash node_ctxt ctxt
+       else tzfail (Rollup_node_errors.Missing_PVM_state (hash, level))
+   | Some state -> return (ctxt, state)
 
 (** [transition_pvm plugin node_ctxt ctxt predecessor head] runs a PVM at the
     previous state from block [predecessor] by consuming as many messages as
     possible from block [head]. *)
-let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt
-    predecessor Layer1.{hash = _; _} inbox_messages =
+let transition_pvm (type repo tree)
+    (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt predecessor
+    Layer1.{hash = _; _} inbox_messages =
   let open Lwt_result_syntax in
   (* Retrieve the previous PVM state from store. *)
   let* ctxt, predecessor_state =
@@ -85,8 +115,11 @@ let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt
        } =
     Delayed_write_monad.apply node_ctxt eval_result
   in
-  let*! ctxt = Context.PVMState.set ctxt state in
-  let*! initial_tick = Plugin.Pvm.get_tick node_ctxt.kind predecessor_state in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+  let*! ctxt = Pvm.Context.PVMState.set ctxt state in
+  let*! initial_tick = Pvm.get_tick node_ctxt.kind predecessor_state in
   (* Produce events. *)
   let*! () =
     Interpreter_event.transitioned_pvm inbox_level state_hash tick num_messages
@@ -95,21 +128,26 @@ let transition_pvm (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt
 
 (** [process_head plugin node_ctxt ctxt ~predecessor head inbox_and_messages] runs the PVM for the given
     head. *)
-let process_head plugin (node_ctxt : _ Node_context.t) ctxt
-    ~(predecessor : Layer1.header) (head : Layer1.header) inbox_and_messages =
+let process_head (type repo tree) (module Plugin : Protocol_plugin_sig.PARTIAL)
+    (node_ctxt : _ Node_context.t) ctxt ~(predecessor : Layer1.header)
+    (head : Layer1.header) inbox_and_messages =
   let open Lwt_result_syntax in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+
   let first_inbox_level = node_ctxt.genesis_info.level |> Int32.succ in
   if head.Layer1.level >= first_inbox_level then
     transition_pvm
-      plugin
+      (module Plugin)
       node_ctxt
       ctxt
       (Layer1.head_of_header predecessor)
       (Layer1.head_of_header head)
       inbox_and_messages
   else if head.Layer1.level = node_ctxt.genesis_info.level then
-    let* ctxt, state = genesis_state plugin head.hash node_ctxt ctxt in
-    let*! ctxt = Context.PVMState.set ctxt state in
+    let* ctxt, state = genesis_state (module Plugin) head.hash node_ctxt ctxt in
+    let*! ctxt = Pvm.Context.PVMState.set ctxt state in
     return (ctxt, 0, 0L, Z.zero)
   else return (ctxt, 0, 0L, Z.zero)
 

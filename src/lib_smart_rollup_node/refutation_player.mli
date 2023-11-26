@@ -36,7 +36,7 @@ type worker = Worker.infinite Worker.queue Worker.t
     worker will play the next move depending on the [game] state.  If no [game]
     is passed, the worker will play the opening move for [conflict].  *)
 val init_and_play :
-  Node_context.rw ->
+  _ Node_context.rw ->
   self:Signature.public_key_hash ->
   conflict:Game.conflict ->
   game:Game.t option ->

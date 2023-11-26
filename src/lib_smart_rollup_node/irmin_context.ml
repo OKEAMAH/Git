@@ -43,6 +43,8 @@ end
 module IStoreTree =
   Tezos_context_helpers.Context.Make_tree (Context_encoding.Conf) (IStore)
 
+type repo = IStore.Repo.t
+
 type tree = IStore.tree
 
 type 'a raw_index = {path : string; repo : IStore.Repo.t}
@@ -64,6 +66,11 @@ type commit = IStore.commit
 type hash = Smart_rollup_context_hash.t
 
 type path = string list
+
+(* type (_, _) Context.context += *)
+(*   | Index : ('a, IStore.Repo.t) raw_index -> ('a, IStore.Repo.t) context *)
+
+(* let t_of_context (ri : ('a, IStore.Repo.t) raw_index) = Context.Index ri *)
 
 let () = assert (Smart_rollup_context_hash.size = IStore.Hash.hash_size)
 

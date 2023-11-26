@@ -29,7 +29,7 @@ module type RPC_DIRECTORY = sig
   (** The RPC directory, specific to blocks of the protocol, for this rollup
       node. *)
   val block_directory :
-    Node_context.rw ->
+    _ Node_context_types.rw ->
     (unit * Rollup_node_services.Arg.block_id) Tezos_rpc.Directory.t
 end
 
@@ -43,7 +43,8 @@ module type DAL_SLOTS_TRACKER = sig
         ones the rollup node will download, and stores the results in
         [Store.Dal_confirmed_slots].}
       }  *)
-  val process_head : Node_context.rw -> Layer1.head -> unit tzresult Lwt.t
+  val process_head :
+    _ Node_context_types.rw -> Layer1.head -> unit tzresult Lwt.t
 end
 
 (** Protocol specific functions to reconstruct inboxes from L1 blocks. *)
@@ -57,7 +58,7 @@ module type INBOX = sig
       serialized messages present in the block (with the internal messages added
       by the protocol). *)
   val process_head :
-    Node_context.rw ->
+    _ Node_context_types.rw ->
     predecessor:Layer1.header ->
     Layer1.header ->
     (Octez_smart_rollup.Inbox.Hash.t
@@ -70,7 +71,7 @@ module type INBOX = sig
   (** [same_as_layer_1 node_ctxt block node_inbox] ensures that the rollup node
       agrees with the L1 node that inbox for [block] is [node_inbox]. *)
   val same_as_layer_1 :
-    _ Node_context.t ->
+    _ Node_context_types.t ->
     Block_hash.t ->
     Octez_smart_rollup.Inbox.t ->
     unit tzresult Lwt.t
@@ -96,7 +97,7 @@ module type INBOX = sig
         they appeared in [head]. See {!val:process_head} for the return
         values. *)
     val process_messages :
-      Node_context.rw ->
+      _ Node_context_types.rw ->
       is_first_block:bool ->
       predecessor:Layer1.header ->
       Layer1.header ->
@@ -137,7 +138,7 @@ module type BATCHER = sig
   val init :
     Configuration.batcher ->
     signer:Signature.public_key_hash ->
-    _ Node_context.t ->
+    _ Node_context_types.t ->
     unit tzresult Lwt.t
 
   (** [new_head head] create batches of L2 messages from the queue and pack each
@@ -174,7 +175,7 @@ module type LAYER1_HELPERS = sig
   val prefetch_tezos_blocks : Layer1.t -> Layer1.head list -> unit
 
   val get_last_cemented_commitment :
-    #Client_context.full -> Address.t -> Node_context.lcc tzresult Lwt.t
+    #Client_context.full -> Address.t -> Node_context_types.lcc tzresult Lwt.t
 
   val get_last_published_commitment :
     ?allow_unstake:bool ->
@@ -199,10 +200,10 @@ module type LAYER1_HELPERS = sig
   val retrieve_genesis_info :
     #Client_context.full ->
     Address.t ->
-    Node_context.genesis_info tzresult Lwt.t
+    Node_context_types.genesis_info tzresult Lwt.t
 
   val get_boot_sector :
-    Block_hash.t -> _ Node_context.t -> string tzresult Lwt.t
+    Block_hash.t -> _ Node_context_types.t -> string tzresult Lwt.t
 
   val find_whitelist :
     #Client_context.full ->
@@ -218,7 +219,8 @@ end
 module type L1_PROCESSING = sig
   (** Ensure that the initial state hash of the PVM as defined by the rollup
       node matches the one of the PVM on the L1 node.  *)
-  val check_pvm_initial_state_hash : _ Node_context.t -> unit tzresult Lwt.t
+  val check_pvm_initial_state_hash :
+    _ Node_context_types.t -> unit tzresult Lwt.t
 
   (** React to L1 operations included in a block of the chain. When
       [catching_up] is true, the process block is in the past and the
@@ -226,7 +228,10 @@ module type L1_PROCESSING = sig
       whitelist update execution, it does not fail when the operator
       is not in the whitelist).  *)
   val process_l1_block_operations :
-    catching_up:bool -> Node_context.rw -> Layer1.header -> unit tzresult Lwt.t
+    catching_up:bool ->
+    _ Node_context_types.rw ->
+    Layer1.header ->
+    unit tzresult Lwt.t
 end
 
 (** Partial protocol plugin with just the PVM and the function to access the
@@ -247,7 +252,7 @@ module type REFUTATION_GAME_HELPERS = sig
     for the current [game] for the execution step starting with
     [start_state]. *)
   val generate_proof :
-    Node_context.rw -> Game.t -> Context.tree -> string tzresult Lwt.t
+    _ Node_context_types.rw -> Game.t -> 'tree -> string tzresult Lwt.t
 
   (** [make_dissection plugin node_ctxt ~start_state ~start_chunk ~our_stop_chunk
     ~default_number_of_sections ~last_level] computes a dissection from between
@@ -255,8 +260,8 @@ module type REFUTATION_GAME_HELPERS = sig
     has [default_number_of_sections] if there are enough ticks. *)
   val make_dissection :
     (module PARTIAL) ->
-    _ Node_context.t ->
-    start_state:Fuel.Accounted.t Pvm_plugin_sig.eval_state option ->
+    _ Node_context_types.t ->
+    start_state:(Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state option ->
     start_chunk:Game.dissection_chunk ->
     our_stop_chunk:Game.dissection_chunk ->
     default_number_of_sections:int ->
@@ -266,7 +271,7 @@ module type REFUTATION_GAME_HELPERS = sig
   (** [timeout_reached node_ctxt ~self ~opponent] returns [true] if the
     timeout is reached against opponent in head of the L1 chain. *)
   val timeout_reached :
-    _ Node_context.t ->
+    _ Node_context_types.t ->
     self:Signature.public_key_hash ->
     opponent:Signature.public_key_hash ->
     bool tzresult Lwt.t
@@ -307,3 +312,11 @@ module type S = sig
 
   module Refutation_game_helpers : REFUTATION_GAME_HELPERS
 end
+
+type ('repo, 'tree) partial_plugin =
+  (module PARTIAL
+     with type Pvm.Context.repo = 'repo
+      and type Pvm.Context.tree = 'tree)
+
+type ('repo, 'tree) full_plugin =
+  (module S with type Pvm.Context.repo = 'repo and type Pvm.Context.tree = 'tree)
