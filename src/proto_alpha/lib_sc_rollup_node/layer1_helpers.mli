@@ -40,7 +40,7 @@ val fetch_tezos_block :
 val prefetch_tezos_blocks : t -> head list -> unit
 
 val get_last_cemented_commitment :
-  #Client_context.full -> Address.t -> Node_context.lcc tzresult Lwt.t
+  #Client_context.full -> Address.t -> Node_context_types.lcc tzresult Lwt.t
 
 val get_last_published_commitment :
   ?allow_unstake:bool ->
@@ -68,12 +68,15 @@ val retrieve_constants :
   Rollup_constants.protocol_constants tzresult Lwt.t
 
 val retrieve_genesis_info :
-  #Client_context.full -> Address.t -> Node_context.genesis_info tzresult Lwt.t
+  #Client_context.full ->
+  Address.t ->
+  Node_context_types.genesis_info tzresult Lwt.t
 
 (** [get_boot_sector block_hash node_ctxt] retrieves the boot sector from the
     rollup origination operation in block [block_hash]. Precondition:
     [block_hash] has to be the block where the rollup was originated. *)
-val get_boot_sector : Block_hash.t -> _ Node_context.t -> string tzresult Lwt.t
+val get_boot_sector :
+  Block_hash.t -> _ Node_context_types.t -> string tzresult Lwt.t
 
 (** Find and retrieve the whitelist the rollup. *)
 val find_whitelist :

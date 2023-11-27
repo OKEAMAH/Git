@@ -78,7 +78,9 @@ module type S = sig
     val empty : unit -> state
 
     (** [find context] returns the PVM state stored in the [context], if any. *)
-    val find : _ Irmin_context.t -> state option Lwt.t
+    val find :
+      (_, Irmin_context.repo, Irmin_context.tree) Context.t ->
+      state option Lwt.t
 
     (** [lookup state path] returns the data stored for the path [path] in the
         PVM state [state].  *)
@@ -87,7 +89,10 @@ module type S = sig
     (** [set context state] saves the PVM state [state] in the context and
         returns the updated context. Note: [set] does not perform any write on
         disk, this information must be committed using {!val:Context.commit}. *)
-    val set : 'a Irmin_context.t -> state -> 'a Irmin_context.t Lwt.t
+    val set :
+      ('a, Irmin_context.repo, Irmin_context.tree) Context.t ->
+      state ->
+      ('a, Irmin_context.repo, Irmin_context.tree) Context.t Lwt.t
   end
 
   (** Inspect durable state using a more specialised way of reading the

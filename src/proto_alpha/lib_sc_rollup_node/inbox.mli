@@ -41,7 +41,7 @@ open Sc_rollup
     [head] in the L1 chain). In particular, this process filters the provided
     [operations] of the [head] block. *)
 val process_head :
-  Node_context.rw ->
+  _ Node_context_types.rw ->
   predecessor:Layer1.header ->
   Layer1.header ->
   (Octez_smart_rollup.Inbox.Hash.t
@@ -82,7 +82,7 @@ val payloads_history_of_messages :
 (** [same_as_layer_1 node_ctxt block node_inbox] ensures that the rollup
     node agrees with the L1 node that inbox for [block] is [node_inbox]. *)
 val same_as_layer_1 :
-  _ Node_context.t ->
+  _ Node_context_types.t ->
   Block_hash.t ->
   Octez_smart_rollup.Inbox.t ->
   unit tzresult Lwt.t
@@ -103,7 +103,7 @@ val init :
 
 module Internal_for_tests : sig
   val process_messages :
-    Node_context.rw ->
+    _ Node_context_types.rw ->
     is_first_block:bool ->
     predecessor:Layer1.header ->
     Layer1.header ->

@@ -54,7 +54,7 @@ let fetch_tezos_block l1_ctxt hash =
 let prefetch_tezos_blocks = Layer1.prefetch_tezos_blocks fetch extract_header
 
 let get_last_cemented_commitment (cctxt : #Client_context.full) rollup_address :
-    Node_context.lcc tzresult Lwt.t =
+    Node_context_types.lcc tzresult Lwt.t =
   let open Lwt_result_syntax in
   let cctxt =
     new Protocol_client_context.wrap_full (cctxt :> Client_context.full)
@@ -67,7 +67,7 @@ let get_last_cemented_commitment (cctxt : #Client_context.full) rollup_address :
       rollup_address
   in
   {
-    Node_context.commitment =
+    Node_context_types.commitment =
       Sc_rollup_proto_types.Commitment_hash.to_octez commitment;
     level = Protocol.Alpha_context.Raw_level.to_int32 level;
   }
@@ -191,14 +191,14 @@ let retrieve_genesis_info cctxt rollup_address =
   let+ {level; commitment_hash} =
     RPC.Sc_rollup.genesis_info cctxt (cctxt#chain, `Head 0) rollup_address
   in
-  Node_context.
+  Node_context_types.
     {
       level = Raw_level.to_int32 level;
       commitment_hash =
         Sc_rollup_proto_types.Commitment_hash.to_octez commitment_hash;
     }
 
-let get_boot_sector block_hash (node_ctxt : _ Node_context.t) =
+let get_boot_sector block_hash (node_ctxt : _ Node_context_types.t) =
   let open Protocol in
   let open Alpha_context in
   let open Lwt_result_syntax in

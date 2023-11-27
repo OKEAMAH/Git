@@ -89,8 +89,8 @@ let get_slot_pages =
       (Dal_node_client.get_slot_pages dal_cctxt)
       Lwt.return
 
-let download_confirmed_slot_pages ({Node_context.dal_cctxt; _} as node_ctxt)
-    ~published_level ~index =
+let download_confirmed_slot_pages
+    ({Node_context_types.dal_cctxt; _} as node_ctxt) ~published_level ~index =
   let open Lwt_result_syntax in
   let* published_in_block_hash =
     Node_context.hash_of_level node_ctxt (Raw_level.to_int32 published_level)
@@ -124,7 +124,7 @@ let page_level_is_valid ~dal_attestation_lag ~published_level ~origination_level
 let slot_pages ~dal_attestation_lag ~inbox_level node_ctxt
     Dal.Slot.Header.{published_level; index} =
   let open Lwt_result_syntax in
-  let Node_context.{genesis_info = {level = origination_level; _}; _} =
+  let Node_context_types.{genesis_info = {level = origination_level; _}; _} =
     node_ctxt
   in
   if
@@ -159,7 +159,7 @@ let page_content ~dal_attestation_lag ~inbox_level node_ctxt page_id =
   let open Lwt_result_syntax in
   let Dal.Page.{slot_id; page_index} = page_id in
   let Dal.Slot.Header.{published_level; index} = slot_id in
-  let Node_context.{genesis_info = {level = origination_level; _}; _} =
+  let Node_context_types.{genesis_info = {level = origination_level; _}; _} =
     node_ctxt
   in
   if

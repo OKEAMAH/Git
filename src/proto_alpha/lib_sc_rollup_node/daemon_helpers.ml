@@ -29,7 +29,7 @@ open Protocol
 open Alpha_context
 open Apply_results
 
-let check_pvm_initial_state_hash {Node_context.cctxt; config; kind; _} =
+let check_pvm_initial_state_hash {Node_context_types.cctxt; config; kind; _} =
   let open Lwt_result_syntax in
   let module PVM = (val Pvm.of_kind kind) in
   let* l1_reference_initial_state_hash =
@@ -132,7 +132,7 @@ let maybe_recover_bond node_ctxt =
       for the first time. {b Note}: this function does not process inboxes for
       the rollup, which is done instead by {!Inbox.process_head}. *)
 let process_included_l1_operation (type kind) ~catching_up
-    (node_ctxt : Node_context.rw) (head : Layer1.header) ~source
+    (node_ctxt : _ Node_context_types.rw) (head : Layer1.header) ~source
     (operation : kind manager_operation)
     (result : kind successful_manager_operation_result) =
   let open Lwt_result_syntax in
@@ -281,7 +281,7 @@ let process_included_l1_operation (type kind) ~catching_up
                    let Sc_rollup.{outbox_level; message_index; _} =
                      PVM.output_of_output_proof output_proof
                    in
-                   Node_context.
+                   Node_context_types.
                      {
                        private_info with
                        last_whitelist_update =
@@ -320,7 +320,7 @@ let process_l1_operation (type kind) ~catching_up node_ctxt
     | Sc_rollup_execute_outbox_message {rollup; _}
     | Sc_rollup_recover_bond {sc_rollup = rollup; staker = _} ->
         Sc_rollup.Address.(
-          rollup = node_ctxt.Node_context.config.sc_rollup_address)
+          rollup = node_ctxt.Node_context_types.config.sc_rollup_address)
     | Dal_publish_slot_header _ -> true
     | Reveal _ | Transaction _ | Origination _ | Delegation _
     | Update_consensus_key _ | Register_global_constant _ | Set_deposits_limit _
@@ -364,7 +364,9 @@ let process_l1_operation (type kind) ~catching_up node_ctxt
 let process_l1_block_operations ~catching_up node_ctxt (head : Layer1.header) =
   let open Lwt_result_syntax in
   let* block =
-    Layer1_helpers.fetch_tezos_block node_ctxt.Node_context.l1_ctxt head.hash
+    Layer1_helpers.fetch_tezos_block
+      node_ctxt.Node_context_types.l1_ctxt
+      head.hash
   in
   let apply (type kind) accu ~source (operation : kind manager_operation) result
       =
