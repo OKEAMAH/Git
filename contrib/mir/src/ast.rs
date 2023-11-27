@@ -312,6 +312,7 @@ pub enum Instruction {
     Slice(overloads::Slice),
     Left,
     Right,
+    Ticket,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
