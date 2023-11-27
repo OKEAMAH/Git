@@ -383,6 +383,13 @@ where
         let data_path = front.data_path(&self.path)?;
         storage::read_optional_rlp(host, &data_path)
     }
+
+    /// Removes the first element of the list and returns it
+    pub fn pop_first(&mut self, host: &mut impl Runtime) -> Result<Option<Elt>> {
+        let Some(LinkedListPointer { front, .. }) = &self.pointers else {return Ok(None)};
+        let to_remove = front.id.clone();
+        self.remove(host, &to_remove)
+    }
 }
 
 #[cfg(test)]
