@@ -171,7 +171,7 @@ let constants_mainnet =
     cost_per_byte = Tez.of_mutez_exn 250L;
     quorum_min = 20_00l;
     quorum_max = 70_00l;
-    min_proposal_quorum = 5_00l;
+    min_proposal_quorum = Protocol.Centile_of_percentage.five_percent;
     (* 1/2 window size of 2000 blocks with precision of 1_000_000
        for integer computation *)
     liquidity_baking_toggle_ema_threshold = 1_000_000_000l;

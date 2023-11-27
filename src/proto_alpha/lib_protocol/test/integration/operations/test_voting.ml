@@ -440,7 +440,9 @@ let assert_validate_ballot_fails ~expected_error ~voter ~proposal ~ballot
 let test_successful_vote num_delegates () =
   let open Lwt_result_syntax in
   let open Alpha_context in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / num_delegates)) in
+  let min_proposal_quorum =
+    Centile_of_percentage.With_exceptions.of_int (100_00 / num_delegates)
+  in
   let* b, (_ : Contract.t list) =
     context_init ~min_proposal_quorum num_delegates ()
   in
@@ -762,7 +764,9 @@ let get_expected_participation_ema power voter_power old_participation_ema =
     in exploration, go back to proposal period. *)
 let test_not_enough_quorum_in_exploration num_delegates () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / num_delegates)) in
+  let min_proposal_quorum =
+    Centile_of_percentage.With_exceptions.of_int (100_00 / num_delegates)
+  in
   let* b, delegates = context_init ~min_proposal_quorum num_delegates () in
   (* proposal period *)
   let open Alpha_context in
@@ -823,7 +827,9 @@ let test_not_enough_quorum_in_exploration num_delegates () =
    In promotion period, go back to proposal period. *)
 let test_not_enough_quorum_in_promotion num_delegates () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / num_delegates)) in
+  let min_proposal_quorum =
+    Centile_of_percentage.With_exceptions.of_int (100_00 / num_delegates)
+  in
   let* b, delegates = context_init ~min_proposal_quorum num_delegates () in
   let* () = assert_period ~expected_kind:Proposal b __LOC__ in
   let proposer =
@@ -902,7 +908,7 @@ let test_not_enough_quorum_in_promotion num_delegates () =
     least 4 times the value of the minimal_stake constant. *)
 let test_supermajority_in_proposal there_is_a_winner () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = 0l in
+  let min_proposal_quorum = Centile_of_percentage.zero in
   let initial_balance = 1L in
   let* b, delegates =
     context_init
@@ -1010,8 +1016,8 @@ let test_quorum_in_proposal has_quorum () =
   let pkhs = List.map (fun del -> Context.Contract.pkh del) [del1; del2] in
   let policy = Block.Excluding pkhs in
   let quorum =
-    if has_quorum then Int64.of_int32 min_proposal_quorum
-    else Int64.(sub (of_int32 min_proposal_quorum) 10L)
+    if has_quorum then (min_proposal_quorum :> Int64.t)
+    else Int64.(sub (min_proposal_quorum :> t) 10L)
   in
   let bal =
     Int64.(div (mul total_tokens quorum) 100_00L) |> Test_tez.of_mutez_exn
@@ -1041,7 +1047,7 @@ let test_quorum_in_proposal has_quorum () =
     reached. Otherwise, it remains in proposal period. *)
 let test_supermajority_in_exploration supermajority () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / 100)) in
+  let min_proposal_quorum = Centile_of_percentage.one_hundred_percent in
   let* b, delegates = context_init ~min_proposal_quorum 100 () in
   let del1 = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth delegates 0 in
   let proposal = protos.(0) in
@@ -1096,7 +1102,9 @@ let test_supermajority_in_exploration supermajority () =
     proposals. *)
 let test_no_winning_proposal num_delegates () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / num_delegates)) in
+  let min_proposal_quorum =
+    Centile_of_percentage.With_exceptions.of_int (100_00 / num_delegates)
+  in
   let* b, _ = context_init ~min_proposal_quorum num_delegates () in
   (* beginning of proposal, denoted by _p1;
      take a snapshot of the active delegates and their voting power from listings *)
@@ -1121,7 +1129,9 @@ let test_no_winning_proposal num_delegates () =
     maximum quorum cap. *)
 let test_quorum_capped_maximum num_delegates () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / num_delegates)) in
+  let min_proposal_quorum =
+    Centile_of_percentage.With_exceptions.of_int (100_00 / num_delegates)
+  in
   let* b, delegates = context_init ~min_proposal_quorum num_delegates () in
   (* set the participation EMA to 100% *)
   let*! b = Context.Vote.set_participation_ema b 100_00l in
@@ -1163,7 +1173,9 @@ let test_quorum_capped_maximum num_delegates () =
     minimum quorum cap. *)
 let test_quorum_capped_minimum num_delegates () =
   let open Lwt_result_syntax in
-  let min_proposal_quorum = Int32.(of_int @@ (100_00 / num_delegates)) in
+  let min_proposal_quorum =
+    Centile_of_percentage.With_exceptions.of_int (100_00 / num_delegates)
+  in
   let* b, delegates = context_init ~min_proposal_quorum num_delegates () in
   (* set the participation EMA to 0% *)
   let*! b = Context.Vote.set_participation_ema b 0l in

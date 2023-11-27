@@ -172,7 +172,7 @@ type t = {
   quorum_min : int32;
   (* in centile of a percentage *)
   quorum_max : int32;
-  min_proposal_quorum : int32;
+  min_proposal_quorum : Centile_of_percentage.t;
   liquidity_baking_toggle_ema_threshold : int32;
   max_operations_time_to_live : int;
   minimal_block_delay : Period_repr.t;

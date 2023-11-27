@@ -333,7 +333,7 @@ type 'accounts init :=
   ?bootstrap_delegations:Signature.Public_key_hash.t option list ->
   ?bootstrap_consensus_keys:Signature.Public_key.t option list ->
   ?consensus_threshold:int ->
-  ?min_proposal_quorum:int32 ->
+  ?min_proposal_quorum:Centile_of_percentage.t ->
   ?bootstrap_contracts:Parameters.bootstrap_contract list ->
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->

@@ -1127,6 +1127,9 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
         let consensus_threshold =
           Uint63.With_exceptions.of_int c.consensus_threshold
         in
+        let min_proposal_quorum =
+          Centile_of_percentage.With_exceptions.of_int32 c.min_proposal_quorum
+        in
         let constants =
           Constants_parametric_repr.
             {
@@ -1150,7 +1153,7 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
                 c.hard_storage_limit_per_operation;
               quorum_min = c.quorum_min;
               quorum_max = c.quorum_max;
-              min_proposal_quorum = c.min_proposal_quorum;
+              min_proposal_quorum;
               liquidity_baking_toggle_ema_threshold =
                 c.liquidity_baking_toggle_ema_threshold;
               minimal_block_delay = c.minimal_block_delay;

@@ -127,7 +127,7 @@ val check_constants_consistency : Constants.Parametric.t -> unit tzresult Lwt.t
 val genesis :
   ?commitments:Commitment.t list ->
   ?consensus_threshold:int ->
-  ?min_proposal_quorum:int32 ->
+  ?min_proposal_quorum:Centile_of_percentage.t ->
   ?bootstrap_contracts:Parameters.bootstrap_contract list ->
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->
@@ -155,7 +155,7 @@ val genesis_with_parameters : Parameters.t -> block tzresult Lwt.t
 *)
 val alpha_context :
   ?commitments:Commitment.t list ->
-  ?min_proposal_quorum:int32 ->
+  ?min_proposal_quorum:Centile_of_percentage.t ->
   Parameters.bootstrap_account list ->
   Alpha_context.t tzresult Lwt.t
 
@@ -382,7 +382,7 @@ val bake_until_cycle :
 (** Common util function to create parameters for [initial_context] function *)
 val prepare_initial_context_params :
   ?consensus_threshold:int ->
-  ?min_proposal_quorum:int32 ->
+  ?min_proposal_quorum:Centile_of_percentage.t ->
   ?level:int32 ->
   ?cost_per_byte:Tez.t ->
   ?issuance_weights:Constants.Parametric.issuance_weights ->

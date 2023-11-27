@@ -45,7 +45,7 @@ let select_winning_proposal ctxt =
   | Some ([proposal], vote) ->
       let* max_vote = Vote.get_total_voting_power_free ctxt in
       let min_proposal_quorum =
-        Z.of_int32 (Constants.min_proposal_quorum ctxt)
+        Centile_of_percentage.to_z (Constants.min_proposal_quorum ctxt)
       in
       let min_vote_to_pass =
         Z.(

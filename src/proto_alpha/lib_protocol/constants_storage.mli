@@ -67,7 +67,7 @@ val quorum_min : Raw_context.t -> int32
 
 val quorum_max : Raw_context.t -> int32
 
-val min_proposal_quorum : Raw_context.t -> int32
+val min_proposal_quorum : Raw_context.t -> Centile_of_percentage.t
 
 val liquidity_baking_toggle_ema_threshold : Raw_context.t -> int32
 

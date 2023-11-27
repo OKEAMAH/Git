@@ -906,7 +906,7 @@ module Constants : sig
       hard_storage_limit_per_operation : Z.t;
       quorum_min : int32;
       quorum_max : int32;
-      min_proposal_quorum : int32;
+      min_proposal_quorum : Centile_of_percentage.t;
       liquidity_baking_toggle_ema_threshold : int32;
       max_operations_time_to_live : int;
       minimal_block_delay : Period.t;
@@ -982,7 +982,7 @@ module Constants : sig
 
   val quorum_max : context -> int32
 
-  val min_proposal_quorum : context -> int32
+  val min_proposal_quorum : context -> Centile_of_percentage.t
 
   val liquidity_baking_toggle_ema_threshold : context -> int32
 

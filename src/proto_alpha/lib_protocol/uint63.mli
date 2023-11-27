@@ -45,6 +45,8 @@ val one_hundred : t
 
 val two_hundred_fifty_seven : t
 
+val five_hundred : t
+
 val ten_thousand : t
 
 val one_million : t
@@ -147,6 +149,8 @@ module With_exceptions : sig
   val of_int64 : Int64.t -> t
 
   val of_int : int -> t
+
+  val of_int32 : Int32.t -> t
 
   val of_z : Z.t -> t
 

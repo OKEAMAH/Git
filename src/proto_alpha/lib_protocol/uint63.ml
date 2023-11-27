@@ -29,6 +29,8 @@ let one_hundred = 100L
 
 let two_hundred_fifty_seven = 257L
 
+let five_hundred = 500L
+
 let ten_thousand = 10_000L
 
 let one_million = 1_000_000L
@@ -220,6 +222,11 @@ module With_exceptions = struct
     match of_int i with
     | Some res -> res
     | None -> invalid_arg "Uint63.With_exceptions.of_int"
+
+  let of_int32 i =
+    match of_int32 i with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.of_int32"
 
   let of_z z =
     match of_z z with
