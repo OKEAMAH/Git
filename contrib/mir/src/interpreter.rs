@@ -1477,6 +1477,38 @@ mod interpreter_tests {
     }
 
     #[test]
+    fn test_operation_counter() {
+        // Here we run two instructions that each generates an operation
+        // and check that the counter in the generated operations are incremented
+        // as expected.
+        use Instruction as I;
+        let sd = super::SetDelegate(Some(
+            KeyHash::try_from("tz3h4mjmMieZKSaSBWBC7XmeL6JQ3hucFDcP").unwrap(),
+        ));
+        let stk = &mut stk![
+            TypedValue::new_option(Some(TypedValue::KeyHash(sd.0.clone().unwrap()))),
+            TypedValue::new_option(Some(TypedValue::KeyHash(sd.0.clone().unwrap())))
+        ];
+        let ctx = &mut Ctx::default();
+        ctx._operation_counter = 100;
+        assert_eq!(
+            interpret(
+                &vec![I::SetDelegate, I::Dip(Some(1), vec![I::SetDelegate])],
+                ctx,
+                stk
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            stk,
+            &stk![
+                TypedValue::new_operation(Operation::SetDelegate(sd.clone()), 102),
+                TypedValue::new_operation(Operation::SetDelegate(sd), 101)
+            ]
+        );
+    }
+
+    #[test]
     fn self_instr_ep() {
         let stk = &mut stk![];
         let ctx = &mut Ctx {
