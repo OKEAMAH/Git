@@ -386,7 +386,7 @@ let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
       in
       let forbidden =
         Signature.Public_key_hash.(delegate <> sender)
-        && Compare.Int32.(limit_of_staking_over_baking_millionth = 0l)
+        && Uint63.(limit_of_staking_over_baking_millionth = zero)
       in
       let*? () =
         error_when forbidden Staking_to_delegate_that_refuses_external_staking

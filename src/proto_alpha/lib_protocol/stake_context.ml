@@ -30,22 +30,21 @@ let apply_limits ctxt staking_parameters
     Constants_storage.limit_of_delegation_over_baking ctxt
   in
   let global_limit_of_staking_over_baking_millionth =
-    Int64.(
-      mul
-        1_000_000L
-        (of_int
-           (Constants_storage
-            .adaptive_issuance_global_limit_of_staking_over_baking
-              ctxt)))
+    Uint63.(
+      With_exceptions.mul
+        one_million
+        (Constants_storage.adaptive_issuance_global_limit_of_staking_over_baking
+           ctxt))
   in
-  let {Staking_parameters_repr.limit_of_staking_over_baking_millionth; _} =
+  let {
+    Staking_parameters_repr.limit_of_staking_over_baking_millionth =
+      delegate_limit_of_staking_over_baking_millionth;
+    _;
+  } =
     staking_parameters
   in
   let limit_of_staking_over_baking_millionth =
-    let delegate_limit_of_staking_over_baking_millionth =
-      Int64.of_int32 limit_of_staking_over_baking_millionth
-    in
-    Compare.Int64.min
+    Uint63.min
       global_limit_of_staking_over_baking_millionth
       delegate_limit_of_staking_over_baking_millionth
   in
@@ -54,7 +53,7 @@ let apply_limits ctxt staking_parameters
       Tez_repr.mul_ratio
         ~rounding:`Down
         own_frozen
-        ~num:limit_of_staking_over_baking_millionth
+        ~num:(limit_of_staking_over_baking_millionth :> Int64.t)
         ~den:1_000_000L
     with
     | Ok max_allowed_staked_frozen ->

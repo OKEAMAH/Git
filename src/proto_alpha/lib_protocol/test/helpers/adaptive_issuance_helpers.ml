@@ -1017,7 +1017,9 @@ let apply_slashing
   in
   let total_after_slash = get_total_supply account_map in
   let portion_reward =
-    constants.adaptive_issuance.global_limit_of_staking_over_baking + 2
+    Protocol.Uint63.to_int
+      constants.adaptive_issuance.global_limit_of_staking_over_baking
+    + 2
   in
   (* For each container slashed, the snitch gets a reward transferred. It gets rounded
      down each time *)

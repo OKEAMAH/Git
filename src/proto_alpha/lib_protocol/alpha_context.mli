@@ -869,7 +869,7 @@ module Constants : sig
     }
 
     type adaptive_issuance = {
-      global_limit_of_staking_over_baking : int;
+      global_limit_of_staking_over_baking : Uint63.t;
       edge_of_staking_over_delegation : Uint63.Div_safe.t;
       launch_ema_threshold : int32;
       adaptive_rewards_params : adaptive_rewards_params;

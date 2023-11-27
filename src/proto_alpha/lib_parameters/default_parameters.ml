@@ -260,7 +260,7 @@ let constants_mainnet =
       };
     adaptive_issuance =
       {
-        global_limit_of_staking_over_baking = 5;
+        global_limit_of_staking_over_baking = Protocol.Uint63.five;
         edge_of_staking_over_delegation = Protocol.Uint63.Div_safe.two;
         launch_ema_threshold = 1_600_000_000l;
         adaptive_rewards_params =

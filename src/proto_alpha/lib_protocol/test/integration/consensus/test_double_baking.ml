@@ -410,8 +410,8 @@ let test_payload_producer_gets_evidence_rewards () =
   let divider =
     Int64.add
       2L
-      (Int64.of_int
-         c.parametric.adaptive_issuance.global_limit_of_staking_over_baking)
+      (c.parametric.adaptive_issuance.global_limit_of_staking_over_baking
+        :> Int64.t)
   in
   let evidence_reward = Test_tez.(slashed_amount /! divider) in
   let baked_blocks =

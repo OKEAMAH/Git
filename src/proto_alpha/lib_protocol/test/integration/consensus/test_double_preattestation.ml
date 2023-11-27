@@ -161,9 +161,9 @@ end = struct
     let divider =
       Int64.add
         2L
-        (Int64.of_int
-           constants.parametric.adaptive_issuance
-             .global_limit_of_staking_over_baking)
+        (constants.parametric.adaptive_issuance
+           .global_limit_of_staking_over_baking
+          :> Int64.t)
     in
     let denun_reward = Test_tez.(lost_deposit /! divider) in
     (* if the baker is the attester, he'll only loose half of the deposits *)

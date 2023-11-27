@@ -33,6 +33,8 @@ val one : t
 
 val two : t
 
+val five : t
+
 val nine : t
 
 val nineteen : t
@@ -45,7 +47,11 @@ val two_hundred_fifty_seven : t
 
 val ten_thousand : t
 
+val one_million : t
+
 val one_billion : t
+
+val max_uint30 : t
 
 val max_int : t
 
@@ -84,6 +90,8 @@ module Div_safe : sig
   val uint8_encoding : t Data_encoding.t
 
   val uint30_encoding : t Data_encoding.t
+
+  val add : t -> uint63 -> t option
 
   val sub : t -> uint63 -> t option
 

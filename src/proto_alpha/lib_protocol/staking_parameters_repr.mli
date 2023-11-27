@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 type t = private {
-  limit_of_staking_over_baking_millionth : int32;
+  limit_of_staking_over_baking_millionth : Uint63.t;
   edge_of_baking_over_staking_billionth : Uint63.t;
 }
 

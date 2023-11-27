@@ -188,8 +188,8 @@ let test_valid_double_attestation_evidence () =
   let divider =
     Int64.add
       2L
-      (Int64.of_int
-         constants.adaptive_issuance.global_limit_of_staking_over_baking)
+      (constants.adaptive_issuance.global_limit_of_staking_over_baking
+        :> Int64.t)
   in
   let evidence_reward = Test_tez.(frozen_deposits_after /! divider) in
   let expected_reward = Test_tez.(baking_reward +! evidence_reward) in

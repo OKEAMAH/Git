@@ -24,9 +24,11 @@
 (*****************************************************************************)
 
 type t = {
-  limit_of_staking_over_baking_millionth : int32;
+  limit_of_staking_over_baking_millionth : Uint63.t;
   edge_of_baking_over_staking_billionth : Uint63.t;
 }
+
+let max_limit_of_staking_over_baking_millionth = Uint63.max_uint30
 
 let maximum_edge_of_baking_over_staking_billionth =
   (* max is 1 (1_000_000_000 billionth) *)
@@ -34,7 +36,7 @@ let maximum_edge_of_baking_over_staking_billionth =
 
 let default =
   {
-    limit_of_staking_over_baking_millionth = 0l;
+    limit_of_staking_over_baking_millionth = Uint63.zero;
     edge_of_baking_over_staking_billionth = Uint63.one_billion;
   }
 
@@ -54,12 +56,16 @@ let () =
 let make ~limit_of_staking_over_baking_millionth
     ~edge_of_baking_over_staking_billionth =
   if
-    Compare.Int32.(limit_of_staking_over_baking_millionth < 0l)
-    || Uint63.(
-         edge_of_baking_over_staking_billionth
-         > maximum_edge_of_baking_over_staking_billionth)
+    Uint63.(
+      edge_of_baking_over_staking_billionth
+      > maximum_edge_of_baking_over_staking_billionth)
   then Error ()
   else
+    let limit_of_staking_over_baking_millionth =
+      Uint63.min
+        limit_of_staking_over_baking_millionth
+        max_limit_of_staking_over_baking_millionth
+    in
     Ok
       {
         limit_of_staking_over_baking_millionth;
@@ -83,7 +89,7 @@ let encoding =
            ~limit_of_staking_over_baking_millionth
            ~edge_of_baking_over_staking_billionth))
     (obj2
-       (req "limit_of_staking_over_baking_millionth" int32)
+       (req "limit_of_staking_over_baking_millionth" Uint63.uint30_encoding)
        (req "edge_of_baking_over_staking_billionth" Uint63.uint30_encoding))
 
 let make ~limit_of_staking_over_baking_millionth
@@ -95,9 +101,8 @@ let make ~limit_of_staking_over_baking_millionth
       | None -> Error ()
       | Some edge_of_baking_over_staking_billionth ->
           let limit_of_staking_over_baking_millionth =
-            if Z.fits_int32 limit_of_staking_over_baking_millionth then
-              Z.to_int32 limit_of_staking_over_baking_millionth
-            else Int32.max_int
+            Uint63.of_z limit_of_staking_over_baking_millionth
+            |> Option.value ~default:Uint63.max_int
           in
           make
             ~limit_of_staking_over_baking_millionth

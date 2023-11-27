@@ -168,7 +168,7 @@ let apply_and_clear_current_cycle_denunciations ctxt =
       Constants_storage.adaptive_issuance_global_limit_of_staking_over_baking
         ctxt
     in
-    Uint63.Div_safe.of_int (global_limit_of_staking_over_baking + 2)
+    Uint63.Div_safe.(add two global_limit_of_staking_over_baking)
     |> Option.value ~default:Uint63.Div_safe.max_int
   in
   let compute_reward_and_burn slashing_percentage

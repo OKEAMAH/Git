@@ -17,6 +17,8 @@ let one = Int64.one
 
 let two = 2L
 
+let five = 5L
+
 let nine = 9L
 
 let nineteen = 19L
@@ -29,7 +31,11 @@ let two_hundred_fifty_seven = 257L
 
 let ten_thousand = 10_000L
 
+let one_million = 1_000_000L
+
 let one_billion = 1_000_000_000L
+
+let max_uint30 = 1_073_741_824L
 
 let max_int = Int64.max_int
 
@@ -47,6 +53,8 @@ module Div_safe_base : sig
 
   val of_succ_uint63 : uint63 -> t option
 
+  val add : t -> uint63 -> t option
+
   module With_exceptions : sig
     val of_int64 : int64 -> t
   end
@@ -56,6 +64,10 @@ end = struct
   let of_int64 i = if i > 0L then Some i else None
 
   let of_succ_uint63 i = if i < max_int then Some (Int64.succ i) else None
+
+  let add a b =
+    let s = Int64.add a b in
+    if s < a then None else Some s
 
   module With_exceptions = struct
     let of_int64 i =
@@ -105,6 +117,8 @@ module Div_safe = struct
   let uint8_encoding = mk_encoding to_int of_int Data_encoding.uint8
 
   let uint30_encoding = mk_encoding to_int of_int Data_encoding.int31
+
+  let add = B.add
 
   let sub (a : t) b = of_int64 (Int64.sub (a :> Int64.t) b)
 
