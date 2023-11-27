@@ -5,7 +5,7 @@
 /*                                                                            */
 /******************************************************************************/
 
-use std::{collections::BTreeMap, fmt::Display};
+use std::{collections::BTreeMap, fmt::Display, mem, ops::DerefMut};
 
 use super::TypedValue;
 
@@ -41,6 +41,24 @@ pub struct BigMap {
     overlay: BTreeMap<TypedValue, Option<TypedValue>>,
 }
 
+impl<const N: usize> From<[(TypedValue, Option<TypedValue>); N]> for BigMap {
+    fn from(mapping: [(TypedValue, Option<TypedValue>); N]) -> Self {
+        BigMap {
+            id: None,
+            overlay: BTreeMap::from(mapping),
+        }
+    }
+}
+
+impl<const N: usize> From<[(TypedValue, TypedValue); N]> for BigMap {
+    fn from(mapping: [(TypedValue, TypedValue); N]) -> Self {
+        BigMap {
+            id: None,
+            overlay: mapping.into_iter().map(|(k, v)| (k, Some(v))).collect(),
+        }
+    }
+}
+
 impl BigMap {
     /// Michelson's `GET`.
     pub fn get(
@@ -71,24 +89,6 @@ impl BigMap {
     /// Michelson's `UPDATE`.
     pub fn update(&mut self, key: TypedValue, value: Option<TypedValue>) {
         self.overlay.insert(key, value);
-    }
-}
-
-impl<const N: usize> From<[(TypedValue, Option<TypedValue>); N]> for BigMap {
-    fn from(mapping: [(TypedValue, Option<TypedValue>); N]) -> Self {
-        BigMap {
-            id: None,
-            overlay: BTreeMap::from(mapping),
-        }
-    }
-}
-
-impl<const N: usize> From<[(TypedValue, TypedValue); N]> for BigMap {
-    fn from(mapping: [(TypedValue, TypedValue); N]) -> Self {
-        BigMap {
-            id: None,
-            overlay: mapping.into_iter().map(|(k, v)| (k, Some(v))).collect(),
-        }
     }
 }
 
@@ -342,5 +342,296 @@ mod test_big_map_operations {
         check_get_mem(&map, storage, TypedValue::Int(1), Some(TypedValue::Int(-1)));
         check_get_mem(&map, storage, TypedValue::Int(2), None);
         check_get_mem(&map, storage, TypedValue::Int(3), Some(TypedValue::Int(3)));
+    }
+}
+
+impl TypedValue {
+    fn view_big_maps_ext<'a>(&'a mut self, put_res: &mut impl FnMut(&'a mut BigMap)) {
+        use crate::ast::Or::*;
+        use TypedValue::*;
+        fn go<'a>(val: &'a mut TypedValue, put_res: &mut impl FnMut(&'a mut BigMap)) {
+            match val {
+                Int(_) => {}
+                Nat(_) => {}
+                Mutez(_) => {}
+                Bool(_) => {}
+                Unit => {}
+                String(_) => {}
+                Bytes(_) => {}
+                Address(_) => {}
+                KeyHash(_) => {}
+                Key(_) => {}
+                Signature(_) => {}
+                ChainId(_) => {}
+                Contract(_) => {}
+                Pair(p) => {
+                    go(&mut p.0, put_res);
+                    go(&mut p.1, put_res);
+                }
+                Or(p) => match p.deref_mut() {
+                    Left(l) => go(l, put_res),
+                    Right(r) => go(r, put_res),
+                },
+                Option(p) => match p {
+                    Some(x) => go(x, put_res),
+                    None => {}
+                },
+                List(l) => l.iter_mut().for_each(|v| go(v, put_res)),
+                Map(m) => m.iter_mut().for_each(|(_k, v)| {
+                    // Key is comparable as so has no big map, skipping it
+                    go(v, put_res)
+                }),
+                // TODO: next merge request
+                // actually take some big maps once they are present in TypedValue
+                Operation(op) => match &mut op.as_mut().operation {
+                    crate::ast::Operation::TransferTokens(t) => {
+                        go(&mut t.param, put_res);
+                    }
+                    crate::ast::Operation::SetDelegate(_) => {}
+                },
+            }
+        }
+        go(self, put_res);
+    }
+
+    pub fn view_big_maps_mut<'a>(&'a mut self, out: &mut Vec<&'a mut BigMap>) {
+        self.view_big_maps_ext(&mut |m| out.push(m));
+    }
+
+    pub fn view_big_map_ids<T>(&mut self, out: &mut Vec<BigMapId>) {
+        self.view_big_maps_ext(&mut |m| {
+            if let Some(id) = m.id {
+                out.push(id)
+            }
+        });
+    }
+}
+
+/// Given big map IDs before contract execution and big maps after the
+/// execution, dump all the updates to the lazy storage. All the big maps
+/// remaining unused will be removed from the storage.
+///
+/// After the call, [BigMap::overlay] field in all provided big maps is
+/// guaranteed to be empty and all [BigMap::id]s are guaranteed to be non-None.
+/// Also, some [BigMap::id] fields may change to avoid duplications.
+pub fn dump_big_map_updates(
+    storage: &mut impl LazyStorage,
+    started_with_map_ids: &[BigMapId],
+    finished_with_maps: &mut [&mut BigMap],
+) -> Result<(), LazyStorageError> {
+    // Note: this function is similar to `extract_lazy_storage_diff` from the
+    // Octez implementation. The difference is that their's `to_duplicate`
+    // argument is not necessary, because contract parameter cannot contain big
+    // map, it is for other kind of entries in lazy storage.
+
+    // The `finished_with_maps` vector above is supposed to contain all big maps
+    // remaining on stack at the end of contract execution. If we consider
+    // `BigMapId` as pointers to actual big maps in the lazy storage, then one
+    // can say that:
+    // * If there is exactly one given BigMapId in the list, it "exclusively
+    // owns" the big map in the storage and we can update that map in-place.
+    // * If there are several BigMapId values, this is shared ownership.
+    // After interpretation there should remain no shared references, every
+    // BigMapId should point to its own location in the storage, which we
+    // will solve via copying.
+    // * If there is no BigMapId value at the end but it was present at the
+    // beginning, then the map in the storage can be garbage collected.
+
+    // First, we find big maps that are related to same big map IDs in the
+    // storage. This is necessary to understand which maps will be updated in
+    // lazy storage in-place and which have to be copied.
+    //
+    // With big map IDs we associate a non-empty list of big maps.
+    // Where "non-empty" is kept `(T, Vec<T>)` for convenience. Note
+    // that in the vast majority of the real-life cases big maps are not
+    // de-facto copied, so the vector will usually stay empty and produce no
+    // allocations.
+    type NonEmpty<T> = (T, Vec<T>);
+    let mut grouped_maps: BTreeMap<BigMapId, NonEmpty<&mut BigMap>> = BTreeMap::new();
+
+    for map in finished_with_maps {
+        match map.id {
+            Some(id) => {
+                // Insert to grouped_maps
+                match grouped_maps.get_mut(&id) {
+                    None => {
+                        grouped_maps.insert(id, (map, Vec::new()));
+                    }
+                    Some(l) => l.1.push(map),
+                }
+            }
+            None => {
+                // ID is empty, meaning that the entire big map is yet in
+                // memory. We have to create a new map in the storage.
+                let id = storage.big_map_new()?;
+                storage.big_map_bulk_update(id, mem::take(&mut map.overlay))?;
+                map.id = Some(id)
+            }
+        };
+    }
+
+    // Remove big maps that were gone.
+    for map_id in started_with_map_ids {
+        // If not found among the eventual big maps...
+        if !grouped_maps.contains_key(map_id) {
+            storage.big_map_remove(*map_id)?
+        }
+    }
+
+    // Update lazy storage with data from overlay.
+    for (id, (main_map, other_maps)) in grouped_maps {
+        // If there are any big maps with duplicate ID, we first copy them in
+        // the storage.
+        for map in other_maps {
+            let new_id = storage.big_map_copy(id)?;
+            storage.big_map_bulk_update(new_id, mem::take(&mut map.overlay))?;
+            map.id = Some(new_id)
+        }
+        // The only remaining big map we update in the lazy storage in-place.
+        storage.big_map_bulk_update(id, mem::take(&mut main_map.overlay))?
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod test_big_map_to_storage_update {
+    use super::*;
+
+    fn check_is_dumped_map(map: BigMap, id: BigMapId) {
+        assert_eq!(
+            map,
+            BigMap {
+                id: Some(id),
+                overlay: BTreeMap::new()
+            }
+        )
+    }
+
+    #[test]
+    fn test_map_from_memory() {
+        let storage = &mut InMemoryLazyStorage::new();
+        let mut map = BigMap::from([
+            (TypedValue::Int(1), TypedValue::Int(1)),
+            (TypedValue::Int(2), TypedValue::Int(2)),
+        ]);
+        dump_big_map_updates(storage, &[], &mut [&mut map]).unwrap();
+
+        check_is_dumped_map(map, BigMapId(0));
+        assert_eq!(
+            storage.big_maps,
+            BTreeMap::from([(
+                BigMapId(0),
+                BTreeMap::from([
+                    (TypedValue::Int(1), TypedValue::Int(1)),
+                    (TypedValue::Int(2), TypedValue::Int(2))
+                ])
+            )])
+        )
+    }
+
+    #[test]
+    fn test_map_updates_to_storage() {
+        let storage = &mut InMemoryLazyStorage::new();
+        let map_id = storage.big_map_new().unwrap();
+        storage
+            .big_map_update(map_id, TypedValue::Int(0), Some(TypedValue::Int(0)))
+            .unwrap();
+        storage
+            .big_map_update(map_id, TypedValue::Int(1), Some(TypedValue::Int(1)))
+            .unwrap();
+        let mut map = BigMap {
+            id: Some(map_id),
+            overlay: BTreeMap::from([
+                (TypedValue::Int(0), None),
+                (TypedValue::Int(1), Some(TypedValue::Int(5))),
+                (TypedValue::Int(2), None),
+                (TypedValue::Int(3), Some(TypedValue::Int(3))),
+            ]),
+        };
+        dump_big_map_updates(storage, &[], &mut [&mut map]).unwrap();
+
+        check_is_dumped_map(map, BigMapId(0));
+        assert_eq!(
+            storage.big_maps,
+            BTreeMap::from([(
+                BigMapId(0),
+                BTreeMap::from([
+                    (TypedValue::Int(1), TypedValue::Int(5)),
+                    (TypedValue::Int(3), TypedValue::Int(3))
+                ])
+            )])
+        )
+    }
+
+    #[test]
+    fn test_duplicate_ids() {
+        let storage = &mut InMemoryLazyStorage::new();
+        let map_id1 = storage.big_map_new().unwrap();
+        let map_id2 = storage.big_map_new().unwrap();
+        let mut map1_1 = BigMap {
+            id: Some(map_id1),
+            overlay: BTreeMap::from([(TypedValue::Int(11), Some(TypedValue::Int(11)))]),
+        };
+        let mut map1_2 = BigMap {
+            id: Some(map_id1),
+            overlay: BTreeMap::from([(TypedValue::Int(12), Some(TypedValue::Int(12)))]),
+        };
+        let mut map2 = BigMap {
+            id: Some(map_id2),
+            overlay: BTreeMap::from([(TypedValue::Int(2), Some(TypedValue::Int(2)))]),
+        };
+        dump_big_map_updates(storage, &[], &mut [&mut map1_1, &mut map1_2, &mut map2]).unwrap();
+
+        check_is_dumped_map(map1_1, BigMapId(0));
+        check_is_dumped_map(map1_2, BigMapId(2)); // newly created map
+        check_is_dumped_map(map2, BigMapId(1));
+
+        assert_eq!(
+            storage.big_maps,
+            BTreeMap::from([
+                (
+                    BigMapId(0),
+                    BTreeMap::from([(TypedValue::Int(11), TypedValue::Int(11))])
+                ),
+                (
+                    BigMapId(1),
+                    BTreeMap::from([(TypedValue::Int(2), TypedValue::Int(2))])
+                ),
+                (
+                    BigMapId(2),
+                    BTreeMap::from([(TypedValue::Int(12), TypedValue::Int(12))])
+                )
+            ])
+        );
+    }
+
+    #[test]
+    fn test_remove_ids() {
+        let storage = &mut InMemoryLazyStorage::new();
+        let map_id1 = storage.big_map_new().unwrap();
+        storage
+            .big_map_update(map_id1, TypedValue::Int(0), Some(TypedValue::Int(0)))
+            .unwrap();
+        let map_id2 = storage.big_map_new().unwrap();
+        storage
+            .big_map_update(map_id2, TypedValue::Int(0), Some(TypedValue::Int(0)))
+            .unwrap();
+        let mut map1 = BigMap {
+            id: Some(map_id1),
+            overlay: BTreeMap::from([(TypedValue::Int(1), Some(TypedValue::Int(1)))]),
+        };
+        dump_big_map_updates(storage, &[map_id1, map_id2], &mut [&mut map1]).unwrap();
+
+        assert_eq!(
+            storage.big_maps,
+            BTreeMap::from([(
+                BigMapId(0),
+                BTreeMap::from([
+                    (TypedValue::Int(0), TypedValue::Int(0)),
+                    (TypedValue::Int(1), TypedValue::Int(1))
+                ])
+            ),])
+        );
     }
 }

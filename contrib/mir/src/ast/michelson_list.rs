@@ -26,6 +26,10 @@ impl<T> MichelsonList<T> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.0.iter_mut().rev()
+    }
 }
 
 impl<T> Default for MichelsonList<T> {
