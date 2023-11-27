@@ -15,25 +15,7 @@ use tezos_crypto_rs::{
 
 use base58::*;
 
-#[derive(Debug, PartialEq, Eq, Clone, thiserror::Error)]
-pub enum SignatureError {
-    #[error("unknown key prefix: {0}")]
-    UnknownPrefix(String),
-    #[error("wrong key format: {0}")]
-    WrongFormat(String),
-}
-
-impl From<FromBase58CheckError> for SignatureError {
-    fn from(value: FromBase58CheckError) -> Self {
-        Self::WrongFormat(value.to_string())
-    }
-}
-
-impl From<FromBytesError> for SignatureError {
-    fn from(value: FromBytesError) -> Self {
-        Self::WrongFormat(value.to_string())
-    }
-}
+use super::{ByteReprError, ByteReprTrait};
 
 /* *** Note: reimplementation of signature types. ***
 
@@ -149,14 +131,6 @@ macro_rules! key_type_and_impls {
                 }
             }
         }
-
-        impl Signature {
-            pub fn to_base58_check(&self) -> String {
-                match self {
-                    $(Signature::$con(h) => h.to_base58_check()),*
-                }
-            }
-        }
     };
 }
 
@@ -169,14 +143,14 @@ key_type_and_impls! {
 }
 
 impl TryFrom<&[u8]> for Signature {
-    type Error = SignatureError;
+    type Error = ByteReprError;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Self::from_bytes(value)
     }
 }
 
 impl TryFrom<&str> for Signature {
-    type Error = SignatureError;
+    type Error = ByteReprError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Self::from_base58_check(value)
     }
@@ -205,8 +179,8 @@ fn from_b58check(s: &str) -> Result<Vec<u8>, FromBase58CheckError> {
     Ok(bytes.to_vec())
 }
 
-impl Signature {
-    pub fn from_base58_check(data: &str) -> Result<Self, SignatureError> {
+impl ByteReprTrait for Signature {
+    fn from_base58_check(data: &str) -> Result<Self, ByteReprError> {
         use Signature::*;
 
         Ok(if data.starts_with("edsig") {
@@ -223,11 +197,11 @@ impl Signature {
         } else if data.starts_with("sig") {
             Generic(SignatureTrait::from_b58check(data)?)
         } else {
-            return Err(SignatureError::UnknownPrefix(data.to_owned()));
+            return Err(ByteReprError::UnknownPrefix(data.to_owned()));
         })
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ByteReprError> {
         use Signature::*;
 
         if bytes.len() == 64 {
@@ -235,14 +209,26 @@ impl Signature {
         } else if bytes.len() == 96 {
             Ok(Bls(BlsSignature::try_from_bytes(bytes)?))
         } else {
-            Err(SignatureError::WrongFormat(format!(
+            Err(ByteReprError::WrongFormat(format!(
                 "signature must be either 64 or 96 bytes long, but it is {} bytes long",
                 bytes.len()
             )))
         }
     }
 
-    pub fn to_bytes(&self, out: &mut Vec<u8>) {
+    fn to_base58_check(&self) -> String {
+        use Signature::*;
+
+        match self {
+            Ed25519(hash) => hash.to_base58_check(),
+            Secp256k1(hash) => hash.to_base58_check(),
+            P256(hash) => hash.to_base58_check(),
+            Bls(hash) => hash.to_base58_check(),
+            Generic(hash) => hash.to_base58_check(),
+        }
+    }
+
+    fn to_bytes(&self, out: &mut Vec<u8>) {
         use Signature::*;
 
         match self {
@@ -253,13 +239,9 @@ impl Signature {
             Generic(hash) => out.extend_from_slice(hash.as_ref()),
         }
     }
+}
 
-    pub fn to_bytes_vec(&self) -> Vec<u8> {
-        let mut out = Vec::new();
-        self.to_bytes(&mut out);
-        out
-    }
-
+impl Signature {
     pub fn check(&self, key: &super::michelson_key::Key, msg: &[u8]) -> bool {
         use super::michelson_key::Key;
         use Signature::*;
