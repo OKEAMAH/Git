@@ -7,7 +7,7 @@
 
 use crate::ast::annotations::FieldAnnotation;
 
-use super::AddressError;
+use super::ByteReprError;
 
 #[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq, Hash)]
 pub struct Entrypoint(String);
@@ -44,14 +44,14 @@ impl Entrypoint {
 }
 
 impl TryFrom<&str> for Entrypoint {
-    type Error = AddressError;
+    type Error = ByteReprError;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         Entrypoint::try_from(s.to_owned())
     }
 }
 
 impl TryFrom<String> for Entrypoint {
-    type Error = AddressError;
+    type Error = ByteReprError;
     fn try_from(s: String) -> Result<Self, Self::Error> {
         if s.is_empty() {
             Ok(Entrypoint::default())
@@ -63,8 +63,8 @@ impl TryFrom<String> for Entrypoint {
 }
 
 impl TryFrom<&[u8]> for Entrypoint {
-    type Error = AddressError;
-    fn try_from(s: &[u8]) -> Result<Self, AddressError> {
+    type Error = ByteReprError;
+    fn try_from(s: &[u8]) -> Result<Self, ByteReprError> {
         if s.is_empty() {
             Ok(Entrypoint::default())
         } else {
@@ -72,7 +72,7 @@ impl TryFrom<&[u8]> for Entrypoint {
             // SAFETY: we just checked all bytes are valid ASCII
             let ep = Entrypoint(unsafe { std::str::from_utf8_unchecked(s).to_owned() });
             if ep.is_default() {
-                return Err(AddressError::WrongFormat(
+                return Err(ByteReprError::WrongFormat(
                     "explicit default entrypoint is forbidden in binary encoding".to_owned(),
                 ));
             }
@@ -87,9 +87,9 @@ impl From<FieldAnnotation<'_>> for Entrypoint {
     }
 }
 
-fn check_ep_name(ep: &[u8]) -> Result<(), AddressError> {
+fn check_ep_name(ep: &[u8]) -> Result<(), ByteReprError> {
     if ep.len() > MAX_EP_LEN {
-        return Err(AddressError::WrongFormat(format!(
+        return Err(ByteReprError::WrongFormat(format!(
             "entrypoint name must be at most {} characters long, but it is {} characters long",
             MAX_EP_LEN,
             ep.len()
@@ -102,7 +102,7 @@ fn check_ep_name(ep: &[u8]) -> Result<(), AddressError> {
         match c {
             b'_' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' => Ok(()),
             b'.' | b'%' | b'@' if !first_char => Ok(()),
-            c => Err(AddressError::WrongFormat(format!(
+            c => Err(ByteReprError::WrongFormat(format!(
                 "forbidden byte in entrypoint name: {}",
                 hex::encode([*c])
             ))),
@@ -143,17 +143,17 @@ mod tests {
         // too long
         assert!(matches!(
             Entrypoint::try_from("q".repeat(32).as_str()),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
         // unicode
         assert!(matches!(
             Entrypoint::try_from("संसर"),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
         // forbidden character
         assert!(matches!(
             Entrypoint::try_from("!"),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
     }
 
@@ -180,7 +180,7 @@ mod tests {
         // explicit default entrypoints are forbidden in binary
         assert!(matches!(
             Entrypoint::try_from(b"default" as &[u8]),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
         assert_eq!(
             Entrypoint::try_from(b"" as &[u8]),
@@ -202,17 +202,17 @@ mod tests {
         // too long
         assert!(matches!(
             Entrypoint::try_from("q".repeat(32).as_bytes()),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
         // unicode
         assert!(matches!(
             Entrypoint::try_from("संसर".as_bytes()),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
         // forbidden character
         assert!(matches!(
             Entrypoint::try_from(b"!" as &[u8]),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
     }
 
@@ -223,7 +223,7 @@ mod tests {
         // more than 31 bytes
         assert!(matches!(
             check_ep_name(&[b'q'; 32]),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
 
         // '.', '%', '@' are allowed
@@ -233,20 +233,20 @@ mod tests {
             // but not as the first character
             assert!(matches!(
                 check_ep_name(format!("{i}bar").as_bytes()),
-                Err(AddressError::WrongFormat(_))
+                Err(ByteReprError::WrongFormat(_))
             ));
         }
 
         // ! is forbidden
         assert!(matches!(
             check_ep_name(b"foo!"),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
 
         // unicode is forbidden
         assert!(matches!(
             check_ep_name("नमस्ते".as_bytes()),
-            Err(AddressError::WrongFormat(_))
+            Err(ByteReprError::WrongFormat(_))
         ));
     }
 }
