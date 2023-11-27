@@ -83,7 +83,7 @@ val init :
   ?last_whitelist_update:Z.t * Int32.t ->
   'a Store_sigs.mode ->
   Layer1.t ->
-  genesis_info ->
+  Node_context_types.genesis_info ->
   lcc:lcc ->
   lpc:Commitment.t option ->
   Kind.t ->
@@ -341,20 +341,20 @@ val save_messages :
   string list ->
   unit tzresult Lwt.t
 
-(** Return values for {!protocol_of_level}. *)
-type proto_info = {
-  proto_level : int;
-      (** Protocol level for operations of block (can be different from L1
-          header value in the case of a migration block). *)
-  first_level_of_protocol : bool;
-      (** [true] if the level is the first of the protocol. *)
-  protocol : Protocol_hash.t;
-      (** Hash of the {e current} protocol for this level. *)
-}
+(* (\** Return values for {!protocol_of_level}. *\) *)
+(* type proto_info = { *)
+(*   proto_level : int; *)
+(*       (\** Protocol level for operations of block (can be different from L1 *)
+(*           header value in the case of a migration block). *\) *)
+(*   first_level_of_protocol : bool; *)
+(*       (\** [true] if the level is the first of the protocol. *\) *)
+(*   protocol : Protocol_hash.t; *)
+(*       (\** Hash of the {e current} protocol for this level. *\) *)
+(* } *)
 
-(** [protocol_of_level_with_store store level] returns the protocol of block level [level]. *)
-val protocol_of_level_with_store :
-  _ Store.t -> int32 -> proto_info tzresult Lwt.t
+(* (\** [protocol_of_level_with_store store level] returns the protocol of block level [level]. *\) *)
+(* val protocol_of_level_with_store : *)
+(*   _ Store.t -> int32 -> proto_info tzresult Lwt.t *)
 
 (** Returns the last protocol seen by the rollup node. *)
 val last_seen_protocol : _ t -> Protocol_hash.t option tzresult Lwt.t

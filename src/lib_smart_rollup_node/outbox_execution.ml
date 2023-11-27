@@ -43,22 +43,23 @@ module Lwt_result_option_syntax = struct
   let fail = Lwt_result_syntax.return_none
 end
 
-let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
+let executable_whitelist_update_message (type repo tree)
+    (node_ctxt : _ Node_context_types.t) =
   let open Lwt_result_syntax in
   let open Lwt_result_option_syntax in
   let lcc = Reference.get node_ctxt.lcc in
   (* if rollup is private this will return None and no further
      computation will be done. *)
-  let*:* Node_context.{last_outbox_level_searched; last_whitelist_update} =
+  let*:* {last_outbox_level_searched; last_whitelist_update} =
     Reference.get node_ctxt.private_info
   in
   let commitment_period =
     Int32.of_int
-      node_ctxt.Node_context.current_protocol.constants.sc_rollup
+      node_ctxt.Node_context_types.current_protocol.constants.sc_rollup
         .commitment_period_in_blocks
   in
   let max_cemented_commitment =
-    node_ctxt.Node_context.current_protocol.constants.sc_rollup
+    node_ctxt.Node_context_types.current_protocol.constants.sc_rollup
       .max_number_of_stored_cemented_commitments
   in
   let rec fold_over_outbox_level_in_commmitment ~cemented_commitment_hash
@@ -68,11 +69,12 @@ let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
       let* (module Plugin) =
         Protocol_plugins.proto_plugin_for_level node_ctxt outbox_level
       in
+      let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+        Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+      in
+
       let*! message_index =
-        Plugin.Pvm.find_whitelist_update_output_index
-          node_ctxt
-          state
-          ~outbox_level
+        Pvm.find_whitelist_update_output_index node_ctxt state ~outbox_level
       in
       match message_index with
       | None ->
@@ -97,7 +99,7 @@ let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
               message_index
           in
           let* proof =
-            Plugin.Pvm.produce_serialized_output_proof
+            Pvm.produce_serialized_output_proof
               node_ctxt
               state
               ~outbox_level
@@ -122,7 +124,15 @@ let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
       else
         let* block_hash = Node_context.hash_of_level node_ctxt inbox_level in
         let* ctxt = Node_context.checkout_context node_ctxt block_hash in
-        let*!* state = Context.PVMState.find ctxt in
+
+        let* (module Plugin) =
+          Protocol_plugins.proto_plugin_for_level node_ctxt inbox_level
+        in
+        let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+          Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+        in
+
+        let*!* state = Pvm.Context.PVMState.find ctxt in
         let bottom_outbox_level =
           Int32.(
             max
@@ -142,7 +152,7 @@ let executable_whitelist_update_message (node_ctxt : _ Node_context.t) =
   in
   fold_over_commitment max_cemented_commitment lcc.commitment
 
-let execute_whitelist_update_message_aux (node_ctxt : _ Node_context.t)
+let execute_whitelist_update_message_aux (node_ctxt : _ Node_context_types.t)
     (cemented_commitment, output_proof) =
   let open Lwt_result_syntax in
   let outbox_message =
@@ -156,7 +166,8 @@ let execute_whitelist_update_message_aux (node_ctxt : _ Node_context.t)
   let* _hash = Injector.add_pending_operation outbox_message in
   return_unit
 
-let publish_execute_whitelist_update_message (node_ctxt : _ Node_context.t) =
+let publish_execute_whitelist_update_message
+    (node_ctxt : _ Node_context_types.t) =
   let open Lwt_result_syntax in
   let operator = Node_context.get_operator node_ctxt Executing_outbox in
   match operator with
@@ -170,10 +181,10 @@ let publish_execute_whitelist_update_message (node_ctxt : _ Node_context.t) =
       let () =
         Reference.map
           (Option.map (fun private_info ->
-               let ({level; _} : Node_context.lcc) =
+               let ({level; _} : Node_context_types.lcc) =
                  Reference.get node_ctxt.lcc
                in
-               Node_context.
+               Node_context_types.
                  {private_info with last_outbox_level_searched = level}))
           node_ctxt.private_info
       in

@@ -23,9 +23,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** The RPC top level directory (without the block directory) for this rollup
+module Make (C : Context.CONTEXT) : sig
+  (** The RPC top level directory (without the block directory) for this rollup
     node. *)
-val top_directory : _ Node_context.rw -> unit Tezos_rpc.Directory.t
+  val top_directory : C.repo Node_context_types.rw -> unit Tezos_rpc.Directory.t
 
-(** The full RPC directory for the protocol agnostic rollup node. *)
-val directory : _ Node_context.rw -> unit Tezos_rpc.Directory.t
+  (** The full RPC directory for the protocol agnostic rollup node. *)
+  val directory : C.repo Node_context_types.rw -> unit Tezos_rpc.Directory.t
+end

@@ -79,12 +79,31 @@ module type FUELED_PVM = sig
     Lwt.t
 end
 
+(* The cache allows cache intermediate states of the PVM in e.g. dissections. *)
+module Tick_state_cache =
+  Aches_lwt.Lache.Make
+    (Aches.Rache.Transfer
+       (Aches.Rache.LRU)
+       (struct
+         type t = Z.t * Block_hash.t
+
+         let equal (t1, b1) (t2, b2) = Z.equal t1 t2 && Block_hash.(b1 = b2)
+
+         let hash (tick, block) = (Z.hash tick * 13) + Block_hash.hash block
+       end))
+
+(* TODO *)
+(* let tick_state_cache = Tick_state_cache.create 64 (\* size of 2 dissections *\) *)
+
 module type S = sig
   val context : (module Context.CONTEXT)
 
   val witness : ('repo, 'tree) Context.witness
 
   module Context : Context.CONTEXT
+
+  val tick_state_cache :
+    (Fuel.Accounted.t, Context.tree) eval_state tzresult Tick_state_cache.t
 
   val get_tick : Kind.t -> Context.tree -> Z.t Lwt.t
 

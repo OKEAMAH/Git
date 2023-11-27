@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 let get_boot_sector (module Plugin : Protocol_plugin_sig.PARTIAL) block_hash
-    (node_ctxt : _ Node_context.t) =
+    (node_ctxt : _ Node_context_types.t) =
   let open Lwt_result_syntax in
   match node_ctxt.config.boot_sector_file with
   | None -> Plugin.Layer1_helpers.get_boot_sector block_hash node_ctxt
@@ -44,9 +44,9 @@ let genesis_state :
     type repo tree.
     (module Protocol_plugin_sig.PARTIAL) ->
     Block_hash.t ->
-    ('a, repo) Node_context.t ->
-    ('a, repo, tree) Context.t ->
-    (('a, repo, tree) Context.t * tree) tzresult Lwt.t =
+    (_, repo) Node_context_types.t ->
+    (_, repo, tree) Context.t ->
+    ((_, repo, tree) Context.t * tree) tzresult Lwt.t =
   fun (type repo tree)
       (module Plugin : Protocol_plugin_sig.PARTIAL)
       block_hash
@@ -68,10 +68,10 @@ let genesis_state :
 let state_of_head :
     type repo tree.
     (module Protocol_plugin_sig.PARTIAL) ->
-    ('a, repo) Node_context.t ->
-    ('a, repo, tree) Context.t ->
+    (_, repo) Node_context_types.t ->
+    (_, repo, tree) Context.t ->
     Layer1.head ->
-    (('a, repo, tree) Context.t * tree) tzresult Lwt.t =
+    ((_, repo, tree) Context.t * tree) tzresult Lwt.t =
   fun (type repo tree)
       (module Plugin : Protocol_plugin_sig.PARTIAL)
       node_ctxt
@@ -84,7 +84,7 @@ let state_of_head :
    let*! state = Pvm.Context.PVMState.find ctxt in
    match state with
    | None ->
-       let genesis_level = node_ctxt.Node_context.genesis_info.level in
+       let genesis_level = node_ctxt.Node_context_types.genesis_info.level in
        if level = genesis_level then
          genesis_state (module Plugin) hash node_ctxt ctxt
        else tzfail (Rollup_node_errors.Missing_PVM_state (hash, level))
@@ -94,8 +94,9 @@ let state_of_head :
     previous state from block [predecessor] by consuming as many messages as
     possible from block [head]. *)
 let transition_pvm (type repo tree)
-    (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt ctxt predecessor
-    Layer1.{hash = _; _} inbox_messages =
+    (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt
+    (ctxt : (_, repo, tree) Context.context) predecessor Layer1.{hash = _; _}
+    inbox_messages =
   let open Lwt_result_syntax in
   (* Retrieve the previous PVM state from store. *)
   let* ctxt, predecessor_state =
@@ -128,9 +129,22 @@ let transition_pvm (type repo tree)
 
 (** [process_head plugin node_ctxt ctxt ~predecessor head inbox_and_messages] runs the PVM for the given
     head. *)
-let process_head (type repo tree) (module Plugin : Protocol_plugin_sig.PARTIAL)
-    (node_ctxt : _ Node_context.t) ctxt ~(predecessor : Layer1.header)
-    (head : Layer1.header) inbox_and_messages =
+let process_head :
+    type repo tree.
+    (module Protocol_plugin_sig.PARTIAL) ->
+    repo Node_context_types.rw ->
+    (_, repo, tree) Context.t ->
+    predecessor:Layer1.header ->
+    Layer1.header ->
+    Inbox.t * string list ->
+    ((_, repo, tree) Context.t * int * int64 * Z.t) tzresult Lwt.t =
+ fun (module Plugin : Protocol_plugin_sig.PARTIAL)
+     (node_ctxt : repo Node_context_types.rw)
+     (ctxt : (_, repo, tree) Context.t)
+     ~(predecessor : Layer1.header)
+     (head : Layer1.header)
+     inbox_and_messages :
+     ((_, repo, tree) Context.t * int * int64 * Z.t) tzresult Lwt.t ->
   let open Lwt_result_syntax in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
     Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
@@ -154,7 +168,8 @@ let process_head (type repo tree) (module Plugin : Protocol_plugin_sig.PARTIAL)
 (** Returns the starting evaluation before the evaluation of the block. It
     contains the PVM state at the end of the execution of the previous block and
     the messages the block ([remaining_messages]). *)
-let start_state_of_block plugin node_ctxt (block : Sc_rollup_block.t) =
+let start_state_of_block (type repo tree) plugin node_ctxt
+    (block : Sc_rollup_block.t) =
   let open Lwt_result_syntax in
   let pred_level = Int32.pred block.header.level in
   let* ctxt =
@@ -173,8 +188,12 @@ let start_state_of_block plugin node_ctxt (block : Sc_rollup_block.t) =
   in
   let inbox_level = Octez_smart_rollup.Inbox.inbox_level inbox in
   let module Plugin = (val plugin) in
-  let*! tick = Plugin.Pvm.get_tick node_ctxt.kind state in
-  let*! state_hash = Plugin.Pvm.state_hash node_ctxt.kind state in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+
+  let*! tick = Pvm.get_tick node_ctxt.kind state in
+  let*! state_hash = Pvm.state_hash node_ctxt.kind state in
   let messages =
     Plugin.Pvm.start_of_level_serialized
     ::
@@ -212,8 +231,15 @@ let run_to_tick (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt
   in
   eval_result.state
 
-let state_of_tick_aux plugin node_ctxt ~start_state (event : Sc_rollup_block.t)
-    tick =
+let state_of_tick_aux :
+    type repo tree.
+    (module Protocol_plugin_sig.PARTIAL) ->
+    ([< `Read | `Write > `Read], repo) Node_context_types.t ->
+    start_state:(Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state option ->
+    Sc_rollup_block.t ->
+    Z.t ->
+    ((Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state, tztrace) result Lwt.t =
+ fun plugin node_ctxt ~start_state (event : Sc_rollup_block.t) tick ->
   let open Lwt_result_syntax in
   let* start_state =
     match start_state with
@@ -232,35 +258,38 @@ let state_of_tick_aux plugin node_ctxt ~start_state (event : Sc_rollup_block.t)
   let result_state = Delayed_write_monad.ignore result_state in
   return result_state
 
-(* The cache allows cache intermediate states of the PVM in e.g. dissections. *)
-module Tick_state_cache =
-  Aches_lwt.Lache.Make
-    (Aches.Rache.Transfer
-       (Aches.Rache.LRU)
-       (struct
-         type t = Z.t * Block_hash.t
-
-         let equal (t1, b1) (t2, b2) = Z.equal t1 t2 && Block_hash.(b1 = b2)
-
-         let hash (tick, block) = (Z.hash tick * 13) + Block_hash.hash block
-       end))
-
-let tick_state_cache = Tick_state_cache.create 64 (* size of 2 dissections *)
-
 (* Memoized version of [state_of_tick_aux]. *)
-let memo_state_of_tick_aux plugin node_ctxt ~start_state
-    (event : Sc_rollup_block.t) tick =
-  Tick_state_cache.bind_or_put
-    tick_state_cache
+let memo_state_of_tick_aux :
+    type repo tree.
+    (module Protocol_plugin_sig.PARTIAL) ->
+    ([< `Read | `Write > `Read], repo) Node_context_types.t ->
+    start_state:(Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state option ->
+    Sc_rollup_block.t ->
+    Z.t ->
+    ((Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state, tztrace) result Lwt.t =
+ fun (module Plugin) node_ctxt ~start_state (event : Sc_rollup_block.t) tick ->
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+  Pvm_plugin_sig.Tick_state_cache.bind_or_put
+    Pvm.tick_state_cache
     (tick, event.header.block_hash)
     (fun (tick, _hash) ->
-      state_of_tick_aux plugin node_ctxt ~start_state event tick)
+      state_of_tick_aux (module Plugin) node_ctxt ~start_state event tick)
     Lwt.return
 
 (** [state_of_tick plugin node_ctxt ?start_state ~tick level] returns [Some
     end_state] for [tick] if [tick] happened before
     [level]. Otherwise, returns [None].*)
-let state_of_tick plugin node_ctxt ?start_state ~tick level =
+let state_of_tick :
+    type repo tree.
+    (module Protocol_plugin_sig.PARTIAL) ->
+    (_, repo) Node_context_types.t ->
+    ?start_state:(Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state ->
+    tick:Z.t ->
+    int32 ->
+    (Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state option tzresult Lwt.t =
+ fun plugin node_ctxt ?start_state ~tick level ->
   let open Lwt_result_syntax in
   let* event = Node_context.block_with_tick node_ctxt ~max_level:level tick in
   match event with
@@ -269,7 +298,7 @@ let state_of_tick plugin node_ctxt ?start_state ~tick level =
       assert (event.header.level <= level) ;
       let* result_state =
         if Node_context.is_loser node_ctxt then
-          (* TODO: https://gitlab.com/tezos/tezos/-/issues/5253
+          (* TODO: https://gitlab.com/tezos/tezos/-/iss<ues/5253
              The failures/loser mode does not work properly when restarting
              from intermediate states. *)
           state_of_tick_aux plugin node_ctxt ~start_state:None event tick

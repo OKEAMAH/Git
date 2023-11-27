@@ -33,7 +33,7 @@
     the PVM after the evaluation. *)
 val process_head :
   (module Protocol_plugin_sig.PARTIAL) ->
-  'repo Node_context.rw ->
+  'repo Node_context_types.rw ->
   ('a, 'repo, 'tree) Context.t ->
   predecessor:Layer1.header ->
   Layer1.header ->
@@ -46,18 +46,18 @@ val process_head :
     from [start_state]. *)
 val state_of_tick :
   (module Protocol_plugin_sig.PARTIAL) ->
-  (_, 'repo) Node_context.t ->
-  ?start_state:(Fuel.Accounted.t, 'repo) Pvm_plugin_sig.eval_state ->
+  (_, 'repo) Node_context_types.t ->
+  ?start_state:(Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state ->
   tick:Z.t ->
   int32 ->
-  (Fuel.Accounted.t, 'repo) Pvm_plugin_sig.eval_state option tzresult Lwt.t
+  (Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state option tzresult Lwt.t
 
 (** [state_of_head plugin node_ctxt ctxt head] returns the state corresponding
     to the block [head], or the state at rollup genesis if the block is before
     the rollup origination. *)
 val state_of_head :
   (module Protocol_plugin_sig.PARTIAL) ->
-  ('a, 'repo) Node_context.t ->
+  ('a, 'repo) Node_context_types.t ->
   ('a, 'repo, 'tree) Context.t ->
   Layer1.head ->
   (('a, 'repo, 'tree) Context.t * 'tree) tzresult Lwt.t

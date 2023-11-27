@@ -68,7 +68,7 @@ let inject_next_move node_ctxt ~refutation ~opponent =
   let refute_operation =
     L1_operation.Refute
       {
-        rollup = node_ctxt.Node_context.config.sc_rollup_address;
+        rollup = node_ctxt.Node_context_types.config.sc_rollup_address;
         refutation;
         opponent;
       }
@@ -80,9 +80,9 @@ let inject_next_move node_ctxt ~refutation ~opponent =
   in
   return_unit
 
-type pvm_intermediate_state =
+type 'tree pvm_intermediate_state =
   | Hash of State_hash.t
-  | Evaluated of Fuel.Accounted.t Pvm_plugin_sig.eval_state
+  | Evaluated of (Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state
 
 let new_dissection (module Plugin : Protocol_plugin_sig.S) ~opponent
     ~default_number_of_sections node_ctxt last_level ok our_view =
@@ -236,7 +236,7 @@ let play_next_move plugin node_ctxt game opponent =
   let* refutation = next_move plugin node_ctxt ~opponent game in
   inject_next_move node_ctxt ~refutation ~opponent
 
-let play_timeout (node_ctxt : _ Node_context.t) stakers =
+let play_timeout (node_ctxt : _ Node_context_types.t) stakers =
   let open Lwt_result_syntax in
   let timeout_operation =
     L1_operation.Timeout {rollup = node_ctxt.config.sc_rollup_address; stakers}

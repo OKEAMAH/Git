@@ -28,10 +28,12 @@
 
 (** Returns the block hash corresponding to a block id. *)
 val block_of_prefix :
-  _ Node_context.t ->
+  _ Node_context_types.t ->
   Rollup_node_services.Arg.block_id ->
   Block_hash.t tzresult Lwt.t
 
 (** Returns the level corresponding to a block id. *)
 val block_level_of_id :
-  _ Node_context.t -> Rollup_node_services.Arg.block_id -> int32 tzresult Lwt.t
+  _ Node_context_types.t ->
+  Rollup_node_services.Arg.block_id ->
+  int32 tzresult Lwt.t

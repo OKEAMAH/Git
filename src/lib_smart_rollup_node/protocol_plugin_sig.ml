@@ -320,3 +320,10 @@ type ('repo, 'tree) partial_plugin =
 
 type ('repo, 'tree) full_plugin =
   (module S with type Pvm.Context.repo = 'repo and type Pvm.Context.tree = 'tree)
+
+let into (type repo tree) (w : (repo, tree) Context.witness) (module C : S) :
+    (module S with type Pvm.Context.repo = repo and type Pvm.Context.tree = tree)
+    =
+  match Context.try_cast w C.Pvm.Context.witness with
+  | Some Context.Equal -> (module C)
+  | None -> assert false

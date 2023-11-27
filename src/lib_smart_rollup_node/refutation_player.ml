@@ -29,7 +29,7 @@ open Refutation_game
 module Make (C : Context.CONTEXT) = struct
   module Types = struct
     type state = {
-      node_ctxt : C.repo Node_context.rw;
+      node_ctxt : C.repo Node_context_types.rw;
       self : Signature.public_key_hash;
       opponent : Signature.public_key_hash;
       mutable last_move_cache :
@@ -37,7 +37,7 @@ module Make (C : Context.CONTEXT) = struct
     }
 
     type parameters = {
-      node_ctxt : C.repo Node_context.rw;
+      node_ctxt : C.repo Node_context_types.rw;
       self : Signature.public_key_hash;
       conflict : Octez_smart_rollup.Game.conflict;
     }

@@ -45,7 +45,7 @@ let get_finalized node_ctxt =
   let* level = Node_context.get_finalized_level node_ctxt in
   Node_context.hash_of_level node_ctxt level
 
-let get_last_cemented (node_ctxt : _ Node_context.t) =
+let get_last_cemented (node_ctxt : _ Node_context_types.t) =
   protect @@ fun () ->
   let lcc = Reference.get node_ctxt.lcc in
   Node_context.hash_of_level node_ctxt lcc.level

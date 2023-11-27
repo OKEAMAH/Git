@@ -95,11 +95,11 @@ module type CONTEXT = sig
   val checkout : 'a index -> hash -> ('a, repo, tree) context option Lwt.t
 
   (** [empty ctxt] is the context with an empty content for the repository [ctxt]. *)
-  val empty : 'a index -> 'a t
+  val empty : 'a index -> ('a, repo, tree) context
 
   (** [commit ?message context] commits content of the context [context] on disk,
     and return the commit hash. *)
-  val commit : ?message:string -> [> `Write] t -> hash Lwt.t
+  val commit : ?message:string -> ([> `Write], repo, tree) context -> hash Lwt.t
 
   (** [is_gc_finished index] returns true if a GC is finished (or idle) and false
     if a GC is running for [index]. *)

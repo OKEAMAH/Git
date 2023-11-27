@@ -31,11 +31,11 @@ type info_per_level = {
 }
 
 (** Type of the state for a simulation. *)
-type t = {
-  node_ctxt : Node_context.ro;
-  ctxt : Context.ro;
+type ('repo, 'tree) t = {
+  node_ctxt : 'repo Node_context_types.ro;
+  ctxt : ('repo, 'tree) Context.ro;
   inbox_level : int32;
-  state : Context.tree;
+  state : 'tree;
   reveal_map : string Utils.Reveal_hash_map.t option;
   nb_messages_inbox : int;
   level_position : level_position;
@@ -48,18 +48,19 @@ type t = {
     (level). If [log_kernel_debug_file] is provided, kernel logs will be written
     to [node_ctxt.data_dir/simulation_kernel_logs/log_kernel_debug_file]. *)
 val start_simulation :
-  Node_context.ro ->
+  'repo Node_context_types.ro ->
   reveal_map:string Utils.Reveal_hash_map.t option ->
   ?log_kernel_debug_file:string ->
   Layer1.head ->
-  t tzresult Lwt.t
+  ('repo, _) t tzresult Lwt.t
 
 (** [simulate_messages sim messages] runs a simulation of new [messages] in the
     given simulation (state) [sim] and returns a new simulation state, the
     remaining fuel (when [?fuel] is provided) and the number of ticks that
     happened. *)
-val simulate_messages : t -> string list -> (t * Z.t) tzresult Lwt.t
+val simulate_messages :
+  ('repo, 'tree) t -> string list -> (('repo, 'tree) t * Z.t) tzresult Lwt.t
 
 (** [end_simulation sim] adds and [End_of_level] message and marks the
     simulation as ended. *)
-val end_simulation : t -> (t * Z.t) tzresult Lwt.t
+val end_simulation : ('repo, 'tree) t -> (('repo, 'tree) t * Z.t) tzresult Lwt.t

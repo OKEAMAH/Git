@@ -25,30 +25,47 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type state = {
+type 'repo state = {
   mutable plugin : (module Protocol_plugin_sig.S);
   rpc_server : Rpc_server.t;
   configuration : Configuration.t;
-  node_ctxt : Node_context.rw;
+  node_ctxt : 'repo Node_context_types.rw;
 }
 
-let is_before_origination (node_ctxt : _ Node_context.t)
+let is_before_origination (node_ctxt : _ Node_context_types.t)
     (header : Layer1.header) =
   let origination_level = node_ctxt.genesis_info.level in
   header.level < origination_level
 
-let previous_context (node_ctxt : _ Node_context.t)
-    ~(predecessor : Layer1.header) =
+let previous_context (type repo tree)
+    (plugin :
+      (module Protocol_plugin_sig.S
+         with type Pvm.Context.repo = repo
+          and type Pvm.Context.tree = tree))
+    (node_ctxt : _ Node_context_types.t) ~(predecessor : Layer1.header) =
   let open Lwt_result_syntax in
+  let (module Plugin) = plugin in
+  let* pvm =
+    Protocol_plugins.pvm_plugin_for_protocol node_ctxt.current_protocol.hash
+  in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) = pvm in
+
   if is_before_origination node_ctxt predecessor then
     (* This is before we have interpreted the boot sector, so we start
        with an empty context in genesis *)
-    return (Context.empty node_ctxt.context)
+    return (Pvm.Context.empty node_ctxt.context)
   else Node_context.checkout_context node_ctxt predecessor.Layer1.hash
 
-let start_workers (plugin : (module Protocol_plugin_sig.S))
-    (node_ctxt : _ Node_context.t) =
+let start_workers (type repo tree) (plugin : (module Protocol_plugin_sig.S))
+    (node_ctxt : (_, repo) Node_context_types.t) =
   let open Lwt_result_syntax in
+  let (module Plugin) = plugin in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+  let module Publisher = Publisher.Make (Pvm.Context) in
+  let module Batcher = Batcher.Make (Pvm.Context) in
+  let module Refutation_coordinator = Refutation_coordinator.Make (Pvm.Context) in
   let* () = Publisher.init node_ctxt in
   let* () = Batcher.init plugin node_ctxt in
   let* () = Refutation_coordinator.init node_ctxt in
@@ -56,7 +73,9 @@ let start_workers (plugin : (module Protocol_plugin_sig.S))
 
 let handle_protocol_migration ~catching_up state (head : Layer1.header) =
   let open Lwt_result_syntax in
-  let* head_proto = Node_context.protocol_of_level state.node_ctxt head.level in
+  let* head_proto =
+    Node_context_types.protocol_of_level state.node_ctxt head.level
+  in
   let new_protocol = head_proto.protocol in
   when_ Protocol_hash.(new_protocol <> state.node_ctxt.current_protocol.hash)
   @@ fun () ->
@@ -73,7 +92,7 @@ let handle_protocol_migration ~catching_up state (head : Layer1.header) =
   in
   let new_protocol =
     {
-      Node_context.hash = new_protocol;
+      Node_context_types.hash = new_protocol;
       proto_level = head_proto.proto_level;
       constants;
     }
@@ -84,15 +103,30 @@ let handle_protocol_migration ~catching_up state (head : Layer1.header) =
 
 (* Process a L1 that we have never seen and for which we have processed the
    predecessor. *)
-let process_unseen_head ({node_ctxt; _} as state) ~catching_up ~predecessor
-    (head : Layer1.header) =
+let process_unseen_head :
+    type repo tree.
+    repo state ->
+    catching_up:bool ->
+    predecessor:Layer1.header ->
+    Layer1.header ->
+    ((Sc_rollup_block.header, unit) Sc_rollup_block.block, tztrace) result Lwt.t
+    =
+ fun ({node_ctxt; _} as state : repo state)
+     ~catching_up
+     ~predecessor
+     (head : Layer1.header) ->
   let open Lwt_result_syntax in
   let level = head.level in
   let* () = Node_context.gc node_ctxt ~level in
   let* () = Node_context.save_protocol_info node_ctxt head ~predecessor in
   let* () = handle_protocol_migration ~catching_up state head in
-  let* rollup_ctxt = previous_context node_ctxt ~predecessor in
   let module Plugin = (val state.plugin) in
+  let (plugin : (repo, tree) Protocol_plugin_sig.full_plugin) =
+    Protocol_plugin_sig.into Plugin.Pvm.witness (module Plugin)
+  in
+  let* (rollup_ctxt : (_, repo, tree) Context.context) =
+    previous_context plugin node_ctxt ~predecessor
+  in
   let* inbox_hash, inbox, inbox_witness, messages =
     Plugin.Inbox.process_head node_ctxt ~predecessor head
   in
@@ -115,7 +149,11 @@ let process_unseen_head ({node_ctxt; _} as state) ~catching_up ~predecessor
       head
       (inbox, messages)
   in
-  let*! context_hash = Context.commit ctxt in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+
+  let*! context_hash = Pvm.Context.commit ctxt in
   let* commitment_hash =
     Publisher.process_head
       state.plugin
@@ -252,7 +290,8 @@ let report_missing_data result =
 
 (* [on_layer_1_head node_ctxt head] processes a new head from the L1. It
    also processes any missing blocks that were not processed. *)
-let on_layer_1_head ({node_ctxt; _} as state) (head : Layer1.header) =
+let on_layer_1_head (type repo tree) ({node_ctxt; _} as state)
+    (head : Layer1.header) =
   let open Lwt_result_syntax in
   let* old_head = Node_context.last_processed_head_opt node_ctxt in
   let old_head =
@@ -295,6 +334,14 @@ let on_layer_1_head ({node_ctxt; _} as state) (head : Layer1.header) =
         update_l2_chain state ~catching_up header)
       new_chain_prefetching
   in
+  let module Plugin = (val state.plugin) in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+
+  let module Publisher = Publisher.Make (Pvm.Context) in
+  let module Batcher = Batcher.Make (Pvm.Context) in
+  let module Refutation_coordinator = Refutation_coordinator.Make (Pvm.Context) in
   let* () = Publisher.publish_commitments () in
   let* () = Publisher.cement_commitments () in
   let*! () = Daemon_event.new_heads_processed reorg.new_chain in
@@ -306,10 +353,17 @@ let on_layer_1_head ({node_ctxt; _} as state) (head : Layer1.header) =
 let daemonize state =
   Layer1.iter_heads state.node_ctxt.l1_ctxt (on_layer_1_head state)
 
-let degraded_refutation_mode state =
+let degraded_refutation_mode (type repo tree) state =
   let open Lwt_result_syntax in
+  let module Plugin = (val state.plugin) in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+  let module Publisher = Publisher.Make (Pvm.Context) in
+  let module Batcher = Batcher.Make (Pvm.Context) in
+  let module Refutation_coordinator = Refutation_coordinator.Make (Pvm.Context) in
   let*! () = Daemon_event.degraded_mode () in
-  let message = state.node_ctxt.Node_context.cctxt#message in
+  let message = state.node_ctxt.Node_context_types.cctxt#message in
   let*! () = message "Shutting down Batcher@." in
   let*! () = Batcher.shutdown () in
   let*! () = message "Shutting down Commitment Publisher@." in
@@ -322,10 +376,17 @@ let degraded_refutation_mode state =
   let*! () = Injector.inject () in
   return_unit
 
-let install_finalizer state =
+let install_finalizer (type repo tree) state =
   let open Lwt_syntax in
+  let module Plugin = (val state.plugin) in
+  let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
+    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  in
+  let module Publisher = Publisher.Make (Pvm.Context) in
+  let module Batcher = Batcher.Make (Pvm.Context) in
+  let module Refutation_coordinator = Refutation_coordinator.Make (Pvm.Context) in
   Lwt_exit.register_clean_up_callback ~loc:__LOC__ @@ fun exit_status ->
-  let message = state.node_ctxt.Node_context.cctxt#message in
+  let message = state.node_ctxt.Node_context_types.cctxt#message in
   let* () = message "Shutting down RPC server@." in
   let* () = Rpc_server.shutdown state.rpc_server in
   let* () = message "Shutting down Injector@." in
@@ -540,11 +601,14 @@ module Internal_for_tests = struct
   (** Same as {!update_l2_chain} but only builds and stores the L2 block
         corresponding to [messages]. It is used by the unit tests to build an L2
         chain. *)
-  let process_messages (module Plugin : Protocol_plugin_sig.S)
-      (node_ctxt : _ Node_context.t) ~is_first_block ~predecessor head messages
-      =
+  let process_messages (type repo tree) (module Plugin : Protocol_plugin_sig.S)
+      (node_ctxt : (_, repo) Node_context_types.t) ~is_first_block ~predecessor
+      head messages =
     let open Lwt_result_syntax in
-    let* ctxt = previous_context node_ctxt ~predecessor in
+    let (plugin : (repo, tree) Protocol_plugin_sig.full_plugin) =
+      Protocol_plugin_sig.into Plugin.Pvm.witness (module Plugin)
+    in
+    let* ctxt = previous_context plugin node_ctxt ~predecessor in
     let* () = Node_context.save_level node_ctxt (Layer1.head_of_header head) in
     let* inbox_hash, inbox, inbox_witness, messages =
       Plugin.Inbox.Internal_for_tests.process_messages
@@ -563,7 +627,8 @@ module Internal_for_tests = struct
         head
         (inbox, messages)
     in
-    let*! context_hash = Context.commit ctxt in
+    let (module Plugin) = plugin in
+    let*! context_hash = Plugin.Pvm.Context.commit ctxt in
     let* commitment_hash =
       Publisher.process_head
         (module Plugin)
@@ -684,7 +749,7 @@ let run ~data_dir ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
   in
   let current_protocol =
     {
-      Node_context.hash = protocol;
+      Node_context_types.hash = protocol;
       proto_level = predecessor.proto_level;
       constants;
     }
@@ -707,6 +772,7 @@ let run ~data_dir ~irmin_cache_size ~index_buffer_size ?log_kernel_debug_file
       configuration
   in
   let* () = Plugin.L1_processing.check_pvm_initial_state_hash node_ctxt in
+  let module Rpc_directory = Rpc_directory.Make (Plugin.Pvm.Context) in
   let* rpc_server =
     Rpc_server.start configuration (Rpc_directory.directory node_ctxt)
   in
