@@ -651,6 +651,7 @@ let test_scenario_f1 () =
   let c_proposed_l1_r0 = ref false in
   let d_proposed_l1_r1 = ref false in
   let a_proposed_l2_r0 = ref false in
+  let () = Log.info "%s@." __LOC__ in
   let stop_on_event0 _ = !a_proposed_l2_r0 in
   let pass =
     (* This is to be sure that the proposal for round r arrives while
@@ -665,8 +666,10 @@ let test_scenario_f1 () =
 
     let on_inject_block ~level ~round ~block_hash ~block_header ~operations
         ~protocol_data:_ =
+      let () = Log.info "%s@." __LOC__ in
       match (!c_proposed_l1_r0, !d_proposed_l1_r1, level, round) with
       | true, true, 2l, 0l ->
+          let () = Log.info "%s@." __LOC__ in
           let* () =
             check_block_signature
               ~block_hash
@@ -677,8 +680,10 @@ let test_scenario_f1 () =
             a_proposed_l2_r0 := true ;
             return_unit
           in
+          let () = Log.info "%s@." __LOC__ in
           return (block_hash, block_header, operations, [pass; pass; pass; pass])
       | _ ->
+          let () = Log.info "%s@." __LOC__ in
           failwith
             "unexpected injection on the node A, level = %ld / round = %ld"
             level
@@ -686,8 +691,12 @@ let test_scenario_f1 () =
 
     let on_inject_operation ~op_hash ~op =
       match (!c_proposed_l1_r0, !d_proposed_l1_r1) with
-      | true, false -> return (op_hash, op, [Pass; Block; Block; Block])
-      | _ -> return (op_hash, op, [Pass; Pass; Pass; Pass])
+      | true, false ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Block; Block; Block])
+      | _ ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Pass; Pass; Pass])
 
     let stop_on_event = stop_on_event0
   end in
@@ -696,8 +705,12 @@ let test_scenario_f1 () =
 
     let on_inject_operation ~op_hash ~op =
       match (!c_proposed_l1_r0, !d_proposed_l1_r1) with
-      | true, false -> return (op_hash, op, [Pass; Pass; Block; Block])
-      | _ -> return (op_hash, op, [Pass; Pass; Pass; Pass])
+      | true, false ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Pass; Block; Block])
+      | _ ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Pass; Pass; Pass])
 
     let stop_on_event = stop_on_event0
   end in
@@ -706,8 +719,10 @@ let test_scenario_f1 () =
 
     let on_inject_block ~level ~round ~block_hash ~block_header ~operations
         ~protocol_data:_ =
+      let () = Log.info "%s@." __LOC__ in
       match (!c_proposed_l1_r0, !d_proposed_l1_r1, level, round) with
       | false, false, 1l, 0l ->
+          let () = Log.info "%s@." __LOC__ in
           let* () =
             check_block_signature
               ~block_hash
@@ -718,8 +733,10 @@ let test_scenario_f1 () =
             c_proposed_l1_r0 := true ;
             return_unit
           in
+          let () = Log.info "%s@." __LOC__ in
           return (block_hash, block_header, operations, [pass; pass; pass; pass])
       | _ ->
+          let () = Log.info "%s@." __LOC__ in
           failwith
             "unexpected injection on the node C, level = %ld / round = %ld"
             level
@@ -727,8 +744,12 @@ let test_scenario_f1 () =
 
     let on_inject_operation ~op_hash ~op =
       match (!c_proposed_l1_r0, !d_proposed_l1_r1) with
-      | true, false -> return (op_hash, op, [Pass; Block; Pass; Block])
-      | _ -> return (op_hash, op, [Pass; Pass; Pass; Pass])
+      | true, false ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Block; Pass; Block])
+      | _ ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Pass; Pass; Pass])
 
     let stop_on_event = stop_on_event0
   end in
@@ -737,8 +758,10 @@ let test_scenario_f1 () =
 
     let on_inject_block ~level ~round ~block_hash ~block_header ~operations
         ~protocol_data:_ =
+      let () = Log.info "%s@." __LOC__ in
       match (!d_proposed_l1_r1, level, round) with
       | false, 1l, 1l ->
+          let () = Log.info "%s@." __LOC__ in
           let* () =
             check_block_signature
               ~block_hash
@@ -749,8 +772,10 @@ let test_scenario_f1 () =
             d_proposed_l1_r1 := true ;
             return_unit
           in
+          let () = Log.info "%s@." __LOC__ in
           return (block_hash, block_header, operations, [pass; pass; pass; pass])
       | _ ->
+          let () = Log.info "%s@." __LOC__ in
           failwith
             "unexpected injection on the node D, level = %ld / round = %ld"
             level
@@ -758,8 +783,12 @@ let test_scenario_f1 () =
 
     let on_inject_operation ~op_hash ~op =
       match (!c_proposed_l1_r0, !d_proposed_l1_r1) with
-      | true, false -> return (op_hash, op, [Pass; Block; Block; Pass])
-      | _ -> return (op_hash, op, [Pass; Pass; Pass; Pass])
+      | true, false ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Block; Block; Pass])
+      | _ ->
+          let () = Log.info "%s@." __LOC__ in
+          return (op_hash, op, [Pass; Pass; Pass; Pass])
 
     let stop_on_event = stop_on_event0
   end in

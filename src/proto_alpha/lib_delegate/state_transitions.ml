@@ -832,19 +832,23 @@ let handle_expected_applied_proposal (state : Baking_state.t) =
 let step (state : Baking_state.t) (event : Baking_state.event) :
     (Baking_state.t * Baking_actions.t) Lwt.t =
   let open Lwt_syntax in
+  let () = Format.printf "%s@." __LOC__ in
   let phase = state.round_state.current_phase in
   let* () = Events.(emit step_current_phase (phase, event)) in
   match (phase, event) with
   (* Handle timeouts *)
   | _, Timeout (End_of_round {ending_round}) ->
+      let () = Format.printf "%s@." __LOC__ in
       (* If the round is ending, stop everything currently going on and
          increment the round. *)
       end_of_round state ending_round
   | _, Timeout (Time_to_bake_next_level {at_round}) ->
+      let () = Format.printf "%s@." __LOC__ in
       (* If it is time to bake the next level, stop everything currently
          going on and propose the next level block *)
       time_to_bake_at_next_level state at_round
   | Idle, New_head_proposal proposal ->
+      let () = Format.printf "%s@." __LOC__ in
       let* () =
         Events.(
           emit
@@ -855,6 +859,7 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       in
       handle_proposal ~is_proposal_applied:true state proposal
   | Awaiting_application, New_head_proposal proposal ->
+      let () = Format.printf "%s@." __LOC__ in
       if
         Block_hash.(
           state.level_state.latest_proposal.block.hash <> proposal.block.hash)
@@ -878,6 +883,7 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
         handle_expected_applied_proposal state
   | Awaiting_attestations, New_head_proposal proposal
   | Awaiting_preattestations, New_head_proposal proposal ->
+      let () = Format.printf "%s@." __LOC__ in
       let* () =
         Events.(
           emit
@@ -889,6 +895,7 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       let* () = Events.(emit new_head_while_waiting_for_qc ()) in
       handle_proposal ~is_proposal_applied:true state proposal
   | Idle, New_valid_proposal proposal ->
+      let () = Format.printf "%s@." __LOC__ in
       let* () =
         Events.(
           emit
@@ -901,6 +908,7 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
   | Awaiting_application, New_valid_proposal proposal
   | Awaiting_attestations, New_valid_proposal proposal
   | Awaiting_preattestations, New_valid_proposal proposal ->
+      let () = Format.printf "%s@." __LOC__ in
       let* () =
         Events.(
           emit
@@ -917,16 +925,19 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
         handle_proposal ~is_proposal_applied:false state proposal
   | Awaiting_preattestations, Prequorum_reached (candidate, preattestation_qc)
     ->
+      let () = Format.printf "%s@." __LOC__ in
       prequorum_reached_when_awaiting_preattestations
         state
         candidate
         preattestation_qc
   | Awaiting_attestations, Quorum_reached (candidate, attestation_qc) ->
+      let () = Format.printf "%s@." __LOC__ in
       quorum_reached_when_waiting_attestations state candidate attestation_qc
   (* Unreachable cases *)
   | Idle, (Prequorum_reached _ | Quorum_reached _)
   | Awaiting_preattestations, Quorum_reached _
   | (Awaiting_application | Awaiting_attestations), Prequorum_reached _
   | Awaiting_application, Quorum_reached _ ->
+      let () = Format.printf "%s@." __LOC__ in
       (* This cannot/should not happen *)
       do_nothing state

@@ -233,12 +233,17 @@ let handle_propagation msg propagation_vector broadcast_pipes =
   let*! () =
     List.iter_s
       (fun (propagation, pipe) ->
+        let () = Format.printf "%s@." __LOC__ in
         match propagation with
-        | Block -> Lwt.return_unit
+        | Block ->
+            let () = Format.printf "%s@." __LOC__ in
+            Lwt.return_unit
         | Pass ->
+            let () = Format.printf "%s@." __LOC__ in
             Lwt_pipe.Unbounded.push pipe msg ;
             Lwt.return_unit
         | Delay s ->
+            let () = Format.printf "%s@." __LOC__ in
             Lwt.dont_wait
               (fun () ->
                 let*! () = Lwt_unix.sleep s in
@@ -461,6 +466,7 @@ let make_mocked_services_hooks (state : state) (user_hooks : (module Hooks)) :
           let op : Protocol.Alpha_context.packed_operation =
             {shell; protocol_data}
           in
+          let () = Format.printf "%s@." __LOC__ in
           let* op_hash1, op1, propagation_vector =
             User_hooks.on_inject_operation ~op_hash ~op
           in
@@ -906,6 +912,7 @@ let baker_process ~(delegates : Baking_state.consensus_key list) ~base_dir
     ~(genesis_block : Block_header.t * Tezos_protocol_environment.rpc_context)
     ~i ~global_chain_table ~broadcast_pipes ~(user_hooks : (module Hooks)) =
   let open Lwt_result_syntax in
+  let () = Format.printf "%s@." __LOC__ in
   let broadcast_pipe =
     List.nth broadcast_pipes i |> WithExceptions.Option.get ~loc:__LOC__
   in
@@ -937,6 +944,7 @@ let baker_process ~(delegates : Baking_state.consensus_key list) ~base_dir
         let open Tezos_client_base in
         let name = alias |> WithExceptions.Option.get ~loc:__LOC__ in
         let* public_key_uri = Client_keys.neuterize secret_key_uri in
+        let () = Format.printf "%s@." __LOC__ in
         Client_keys.register_key
           wallet
           ~force:false
@@ -960,7 +968,9 @@ let baker_process ~(delegates : Baking_state.consensus_key list) ~base_dir
   let module User_hooks = (val user_hooks : Hooks) in
   let listener_process () = listener ~user_hooks ~state ~broadcast_pipe in
   let stop_on_event event = User_hooks.stop_on_event event in
+  let () = Format.printf "%s@." __LOC__ in
   let baker_process () =
+    let () = Format.printf "%s@." __LOC__ in
     Faked_daemon.Baker.run
       ~cctxt
       ~stop_on_event
@@ -1274,11 +1284,15 @@ let run ?(config = default_config) bakers_spec =
   let total_accounts =
     List.fold_left (fun acc (n, _) -> acc + n) 0 bakers_spec
   in
+  let () = Format.printf "%s@." __LOC__ in
   if total_accounts = 0 then
+    let () = Format.printf "%s@." __LOC__ in
     failwith "the simulation should use at least one delegate"
   else if total_accounts > 5 then
+    let () = Format.printf "%s@." __LOC__ in
     failwith "only up to 5 bootstrap accounts are available"
   else
+    let () = Format.printf "%s@." __LOC__ in
     (* When logging is enabled it may cause non-termination:
 
        https://gitlab.com/nomadic-labs/tezos/-/issues/546
@@ -1289,6 +1303,7 @@ let run ?(config = default_config) bakers_spec =
       if config.debug then Tezos_base_unix.Internal_event_unix.init ()
       else Lwt.return_unit
     in
+    let () = Format.printf "%s@." __LOC__ in
     let total_bakers = List.length bakers_spec in
     let* broadcast_pipes =
       List.init ~when_negative_length:() total_bakers (fun _ ->
@@ -1297,14 +1312,17 @@ let run ?(config = default_config) bakers_spec =
       | Error () -> failwith "impossible: negative length of the baker spec"
       | Ok xs -> return xs
     in
+    let () = Format.printf "%s@." __LOC__ in
     let global_chain_table = Block_hash.Table.create 10 in
     let* bootstrap_secrets =
       Tezos_mockup_commands.Mockup_wallet.default_bootstrap_accounts
     in
+    let () = Format.printf "%s@." __LOC__ in
     let accounts_with_secrets =
       List.combine_drop (List.take_n total_accounts accounts) bootstrap_secrets
     in
     let all_delegates = List.map make_baking_delegate accounts_with_secrets in
+    let () = Format.printf "%s@." __LOC__ in
     let* genesis_block =
       make_genesis_context
         ~delegate_selection:config.delegate_selection
@@ -1316,11 +1334,13 @@ let run ?(config = default_config) bakers_spec =
         accounts_with_secrets
         total_accounts
     in
+    let () = Format.printf "%s@." __LOC__ in
     let take_third (_, _, x) = x in
     let timeout_process () =
       let*! () = Lwt_unix.sleep (Float.of_int config.timeout) in
       failwith "the test is taking longer than %d seconds@." config.timeout
     in
+    let () = Format.printf "%s@." __LOC__ in
     Lwt.pick
       [
         timeout_process ();
@@ -1328,6 +1348,7 @@ let run ?(config = default_config) bakers_spec =
           (take_third
              (List.fold_left
                 (fun (i, delegates_acc, ms) (n, user_hooks) ->
+                  let () = Format.printf "%s@." __LOC__ in
                   let delegates, leftover_delegates =
                     List.split_n n delegates_acc
                   in
