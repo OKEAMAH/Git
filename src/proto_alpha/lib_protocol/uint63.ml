@@ -110,6 +110,8 @@ module Div_safe = struct
 
   let one_million = of_int64_exn 1_000_000L
 
+  let one_billion = of_int64_exn 1_000_000_000L
+
   let max_int = of_int64_exn Int64.max_int
 
   let mk_encoding f g enc = mk_encoding ~err:"Positive integer expected" f g enc

@@ -167,15 +167,9 @@ let mul_exn t m =
 let mul_ratio ~rounding tez ~num ~den =
   let open Result_syntax in
   let (Tez_tag t) = tez in
-  match Uint63.of_int64 num with
-  | None -> tzfail (Negative_multiplicator (tez, num))
-  | Some num -> (
-      match Uint63.Div_safe.of_int64 den with
-      | None -> tzfail (Invalid_divisor (tez, den))
-      | Some den -> (
-          match Uint63.mul_ratio ~rounding t ~num ~den with
-          | Some res -> return (Tez_tag res)
-          | None -> tzfail (Multiplication_overflow (tez, num))))
+  match Uint63.mul_ratio ~rounding t ~num ~den with
+  | Some res -> return (Tez_tag res)
+  | None -> tzfail (Multiplication_overflow (tez, num))
 
 let mul_percentage ~rounding (Tez_tag t) percentage =
   Tez_tag (Uint63.mul_percentage ~rounding t percentage)

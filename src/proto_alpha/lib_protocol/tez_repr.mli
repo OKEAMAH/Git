@@ -80,7 +80,11 @@ val rem : t -> Uint63.Div_safe.t -> t
     when [tez * num] overflows.
     [rounding] controls the rounding of the division. *)
 val mul_ratio :
-  rounding:[`Down | `Up] -> t -> num:int64 -> den:int64 -> t tzresult
+  rounding:[`Down | `Up] ->
+  t ->
+  num:Uint63.t ->
+  den:Uint63.Div_safe.t ->
+  t tzresult
 
 (** [mul_percentage tez percentage] returns [tez * percentage / 100].
     No errors can happen. *)

@@ -23,8 +23,10 @@ let share ~rounding ~full_staking_balance amount =
       Tez_repr.mul_ratio
         ~rounding
         amount
-        ~num:(Tez_repr.to_mutez own_frozen)
-        ~den:(Tez_repr.to_mutez total_frozen)
+        ~num:(Tez_repr.to_mutez' own_frozen)
+        ~den:
+          (Uint63.Div_safe.With_exceptions.of_int64
+             (Tez_repr.to_mutez total_frozen))
     in
     let* stakers_part = Tez_repr.(amount -? baker_part) in
     return {baker_part; stakers_part}
@@ -59,44 +61,45 @@ let compute_reward_distrib ~full_staking_balance ~stake
   let open Result_syntax in
   let ({frozen; weighted_delegated} : Stake_repr.t) = stake in
   let* total_stake = Tez_repr.(frozen +? weighted_delegated) in
-  if Tez_repr.(total_stake <= zero) then
-    return
-      {
-        to_spendable = rewards;
-        to_baker_from_staking = Tez_repr.zero;
-        to_baker_from_edge_over_stakers = Tez_repr.zero;
-        to_stakers = Tez_repr.zero;
-      }
-  else
-    let* to_spendable =
-      Tez_repr.mul_ratio
-        ~rounding:`Down
-        rewards
-        ~num:(Tez_repr.to_mutez weighted_delegated)
-        ~den:(Tez_repr.to_mutez total_stake)
-    in
-    let* to_frozen = Tez_repr.(rewards -? to_spendable) in
-    let* {baker_part; stakers_part} =
-      share ~rounding:`Towards_baker ~full_staking_balance to_frozen
-    in
-    let to_baker_from_staking = baker_part in
-    let* to_baker_from_edge_over_stakers =
-      Tez_repr.mul_ratio
-        ~rounding:`Up
-        stakers_part
-        ~num:(edge_of_baking_over_staking_billionth :> Int64.t)
-        ~den:1_000_000_000L
-    in
-    let* to_stakers =
-      Tez_repr.(stakers_part -? to_baker_from_edge_over_stakers)
-    in
-    return
-      {
-        to_baker_from_staking;
-        to_baker_from_edge_over_stakers;
-        to_stakers;
-        to_spendable;
-      }
+  match Uint63.Div_safe.of_int64 (Tez_repr.to_mutez total_stake) with
+  | None ->
+      return
+        {
+          to_spendable = rewards;
+          to_baker_from_staking = Tez_repr.zero;
+          to_baker_from_edge_over_stakers = Tez_repr.zero;
+          to_stakers = Tez_repr.zero;
+        }
+  | Some total_stake ->
+      let* to_spendable =
+        Tez_repr.mul_ratio
+          ~rounding:`Down
+          rewards
+          ~num:(Tez_repr.to_mutez' weighted_delegated)
+          ~den:total_stake
+      in
+      let* to_frozen = Tez_repr.(rewards -? to_spendable) in
+      let* {baker_part; stakers_part} =
+        share ~rounding:`Towards_baker ~full_staking_balance to_frozen
+      in
+      let to_baker_from_staking = baker_part in
+      let* to_baker_from_edge_over_stakers =
+        Tez_repr.mul_ratio
+          ~rounding:`Up
+          stakers_part
+          ~num:edge_of_baking_over_staking_billionth
+          ~den:Uint63.Div_safe.one_billion
+      in
+      let* to_stakers =
+        Tez_repr.(stakers_part -? to_baker_from_edge_over_stakers)
+      in
+      return
+        {
+          to_baker_from_staking;
+          to_baker_from_edge_over_stakers;
+          to_stakers;
+          to_spendable;
+        }
 
 let share ~rounding ctxt delegate amount =
   let open Lwt_result_syntax in

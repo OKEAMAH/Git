@@ -361,13 +361,18 @@ let pseudotokens_of ~rounding (delegate_balances : delegate_balances) tez_amount
   assert (
     Staking_pseudotoken_repr.(
       delegate_balances.frozen_deposits_pseudotokens <> zero)) ;
-  assert (Tez_repr.(delegate_balances.frozen_deposits_staked_tez <> zero)) ;
   assert (Tez_repr.(tez_amount <> zero)) ;
-  Staking_pseudotoken_repr.mul_ratio
-    ~rounding
-    delegate_balances.frozen_deposits_pseudotokens
-    ~num:(Tez_repr.to_mutez tez_amount)
-    ~den:(Tez_repr.to_mutez delegate_balances.frozen_deposits_staked_tez)
+  match
+    Uint63.Div_safe.of_int64
+      (Tez_repr.to_mutez delegate_balances.frozen_deposits_staked_tez)
+  with
+  | None -> (* precondition *) assert false
+  | Some frozen_deposits_staked_tez ->
+      Staking_pseudotoken_repr.mul_ratio
+        ~rounding
+        delegate_balances.frozen_deposits_pseudotokens
+        ~num:(Tez_repr.to_mutez' tez_amount)
+        ~den:frozen_deposits_staked_tez
 
 (** Pseudotokens -> tez conversion.
     Precondition:
@@ -375,16 +380,18 @@ let pseudotokens_of ~rounding (delegate_balances : delegate_balances) tez_amount
 *)
 let tez_of ~rounding (delegate_balances : delegate_balances) pseudotoken_amount
     =
-  assert (
-    Staking_pseudotoken_repr.(
-      delegate_balances.frozen_deposits_pseudotokens <> zero)) ;
-  Tez_repr.mul_ratio
-    ~rounding
-    delegate_balances.frozen_deposits_staked_tez
-    ~num:(Staking_pseudotoken_repr.to_int64 pseudotoken_amount)
-    ~den:
+  match
+    Uint63.Div_safe.of_int64
       (Staking_pseudotoken_repr.to_int64
          delegate_balances.frozen_deposits_pseudotokens)
+  with
+  | None -> (* precondition *) assert false
+  | Some frozen_deposits_pseudotokens ->
+      Tez_repr.mul_ratio
+        ~rounding
+        delegate_balances.frozen_deposits_staked_tez
+        ~num:(Staking_pseudotoken_repr.to_uint63 pseudotoken_amount)
+        ~den:frozen_deposits_pseudotokens
 
 (** [compute_pseudotoken_credit_for_tez_amount delegate_balances
     tez_amount] is a safe wrapper around [pseudotokens_of

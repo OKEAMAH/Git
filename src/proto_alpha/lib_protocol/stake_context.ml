@@ -53,8 +53,8 @@ let apply_limits ctxt staking_parameters
       Tez_repr.mul_ratio
         ~rounding:`Down
         own_frozen
-        ~num:(limit_of_staking_over_baking_millionth :> Int64.t)
-        ~den:1_000_000L
+        ~num:limit_of_staking_over_baking_millionth
+        ~den:Uint63.Div_safe.one_million
     with
     | Ok max_allowed_staked_frozen ->
         Tez_repr.min staked_frozen max_allowed_staked_frozen
@@ -84,7 +84,7 @@ let optimal_frozen_wrt_delegated_without_ai ctxt
     {Full_staking_balance_repr.delegated; own_frozen; _} =
   let open Result_syntax in
   let limit_of_delegation_over_baking =
-    (Constants_storage.limit_of_delegation_over_baking ctxt :> Int64.t)
+    Constants_storage.limit_of_delegation_over_baking ctxt
   in
   (* Without AI, frozen deposit is optimal when `delegated =
      limit_of_delegation_over_baking * frozen`. Freezing more would
@@ -98,8 +98,8 @@ let optimal_frozen_wrt_delegated_without_ai ctxt
     Tez_repr.mul_ratio
       ~rounding:`Up
       power
-      ~num:1L
-      ~den:(Int64.add limit_of_delegation_over_baking 1L)
+      ~num:Uint63.one
+      ~den:(Uint63.With_exceptions.succ limit_of_delegation_over_baking)
   in
   let min_frozen = Constants_storage.minimal_frozen_stake ctxt in
   return (Tez_repr.max opti_frozen min_frozen)

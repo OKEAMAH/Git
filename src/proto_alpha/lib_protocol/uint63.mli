@@ -85,6 +85,8 @@ module Div_safe : sig
 
   val one_million : t
 
+  val one_billion : t
+
   val max_int : t
 
   val uint8_encoding : t Data_encoding.t
@@ -96,6 +98,8 @@ module Div_safe : sig
   val sub : t -> uint63 -> t option
 
   module With_exceptions : sig
+    val of_int64 : Int64.t -> t
+
     val of_int : int -> t
   end
 end
