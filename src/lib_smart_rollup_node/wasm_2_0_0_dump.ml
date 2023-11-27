@@ -12,6 +12,10 @@ let get_wasm_pvm_state (type repo tree) (module Plugin : Protocol_plugin_sig.S)
   let open Lwt_result_syntax in
   let context_hash = l2_header.context in
   let block_hash = l2_header.block_hash in
+  let witness : (repo, tree) Context.witness = Context.witness () in
+  let ((module Plugin) : (repo, tree) Protocol_plugin_sig.full_plugin) =
+    Protocol_plugin_sig.into witness (module Plugin)
+  in
   let (module Pvm) =
     Pvm_plugin_sig.into
       (Plugin.Pvm.witness : (repo, tree) Context.witness)
@@ -42,7 +46,7 @@ let get_wasm_pvm_state (type repo tree) (module Plugin : Protocol_plugin_sig.S)
 let decode_value (type repo tree) ~(pvm : (repo, tree) Pvm_plugin_sig.plugin)
     tree =
   let open Lwt_syntax in
-  let module Pvm : Pvm_plugin_sig.S = (val pvm) in
+  let module Pvm : Pvm_plugin_sig.S with type Context.tree = tree = (val pvm) in
   let* cbv =
     Pvm.Wasm_2_0_0.decode_durable_state
       Tezos_lazy_containers.Chunked_byte_vector.encoding
@@ -78,10 +82,12 @@ let generate_durable_storage (type repo tree)
     ~(plugin : (module Protocol_plugin_sig.S)) (tree : tree) =
   let open Lwt_syntax in
   let durable_path = "durable" :: [] in
-  let module Plugin : Protocol_plugin_sig.S = (val plugin) in
+  let witness : (repo, tree) Context.witness = Context.witness () in
+  let (module Plugin) = Protocol_plugin_sig.into witness plugin in
+
   let (module Pvm) =
     Pvm_plugin_sig.into
-      (Plugin.Pvm.witness : (repo, tree) Context.witness)
+      (witness : (repo, tree) Context.witness)
       (module Plugin.Pvm)
   in
 

@@ -70,7 +70,9 @@ let executable_whitelist_update_message (type repo tree)
         Protocol_plugins.proto_plugin_for_level node_ctxt outbox_level
       in
       let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-        Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+        Pvm_plugin_sig.into
+          (Context.witness () : (repo, tree) Context.witness)
+          (module Plugin.Pvm)
       in
 
       let*! message_index =
@@ -129,7 +131,9 @@ let executable_whitelist_update_message (type repo tree)
           Protocol_plugins.proto_plugin_for_level node_ctxt inbox_level
         in
         let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-          Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+          Pvm_plugin_sig.into
+            (Context.witness () : (repo, tree) Context.witness)
+            (module Plugin.Pvm)
         in
 
         let*!* state = Pvm.Context.PVMState.find ctxt in

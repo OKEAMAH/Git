@@ -25,6 +25,7 @@
 (*****************************************************************************)
 
 open Rpc_directory_helpers
+module Context = Irmin_context
 
 module Make_RPC
     (Durable_state : Wasm_2_0_0_pvm.Durable_state with type state = Context.tree) =
@@ -32,17 +33,19 @@ struct
   module Block_directory = Make_sub_directory (struct
     include Sc_rollup_services.Block
 
-    type context = Node_context.rw
+    type context = Context.repo Node_context_types.rw
 
-    type subcontext = Node_context.ro * Block_hash.t
+    type subcontext = Context.repo Node_context_types.ro * Block_hash.t
 
-    let context_of_prefix node_ctxt (((), block) : prefix) =
+    let context_of_prefix (node_ctxt : Irmin_context.repo Node_context_types.rw)
+        (((), block) : prefix) =
       let open Lwt_result_syntax in
-      let+ block = Block_directory_helpers.block_of_prefix node_ctxt block in
-      (Node_context.readonly node_ctxt, block)
+      let* block = Block_directory_helpers.block_of_prefix node_ctxt block in
+      let* node_ctxt = Node_context.readonly node_ctxt in
+      return (node_ctxt, block)
   end)
 
-  let get_state (node_ctxt : _ Node_context.t) block_hash =
+  let get_state (node_ctxt : _ Node_context_types.t) block_hash =
     let open Lwt_result_syntax in
     let* ctxt = Node_context.checkout_context node_ctxt block_hash in
     let*! state = Context.PVMState.find ctxt in

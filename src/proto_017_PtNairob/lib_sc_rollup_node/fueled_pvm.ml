@@ -1,4 +1,5 @@
 (*****************************************************************************)
+
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs, <contact@nomadic-labs.com>               *)
@@ -28,10 +29,24 @@ open Alpha_context
 module Inbox = Sc_rollup.Inbox
 open Pvm_plugin_sig
 
-module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
+type fuel
+
+type repo = Irmin_context.repo
+
+type tree = Irmin_context.tree
+
+module Make_fueled (F : Fuel.S) :
+  FUELED_PVM
+    with type fuel = F.t
+     and type repo = Irmin_context.repo
+     and type tree = Irmin_context.tree = struct
   type fuel = F.t
 
-  type pvm_state = Context.tree
+  type nonrec repo = repo
+
+  type nonrec tree = tree
+
+  type pvm_state = tree
 
   let get_reveal ~data_dir ~pvm_kind reveal_map hash =
     let found_in_map =
@@ -57,7 +72,7 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
 
   exception Error_wrapper of tztrace
 
-  let metadata (node_ctxt : _ Node_context.t) =
+  let metadata (node_ctxt : _ Node_context_types.t) =
     let address =
       Sc_rollup_proto_types.Address.of_octez node_ctxt.config.sc_rollup_address
     in
@@ -73,7 +88,7 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
         [message_index] at a given [level] and this is the [start_tick] of this
         message processing. If some [failing_ticks] are planned by the loser
         mode, they will be made. *)
-  let eval_until_input (node_ctxt : _ Node_context.t) reveal_map level
+  let eval_until_input (node_ctxt : _ Node_context_types.t) reveal_map level
       message_index ~fuel start_tick failing_ticks state =
     let open Lwt_result_syntax in
     let open Delayed_write_monad.Lwt_result_syntax in
@@ -250,8 +265,8 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
         [state] to the next step that requires an input. This function is
         controlled by some [fuel] and may introduce intended failures at some
         given [failing_ticks]. *)
-  let feed_input (node_ctxt : _ Node_context.t) reveal_map level message_index
-      ~fuel ~failing_ticks state input =
+  let feed_input (node_ctxt : _ Node_context_types.t) reveal_map level
+      message_index ~fuel ~failing_ticks state input =
     let open Lwt_result_syntax in
     let open Delayed_write_monad.Lwt_result_syntax in
     let module PVM = (val Pvm.of_kind node_ctxt.kind) in
@@ -307,12 +322,13 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
             | Completed {state; fuel; _} ->
                 return (Feed_input_completed {state; fuel})))
 
-  let eval_messages ~reveal_map ~fuel node_ctxt ~message_counter_offset state
-      inbox_level messages =
+  let eval_messages ~reveal_map ~fuel
+      (node_ctxt : (_, Irmin_context.repo) Node_context_types.t)
+      ~message_counter_offset (state : pvm_state) inbox_level messages =
     let open Delayed_write_monad.Lwt_result_syntax in
     let level = Int32.to_int inbox_level in
     (* Iterate the PVM state with all the messages. *)
-    let rec feed_messages (state, fuel) message_index = function
+    let rec feed_messages ((state : pvm_state), fuel) message_index = function
       | [] ->
           (* Fed all messages *)
           return (state, fuel, message_index - message_counter_offset, [])
@@ -332,7 +348,7 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
           in
           let failing_ticks =
             Loser_mode.is_failure
-              node_ctxt.Node_context.config.loser_mode
+              node_ctxt.Node_context_types.config.loser_mode
               ~level
               ~message_index
           in
@@ -365,9 +381,25 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
     in
     (feed_messages [@tailcall]) (state, fuel) message_counter_offset messages
 
-  let eval_block_inbox ~fuel (node_ctxt : _ Node_context.t) (inbox, messages)
-      (state : pvm_state) :
-      fuel eval_result Node_context.delayed_write tzresult Lwt.t =
+  let eval_block_inbox :
+      fuel:fuel ->
+      ([< `Read | `Write > `Read], Irmin_context.repo) Node_context_types.t ->
+      Octez_smart_rollup.Inbox.t * string list ->
+      Irmin_context.tree ->
+      ( (fuel, Irmin_context.tree) eval_result,
+        Irmin_context.repo )
+      Node_context_types.delayed_write
+      tzresult
+      Environment.Lwt.t =
+   fun ~fuel
+       (node_ctxt : (_, Irmin_context.repo) Node_context_types.t)
+       (inbox, messages)
+       (state : pvm_state) (* : *) ->
+    (* ( (fuel, pvm_state) eval_result, *)
+    (*   Irmin_context.repo ) *)
+    (* Node_context_types.delayed_write *)
+    (* tzresult *)
+    (* Lwt.t *)
     let open Lwt_result_syntax in
     let open Delayed_write_monad.Lwt_result_syntax in
     let module PVM = (val Pvm.of_kind node_ctxt.kind) in
@@ -401,7 +433,7 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
     in
     return {state = eval_state; num_ticks; num_messages}
 
-  let eval_messages ?reveal_map (node_ctxt : _ Node_context.t)
+  let eval_messages ?reveal_map (node_ctxt : _ Node_context_types.t)
       {
         state;
         tick = initial_tick;
@@ -421,7 +453,7 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
           let message_index = message_counter_offset - 1 in
           let failing_ticks =
             Loser_mode.is_failure
-              node_ctxt.Node_context.config.loser_mode
+              node_ctxt.Node_context_types.config.loser_mode
               ~level
               ~message_index
           in

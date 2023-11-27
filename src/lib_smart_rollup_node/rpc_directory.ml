@@ -348,13 +348,13 @@ module Make (C : Context.CONTEXT) = struct
 
     return status
 
-  let top_directory (node_ctxt : _ Node_context_types.t) =
+  let top_directory (node_ctxt : (_, C.repo) Node_context_types.t) =
     List.fold_left
       (fun dir f -> Tezos_rpc.Directory.merge dir (f node_ctxt))
       Tezos_rpc.Directory.empty
       [Global_directory.build_directory; Local_directory.build_directory]
 
-  let directory node_ctxt =
+  let directory (node_ctxt : (_, C.repo) Node_context_types.t) =
     let path =
       Tezos_rpc.Path.(
         open_root / "global" / "block" /: Rollup_node_services.Arg.block_id)
@@ -371,8 +371,14 @@ module Make (C : Context.CONTEXT) = struct
             Block_directory_helpers.block_level_of_id node_ctxt block_id
           in
           let* () = Node_context.check_level_available node_ctxt level in
-          let+ (module Plugin) = get_proto_plugin_of_level node_ctxt level in
-          Plugin.RPC_directory.block_directory node_ctxt
+          let* (module Plugin) = get_proto_plugin_of_level node_ctxt level in
+          let (plugin : (C.repo, C.tree) Protocol_plugin_sig.full_plugin) =
+            Protocol_plugin_sig.into
+              (Context.witness () : (C.repo, C.tree) Context.witness)
+              (module Plugin)
+          in
+          let (module Plugin) = plugin in
+          return (Plugin.RPC_directory.block_directory node_ctxt)
         in
         match dir with
         | Ok dir -> dir

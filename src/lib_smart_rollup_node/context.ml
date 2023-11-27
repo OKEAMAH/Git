@@ -49,18 +49,23 @@ module type CONTEXT = sig
 
   type nonrec 'a raw_index = ('a, repo) raw_index
 
+  (* {path : string; repo : repo} *)
+
+  (* type nonrec 'a raw_index = {path : string; repo : repo} *)
+  (* (\* ('a, repo) raw_index *\) *)
+
   type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
 
-  type 'a t = {index : 'a index; tree : tree}
+  (* type 'a t = {index : 'a index; tree : tree} *)
 
   (** Read/write {!type:index}. *)
   type rw_index = [`Read | `Write] index
 
   (** Read/write context {!t}. *)
-  type rw = [`Read | `Write] t
+  type rw = ([`Read | `Write], repo, tree) context
 
   (** Read-only context {!t}. *)
-  type ro = [`Read] t
+  type ro = ([`Read], repo, tree) context
 
   val witness : (repo, tree) witness
 
@@ -80,7 +85,7 @@ module type CONTEXT = sig
   val load : cache_size:int -> 'a mode -> string -> 'a index tzresult Lwt.t
 
   (** [index context] is the repository of the context [context]. *)
-  val index : 'a t -> 'a index
+  val index : ('a, repo, tree) context -> 'a index
 
   (** [close ctxt] closes the context index [ctxt]. *)
   val close : _ index -> unit Lwt.t
@@ -233,8 +238,6 @@ module Version = struct
 
   let check = function V0 -> Result.return_unit
 end
-
-(* module Context : CONTEXT = Irmin_context *)
 
 (* include Context *)
 

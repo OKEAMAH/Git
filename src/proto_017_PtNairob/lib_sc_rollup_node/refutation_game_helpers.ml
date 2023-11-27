@@ -28,6 +28,10 @@
 open Protocol
 open Alpha_context
 
+type tree = Irmin_context.tree
+
+type repo = Irmin_context.repo
+
 (** This function computes the inclusion/membership proof of the page
       identified by [page_id] in the slot whose data are provided in
       [slot_data]. *)
@@ -66,8 +70,8 @@ let page_membership_proof params page_index slot_data =
       be unconfirmed on L1, this function returns [None]. If the data of the
       slot are not saved to the store, the function returns a failure
       in the error monad. *)
-let page_info_from_pvm_state (node_ctxt : _ Node_context.t) ~dal_attestation_lag
-    (dal_params : Dal.parameters) start_state =
+let page_info_from_pvm_state (node_ctxt : _ Node_context_types.t)
+    ~dal_attestation_lag (dal_params : Dal.parameters) start_state =
   let open Lwt_result_syntax in
   let module PVM = (val Pvm.of_kind node_ctxt.kind) in
   let*! input_request = PVM.is_input_state start_state in
@@ -101,14 +105,14 @@ let page_info_from_pvm_state (node_ctxt : _ Node_context.t) ~dal_attestation_lag
                 pages_per_slot))
   | _ -> return_none
 
-let metadata (node_ctxt : _ Node_context.t) =
+let metadata (node_ctxt : _ Node_context_types.t) =
   let address =
     Sc_rollup_proto_types.Address.of_octez node_ctxt.config.sc_rollup_address
   in
   let origination_level = Raw_level.of_int32_exn node_ctxt.genesis_info.level in
   Sc_rollup.Metadata.{address; origination_level}
 
-let generate_proof (node_ctxt : _ Node_context.t)
+let generate_proof (node_ctxt : Irmin_context.repo Node_context_types.rw)
     (game : Octez_smart_rollup.Game.t) start_state =
   let open Lwt_result_syntax in
   let module PVM = (val Pvm.of_kind node_ctxt.kind) in
@@ -274,7 +278,7 @@ let generate_proof (node_ctxt : _ Node_context.t)
   in
   return proof
 
-let make_dissection plugin (node_ctxt : _ Node_context.t) ~start_state
+let make_dissection plugin (node_ctxt : _ Node_context_types.t) ~start_state
     ~start_chunk ~our_stop_chunk ~default_number_of_sections ~last_level =
   let open Lwt_result_syntax in
   let module PVM = (val Pvm.of_kind node_ctxt.kind) in
@@ -311,7 +315,7 @@ let make_dissection plugin (node_ctxt : _ Node_context.t) ~start_state
 
 let timeout_reached node_ctxt ~self ~opponent =
   let open Lwt_result_syntax in
-  let Node_context.{config; cctxt; _} = node_ctxt in
+  let Node_context_types.{config; cctxt; _} = node_ctxt in
   let+ game_result =
     Plugin.RPC.Sc_rollup.timeout_reached
       (new Protocol_client_context.wrap_full cctxt)

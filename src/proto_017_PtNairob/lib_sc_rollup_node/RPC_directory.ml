@@ -34,20 +34,23 @@ module Slot_pages_map = struct
   include Map.Make (Dal.Slot_index)
 end
 
+type repo = Irmin_context.repo
+
 let get_dal_processed_slots node_ctxt block =
   Node_context.list_slots_statuses node_ctxt ~confirmed_in_block_hash:block
 
 module Block_directory = Make_sub_directory (struct
   include Sc_rollup_services.Block
 
-  type context = Node_context.rw
+  type context = repo Node_context_types.rw
 
-  type subcontext = Node_context.ro * Block_hash.t
+  type subcontext = repo Node_context_types.ro * Block_hash.t
 
   let context_of_prefix node_ctxt (((), block) : prefix) =
     let open Lwt_result_syntax in
-    let+ block = Block_directory_helpers.block_of_prefix node_ctxt block in
-    (Node_context.readonly node_ctxt, block)
+    let* block = Block_directory_helpers.block_of_prefix node_ctxt block in
+    let* node_ctxt = Node_context.readonly node_ctxt in
+    return (node_ctxt, block)
 end)
 
 module Block_helpers_directory = Make_sub_directory (struct
@@ -55,11 +58,11 @@ module Block_helpers_directory = Make_sub_directory (struct
 
   (* The context needs to be accessed with write permissions because we need to
      commit on disk to generate the proofs. *)
-  type context = Node_context.rw
+  type context = Irmin_context.repo Node_context_types.rw
 
   (* The context needs to be accessed with write permissions because we need to
      commit on disk to generate the proofs. *)
-  type subcontext = Node_context.rw * Block_hash.t
+  type subcontext = Irmin_context.repo Node_context_types.rw * Block_hash.t
 
   let context_of_prefix node_ctxt (((), block) : prefix) =
     let open Lwt_result_syntax in
@@ -105,14 +108,14 @@ module Common = struct
     Z.of_int64 l2_block.num_ticks
 end
 
-let get_state (node_ctxt : _ Node_context.t) block_hash =
+let get_state (node_ctxt : _ Node_context_types.t) block_hash =
   let open Lwt_result_syntax in
   let* ctxt = Node_context.checkout_context node_ctxt block_hash in
-  let*! state = Context.PVMState.find ctxt in
+  let*! state = Irmin_context.PVMState.find ctxt in
   match state with None -> failwith "No state" | Some state -> return state
 
-let simulate_messages (node_ctxt : Node_context.ro) block ~reveal_pages
-    ~insight_requests ~log_kernel_debug_file messages =
+let simulate_messages (node_ctxt : Irmin_context.repo Node_context_types.ro)
+    block ~reveal_pages ~insight_requests ~log_kernel_debug_file messages =
   let open Lwt_result_syntax in
   let open Alpha_context in
   let module PVM = (val Pvm.of_kind node_ctxt.kind) in
@@ -196,7 +199,7 @@ let () =
   let open Lwt_result_syntax in
   let* state = get_state node_ctxt block in
   let path = String.split_on_char '/' key in
-  let*! value = Context.PVMState.lookup state path in
+  let*! value = Irmin_context.PVMState.lookup state path in
   match value with
   | None -> failwith "No such key in PVM state"
   | Some value ->
@@ -275,7 +278,7 @@ let () =
     ~log_kernel_debug_file
     messages
 
-let block_directory (node_ctxt : _ Node_context.t) =
+let block_directory (node_ctxt : _ Node_context_types.t) =
   let module PVM = (val Pvm_rpc.of_kind node_ctxt.kind) in
   List.fold_left
     (fun dir f -> Tezos_rpc.Directory.merge dir (f node_ctxt))
@@ -286,9 +289,11 @@ let block_directory (node_ctxt : _ Node_context.t) =
       PVM.build_sub_directory;
     ]
 
-let directory (node_ctxt : _ Node_context.t) =
+let directory (node_ctxt : _ Node_context_types.t) =
+  let module Rpc_directory =
+    Octez_smart_rollup_node.Rpc_directory.Make (Irmin_context) in
   Tezos_rpc.Directory.merge
-    (Octez_smart_rollup_node.Rpc_directory.top_directory node_ctxt)
+    (Rpc_directory.top_directory node_ctxt)
     (Tezos_rpc.Directory.prefix
        Sc_rollup_services.Block.prefix
        (block_directory node_ctxt))

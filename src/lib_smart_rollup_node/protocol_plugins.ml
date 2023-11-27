@@ -138,4 +138,7 @@ let pvm_plugin_for_protocol :
   let*? (module Plugin : Protocol_plugin_sig.S) =
     proto_plugin_for_protocol protocol
   in
-  return @@ Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+  return
+  @@ Pvm_plugin_sig.into
+       (Context.witness () : (repo, tree) Context.witness)
+       (module Plugin.Pvm)

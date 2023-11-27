@@ -47,6 +47,10 @@ type ('fuel, 'tree) eval_result = {
 module type FUELED_PVM = sig
   type fuel
 
+  type repo
+
+  type tree
+
   (** Evaluation result for the PVM which contains the evaluation state and
       additional information.  *)
 
@@ -56,10 +60,10 @@ module type FUELED_PVM = sig
       inbox level and the remaining fuel. *)
   val eval_block_inbox :
     fuel:fuel ->
-    (_, 'repo) Node_context_types.t ->
+    (_, repo) Node_context_types.t ->
     Inbox.t * string list ->
-    'tree ->
-    ((fuel, 'tree) eval_result, 'repo) Node_context_types.delayed_write tzresult
+    tree ->
+    ((fuel, tree) eval_result, repo) Node_context_types.delayed_write tzresult
     Lwt.t
 
   (** [eval_messages ?reveal_map ~fuel node_ctxt ~message_counter_offset state
@@ -73,9 +77,9 @@ module type FUELED_PVM = sig
       used as an additional source of data for revelation ticks. *)
   val eval_messages :
     ?reveal_map:string Utils.Reveal_hash_map.t ->
-    (_, 'repo) Node_context_types.t ->
-    (fuel, 'tree) eval_state ->
-    ((fuel, 'tree) eval_result, 'repo) Node_context_types.delayed_write tzresult
+    (_, repo) Node_context_types.t ->
+    (fuel, tree) eval_state ->
+    ((fuel, tree) eval_result, repo) Node_context_types.delayed_write tzresult
     Lwt.t
 end
 
@@ -95,12 +99,14 @@ module Tick_state_cache =
 (* TODO *)
 (* let tick_state_cache = Tick_state_cache.create 64 (\* size of 2 dissections *\) *)
 
+module C = Context
+
 module type S = sig
-  val context : (module Context.CONTEXT)
-
-  val witness : ('repo, 'tree) Context.witness
-
   module Context : Context.CONTEXT
+
+  val witness : (Context.repo, Context.tree) C.witness
+
+  (* with type repo = repo and type tree = tree *)
 
   val tick_state_cache :
     (Fuel.Accounted.t, Context.tree) eval_state tzresult Tick_state_cache.t
@@ -126,8 +132,8 @@ module type S = sig
     int option Lwt.t
 
   val produce_serialized_output_proof :
-    'repo Node_context_types.rw ->
-    'tree ->
+    Context.repo Node_context_types.rw ->
+    Context.tree ->
     outbox_level:int32 ->
     message_index:int ->
     string tzresult Lwt.t
@@ -146,10 +152,11 @@ module type S = sig
   module Wasm_2_0_0 : sig
     (** [decode_durable_state enc tree] decodes a value using the encoder
         [enc] from the provided [tree] *)
-    val decode_durable_state : 'a Tezos_tree_encoding.t -> 'tree -> 'a Lwt.t
+    val decode_durable_state :
+      'a Tezos_tree_encoding.t -> Context.tree -> 'a Lwt.t
 
     (** [proof_mem_tree t k] is false iff [find_tree k = None].*)
-    val proof_mem_tree : 'tree -> string list -> bool Lwt.t
+    val proof_mem_tree : Context.tree -> string list -> bool Lwt.t
 
     (** [fold ?depth t root ~order ~init ~f] recursively folds over the trees and
         values of t. The f callbacks are called with a key relative to root. f is
@@ -168,7 +175,7 @@ module type S = sig
         order of their keys. *)
     val proof_fold_tree :
       ?depth:Tezos_context_sigs.Context.depth ->
-      'tree ->
+      Context.tree ->
       string list ->
       order:[`Sorted | `Undefined] ->
       init:'a ->
@@ -177,9 +184,17 @@ module type S = sig
   end
 
   module Fueled : sig
-    module Free : FUELED_PVM with type fuel := Fuel.Free.t
+    module Free :
+      FUELED_PVM
+        with type fuel := Fuel.Free.t
+         and type repo = Context.repo
+         and type tree = Context.tree
 
-    module Accounted : FUELED_PVM with type fuel := Fuel.Accounted.t
+    module Accounted :
+      FUELED_PVM
+        with type fuel := Fuel.Accounted.t
+         and type repo = Context.repo
+         and type tree = Context.tree
   end
 end
 

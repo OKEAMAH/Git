@@ -24,6 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Context
 open Store_sigs
 module Context_encoding = Tezos_context_encoding.Context_binary
 
@@ -43,23 +44,32 @@ end
 module IStoreTree =
   Tezos_context_helpers.Context.Make_tree (Context_encoding.Conf) (IStore)
 
+(* module C = struct *)
 type repo = IStore.Repo.t
 
 type tree = IStore.tree
 
-type 'a raw_index = {path : string; repo : IStore.Repo.t}
+type 'a raw_index = ('a, IStore.Repo.t) Context.raw_index
+(* type 'a raw_index = {path : string; repo : IStore.Repo.t} *)
 
-type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
+type 'a index = ('a, repo) Context.raw_index
+  constraint 'a = [< `Read | `Write > `Read]
 
 type rw_index = [`Read | `Write] index
 
 type ro_index = [`Read] index
 
-type 'a t = {index : 'a index; tree : tree}
+(* type 'a t = { *)
+(*   (\* { *\) *)
+(*   (\* ('a, IStore.Repo.t, IStore.tree) Context.context *\) *)
+(*   (\* constraint 'a = [< `Read | `Write > `Read] *\) *)
+(*   index : 'a index; *)
+(*   tree : tree; *)
+(* } *)
 
-type rw = [`Read | `Write] t
+type rw = ([`Read | `Write], IStore.repo, IStore.tree) Context.context
 
-type ro = [`Read] t
+type ro = ([`Read], IStore.repo, IStore.tree) Context.context
 
 type commit = IStore.commit
 
@@ -264,3 +274,8 @@ module Internal_for_tests = struct
     let tree = IStore.Tree.empty () in
     IStore.Tree.add tree [key] Bytes.empty
 end
+
+let witness : (repo, tree) Context.witness = Context.witness ()
+(* end *)
+
+(* include (C : Context.CONTEXT) *)

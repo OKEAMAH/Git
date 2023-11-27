@@ -61,7 +61,9 @@ let start_workers (type repo tree) (plugin : (module Protocol_plugin_sig.S))
   let open Lwt_result_syntax in
   let (module Plugin) = plugin in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
   let module Publisher = Publisher.Make (Pvm.Context) in
   let module Batcher = Batcher.Make (Pvm.Context) in
@@ -121,9 +123,15 @@ let process_unseen_head :
   let* () = Node_context.save_protocol_info node_ctxt head ~predecessor in
   let* () = handle_protocol_migration ~catching_up state head in
   let module Plugin = (val state.plugin) in
-  let (plugin : (repo, tree) Protocol_plugin_sig.full_plugin) =
-    Protocol_plugin_sig.into Plugin.Pvm.witness (module Plugin)
+  let (plugin
+        : (module Protocol_plugin_sig.S
+             with type Pvm.Context.repo = repo
+              and type Pvm.Context.tree = tree)) =
+    Protocol_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin)
   in
+  let (module Plugin) = plugin in
   let* (rollup_ctxt : (_, repo, tree) Context.context) =
     previous_context plugin node_ctxt ~predecessor
   in
@@ -150,7 +158,9 @@ let process_unseen_head :
       (inbox, messages)
   in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
 
   let*! context_hash = Pvm.Context.commit ctxt in
@@ -336,7 +346,9 @@ let on_layer_1_head (type repo tree) ({node_ctxt; _} as state)
   in
   let module Plugin = (val state.plugin) in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
 
   let module Publisher = Publisher.Make (Pvm.Context) in
@@ -357,7 +369,9 @@ let degraded_refutation_mode (type repo tree) state =
   let open Lwt_result_syntax in
   let module Plugin = (val state.plugin) in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
   let module Publisher = Publisher.Make (Pvm.Context) in
   let module Batcher = Batcher.Make (Pvm.Context) in
@@ -380,7 +394,9 @@ let install_finalizer (type repo tree) state =
   let open Lwt_syntax in
   let module Plugin = (val state.plugin) in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
   let module Publisher = Publisher.Make (Pvm.Context) in
   let module Batcher = Batcher.Make (Pvm.Context) in
@@ -606,7 +622,9 @@ module Internal_for_tests = struct
       head messages =
     let open Lwt_result_syntax in
     let (plugin : (repo, tree) Protocol_plugin_sig.full_plugin) =
-      Protocol_plugin_sig.into Plugin.Pvm.witness (module Plugin)
+      Protocol_plugin_sig.into
+        (Context.witness () : (repo, tree) Context.witness)
+        (module Plugin)
     in
     let* ctxt = previous_context plugin node_ctxt ~predecessor in
     let* () = Node_context.save_level node_ctxt (Layer1.head_of_header head) in

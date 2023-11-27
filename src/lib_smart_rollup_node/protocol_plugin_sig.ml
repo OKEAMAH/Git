@@ -26,15 +26,19 @@
 (** Protocol specific RPC directory, used as a dynamic directory in the protocol
     agnostic rollup node. *)
 module type RPC_DIRECTORY = sig
+  type repo
+
   (** The RPC directory, specific to blocks of the protocol, for this rollup
       node. *)
   val block_directory :
-    _ Node_context_types.rw ->
+    repo Node_context_types.rw ->
     (unit * Rollup_node_services.Arg.block_id) Tezos_rpc.Directory.t
 end
 
 (** Protocol specific functions to track endorsed DAL slots of L1 blocks. *)
 module type DAL_SLOTS_TRACKER = sig
+  type repo
+
   (** [process_head node_ctxt head] performs the following operations for a
       given protocol:
       {ul
@@ -44,7 +48,7 @@ module type DAL_SLOTS_TRACKER = sig
         [Store.Dal_confirmed_slots].}
       }  *)
   val process_head :
-    _ Node_context_types.rw -> Layer1.head -> unit tzresult Lwt.t
+    repo Node_context_types.rw -> Layer1.head -> unit tzresult Lwt.t
 end
 
 (** Protocol specific functions to reconstruct inboxes from L1 blocks. *)
@@ -248,11 +252,15 @@ end
 
 (** Protocol specific refutation helper functions.  *)
 module type REFUTATION_GAME_HELPERS = sig
+  type tree
+
+  type repo
+
   (** [generate_proof node_ctxt (game) start_state] generates a serialized proof
     for the current [game] for the execution step starting with
     [start_state]. *)
   val generate_proof :
-    _ Node_context_types.rw -> Game.t -> 'tree -> string tzresult Lwt.t
+    repo Node_context_types.rw -> Game.t -> tree -> string tzresult Lwt.t
 
   (** [make_dissection plugin node_ctxt ~start_state ~start_chunk ~our_stop_chunk
     ~default_number_of_sections ~last_level] computes a dissection from between
@@ -260,8 +268,8 @@ module type REFUTATION_GAME_HELPERS = sig
     has [default_number_of_sections] if there are enough ticks. *)
   val make_dissection :
     (module PARTIAL) ->
-    _ Node_context_types.t ->
-    start_state:(Fuel.Accounted.t, 'tree) Pvm_plugin_sig.eval_state option ->
+    (_, repo) Node_context_types.t ->
+    start_state:(Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state option ->
     start_chunk:Game.dissection_chunk ->
     our_stop_chunk:Game.dissection_chunk ->
     default_number_of_sections:int ->
@@ -271,7 +279,7 @@ module type REFUTATION_GAME_HELPERS = sig
   (** [timeout_reached node_ctxt ~self ~opponent] returns [true] if the
     timeout is reached against opponent in head of the L1 chain. *)
   val timeout_reached :
-    _ Node_context_types.t ->
+    (_, repo) Node_context_types.t ->
     self:Signature.public_key_hash ->
     opponent:Signature.public_key_hash ->
     bool tzresult Lwt.t
@@ -300,9 +308,9 @@ end
 module type S = sig
   include PARTIAL
 
-  module RPC_directory : RPC_DIRECTORY
+  module RPC_directory : RPC_DIRECTORY with type repo = Pvm.Context.repo
 
-  module Dal_slots_tracker : DAL_SLOTS_TRACKER
+  module Dal_slots_tracker : DAL_SLOTS_TRACKER with type repo = Pvm.Context.repo
 
   module Inbox : INBOX
 
@@ -310,7 +318,10 @@ module type S = sig
 
   module L1_processing : L1_PROCESSING
 
-  module Refutation_game_helpers : REFUTATION_GAME_HELPERS
+  module Refutation_game_helpers :
+    REFUTATION_GAME_HELPERS
+      with type repo = Pvm.Context.repo
+       and type tree = Pvm.Context.tree
 end
 
 type ('repo, 'tree) partial_plugin =
@@ -322,8 +333,18 @@ type ('repo, 'tree) full_plugin =
   (module S with type Pvm.Context.repo = 'repo and type Pvm.Context.tree = 'tree)
 
 let into (type repo tree) (w : (repo, tree) Context.witness) (module C : S) :
-    (module S with type Pvm.Context.repo = repo and type Pvm.Context.tree = tree)
+    (repo, tree) full_plugin
+    (* (module S with type Pvm.Context.repo = repo and type Pvm.Context.tree = tree) *)
     =
+  match Context.try_cast w C.Pvm.Context.witness with
+  | Some Context.Equal -> (module C)
+  | None -> assert false
+
+let into_partial (type repo tree) (w : (repo, tree) Context.witness)
+    (module C : PARTIAL) :
+    (module PARTIAL
+       with type Pvm.Context.repo = repo
+        and type Pvm.Context.tree = tree) =
   match Context.try_cast w C.Pvm.Context.witness with
   | Some Context.Equal -> (module C)
   | None -> assert false

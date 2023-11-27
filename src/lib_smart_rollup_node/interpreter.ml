@@ -54,8 +54,11 @@ let genesis_state :
       ctxt ->
    let open Lwt_result_syntax in
    let* boot_sector = get_boot_sector (module Plugin) block_hash node_ctxt in
+
    let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-     Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+     Pvm_plugin_sig.into
+       (Context.witness () : (repo, tree) Context.witness)
+       (module Plugin.Pvm)
    in
    let*! initial_state = Pvm.initial_state node_ctxt.kind in
    let*! (genesis_state : tree) =
@@ -79,7 +82,9 @@ let state_of_head :
       Layer1.{hash; level} ->
    let open Lwt_result_syntax in
    let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-     Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+     Pvm_plugin_sig.into
+       (Context.witness () : (repo, tree) Context.witness)
+       (module Plugin.Pvm)
    in
    let*! state = Pvm.Context.PVMState.find ctxt in
    match state with
@@ -102,6 +107,17 @@ let transition_pvm (type repo tree)
   let* ctxt, predecessor_state =
     state_of_head (module Plugin) node_ctxt ctxt predecessor
   in
+  let (plugin : (repo, tree) Protocol_plugin_sig.partial_plugin) =
+    Protocol_plugin_sig.into_partial
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin)
+  in
+  let (module Plugin : Protocol_plugin_sig.PARTIAL
+        with type Pvm.Context.repo = repo
+         and type Pvm.Context.tree = tree) =
+    plugin
+  in
+
   let* eval_result =
     Plugin.Pvm.Fueled.Free.eval_block_inbox
       ~fuel:(Fuel.Free.of_ticks 0L)
@@ -147,7 +163,9 @@ let process_head :
      ((_, repo, tree) Context.t * int * int64 * Z.t) tzresult Lwt.t ->
   let open Lwt_result_syntax in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
 
   let first_inbox_level = node_ctxt.genesis_info.level |> Int32.succ in
@@ -189,7 +207,9 @@ let start_state_of_block (type repo tree) plugin node_ctxt
   let inbox_level = Octez_smart_rollup.Inbox.inbox_level inbox in
   let module Plugin = (val plugin) in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
 
   let*! tick = Pvm.get_tick node_ctxt.kind state in
@@ -218,12 +238,19 @@ let start_state_of_block (type repo tree) plugin node_ctxt
 
 (** [run_for_ticks plugin node_ctxt start_state tick_distance] starts the
     evaluation of messages in the [start_state] for at most [tick_distance]. *)
-let run_to_tick (module Plugin : Protocol_plugin_sig.PARTIAL) node_ctxt
-    start_state tick =
+let run_to_tick (type repo tree) (module Plugin : Protocol_plugin_sig.PARTIAL)
+    node_ctxt start_state tick =
   let open Delayed_write_monad.Lwt_result_syntax in
   let tick_distance =
     Z.sub tick start_state.Pvm_plugin_sig.tick |> Z.to_int64
   in
+  let (plugin : (repo, tree) Protocol_plugin_sig.partial_plugin) =
+    Protocol_plugin_sig.into_partial
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin)
+  in
+  let (module Plugin) = plugin in
+
   let>+ eval_result =
     Plugin.Pvm.Fueled.Accounted.eval_messages
       node_ctxt
@@ -269,7 +296,9 @@ let memo_state_of_tick_aux :
     ((Fuel.Accounted.t, tree) Pvm_plugin_sig.eval_state, tztrace) result Lwt.t =
  fun (module Plugin) node_ctxt ~start_state (event : Sc_rollup_block.t) tick ->
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
   Pvm_plugin_sig.Tick_state_cache.bind_or_put
     Pvm.tick_state_cache

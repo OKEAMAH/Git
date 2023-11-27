@@ -100,7 +100,9 @@ let build_commitment (type repo tree) (module Plugin : Protocol_plugin_sig.S)
     ~prev_commitment_level ~inbox_level ctxt =
   let open Lwt_result_syntax in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
 
   let*! pvm_state = Pvm.Context.PVMState.find ctxt in
@@ -136,7 +138,9 @@ let genesis_commitment (type repo tree) (module Plugin : Protocol_plugin_sig.S)
     (node_ctxt : (_, repo) Node_context_types.t) ctxt =
   let open Lwt_result_syntax in
   let ((module Pvm) : (repo, tree) Pvm_plugin_sig.plugin) =
-    Pvm_plugin_sig.into Plugin.Pvm.witness (module Plugin.Pvm)
+    Pvm_plugin_sig.into
+      (Context.witness () : (repo, tree) Context.witness)
+      (module Plugin.Pvm)
   in
 
   let*! pvm_state = Pvm.Context.PVMState.find ctxt in

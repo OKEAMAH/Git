@@ -26,9 +26,12 @@
 open Protocol
 open Alpha_context
 
-let context = (module Irmin_context : Context.CONTEXT)
+let witness = Irmin_context.witness
 
 module Context = Irmin_context
+
+let tick_state_cache =
+  Pvm_plugin_sig.Tick_state_cache.create 64 (* size of 2 dissections*)
 
 let get_tick kind state =
   let open Lwt_syntax in
@@ -56,7 +59,7 @@ let install_boot_sector kind state boot_sector =
 
 let get_status node_ctxt state =
   let open Lwt_result_syntax in
-  let module PVM = (val Pvm.of_kind node_ctxt.Node_context.kind) in
+  let module PVM = (val Pvm.of_kind node_ctxt.Node_context_types.kind) in
   let*! status = PVM.get_status state in
   return (PVM.string_of_status status)
 
@@ -88,10 +91,11 @@ let info_per_level_serialized ~predecessor ~predecessor_timestamp =
 let find_whitelist_update_output_index _node_ctxt _state ~outbox_level:_ =
   Lwt.return_none
 
-let produce_serialized_output_proof node_ctxt state ~outbox_level ~message_index
-    =
+let produce_serialized_output_proof
+    (node_ctxt : Irmin_context.repo Node_context_types.rw) state ~outbox_level
+    ~message_index =
   let open Lwt_result_syntax in
-  let module PVM = (val Pvm.of_kind node_ctxt.Node_context.kind) in
+  let module PVM = (val Pvm.of_kind node_ctxt.Node_context_types.kind) in
   let outbox_level = Raw_level.of_int32_exn outbox_level in
   let*! outbox = PVM.get_outbox outbox_level state in
   let output = List.nth outbox message_index in

@@ -24,6 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Context
 open Store_sigs
 
 type repo
@@ -31,11 +32,12 @@ type repo
 (** The type of trees stored in the context, i.e. the actual data. *)
 type tree
 
-type 'a raw_index = {path : string; repo : repo}
+type 'a raw_index = ('a, repo) Context.raw_index
 
 (** The type of indexed repository for contexts. The parameter indicates if the
     index can be written or only read. *)
-type 'a index = 'a raw_index constraint 'a = [< `Read | `Write > `Read]
+type 'a index = ('a, repo) Context.raw_index
+  constraint 'a = [< `Read | `Write > `Read]
 
 (** Read/write {!type:index}. *)
 type rw_index = [`Read | `Write] index
@@ -43,14 +45,11 @@ type rw_index = [`Read | `Write] index
 (** Read only {!type:index}. *)
 type ro_index = [`Read] index
 
-(** The type of context with its content. *)
-type 'a t constraint 'a = [< `Read | `Write > `Read]
-
 (** Read/write context {!t}. *)
-type rw = [`Read | `Write] t
+type rw = ([`Read | `Write], repo, tree) context
 
 (** Read-only context {!t}. *)
-type ro = [`Read] t
+type ro = ([`Read], repo, tree) context
 
 (** A context hash is the hash produced when the data of the context is
     committed to disk, i.e. the {!type:commit} hash. *)
@@ -65,7 +64,7 @@ type commit
 val load : cache_size:int -> 'a mode -> string -> 'a index tzresult Lwt.t
 
 (** [index context] is the repository of the context [context]. *)
-val index : 'a t -> 'a index
+val index : ('a, repo, tree) context -> 'a index
 
 (** [close ctxt] closes the context index [ctxt]. *)
 val close : _ index -> unit Lwt.t
@@ -79,20 +78,20 @@ val raw_commit : ?message:string -> [> `Write] index -> tree -> commit Lwt.t
 
 (** [commit ?message context] commits content of the context [context] on disk,
     and return the commit hash. *)
-val commit : ?message:string -> [> `Write] t -> hash Lwt.t
+val commit : ?message:string -> ([> `Write], repo, tree) context -> hash Lwt.t
 
 (** [checkout ctxt hash] checkouts the content that corresponds to the commit
     hash [hash] in the repository [ctxt] and returns the corresponding
     context. If there is no commit that corresponds to [hash], it returns
     [None].  *)
-val checkout : 'a index -> hash -> 'a t option Lwt.t
+val checkout : 'a index -> hash -> ('a, repo, tree) context option Lwt.t
 
 (** [empty ctxt] is the context with an empty content for the repository [ctxt]. *)
-val empty : 'a index -> 'a t
+val empty : 'a index -> ('a, repo, tree) context
 
 (** [is_empty context] returns [true] iff the context content of [context] is
     empty. *)
-val is_empty : _ t -> bool
+val is_empty : (_, repo, tree) context -> bool
 
 (** [gc index ?callback hash] removes all data older than [hash] from disk.
     If passed, [callback] will be executed when garbage collection finishes. *)
@@ -170,7 +169,7 @@ module PVMState : sig
   val empty : unit -> value
 
   (** [find context] returns the PVM state stored in the [context], if any. *)
-  val find : _ t -> value option Lwt.t
+  val find : (_, repo, tree) context -> value option Lwt.t
 
   (** [lookup state path] returns the data stored for the path [path] in the PVM
       state [state].  *)
@@ -179,8 +178,10 @@ module PVMState : sig
   (** [set context state] saves the PVM state [state] in the context and returns
       the updated context. Note: [set] does not perform any write on disk, this
       information must be committed using {!val:commit}. *)
-  val set : 'a t -> value -> 'a t Lwt.t
+  val set : ('a, repo, tree) context -> value -> ('a, repo, tree) context Lwt.t
 end
+
+val witness : (repo, tree) witness
 
 module Internal_for_tests : sig
   (** [get_a_tree key] provides a value of internal type [tree] which can be
