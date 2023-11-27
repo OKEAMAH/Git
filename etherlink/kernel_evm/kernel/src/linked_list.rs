@@ -152,6 +152,13 @@ impl<Id: Decodable + Encodable + AsRef<[u8]>> Pointer<Id> {
         Ok(path)
     }
 
+    /// Path to the pointer
+    ///
+    /// This path is used when you want to read a pointer or to remove it.
+    fn path(&self, prefix: &impl Path) -> Result<OwnedPath> {
+        Self::pointer_path(&self.id, prefix)
+    }
+
     /// Path to the data held by the pointer.
     fn data_path(&self, prefix: &impl Path) -> Result<OwnedPath> {
         let path = hex::encode(&self.id);
@@ -274,6 +281,99 @@ where
     pub fn get(&self, host: &impl Runtime, id: &Id) -> Result<Option<Elt>> {
         let Some(pointer) = Pointer::read(host, &self.path, id)? else {return Ok(None)};
         storage::read_optional_rlp(host, &pointer.data_path(&self.path)?)
+    }
+
+    /// Removes and returns the element at position index within the vector.
+    pub fn remove(&mut self, host: &mut impl Runtime, id: &Id) -> Result<Option<Elt>> {
+        // Check if the list is empty
+        let Some(LinkedListPointer { front, back }) = &self.pointers else {return Ok(None)};
+        // Get the previous and the next pointer
+        let Some(pointer) = Pointer::read(host, &self.path, id)? else {return Ok(None)};
+        let data_path = pointer.data_path(&self.path)?;
+        let pointer_path = pointer.path(&self.path)?;
+        let previous = match pointer.previous {
+            Some(previous) => Some(Pointer::read(host, &self.path, &previous)?),
+            None => None,
+        }
+        .flatten();
+        let next = match pointer.next {
+            Some(next) => Some(Pointer::read(host, &self.path, &next)?),
+            None => None,
+        }
+        .flatten();
+
+        let data = match (previous, next) {
+            // This case represents the list with only one element
+            (None, None) => {
+                // retrieve the data
+                let data = storage::read_optional_rlp(host, &data_path)?;
+                // delete the pointer and the data
+                host.store_delete(&pointer_path)?;
+                host.store_delete(&data_path)?;
+                // update the list pointers
+                self.pointers = None;
+                data
+            }
+            // The head of the list is being removed
+            (None, Some(next)) => {
+                let new_front = Pointer {
+                    previous: None, // because it's the head
+                    ..next
+                };
+                // retrieve the data of the element
+                let data = storage::read_optional_rlp(host, &data_path)?;
+                // update the pointer
+                new_front.save(host, &self.path)?;
+                // delete the pointer and the data
+                host.store_delete(&pointer_path)?;
+                host.store_delete(&data_path)?;
+
+                // update the list pointers
+                self.pointers = Some(LinkedListPointer {
+                    front: new_front,
+                    back: back.clone(),
+                });
+                data
+            }
+            // The end of the list is being removed
+            (Some(previous), None) => {
+                let new_back = Pointer {
+                    next: None, // because it's the end of the list
+                    ..previous
+                };
+                let data = storage::read_optional_rlp(host, &data_path)?;
+                new_back.save(host, &self.path)?;
+                // delete the pointer and the data
+                host.store_delete(&pointer_path)?;
+                host.store_delete(&data_path)?;
+                // update the list pointers
+                self.pointers = Some(LinkedListPointer {
+                    front: front.clone(),
+                    back: new_back,
+                });
+                data
+            }
+            // Removes an element between two elements
+            (Some(previous), Some(next)) => {
+                let new_previous = Pointer {
+                    next: Some(next.id.clone()),
+                    ..previous.clone()
+                };
+                let new_next = Pointer {
+                    previous: Some(previous.id),
+                    ..next
+                };
+                let data = storage::read_optional_rlp(host, &data_path)?;
+                new_previous.save(host, &self.path)?;
+                new_next.save(host, &self.path)?;
+                // delete the pointer and the data
+                host.store_delete(&pointer_path)?;
+                host.store_delete(&data_path)?;
+                data
+            }
+        };
+        self.save(host)?;
+        Ok(data)
     }
 }
 
