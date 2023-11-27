@@ -49,6 +49,8 @@ val zero : t
 
 val one_mutez : t
 
+val one_hundred_mutez : t
+
 val one_cent : t
 
 val fifty_cents : t
@@ -96,6 +98,9 @@ val to_mutez : t -> int64
 
 (** [of_mutez n] (micro tez) is None if n is negative *)
 val of_mutez : int64 -> t option
+
+(** [of_mutez'] is like [of_mutez] but cannot fail *)
+val of_mutez' : Uint63.t -> t
 
 (** [of_mutez_exn n] fails if n is negative.
     It should only be used at toplevel for constants. *)

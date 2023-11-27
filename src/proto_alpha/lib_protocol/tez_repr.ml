@@ -52,6 +52,8 @@ let max_mutez = Tez_tag Uint63.max_int
 
 let mul_int (Tez_tag tez) i = Tez_tag (Uint63.With_exceptions.mul tez i)
 
+let one_hundred_mutez = mul_int one_mutez Uint63.one_hundred
+
 let one_cent = mul_int one_mutez Uint63.ten_thousand
 
 let fifty_cents = mul_int one_cent Uint63.fifty
@@ -173,6 +175,8 @@ let mul_ratio ~rounding tez ~num ~den =
 
 let mul_percentage ~rounding (Tez_tag t) percentage =
   Tez_tag (Uint63.mul_percentage ~rounding t percentage)
+
+let of_mutez' = wrap
 
 let of_mutez t = Uint63.of_int64 t |> Option.map wrap
 

@@ -196,32 +196,35 @@ let migrate_stake_distribution_for_o ctxt =
     perfectly accurate ammount on mainnet.
 
     Remove me in P. *)
-let initialize_total_supply_for_o chain_id ctxt =
-  let open Lwt_syntax in
-  if Chain_id.equal Constants_repr.mainnet_id chain_id then
-    (* We only estimate the total supply in mainnet *)
-    (* around 967_000_000 tz (current estimated supply)
-       + 43_000_000 tz (yearly issuance) * 70 (days from activation) / 365 *)
-    Storage.Contract.Total_supply.add
-      ctxt
-      (Tez_repr.of_mutez_exn 975_000_000_000_000L)
-  else
-    (* If not on mainnet, iterate over all accounts and get an accurate total supply *)
-    let* total_supply =
-      Storage.Contract.fold
-        ctxt
-        ~order:`Undefined
-        ~f:(fun contract acc ->
-          let* full_balance =
-            Contract_storage.For_RPC.get_full_balance ctxt contract
-          in
-          match full_balance with
-          | Ok full_balance ->
-              return @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
-          | _ -> return acc)
-        ~init:Tez_repr.zero
-    in
-    Storage.Contract.Total_supply.add ctxt total_supply
+let initialize_total_supply_for_o =
+  let estimated_total_supply_on_mainnet =
+    Tez_repr.of_mutez_exn 975_000_000_000_000L
+  in
+  fun chain_id ctxt ->
+    let open Lwt_syntax in
+    if Chain_id.equal Constants_repr.mainnet_id chain_id then
+      (* We only estimate the total supply in mainnet *)
+      (* around 967_000_000 tz (current estimated supply)
+         + 43_000_000 tz (yearly issuance) * 70 (days from activation) / 365 *)
+      Storage.Contract.Total_supply.add ctxt estimated_total_supply_on_mainnet
+    else
+      (* If not on mainnet, iterate over all accounts and get an accurate total supply *)
+      let* total_supply =
+        Storage.Contract.fold
+          ctxt
+          ~order:`Undefined
+          ~f:(fun contract acc ->
+            let* full_balance =
+              Contract_storage.For_RPC.get_full_balance ctxt contract
+            in
+            match full_balance with
+            | Ok full_balance ->
+                return
+                @@ Result.value ~default:acc Tez_repr.(acc +? full_balance)
+            | _ -> return acc)
+          ~init:Tez_repr.zero
+      in
+      Storage.Contract.Total_supply.add ctxt total_supply
 
 let migrate_pending_consensus_keys_for_o ctxt =
   let open Lwt_result_syntax in

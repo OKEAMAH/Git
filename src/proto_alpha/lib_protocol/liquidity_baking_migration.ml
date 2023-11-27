@@ -173,11 +173,7 @@ let originate_test_fa12 ~typecheck ctxt admin =
   in
   let* script, ctxt = typecheck ctxt script in
   let+ ctxt, origination_result =
-    originate
-      ctxt
-      fa12_address
-      ~balance:(Tez_repr.of_mutez_exn 1_000_000L)
-      script
+    originate ctxt fa12_address ~balance:Tez_repr.one script
   in
   (ctxt, fa12_address, [origination_result])
 
@@ -256,7 +252,7 @@ let init ctxt ~typecheck =
         originate
           ctxt
           cpmm_address
-          ~balance:(Tez_repr.of_mutez_exn 100L)
+          ~balance:Tez_repr.one_hundred_mutez
           cpmm_script
       in
       let+ ctxt, lqt_result =

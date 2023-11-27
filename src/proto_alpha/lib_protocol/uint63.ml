@@ -221,6 +221,11 @@ module With_exceptions = struct
     | Some res -> res
     | None -> invalid_arg "Uint63.With_exceptions.of_int"
 
+  let of_z z =
+    match of_z z with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.of_z"
+
   let succ a =
     match Div_safe_base.of_succ_uint63 a with
     | Some res -> res

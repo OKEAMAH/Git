@@ -140,11 +140,7 @@ let pp_delegate_info ppf info =
   match info.voting_power with
   | None -> Format.fprintf ppf "Voting power: none"
   | Some p -> (
-      Format.fprintf
-        ppf
-        "Voting power: %a"
-        Tez_repr.pp
-        (Tez_repr.of_mutez_exn p) ;
+      Format.fprintf ppf "Voting power: %Ld" p ;
       (match info.current_ballot with
       | None -> ()
       | Some ballot ->
