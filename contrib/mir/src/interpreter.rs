@@ -29,7 +29,6 @@ pub enum ContractInterpretError {
     InterpretError(#[from] crate::interpreter::InterpretError),
 }
 
-#[allow(dead_code)]
 impl ContractScript<TypecheckedStage> {
     /// Interpret a typechecked contract script using the provided parameter and
     /// storage. Parameter and storage are given as untyped `Value`s, as this
@@ -56,8 +55,20 @@ impl ContractScript<TypecheckedStage> {
     }
 }
 
-#[allow(dead_code)]
-pub fn interpret(
+impl TypecheckedInstruction {
+    /// Interpret the instruction with the given `Ctx` and input stack. Note the
+    /// interpreter assumes the instruction can execute on the provided stack,
+    /// otherwise this function will panic.
+    ///
+    /// # Panics
+    ///
+    /// When the instruction can't be executed on the provided stack.
+    pub fn interpret(&self, ctx: &mut Ctx, stack: &mut IStack) -> Result<(), InterpretError> {
+        interpret_one(self, ctx, stack)
+    }
+}
+
+fn interpret(
     ast: &TypecheckedAST,
     ctx: &mut Ctx,
     stack: &mut IStack,
@@ -67,12 +78,6 @@ pub fn interpret(
     }
     ctx.gas.consume(interpret_cost::INTERPRET_RET)?;
     Ok(())
-}
-
-impl TypecheckedInstruction {
-    fn interpret(&self, ctx: &mut Ctx, stack: &mut IStack) -> Result<(), InterpretError> {
-        interpret_one(self, ctx, stack)
-    }
 }
 
 #[track_caller]
@@ -351,6 +356,10 @@ fn interpret_one(
                 stack.push(V::Map(map));
             }
         },
+        I::ChainId => {
+            ctx.gas.consume(interpret_cost::CHAIN_ID)?;
+            stack.push(V::ChainId(ctx.chain_id.clone()));
+        }
         I::Seq(nested) => interpret(nested, ctx, stack)?,
     }
     Ok(())
@@ -1279,5 +1288,22 @@ mod interpreter_tests {
             &mut stack,
         )
         .unwrap(); // panics
+    }
+
+    #[test]
+    fn chain_id_instr() {
+        let chain_id = super::ChainId::from_base58_check("NetXynUjJNZm7wi").unwrap();
+        let ctx = &mut Ctx {
+            chain_id: chain_id.clone(),
+            ..Ctx::default()
+        };
+        let start_milligas = ctx.gas.milligas();
+        let stk = &mut stk![];
+        assert_eq!(interpret(&vec![Instruction::ChainId], ctx, stk), Ok(()));
+        assert_eq!(stk, &stk![TypedValue::ChainId(chain_id)]);
+        assert_eq!(
+            start_milligas - ctx.gas.milligas(),
+            interpret_cost::CHAIN_ID + interpret_cost::INTERPRET_RET
+        );
     }
 }

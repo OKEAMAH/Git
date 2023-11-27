@@ -1,15 +1,8 @@
 let
   opam-nix-integration = import (
     fetchTarball {
-      url = "https://github.com/vapourismo/opam-nix-integration/archive/ec0f82a78958461e9ab16eb87c4ae1873c4d9f77.tar.gz";
-      sha256 = "1kh6lz9cr5158m1mrl8hyj1brhi450hil65faqsrcw6nd3a1dang";
-    }
-  );
-
-  rust-overlay = import (
-    fetchTarball {
-      url = "https://github.com/oxalica/rust-overlay/archive/e054ca37ee416efe9d8fc72d249ec332ef74b6d4.tar.gz";
-      sha256 = "0vj6k40qqlrxqdr33xpha57mq6ajdzscd8wradzbg4p3mpy7j52c";
+      url = "https://github.com/vapourismo/opam-nix-integration/archive/646431dec7cd75fb79101be4e6ce3ef07896d972.tar.gz";
+      sha256 = "0k4p0sdikvd8066x17xarvspqhcgnhm9mij4xvs058sqm1797sl1";
     }
   );
 
@@ -19,12 +12,12 @@ let
   };
 
   pkgs = import pkgsSrc {
-    overlays = [opam-nix-integration.overlay rust-overlay];
+    overlays = [opam-nix-integration.overlay];
   };
 
   riscv64Pkgs = import pkgsSrc {
     crossSystem.config = "riscv64-unknown-linux-gnu";
   };
 in {
-  inherit opam-nix-integration rust-overlay pkgs riscv64Pkgs;
+  inherit opam-nix-integration pkgs riscv64Pkgs;
 }

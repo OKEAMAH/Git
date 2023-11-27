@@ -227,8 +227,6 @@ let ocplib_endian_bigstring =
 let ocplib_ocamlres =
   external_lib ~opam:"ocp-ocamlres" "ocplib-ocamlres" V.(at_least "0.4")
 
-let ometrics = opam_only "ometrics" V.(at_least "0.2.1")
-
 let ppx_expect = inline_tests_backend (external_lib "ppx_expect" V.True)
 
 let ptime = external_lib ~js_compatible:true "ptime" V.(at_least "1.1.0")
@@ -908,12 +906,14 @@ let octez_risc_v_pvm =
           [S "file"; S "build.rs"];
           [S "file"; S "Cargo.toml"];
           [S "file"; S "Cargo.lock"];
-          (* For the interpreter crate, these patterns only include files
-           * directly contained in [../interpreter], as well as the [src]
+          (* For the local dependent crates, these patterns only include files
+           * directly contained in the crate's directory, as well as the [src]
            * directory, excluding all other directories in order to avoid
            * copying any build artifacts. *)
           [S "glob_files"; S "../interpreter/*"];
           [S "source_tree"; S "../interpreter/src"];
+          [S "glob_files"; S "../machine_state/*"];
+          [S "source_tree"; S "../machine_state/src"];
         ];
         [
           S "action";
@@ -923,6 +923,17 @@ let octez_risc_v_pvm =
               S "progn";
               [S "run"; S "cargo"; S "build"; S "--release"];
               [S "copy"; S archive_output_file; S archive_file];
+              [
+                S "run";
+                S "sed";
+                S "-i";
+                (* XXX: https://gitlab.com/tezos/tezos/-/issues/6630
+                   Rename ___rdl_oom because it would conflict with other
+                   Rust staticlibs (e.g. libwasmer, librustzcash) when linking
+                   everything together into one artifact. *)
+                S "s/___rdl_oom/tz_rdl_oo0/";
+                S "liboctez_risc_v_pvm.a";
+              ];
             ];
           ];
         ];
@@ -2498,7 +2509,6 @@ let _octez_tooling =
         (* These next are only used in the CI, we add this dependency so that
            it is added to tezos/opam-repository. *)
         ocamlformat;
-        ometrics;
       ]
 
 let octez_tooling_opam_file_format =
@@ -4519,6 +4529,7 @@ let octez_injector_lib =
         octez_workers |> open_;
         octez_shell;
         octez_crawler |> open_;
+        octez_signer_backends;
       ]
 
 let octez_smart_rollup_lib =

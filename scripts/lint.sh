@@ -34,7 +34,7 @@ say () {
 
 declare -a source_directories
 
-source_directories=(src docs/doc_gen tezt devtools)
+source_directories=(src docs/doc_gen tezt devtools contrib)
 
 update_all_dot_ocamlformats () {
     if ! type ocamlformat > /dev/null 2>&-; then
@@ -153,7 +153,7 @@ check_redirects () {
 }
 
 check_rust_toolchain_files () {
-    authorized_version=("1.66.0" "1.71.1")
+    authorized_version=("1.66.0" "1.71.1" "1.73.0")
 
     declare -a rust_toolchain_files
     mapfile -t rust_toolchain_files <<< "$(find src/ -name rust-toolchain)"

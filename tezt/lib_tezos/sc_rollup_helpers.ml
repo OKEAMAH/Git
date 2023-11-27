@@ -214,7 +214,7 @@ let make_bool_parameter name = function
   | Some value -> [([name], `Bool value)]
 
 let setup_l1 ?bootstrap_smart_rollups ?bootstrap_contracts ?commitment_period
-    ?challenge_window ?timeout ?whitelist_enable protocol =
+    ?challenge_window ?timeout ?whitelist_enable ?rpc_local protocol =
   let parameters =
     make_parameter "smart_rollup_commitment_period_in_blocks" commitment_period
     @ make_parameter "smart_rollup_challenge_window_in_blocks" challenge_window
@@ -235,7 +235,13 @@ let setup_l1 ?bootstrap_smart_rollups ?bootstrap_contracts ?commitment_period
   let nodes_args =
     Node.[Synchronisation_threshold 0; History_mode Archive; No_bootstrap_peers]
   in
-  Client.init_with_protocol ~parameter_file `Client ~protocol ~nodes_args ()
+  Client.init_with_protocol
+    ~parameter_file
+    `Client
+    ~protocol
+    ~nodes_args
+    ?rpc_local
+    ()
 
 (** This helper injects an SC rollup origination via octez-client. Then it
     bakes to include the origination in a block. It returns the address of the
@@ -266,19 +272,22 @@ let originate_sc_rollup ?hooks ?(burn_cap = Tez.(of_int 9999999)) ?whitelist
    A rollup node has a configuration file that must be initialized.
 *)
 let setup_rollup ~protocol ~kind ?hooks ?alias ?(mode = Sc_rollup_node.Operator)
-    ?boot_sector ?(parameters_ty = "string")
-    ?(operator = Constant.bootstrap1.alias) ?data_dir ?rollup_node_name
-    ?whitelist tezos_node tezos_client =
+    ?boot_sector ?(parameters_ty = "string") ?(src = Constant.bootstrap1.alias)
+    ?operator ?operators ?data_dir ?rollup_node_name ?whitelist ?sc_rollup
+    tezos_node tezos_client =
   let* sc_rollup =
-    originate_sc_rollup
-      ?hooks
-      ~kind
-      ?boot_sector
-      ~parameters_ty
-      ?alias
-      ?whitelist
-      ~src:operator
-      tezos_client
+    match sc_rollup with
+    | Some sc_rollup -> return sc_rollup
+    | None ->
+        originate_sc_rollup
+          ?hooks
+          ~kind
+          ?boot_sector
+          ~parameters_ty
+          ?alias
+          ?whitelist
+          ~src
+          tezos_client
   in
   let sc_rollup_node =
     Sc_rollup_node.create
@@ -286,7 +295,8 @@ let setup_rollup ~protocol ~kind ?hooks ?alias ?(mode = Sc_rollup_node.Operator)
       tezos_node
       ?data_dir
       ~base_dir:(Client.base_dir tezos_client)
-      ~default_operator:operator
+      ?default_operator:operator
+      ?operators
       ?name:rollup_node_name
   in
   let rollup_client = Sc_rollup_client.create ~protocol sc_rollup_node in
@@ -332,14 +342,14 @@ let genesis_commitment ~sc_rollup tezos_client =
   let genesis_commitment_hash =
     JSON.(genesis_info |-> "commitment_hash" |> as_string)
   in
-  let* json =
+  let* commitment_opt =
     Client.RPC.call ~hooks tezos_client
     @@ RPC.get_chain_block_context_smart_rollups_smart_rollup_commitment
          ~sc_rollup
          ~hash:genesis_commitment_hash
          ()
   in
-  match Sc_rollup_client.commitment_from_json json with
+  match commitment_opt with
   | None -> failwith "genesis commitment have been removed"
   | Some commitment -> return commitment
 
@@ -524,13 +534,13 @@ let get_sc_rollup_constants client =
 
 let forged_commitment ?(compressed_state = Constant.sc_rollup_compressed_state)
     ?(number_of_ticks = 1) ~inbox_level ~predecessor () :
-    Sc_rollup_client.commitment =
+    Sc_rollup_rpc.commitment =
   {compressed_state; inbox_level; predecessor; number_of_ticks}
 
 let publish_commitment ?(src = Constant.bootstrap1.public_key_hash) ~commitment
     client sc_rollup =
   let ({compressed_state; inbox_level; predecessor; number_of_ticks}
-        : Sc_rollup_client.commitment) =
+        : Sc_rollup_rpc.commitment) =
     commitment
   in
   Client.Sc_rollup.publish_commitment

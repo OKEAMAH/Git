@@ -445,10 +445,10 @@ let get_initial_ctxt {info; _} = info.ctxt
 module Consensus = struct
   open Validate_errors.Consensus
 
-  let check_frozen_deposits_are_positive ctxt delegate_pkh =
+  let check_delegate_is_not_forbidden ctxt delegate_pkh =
     fail_when
       (Delegate.is_forbidden_delegate ctxt delegate_pkh)
-      (Zero_frozen_deposits delegate_pkh)
+      (Forbidden_delegate delegate_pkh)
 
   let get_delegate_details slot_map kind slot =
     let open Result_syntax in
@@ -519,9 +519,7 @@ module Consensus = struct
     let*? consensus_key, voting_power =
       get_delegate_details consensus_info.preattestation_slot_map kind slot
     in
-    let* () =
-      check_frozen_deposits_are_positive vi.ctxt consensus_key.delegate
-    in
+    let* () = check_delegate_is_not_forbidden vi.ctxt consensus_key.delegate in
     return (consensus_key, voting_power)
 
   (** Preattestation checks for Construction mode.
@@ -550,9 +548,7 @@ module Consensus = struct
     let*? consensus_key, voting_power =
       get_delegate_details consensus_info.preattestation_slot_map kind slot
     in
-    let* () =
-      check_frozen_deposits_are_positive vi.ctxt consensus_key.delegate
-    in
+    let* () = check_delegate_is_not_forbidden vi.ctxt consensus_key.delegate in
     return (consensus_key, voting_power)
 
   (** Preattestation/attestation checks for Mempool mode.
@@ -736,9 +732,7 @@ module Consensus = struct
     let*? consensus_key, voting_power =
       get_delegate_details consensus_info.attestation_slot_map kind slot
     in
-    let* () =
-      check_frozen_deposits_are_positive vi.ctxt consensus_key.delegate
-    in
+    let* () = check_delegate_is_not_forbidden vi.ctxt consensus_key.delegate in
     return (consensus_key, voting_power)
 
   let check_attestation vi ~check_signature
@@ -2049,9 +2043,6 @@ module Manager = struct
         && storage_limit >= Z.zero)
       Fees.Storage_limit_too_high
 
-  let assert_sc_rollup_feature_enabled vi =
-    error_unless (Constants.sc_rollup_enable vi.ctxt) Sc_rollup_feature_disabled
-
   let assert_pvm_kind_enabled vi kind =
     error_when
       ((not (Constants.sc_rollup_arith_pvm_enable vi.ctxt))
@@ -2130,22 +2121,17 @@ module Manager = struct
         let* remaining_gas = consume_decoding_gas remaining_gas contents in
         let* (_ : Gas.Arith.fp) = consume_decoding_gas remaining_gas ty in
         return_unit
-    | Sc_rollup_originate {kind; _} ->
-        let* () = assert_sc_rollup_feature_enabled vi in
-        assert_pvm_kind_enabled vi kind
+    | Sc_rollup_originate {kind; _} -> assert_pvm_kind_enabled vi kind
+    | Sc_rollup_add_messages {messages; _} -> assert_not_zero_messages messages
     | Sc_rollup_cement _ | Sc_rollup_publish _ | Sc_rollup_refute _
-    | Sc_rollup_timeout _ | Sc_rollup_execute_outbox_message _ ->
-        assert_sc_rollup_feature_enabled vi
-    | Sc_rollup_add_messages {messages; _} ->
-        let* () = assert_sc_rollup_feature_enabled vi in
-        assert_not_zero_messages messages
+    | Sc_rollup_timeout _ | Sc_rollup_execute_outbox_message _
     | Sc_rollup_recover_bond _ ->
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/3063
            Should we successfully precheck Sc_rollup_recover_bond and any
            (simple) Sc rollup operation, or should we add some some checks to make
            the operations Branch_delayed if they cannot be successfully
            prechecked? *)
-        assert_sc_rollup_feature_enabled vi
+        return_unit
     | Dal_publish_slot_header slot_header ->
         Dal_apply.validate_publish_slot_header vi.ctxt slot_header
     | Zk_rollup_origination _ | Zk_rollup_publish _ | Zk_rollup_update _ ->
@@ -2418,7 +2404,7 @@ let begin_any_application ctxt chain_id ~predecessor_level
       ~expected_commitment:current_level.expected_commitment
   in
   let* () =
-    Consensus.check_frozen_deposits_are_positive ctxt block_producer.delegate
+    Consensus.check_delegate_is_not_forbidden ctxt block_producer.delegate
   in
   let* ctxt, _slot, _payload_producer =
     (* We just make sure that this call will not fail in apply.ml *)
@@ -2490,7 +2476,7 @@ let begin_full_construction ctxt chain_id ~predecessor_level ~predecessor_round
     Stake_distribution.baking_rights_owner ctxt current_level ~round
   in
   let* () =
-    Consensus.check_frozen_deposits_are_positive ctxt block_producer.delegate
+    Consensus.check_delegate_is_not_forbidden ctxt block_producer.delegate
   in
   let* ctxt, _slot, _payload_producer =
     (* We just make sure that this call will not fail in apply.ml *)

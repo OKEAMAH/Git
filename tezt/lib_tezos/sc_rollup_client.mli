@@ -27,34 +27,6 @@
 (** Smart-Contract Rollup client state *)
 type t
 
-type commitment = {
-  compressed_state : string;
-  inbox_level : int;
-  predecessor : string;
-  number_of_ticks : int;
-}
-
-type commitment_and_hash = {commitment : commitment; hash : string}
-
-type commitment_info = {
-  commitment_and_hash : commitment_and_hash;
-  first_published_at_level : int option;
-  published_at_level : int option;
-}
-
-type slot_header = {level : int; commitment : string; index : int}
-
-type simulation_result = {
-  state_hash : string;
-  status : string;
-  output : JSON.t;
-  inbox_level : int;
-  num_ticks : int;
-  insights : string option list;
-}
-
-type gc_info = {last_gc_level : int; first_available_level : int}
-
 (** [create ~protocol ?runner ?name ?base_dir node] returns a fresh client
    identified by a specified [name], logging in [color], executing the
    program at [path], storing local information in [base_dir], and
@@ -161,78 +133,7 @@ val encode_batch :
   transaction list ->
   string option Lwt.t
 
-(** [commitment_from_json] parses a commitment from its JSON representation. *)
-val commitment_from_json : JSON.t -> commitment option
-
-(** [commitment_info_from_json] parses a commitment, its hash and
-    the levels when the commitment was first published (if any) and included,
-    from the JSON representation. *)
-val commitment_info_from_json : JSON.t -> commitment_info option
-
-(** [last_stored_commitment client] gets the last commitment with its hash
-    stored by the rollup node. *)
-val last_stored_commitment :
-  ?hooks:Process.hooks -> t -> commitment_and_hash option Runnable.process
-
-(** [last_published_commitment client] gets the last commitment published by the
-    rollup node, with its hash and level when the commitment was first published
-    and the level it was included. *)
-val last_published_commitment :
-  ?hooks:Process.hooks -> t -> commitment_info option Runnable.process
-
-(** [commitment client hash] gets commitment by its [hash] from the rollup node,
-    with its hash and level when the commitment was first published and the
-    level it was included. *)
-val commitment :
-  ?hooks:Process.hooks -> t -> string -> commitment_info option Runnable.process
-
-(** [gc_info client] returns garbage collection information. *)
-val gc_info : ?hooks:Process.hooks -> t -> gc_info Runnable.process
-
-(** [dal_slot_headers ?block client] returns the dal slot headers of the
-    [block] (default ["head"]). *)
-val dal_slot_headers :
-  ?hooks:Process.hooks ->
-  ?block:string ->
-  t ->
-  slot_header list Runnable.process
-
-(** [get_dal_processed_slots ?block client] returns the slots indices that have
-    been marked by the rollup node as confirmed or unconfirmed for block [block]
-    (default ["head"]), with their statuses. *)
-val get_dal_processed_slots :
-  ?hooks:Process.hooks ->
-  ?block:string ->
-  t ->
-  (int * string) list Runnable.process
-
-(** [simulate ?block client ?reveal_pages ?insight_request messages] simulates
-    the evaluation of input [messages] for the rollup PVM at [block] (default
-    ["head"]). [reveal_pages] can be used to provide data to be used for the
-    revelation ticks. [insight_request] can be used to look at a list of keys in
-    the PVM state after the simulation. *)
-val simulate :
-  ?hooks:Process_hooks.t ->
-  ?block:string ->
-  t ->
-  ?reveal_pages:string list ->
-  ?insight_requests:
-    [`Pvm_state_key of string list | `Durable_storage_key of string list] list ->
-  string list ->
-  simulation_result Runnable.process
-
 (** [inject client messages] injects the [messages] in the queue the rollup
     node's batcher and returns the list of message hashes injected. *)
 val inject :
   ?hooks:Process_hooks.t -> t -> string list -> string list Runnable.process
-
-(** [batcher_queue client] returns the queue of messages, as pairs of message
-    hash and binary message, in the batcher. *)
-val batcher_queue :
-  ?hooks:Process_hooks.t -> t -> (string * string) list Runnable.process
-
-(** [get_batcher_msg client hash] fetches the message whose hash is [hash] from
-    the queue. It returns the message together with the full JSON response
-    including the status. *)
-val get_batcher_msg :
-  ?hooks:Process_hooks.t -> t -> string -> (string * JSON.t) Runnable.process

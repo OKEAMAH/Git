@@ -473,21 +473,28 @@ let commands () =
                   (* [id] is from iterating over the list of registered encodings *)
                   assert false
               | Some (Any e) ->
-                  (id, Kaitai_of_data_encoding.Translate.AnyEncoding e))
+                  (id, Kaitai_of_data_encoding.Translate.AnyEncoding.pack e))
             all
         in
         let name_of_id id = Kaitai_of_data_encoding.Translate.escape_id id in
         let extern =
-          let t = Stdlib.Hashtbl.create 200 in
+          let t =
+            Kaitai_of_data_encoding.Translate.AnyEncoding.Tbl.create 200
+          in
           List.iter
             (fun (id, encoding) ->
-              Stdlib.Hashtbl.add t encoding (name_of_id id))
+              Kaitai_of_data_encoding.Translate.AnyEncoding.Tbl.add
+                t
+                encoding
+                (name_of_id id))
             all ;
           t
         in
         let* () =
           List.iter_s
-            (fun (id, Kaitai_of_data_encoding.Translate.AnyEncoding e) ->
+            (fun ( id,
+                   Kaitai_of_data_encoding.Translate.AnyEncoding.AnyEncoding e
+                 ) ->
               match
                 Kaitai_of_data_encoding.Translate.from_data_encoding
                   ~id
@@ -495,7 +502,6 @@ let commands () =
                   e
               with
               | exception e ->
-                  (* TODO: offer a [result] variant of conversion function *)
                   cctxt#warning
                     "Failed to generate ksy file for %s (%s)"
                     id
@@ -503,7 +509,6 @@ let commands () =
               | spec -> (
                   match Kaitai.Print.print spec with
                   | exception e ->
-                      (* TODO: offer a [result] variant of conversion function *)
                       cctxt#warning
                         "Failed to print ksy file for %s (%s)"
                         id

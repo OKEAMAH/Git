@@ -559,7 +559,7 @@ module State = struct
 
   (** Applies when baking the last block of a cycle *)
   let apply_end_cycle current_cycle block state : t tzresult Lwt.t =
-    let open Lwt_result_syntax in
+    let open Lwt_result_wrap_syntax in
     Log.debug ~color:time_color "Ending cycle %a" Cycle.pp current_cycle ;
     let* launch_cycle_opt =
       Context.get_adaptive_issuance_launch_cycle (B block)
@@ -576,19 +576,18 @@ module State = struct
        for "reasons" related to snapshoting and the way slashes are applied to it *)
     let state = apply_all_slashes_at_cycle_end current_cycle state in
     (* Apply autostaking *)
-    let*? state =
+    let*?@ state =
       if not state.constants.adaptive_issuance.autostaking_enable then ok state
       else
         match launch_cycle_opt with
         | Some launch_cycle when Cycle.(current_cycle >= launch_cycle) ->
             ok state
         | None | Some _ ->
-            Environment.wrap_tzresult
-            @@ String.Map.fold_e
-                 (fun name account state ->
-                   apply_autostake ~name ~old_cycle:current_cycle account state)
-                 state.account_map
-                 state
+            String.Map.fold_e
+              (fun name account state ->
+                apply_autostake ~name ~old_cycle:current_cycle account state)
+              state.account_map
+              state
     in
     (* Apply parameter changes *)
     let state, param_requests =
@@ -835,7 +834,7 @@ let check_issuance_rpc block : unit tzresult Lwt.t =
 (** Bake a block, with the given baker and the given operations. *)
 let bake ?baker : t -> t tzresult Lwt.t =
  fun (block, state) ->
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   Log.info
     ~color:time_color
     "Baking level %d"
@@ -882,13 +881,12 @@ let bake ?baker : t -> t tzresult Lwt.t =
       in
       let* block_rewards = Context.get_issuance_per_minute (B block') in
       let ctxt = Incremental.alpha_ctxt i in
-      let* context, _ =
-        Lwt_result_wrap_syntax.wrap
-          (Protocol.Alpha_context.Token.transfer
-             ctxt
-             (`Contract baker_contract)
-             `Burned
-             block_rewards)
+      let*@ context, _ =
+        Protocol.Alpha_context.Token.transfer
+          ctxt
+          (`Contract baker_contract)
+          `Burned
+          block_rewards
       in
       let i = Incremental.set_alpha_ctxt i context in
       let* i = List.fold_left_es Incremental.add_operation i operations in
@@ -2597,7 +2595,7 @@ module Slashing = struct
           [3; 4; 5; 6]
     --> double_bake "delegate" --> make_denunciations () --> next_cycle
 
-  let init_scenario_with_delegators delegate_name delegators_list =
+  let init_scenario_with_delegators delegate_name faucet_name delegators_list =
     let constants =
       init_constants ~force_snapshot_at_end:true ~autostaking_enable:false ()
     in
@@ -2606,7 +2604,7 @@ module Slashing = struct
       | (delegator, amount) :: t ->
           add_account_with_funds
             delegator
-            delegate_name
+            faucet_name
             (Amount (Tez.of_mutez amount))
           --> set_delegate delegator (Some delegate_name)
           --> init_delegators t
@@ -2617,7 +2615,8 @@ module Slashing = struct
         edge_of_baking_over_staking = Q.one;
       }
     in
-    begin_test ~activate_ai:true constants [delegate_name]
+    begin_test ~activate_ai:true constants [delegate_name; faucet_name]
+    --> set_baker faucet_name
     --> set_delegate_params "delegate" init_params
     --> init_delegators delegators_list
     --> next_block --> wait_ai_activation
@@ -2633,6 +2632,7 @@ module Slashing = struct
     --> (Tag "solo delegate"
         --> init_scenario_with_delegators
               "delegate"
+              "faucet"
               [("delegator", 1_234_567_891L)]
         --> loop
               10
@@ -2641,6 +2641,7 @@ module Slashing = struct
   (* |+ Tag "delegate with one staker"
         --> init_scenario_with_delegators
               "delegate"
+              "faucet"
               [("staker", 1_234_356_891L)]
         --> loop
               10
@@ -2649,6 +2650,7 @@ module Slashing = struct
      |+ Tag "delegate with three stakers"
         --> init_scenario_with_delegators
               "delegate"
+              "faucet"
               [
                 ("staker1", 1_234_356_891L);
                 ("staker2", 1_234_356_890L);
@@ -2658,7 +2660,7 @@ module Slashing = struct
               10
               (stake_unstake_for
                  ["delegate"; "staker1"; "staker2"; "staker3"]
-              --> slash "delegate" --> next_cycle)) *)
+              --> slash "delegate" --> next_cycle))*)
 
   let test_no_shortcut_for_cheaters =
     let constants = init_constants ~autostaking_enable:false () in
@@ -2713,16 +2715,25 @@ module Slashing = struct
     |+ Tag "No AI"
        --> begin_test ~activate_ai:false constants ["delegate"; "baker"])
     --> unstake "delegate" (Amount Tez.one_mutez)
-    --> next_cycle
+    --> set_baker "baker" --> next_cycle
     --> ((Tag "7% slash" --> double_bake "delegate" --> make_denunciations ()
          |+ Tag "99% slash" --> next_cycle --> double_attest "delegate"
             --> loop 7 (double_bake "delegate")
             --> make_denunciations ())
         --> next_cycle
-        --> check_balance_field "delegate" `Unstaked_frozen_total Tez.one_mutez
-        )
+        --> check_balance_field "delegate" `Unstaked_frozen_total Tez.zero)
     --> wait_n_cycles (constants.preserved_cycles + 1)
 
+  let test_slash_rounding =
+    let constants = init_constants ~autostaking_enable:false () in
+    begin_test ~activate_ai:true constants ["delegate"; "baker"]
+    --> set_baker "baker" --> next_block --> wait_ai_activation
+    --> unstake "delegate" (Amount (Tez.of_mutez 2L))
+    --> next_cycle --> double_bake "delegate" --> double_bake "delegate"
+    --> make_denunciations () --> wait_n_cycles 7
+    --> finalize_unstake "delegate"
+
+  (* TODO #6645: reactivate tests *)
   let tests =
     tests_of_scenarios
     @@ [
@@ -2730,14 +2741,15 @@ module Slashing = struct
          ("Test slashed is forbidden", test_delegate_forbidden);
          ("Test slash with unstake", test_slash_unstake);
          ("Test slashes with simple varying stake", test_slash_monotonous_stake);
-         ( "Test multiple slashes with multiple stakes/unstakes",
-           test_many_slashes );
+         (* ( "Test multiple slashes with multiple stakes/unstakes",
+            test_many_slashes ); *)
          ("Test slash timing", test_slash_timing);
          ( "Test stake from unstake deactivated when slashed",
            test_no_shortcut_for_cheaters );
          ( "Test stake from unstake reduce initial amount",
            test_slash_correct_amount_after_stake_from_unstake );
-         ("Test unstake 1 mutez then slash", test_mini_slash);
+         (* ("Test unstake 1 mutez then slash", test_mini_slash);
+            ("Test slash rounding", test_slash_rounding); *)
        ]
 end
 

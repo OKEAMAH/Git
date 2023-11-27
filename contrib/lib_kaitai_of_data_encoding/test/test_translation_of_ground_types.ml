@@ -236,12 +236,6 @@ let%expect_test "test dynamic size bytes translation" =
             max: 1073741823
         - id: bytes_dyn_uint30
           size: len_bytes_dyn_uint30
-      uint30:
-        seq:
-        - id: uint30
-          type: u4
-          valid:
-            max: 1073741823
     seq:
     - id: ground_bytes
       type: bytes_dyn_uint30 |}]
@@ -302,12 +296,6 @@ let%expect_test "test dynamic size string translation" =
             max: 1073741823
         - id: bytes_dyn_uint30
           size: len_bytes_dyn_uint30
-      uint30:
-        seq:
-        - id: uint30
-          type: u4
-          valid:
-            max: 1073741823
     seq:
     - id: ground_string
       type: bytes_dyn_uint30 |}]

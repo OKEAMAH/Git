@@ -35,18 +35,14 @@ open Protocol
 open Alpha_context
 open Micheline
 
-let context_init_with_sc_rollup_enabled tup =
+let context_init_with_sc_rollup_arith_enabled tup =
   Context.init_with_constants_gen
     tup
     {
       Context.default_test_constants with
       consensus_threshold = 0;
       sc_rollup =
-        {
-          Context.default_test_constants.sc_rollup with
-          enable = true;
-          arith_pvm_enable = true;
-        };
+        {Context.default_test_constants.sc_rollup with arith_pvm_enable = true};
     }
 
 let sc_originate block contract parameters_ty =
@@ -95,19 +91,9 @@ let test_context () =
   let* v = Incremental.begin_construction b in
   return (Incremental.alpha_ctxt v)
 
-let test_context_with_nat_nat_big_map ?(sc_rollup_enable = false) () =
+let test_context_with_nat_nat_big_map () =
   let open Lwt_result_wrap_syntax in
-  let* b, source =
-    Context.init_with_constants1
-      {
-        Context.default_test_constants with
-        sc_rollup =
-          {
-            Context.default_test_constants.sc_rollup with
-            enable = sc_rollup_enable;
-          };
-      }
-  in
+  let* b, source = Context.init1 () in
   let* operation, originated =
     Op.contract_origination_hash (B b) source ~script:Op.dummy_script
   in
@@ -209,28 +195,31 @@ let location = function
 
 let test_parse_ty (type exp expc) ctxt node
     (expected : (exp, expc) Script_typed_ir.ty) =
+  let open Result_wrap_syntax in
   let legacy = false in
   let allow_lazy_storage = true in
   let allow_operation = true in
   let allow_contract = true in
   let allow_ticket = true in
-  Environment.wrap_tzresult
-    ( Script_ir_translator.parse_ty
-        ctxt
-        ~legacy
-        ~allow_lazy_storage
-        ~allow_operation
-        ~allow_contract
-        ~allow_ticket
-        node
+  let@ result =
+    Script_ir_translator.parse_ty
+      ctxt
+      ~legacy
+      ~allow_lazy_storage
+      ~allow_operation
+      ~allow_contract
+      ~allow_ticket
+      node
     >>? fun (Script_typed_ir.Ex_ty actual, ctxt) ->
-      Gas_monad.run ctxt
-      @@ Script_ir_translator.ty_eq
-           ~error_details:(Informative (location node))
-           actual
-           expected
-      >>? fun (eq, ctxt) ->
-      eq >|? fun Eq -> ctxt )
+    Gas_monad.run ctxt
+    @@ Script_ir_translator.ty_eq
+         ~error_details:(Informative (location node))
+         actual
+         expected
+    >>? fun (eq, ctxt) ->
+    eq >|? fun Eq -> ctxt
+  in
+  result
 
 let test_parse_comb_type () =
   let open Lwt_result_wrap_syntax in
@@ -314,10 +303,9 @@ let test_parse_comb_type () =
 
 let test_unparse_ty loc ctxt expected ty =
   let open Result_syntax in
-  Environment.wrap_tzresult
-    (let* actual, ctxt = Script_ir_unparser.unparse_ty ctxt ~loc:() ty in
-     if actual = expected then Ok ctxt
-     else Alcotest.failf "Unexpected error: %s" loc)
+  let* actual, ctxt = Script_ir_unparser.unparse_ty ctxt ~loc:() ty in
+  if actual = expected then Ok ctxt
+  else Alcotest.failf "Unexpected error: %s" loc
 
 let test_unparse_comb_type () =
   let open Lwt_result_wrap_syntax in
@@ -332,10 +320,12 @@ let test_unparse_comb_type () =
   let*?@ (Ty_ex_c pair_nat_nat_ty) = pair_ty nat_ty nat_ty in
   let* ctxt = test_context () in
   (* pair nat nat *)
-  let*? ctxt = test_unparse_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty in
+  let*?@ ctxt =
+    test_unparse_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty
+  in
   (* pair (pair nat nat) nat *)
   let*?@ (Ty_ex_c pair_pair_nat_nat_nat_ty) = pair_ty pair_nat_nat_ty nat_ty in
-  let*? ctxt =
+  let*?@ ctxt =
     test_unparse_ty
       __LOC__
       ctxt
@@ -344,7 +334,7 @@ let test_unparse_comb_type () =
   in
   (* pair nat nat nat *)
   let*?@ (Ty_ex_c pair_nat_nat_nat_ty) = pair_ty nat_ty pair_nat_nat_ty in
-  let*? (_ : context) =
+  let*?@ (_ : context) =
     test_unparse_ty
       __LOC__
       ctxt
@@ -358,11 +348,10 @@ let test_unparse_comparable_ty loc ctxt expected ty =
      call parse_ty on a set type *)
   let open Result_syntax in
   let open Script_typed_ir in
-  Environment.wrap_tzresult
-    (let* set_ty_ty = set_t (-1) ty in
-     let* actual, ctxt = Script_ir_unparser.unparse_ty ctxt ~loc:() set_ty_ty in
-     if actual = Prim ((), T_set, [expected], []) then return ctxt
-     else Alcotest.failf "Unexpected error: %s" loc)
+  let* set_ty_ty = set_t (-1) ty in
+  let* actual, ctxt = Script_ir_unparser.unparse_ty ctxt ~loc:() set_ty_ty in
+  if actual = Prim ((), T_set, [expected], []) then return ctxt
+  else Alcotest.failf "Unexpected error: %s" loc
 
 let test_unparse_comb_comparable_type () =
   let open Lwt_result_wrap_syntax in
@@ -377,12 +366,12 @@ let test_unparse_comb_comparable_type () =
   let*?@ pair_nat_nat_ty = pair_ty nat_ty nat_ty in
   let* ctxt = test_context () in
   (* pair nat nat *)
-  let*? ctxt =
+  let*?@ ctxt =
     test_unparse_comparable_ty __LOC__ ctxt pair_nat_nat_prim pair_nat_nat_ty
   in
   (* pair (pair nat nat) nat *)
   let*?@ pair_pair_nat_nat_nat_ty = pair_ty pair_nat_nat_ty nat_ty in
-  let*? ctxt =
+  let*?@ ctxt =
     test_unparse_comparable_ty
       __LOC__
       ctxt
@@ -391,7 +380,7 @@ let test_unparse_comb_comparable_type () =
   in
   (* pair nat nat nat *)
   let*?@ pair_nat_nat_nat_ty = pair_ty nat_ty pair_nat_nat_ty in
-  let*? (_ : context) =
+  let*?@ (_ : context) =
     test_unparse_comparable_ty
       __LOC__
       ctxt
@@ -579,9 +568,7 @@ let test_parse_comb_data () =
 let test_parse_address () =
   let open Lwt_result_wrap_syntax in
   let open Script_typed_ir in
-  let* ctxt, _big_map_id =
-    test_context_with_nat_nat_big_map ~sc_rollup_enable:true ()
-  in
+  let* ctxt, _big_map_id = test_context_with_nat_nat_big_map () in
   (* KT1% (empty entrypoint) *)
   let*?@ kt1fake =
     Contract.of_b58check "KT1FAKEFAKEFAKEFAKEFAKEFAKEFAKGGSE2x"
@@ -869,7 +856,7 @@ let test_forbidden_op_in_view op () =
 (** Test [parse_contract_data] for rollup with unit type. *)
 let test_parse_contract_data_for_unit_rollup () =
   let open Lwt_result_wrap_syntax in
-  let* block, (contract, _) = context_init_with_sc_rollup_enabled T2 in
+  let* block, (contract, _) = context_init_with_sc_rollup_arith_enabled T2 in
   let* block, rollup = sc_originate block contract "unit" in
   let* incr = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt incr in
@@ -902,19 +889,18 @@ let test_parse_contract_data_for_unit_rollup () =
 (** Test that [parse_contract_data] for rollup with invalid type fails. *)
 let test_parse_contract_data_for_rollup_with_invalid_type () =
   let open Lwt_result_wrap_syntax in
-  let* block, (contract, _) = context_init_with_sc_rollup_enabled T2 in
+  let* block, (contract, _) = context_init_with_sc_rollup_arith_enabled T2 in
   let* block, rollup = sc_originate block contract "string" in
   let* incr = Incremental.begin_construction block in
   let ctxt = Incremental.alpha_ctxt incr in
   let entrypoint = Entrypoint.of_string_strict_exn "add" in
-  let*! res =
-    wrap
-    @@ Script_ir_translator.parse_contract_data
-         ctxt
-         (-1)
-         Script_typed_ir.unit_t
-         (Destination.Sc_rollup rollup)
-         ~entrypoint
+  let*!@ res =
+    Script_ir_translator.parse_contract_data
+      ctxt
+      (-1)
+      Script_typed_ir.unit_t
+      (Destination.Sc_rollup rollup)
+      ~entrypoint
   in
   Assert.proto_error
     ~loc:__LOC__

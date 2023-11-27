@@ -57,11 +57,9 @@ Node
   was emitted every time a block was applied using an old protocol
   where its plugin was removed.
 
-- **Breaking change** Bumped the Octez snapshot version from ``6`` to
-  ``7`` which fixes the corrupted generation of tar rolling and full
-  snapshots. It is still possible to import previous version snapshots
-  but snapshots in version 7 are not retro-compatible with previous
-  Octez versions (MR :gl:`!10785`).
+- **Breaking change** Removed the deprecated ``/monitor/valid_blocks``
+  RPC. Instead, use the ``/monitor/applied_blocks`` RPC that has the
+  same behaviour.
 
 Client
 ------
@@ -72,12 +70,16 @@ Client
 - Added options to temporarily extend the context with other contracts
   and extra big maps in Michelson commands. (MR :gl:`!9946`)
 
-- Added a ``run_step`` RPC in the plugin and a ``run michelson code``
+- Added a ``run_instruction`` RPC in the plugin and a ``run michelson code``
   client command allowing to run a single Michelson instruction or a
   sequence of Michelson instructions on a given stack. (MR :gl:`!9935`)
 
 Baker
 -----
+
+- Made the baker attest as soon as the pre-attestation quorum is
+  reached instead of waiting for the chain's head to be fully
+  applied (MR :gl:`!10554`)
 
 Accuser
 -------
@@ -160,7 +162,7 @@ Miscellaneous
 
 - Beta scripts to build Debian and RedHat packages have been added to the tree.
 
-- New Recommended Rust version 1.65.0 instead of 1.64.0.
+- New Recommended Rust version 1.71.1 instead of 1.64.0.
 
 - Extended the Micheline lexer to allow primitives starting with the
   underscore symbol (``_``). (MR :gl:`!10782`)

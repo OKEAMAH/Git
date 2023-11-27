@@ -62,7 +62,7 @@ type accounts = {
 }
 
 (** Feature flags requirements for a context setting for a test. *)
-type feature_flags = {dal : bool; scoru : bool; toru : bool; zkru : bool}
+type feature_flags = {dal : bool; scoru_arith : bool; zkru : bool}
 
 (** Infos describes the information of the setting for a test: the
    context and used accounts. *)
@@ -130,13 +130,11 @@ type ctxt_req = {
 type mode = Construction | Mempool | Application
 
 (** {2 Default values} *)
-let all_enabled = {dal = true; scoru = true; toru = true; zkru = true}
+let all_enabled = {dal = true; scoru_arith = true; zkru = true}
 
 let disabled_dal = {all_enabled with dal = false}
 
-let disabled_scoru = {all_enabled with scoru = false}
-
-let disabled_toru = {all_enabled with toru = false}
+let disabled_scoru_arith = {all_enabled with scoru_arith = false}
 
 let disabled_zkru = {all_enabled with zkru = false}
 
@@ -254,8 +252,7 @@ let pp_ctxt_req pp
      fund_sc: %a tz@,\
      fund_zk: %a tz@,\
      dal_flag: %a@,\
-     scoru_flag: %a@,\
-     toru_flag: %a@,\
+     scoru_arith_flag: %a@,\
      zkru_flag: %a@,\
      @]"
     (pp_opt Gas.Arith.pp_integral)
@@ -274,9 +271,7 @@ let pp_ctxt_req pp
     Format.pp_print_bool
     flags.dal
     Format.pp_print_bool
-    flags.scoru
-    Format.pp_print_bool
-    flags.toru
+    flags.scoru_arith
     Format.pp_print_bool
     flags.zkru
 
@@ -370,14 +365,15 @@ let originate_zk_rollup block rollup_account =
 (** {2 Setting's context construction} *)
 
 let fund_account_op block bootstrap account fund counter =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let* fund =
     match fund with
     | None -> return Tez.one
     | Some fund ->
         let* source_balance = Context.Contract.balance (B block) bootstrap in
         if Tez.(fund > source_balance) then
-          Lwt.return (Environment.wrap_tzresult Tez.(source_balance -? one))
+          let*?@ result = Tez.(source_balance -? one) in
+          return result
         else return fund
   in
   let+ op =
@@ -410,11 +406,7 @@ let manager_parameters : Parameters.t -> ctxt_req -> Parameters.t =
   in
   let dal = {params.constants.dal with feature_enable = flags.dal} in
   let sc_rollup =
-    {
-      params.constants.sc_rollup with
-      enable = flags.scoru;
-      arith_pvm_enable = flags.scoru;
-    }
+    {params.constants.sc_rollup with arith_pvm_enable = flags.scoru_arith}
   in
   let zk_rollup = {params.constants.zk_rollup with enable = flags.zkru} in
   let constants =
@@ -498,7 +490,7 @@ let init_infos :
     create_and_fund block (get_bootstrap bootstraps 2) fund_del
   in
   let* block, sc, sc_rollup =
-    if flags.scoru then
+    if flags.scoru_arith then
       create_and_fund
         ~originate_rollup:originate_sc_rollup
         block
@@ -1168,7 +1160,7 @@ let expected_witness witness probes ~mode ctxt =
     In the [Application] mode, we do not perform any check on the
     available gas. *)
 let observe ~mode ~deallocated ctxt_pre ctxt_post op =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   let check_deallocated ctxt contract =
     let* actxt =
       let+ i =
@@ -1178,8 +1170,8 @@ let observe ~mode ~deallocated ctxt_pre ctxt_post op =
       in
       Incremental.alpha_ctxt i
     in
-    let*! res = Contract.must_be_allocated actxt contract in
-    match Environment.wrap_tzresult res with
+    let*!@ res = Contract.must_be_allocated actxt contract in
+    match res with
     | Ok () ->
         failwith
           "%a should have been deallocated@."
@@ -1407,7 +1399,7 @@ let is_disabled flags = function
   | K_Sc_rollup_origination | K_Sc_rollup_publish | K_Sc_rollup_cement
   | K_Sc_rollup_add_messages | K_Sc_rollup_refute | K_Sc_rollup_timeout
   | K_Sc_rollup_execute_outbox_message | K_Sc_rollup_recover_bond ->
-      flags.scoru = false
+      flags.scoru_arith = false
   | K_Dal_publish_slot_header -> flags.dal = false
   | K_Zk_rollup_origination | K_Zk_rollup_publish | K_Zk_rollup_update ->
       flags.zkru = false

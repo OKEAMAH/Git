@@ -106,13 +106,13 @@ end
 
 module Types = struct
   type state = {
-    rollup_node : (module Rollup_node.S);
+    rollup_node : (module Services_backend_sig.S);
     smart_rollup_address : string;
     mutable level : Ethereum_types.block_height;
     mutable pool : Pool.t;
   }
 
-  type parameters = (module Rollup_node.S) * string
+  type parameters = (module Services_backend_sig.S) * string
 end
 
 module Name = struct
@@ -262,24 +262,21 @@ let on_head state block_height =
     |> List.map (fun Pool.{raw_tx; _} -> raw_tx)
   in
   (* Send the txs to the rollup *)
-  let*! () =
-    Lwt_list.iter_s
-      (fun raw_tx ->
-        let open Lwt_syntax in
-        let+ hash_result =
-          Rollup_node.inject_raw_transaction ~smart_rollup_address raw_tx
-        in
-        match hash_result with
-        | Error _ ->
-            (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
-            Format.printf "[tx-pool] Error when sending transaction.\n%!"
-        | Ok _ ->
-            Format.printf
-              (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
-              "[tx-pool] Transaction %s sent to the rollup.\n%!"
-              (Ethereum_types.hex_to_string raw_tx))
-      txs
+  let*! hashes =
+    Rollup_node.inject_raw_transactions ~smart_rollup_address ~transactions:txs
   in
+  (match hashes with
+  | Error _ ->
+      (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+      Format.printf "[tx-pool] Error when sending transaction.\n%!"
+  | Ok hashes ->
+      List.iter
+        (fun hash ->
+          Format.printf
+            (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
+            "[tx-pool] Transaction %s sent to the rollup.\n%!"
+            (Ethereum_types.hash_to_string hash))
+        hashes) ;
   (* update the pool *)
   state.level <- block_height ;
   state.pool <- pool ;
@@ -374,7 +371,8 @@ let rec subscribe_l2_block worker =
         subscribe_l2_block worker
       else subscribe_l2_block worker
 
-let start ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address) =
+let start
+    ((module Rollup_node_rpc : Services_backend_sig.S), smart_rollup_address) =
   let open Lwt_result_syntax in
   let+ worker =
     Worker.launch

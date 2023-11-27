@@ -15,18 +15,110 @@ module StringSet = Set.Make (String)
    than the public module [Data_encoding.Encoding]. *)
 module DataEncoding = Data_encoding__Encoding
 
-(* We need an existential type for encodings because the type of encodings in
-   cases is not related to the type of encodings in unions. *)
-type anyEncoding = AnyEncoding : _ DataEncoding.t -> anyEncoding [@@unboxed]
+module AnyEncoding = struct
+  module T = struct
+    type t = AnyEncoding : _ DataEncoding.t -> t [@@unboxed]
+
+    let hash = Hashtbl.hash
+
+    (* We rely on [AnyEncoding] to be unboxed so that we can preserve
+       physical equality. We can't use structural equality because
+       encoding contain closures. *)
+    let equal a b = a == b
+
+    let pack x = AnyEncoding x
+  end
+
+  include T
+  module Tbl = Hashtbl.Make (T)
+end
+
+module Types : sig
+  type t
+
+  val create : unit -> t
+
+  val to_list : t -> (string * ClassSpec.t) list
+
+  val add : t -> string * ClassSpec.t -> unit
+
+  val add_uniq : t -> string -> AttrSpec.t list -> string
+end = struct
+  (* This module is used to track kaitai types emitted during the translation.
+
+     Because type name must be unique, we have to keep enough information to allocate meaningful fresh names.
+     - A table of all types [all_types] indexed by their name.
+     - A table of all [names] given to a given [ClassSpec].
+
+     A [ClassSpec] can have multiple names, because the name is derived from the context and the same encoding
+     can be used in different context.
+  *)
+
+  type t = {
+    all_types : (string, ClassSpec.t) Hashtbl.t;
+    names : (ClassSpec.t, string) Hashtbl.t;
+        (* We rely on the [Hashtbl.add] semantics of not replacing
+           previous bindings. See [Hashtbl.find_all] below. *)
+  }
+
+  let create () = {all_types = Hashtbl.create 20; names = Hashtbl.create 20}
+
+  let to_list t =
+    Hashtbl.to_seq t.all_types
+    |> Seq.map (fun (name, (typ : ClassSpec.t)) -> (name, typ))
+    |> List.of_seq
+
+  let find_name t ~prefix =
+    if not (Hashtbl.mem t.all_types prefix) then prefix
+    else
+      let rec loop i =
+        let candidate = Printf.sprintf "%s_%d" prefix i in
+        if Hashtbl.mem t.all_types candidate then loop (succ i) else candidate
+      in
+      loop 0
+
+  let name_prefix s =
+    match String.rindex_opt s '_' with
+    | None -> s
+    | Some i ->
+        if
+          String.for_all
+            (function '0' .. '9' -> true | _ -> false)
+            (String.sub s (i + 1) (String.length s - i - 1))
+        then String.sub s 0 i
+        else s
+
+  let same_id a b = String.equal (name_prefix a) (name_prefix b)
+
+  let add t (name, typ) =
+    match Hashtbl.find_opt t.all_types name with
+    | None ->
+        Hashtbl.add t.all_types name typ ;
+        Hashtbl.add t.names typ name
+    | Some cl ->
+        if typ = cl then ()
+        else invalid_arg (Printf.sprintf "[Types.add] Duplicated types %s" name)
+
+  let add_uniq t id attrs =
+    let name, typ = (id, Helpers.class_spec_of_attrs attrs) in
+    let name =
+      match Hashtbl.find_all t.names typ with
+      | [] -> find_name t ~prefix:name
+      | l -> (
+          match List.find_opt (same_id id) l with
+          | Some id -> id
+          | None -> find_name t ~prefix:name)
+    in
+    add t (name, typ) ;
+    name
+end
 
 type state = {
-  toplevel_encoding : anyEncoding;
   enums : Ground.Enum.assoc;
-  types_rev : (string, ClassSpec.t) Hashtbl.t;
-  types : (ClassSpec.t, string) Hashtbl.t;
+  types : Types.t;
   mus : MuSet.t;
   imports : StringSet.t;
-  extern : (anyEncoding, string) Hashtbl.t;
+  extern : string AnyEncoding.Tbl.t;
 }
 
 (* Identifiers have a strict pattern to follow, this function removes the
@@ -55,35 +147,6 @@ let escape_id id =
     id ;
   Buffer.contents b
 
-let find_name state ~prefix =
-  if not (Hashtbl.mem state.types_rev prefix) then prefix
-  else
-    let rec loop i =
-      let candidate = Printf.sprintf "%s_%d" prefix i in
-      if Hashtbl.mem state.types_rev candidate then loop (succ i) else candidate
-    in
-    loop 0
-
-let new_type state id attrs =
-  let name, typ = (id, Helpers.class_spec_of_attrs ~id attrs) in
-  let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
-  match Hashtbl.find_opt state.types typ with
-  | None -> (find_name state ~prefix:name, typ)
-  | Some id_prev ->
-      if String.starts_with id_prev ~prefix:id then (id_prev, typ)
-      else (find_name state ~prefix:name, typ)
-
-let add_type state (name, typ) =
-  let typ = {typ with ClassSpec.meta = {typ.ClassSpec.meta with id = None}} in
-  match Hashtbl.find_opt state.types_rev name with
-  | None ->
-      Hashtbl.add state.types_rev name typ ;
-      Hashtbl.add state.types typ name ;
-      state
-  | Some cl ->
-      if typ = cl then state
-      else invalid_arg (Printf.sprintf "Duplicated types %s" name)
-
 let add_enum state enum =
   {state with enums = Helpers.add_uniq_assoc state.enums enum}
 
@@ -95,7 +158,7 @@ let summary ~title ~description =
 
 (* when an encoding has id [x],
    then the attr for its size has id [len_id_of_id x].
-   Kaitia recomment to use the [len_] prefix in this case. *)
+   Kaitai recomment to use the [len_] prefix in this case. *)
 let len_id_of_id id = "len_" ^ id
 
 (* in kaitai-struct, some fields can be added to single attributes but not to a
@@ -103,8 +166,7 @@ let len_id_of_id id = "len_" ^ id
    need to create an indirection to a named type. [redirect] is a function for
    adding a field to an indirection. *)
 let redirect state attrs fattr id_orig =
-  let ((id, _) as type_) = new_type state id_orig attrs in
-  let state = add_type state type_ in
+  let id = Types.add_uniq state.types id_orig attrs in
   let attr =
     fattr
       {
@@ -114,6 +176,15 @@ let redirect state attrs fattr id_orig =
   in
   (state, attr)
 
+(* [redirect_if_any] is like [redirect] but
+   - it only does the redirection when there are multiple attributes
+   - it adds the attribute directly if there is only one
+   - it returns None in case of empty attributes.
+
+   [redirect_if_any] is useful inside objs where there can be constant
+   field used for prettier json encoding. Translating constant
+   field would return empty attributes as they are not reflected in
+   the binary encoding *)
 let redirect_if_any :
     state ->
     AttrSpec.t list ->
@@ -161,11 +232,11 @@ let rec seq_field_of_data_encoding0 :
   | Int32 -> (state, [Ground.Attr.int32 ~id])
   | Int64 -> (state, [Ground.Attr.int64 ~id])
   | Int31 ->
-      let state = add_type state Ground.Type.int31 in
+      Types.add state.types Ground.Type.int31 ;
       (state, [Ground.Attr.int31 ~id])
   | RangedInt {minimum; maximum} ->
       let size = Data_encoding__Binary_size.range_to_size ~minimum ~maximum in
-      if minimum <= 0 then
+      if minimum <= 0 then (
         let valid =
           Some
             (ValidationSpec.ValidationRange
@@ -183,8 +254,8 @@ let rec seq_field_of_data_encoding0 :
         | `Int8 -> (state, [{(Ground.Attr.int8 ~id) with valid}])
         | `Int16 -> (state, [{(Ground.Attr.int16 ~id) with valid}])
         | `Int31 ->
-            let state = add_type state Ground.Type.int31 in
-            (state, [{(Ground.Attr.int31 ~id) with valid}])
+            Types.add state.types Ground.Type.int31 ;
+            (state, [{(Ground.Attr.int31 ~id) with valid}]))
       else
         (* when [minimum > 0] (as is the case in this branch), data-encoding
            shifts the value of the binary representation so that the minimum is at
@@ -205,7 +276,6 @@ let rec seq_field_of_data_encoding0 :
         in
         let represented_interval_class =
           Helpers.class_spec_of_attrs
-            ~id:shifted_id
             ~instances:
               [
                 ( "value",
@@ -235,12 +305,12 @@ let rec seq_field_of_data_encoding0 :
               ]
             represented_interval_attrs
         in
-        let state = add_type state (shifted_id, represented_interval_class) in
+        Types.add state.types (shifted_id, represented_interval_class) ;
         ( state,
           [
             {
               (Helpers.default_attr_spec ~id) with
-              dataType = Helpers.usertype represented_interval_class;
+              dataType = ComplexDataType (UserType shifted_id);
             };
           ] )
   | Float -> (state, [Ground.Attr.float ~id])
@@ -255,31 +325,29 @@ let rec seq_field_of_data_encoding0 :
   | Bytes (`Variable, _) -> (state, [Ground.Attr.bytes ~id Variable])
   | Dynamic_size
       {kind = `Uint8; encoding = {encoding = Bytes (`Variable, _); _}} ->
-      let state = add_type state Ground.Type.bytes_dyn_uint8 in
+      Types.add state.types Ground.Type.bytes_dyn_uint8 ;
       (state, [Ground.Attr.bytes ~id Dynamic8])
   | Dynamic_size
       {kind = `Uint16; encoding = {encoding = Bytes (`Variable, _); _}} ->
-      let state = add_type state Ground.Type.bytes_dyn_uint16 in
+      Types.add state.types Ground.Type.bytes_dyn_uint16 ;
       (state, [Ground.Attr.bytes ~id Dynamic16])
   | Dynamic_size
       {kind = `Uint30; encoding = {encoding = Bytes (`Variable, _); _}} ->
-      let state = add_type state Ground.Type.uint30 in
-      let state = add_type state Ground.Type.bytes_dyn_uint30 in
+      Types.add state.types Ground.Type.bytes_dyn_uint30 ;
       (state, [Ground.Attr.bytes ~id Dynamic30])
   | String (`Fixed n, _) -> (state, [Ground.Attr.string ~id (Fixed n)])
   | String (`Variable, _) -> (state, [Ground.Attr.string ~id Variable])
   | Dynamic_size
       {kind = `Uint8; encoding = {encoding = String (`Variable, _); _}} ->
-      let state = add_type state Ground.Type.bytes_dyn_uint8 in
+      Types.add state.types Ground.Type.bytes_dyn_uint8 ;
       (state, [Ground.Attr.bytes ~id Dynamic8])
   | Dynamic_size
       {kind = `Uint16; encoding = {encoding = String (`Variable, _); _}} ->
-      let state = add_type state Ground.Type.bytes_dyn_uint16 in
+      Types.add state.types Ground.Type.bytes_dyn_uint16 ;
       (state, [Ground.Attr.bytes ~id Dynamic16])
   | Dynamic_size
       {kind = `Uint30; encoding = {encoding = String (`Variable, _); _}} ->
-      let state = add_type state Ground.Type.uint30 in
-      let state = add_type state Ground.Type.bytes_dyn_uint30 in
+      Types.add state.types Ground.Type.bytes_dyn_uint30 ;
       (state, [Ground.Attr.bytes ~id Dynamic30])
   | Dynamic_size {kind; encoding = {encoding = Check_size {limit; encoding}; _}}
     ->
@@ -312,12 +380,12 @@ let rec seq_field_of_data_encoding0 :
       in
       (state, attrs @ [pad_attr])
   | N ->
-      let state = add_type state Ground.Type.n_chunk in
-      let state = add_type state Ground.Type.n in
+      Types.add state.types Ground.Type.n_chunk ;
+      Types.add state.types Ground.Type.n ;
       (state, [Ground.Attr.n ~id])
   | Z ->
-      let state = add_type state Ground.Type.n_chunk in
-      let state = add_type state Ground.Type.z in
+      Types.add state.types Ground.Type.n_chunk ;
+      Types.add state.types Ground.Type.z ;
       (state, [Ground.Attr.z ~id])
   | Conv {encoding; _} -> seq_field_of_data_encoding state encoding id
   | Tup _ ->
@@ -405,44 +473,56 @@ let rec seq_field_of_data_encoding0 :
         in
         (state, [attr])
   | String_enum (h, a) ->
-      let names =
+      (* In kaitai, [id]s inside [EnumSpec] must be valid identifier and
+         be unique for a given enum.  Here we:
+          - use [escape_id] so that we have valid identifier.
+         - try to preserve the original name when 2 escaped id collide.
+         - find unique identifier by suffixing a number. *)
+      let allocated_names =
         let t = Hashtbl.create 17 in
         Hashtbl.iter
-          (fun _ (name, _i) ->
-            let name' = escape_id name in
-            if String.equal name' name then Hashtbl.add t name' ())
+          (fun _ (original_name, i) ->
+            let name = escape_id original_name in
+            if String.equal name original_name && not (Hashtbl.mem t name) then
+              (* This name has is already a valid id. Let's reserve it. *)
+              Hashtbl.add t name i)
           h ;
         t
       in
+      let rec find_available_name ~prefix:name n =
+        let name' = Printf.sprintf "%s_%d" name n in
+        if Hashtbl.mem allocated_names name' then
+          find_available_name ~prefix:name (succ n)
+        else name'
+      in
       let map =
         Hashtbl.to_seq_values h
-        |> Seq.map (fun (m, i) ->
-               let name = escape_id m in
+        |> Seq.map (fun (original_name, i) ->
+               (* [escape_id original_name] could fail because
+                  [original_name] can be an arbitrary string. Let's only
+                  revisit if we ever encounter the usecase. *)
+               let name = escape_id original_name in
                let name =
-                 if String.equal name m || not (Hashtbl.mem names name) then (
-                   Hashtbl.add names name () ;
-                   name)
-                 else
-                   let rec find name =
-                     let name' = name ^ "_" in
-                     if Hashtbl.mem names name' then find name' else name'
-                   in
-                   let name' = find name in
-                   Hashtbl.add names name' () ;
-                   name'
+                 match Hashtbl.find_opt allocated_names name with
+                 | None ->
+                     Hashtbl.add allocated_names name i ;
+                     name
+                 | Some j when i = j -> (* This name was reserved above *) name
+                 | Some _ ->
+                     let name' = find_available_name ~prefix:name 0 in
+                     Hashtbl.add allocated_names name' i ;
+                     name'
                in
-               ( i,
-                 EnumValueSpec.
+               let doc =
+                 DocSpec.
                    {
-                     name;
-                     doc =
-                       DocSpec.
-                         {
-                           refs = [];
-                           summary =
-                             (if String.equal m name then None else Some m);
-                         };
-                   } ))
+                     refs = [];
+                     summary =
+                       (if String.equal original_name name then None
+                       else Some original_name);
+                   }
+               in
+               (i, EnumValueSpec.{name; doc}))
         |> List.of_seq
         |> List.sort (fun (t1, _) (t2, _) -> compare t1 t2)
       in
@@ -466,21 +546,19 @@ let rec seq_field_of_data_encoding0 :
 and seq_field_of_data_encoding :
     type a. state -> a DataEncoding.t -> string -> state * AttrSpec.t list =
  fun state whole_encoding id ->
-  (* We rely on [AnyEncoding] to be unboxed so that we can preserve physical equality *)
-  match Hashtbl.find_opt state.extern (AnyEncoding whole_encoding) with
+  match
+    AnyEncoding.Tbl.find_opt state.extern (AnyEncoding.pack whole_encoding)
+  with
   | Some name ->
-      if AnyEncoding whole_encoding == state.toplevel_encoding then
-        seq_field_of_data_encoding0 state whole_encoding id
-      else
-        let name = escape_id name in
-        let state = {state with imports = StringSet.add name state.imports} in
-        ( state,
-          [
-            {
-              (Helpers.default_attr_spec ~id:(escape_id id)) with
-              dataType = DataType.(ComplexDataType (UserType name));
-            };
-          ] )
+      let name = escape_id name in
+      let state = {state with imports = StringSet.add name state.imports} in
+      ( state,
+        [
+          {
+            (Helpers.default_attr_spec ~id:(escape_id id)) with
+            dataType = DataType.(ComplexDataType (UserType name));
+          };
+        ] )
   | None -> seq_field_of_data_encoding0 state whole_encoding id
 
 and seq_field_of_tups :
@@ -559,14 +637,14 @@ and seq_field_of_field :
       let id = escape_id name in
       let state, attrs = seq_field_of_data_encoding state encoding id in
       let summary = summary ~title ~description in
-      let state, attr =
-        redirect_if_many
+      let state, attr_o =
+        redirect_if_any
           state
           attrs
           (fun attr -> {(Helpers.merge_summaries attr summary) with cond})
           id
       in
-      (state, [cond_attr; attr])
+      (state, cond_attr :: Option.to_list attr_o)
   | Dft {name; encoding; default = _; title; description} ->
       (* NOTE: in binary format Dft is the same as Req *)
       let id = escape_id name in
@@ -589,7 +667,7 @@ and seq_field_of_union :
     string ->
     state * AttrSpec.t list =
  fun state tag_size cases id ->
-  let tagged_cases : (int * string * string option * anyEncoding) list =
+  let tagged_cases : (int * string * string option * AnyEncoding.t) list =
     (* Some cases are JSON-only, we filter those out and we also get rid of
        parts we don't care about like injection and projection functions. *)
     List.filter_map
@@ -598,7 +676,7 @@ and seq_field_of_union :
         Data_encoding__Uint_option.fold
           ~none:None
           ~some:(fun tag ->
-            Some (tag, escape_id title, description, AnyEncoding encoding))
+            Some (tag, escape_id title, description, AnyEncoding.pack encoding))
           tag)
       cases
   in
@@ -629,7 +707,8 @@ and seq_field_of_union :
   in
   let state, payload_attrs =
     List.fold_left
-      (fun (state, payload_attrs) (_, case_id, _, AnyEncoding encoding) ->
+      (fun (state, payload_attrs)
+           (_, case_id, _, AnyEncoding.AnyEncoding encoding) ->
         let state, attrs = seq_field_of_data_encoding state encoding case_id in
         match attrs with
         | [] -> (state, payload_attrs)
@@ -763,52 +842,48 @@ let add_original_id_to_description ?description id =
 let from_data_encoding :
     type a.
     id:string ->
-    ?extern:(anyEncoding, string) Hashtbl.t ->
+    ?extern:string AnyEncoding.Tbl.t ->
     a DataEncoding.t ->
     ClassSpec.t =
- fun ~id ?(extern = Hashtbl.create 0) encoding ->
+ fun ~id ?(extern = AnyEncoding.Tbl.create 0) encoding ->
   let encoding_name = escape_id id in
+  let extern = AnyEncoding.Tbl.copy extern in
+  AnyEncoding.Tbl.remove extern (AnyEncoding.pack encoding) ;
   let state =
     {
-      toplevel_encoding = AnyEncoding encoding;
       enums = [];
-      types_rev = Hashtbl.create 20;
-      types = Hashtbl.create 20;
+      types = Types.create ();
       mus = MuSet.empty;
       imports = StringSet.empty;
       extern;
     }
   in
-  let types () =
-    Hashtbl.to_seq state.types_rev
-    |> Seq.map (fun (name, (typ : ClassSpec.t)) ->
-           let typ = {typ with meta = {typ.meta with id = Some name}} in
-           (name, typ))
-    |> List.of_seq
-  in
   let sort l = List.sort (fun (t1, _) (t2, _) -> compare t1 t2) l in
+  let set_name (spec : ClassSpec.t) =
+    {spec with meta = {spec.meta with id = Some encoding_name}}
+  in
   match encoding.encoding with
   | Describe {encoding; description; id = descrid; _} ->
       let description = add_original_id_to_description ?description id in
       let state, attrs = seq_field_of_data_encoding state encoding descrid in
       Helpers.class_spec_of_attrs
-        ~id:encoding_name
         ~description
         ~enums:(sort state.enums)
-        ~types:(types () |> sort)
+        ~types:(Types.to_list state.types |> sort)
         ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs
+      |> set_name
   | _ ->
       let description = add_original_id_to_description id in
       let state, attrs =
         seq_field_of_data_encoding state encoding encoding_name
       in
       Helpers.class_spec_of_attrs
-        ~id:encoding_name
         ~description
         ~enums:(sort state.enums)
-        ~types:(types () |> sort)
+        ~types:(Types.to_list state.types |> sort)
         ~imports:(StringSet.elements state.imports)
         ~instances:[]
         attrs
+      |> set_name

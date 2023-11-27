@@ -53,10 +53,13 @@ module Type : sig
   (** int31 is s4 with a bound check. *)
   val int31 : string * ClassSpec.t
 
+  (** [bytes_dyn_uint8] is a byte sequence dynamically sized by a [uint8]. *)
   val bytes_dyn_uint8 : string * ClassSpec.t
 
+  (** [bytes_dyn_uint16] is a byte sequence dynamically sized by a [uint16]. *)
   val bytes_dyn_uint16 : string * ClassSpec.t
 
+  (** [bytes_dyn_uint30] is a byte sequence dynamically sized by a [uint30]. *)
   val bytes_dyn_uint30 : string * ClassSpec.t
 end
 
@@ -109,9 +112,9 @@ module Attr : sig
       (and strings) can have in data-encoding. *)
   type byte_size =
     | Fixed of int  (** Fixed known size, makes [size: <int>] in kaitai *)
-    | Dynamic8
-    | Dynamic16
-    | Dynamic30
+    | Dynamic8  (** Dynamic size header stored in a [uint8] *)
+    | Dynamic16  (** Dynamic size header stored in a [uint16] *)
+    | Dynamic30  (** Dynamic size header stored in a [uint30] *)
     | Variable
         (** Unknown size (until end of stream), makes [size-eos: true]
                     in kaitai *)
@@ -133,5 +136,5 @@ module Attr : sig
   (** [binary_length_kind ~id k] is an [AttrSpec.t] definition for the
     [Data_encoding__Binary_length.length] type. *)
   val binary_length_kind :
-    id:string -> [`N | `Uint30 | `Uint16 | `Uint8] -> AttrSpec.t
+    id:string -> [`N | `Uint8 | `Uint16 | `Uint30] -> AttrSpec.t
 end

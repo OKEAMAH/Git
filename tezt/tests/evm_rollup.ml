@@ -1,28 +1,10 @@
 (*****************************************************************************)
 (*                                                                           *)
-(* Open Source License                                                       *)
+(* SPDX-License-Identifier: MIT                                              *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (* Copyright (c) 2023 TriliTech <contact@trili.tech>                         *)
 (* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
 (* Copyright (c) 2023 Functori <contact@functori.com>                        *)
-(*                                                                           *)
-(* Permission is hereby granted, free of charge, to any person obtaining a   *)
-(* copy of this software and associated documentation files (the "Software"),*)
-(* to deal in the Software without restriction, including without limitation *)
-(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
-(* and/or sell copies of the Software, and to permit persons to whom the     *)
-(* Software is furnished to do so, subject to the following conditions:      *)
-(*                                                                           *)
-(* The above copyright notice and this permission notice shall be included   *)
-(* in all copies or substantial portions of the Software.                    *)
-(*                                                                           *)
-(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
-(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
-(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
-(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
-(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
-(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
-(* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
 
@@ -100,7 +82,7 @@ let check_tx_succeeded ~endpoint ~tx =
   Check.(is_true status) ~error_msg:"Expected transaction to succeed." ;
   unit
 
-let check_tx_failed ~endpoint ~tx =
+let _check_tx_failed ~endpoint ~tx =
   let* status = get_transaction_status ~endpoint ~tx in
   Check.(is_false status) ~error_msg:"Expected transaction to fail." ;
   unit
@@ -210,18 +192,6 @@ let wait_for_application ~sc_rollup_node ~node ~client apply () =
      thrown by [Lwt.both] as well. *)
   let* result, () = Lwt.both application_result (loop ()) in
   return result
-
-let send_and_wait_until_tx_mined ~sc_rollup_node ~node ~client
-    ~source_private_key ~to_public_key ~value ~evm_node_endpoint ?data () =
-  let send =
-    Eth_cli.transaction_send
-      ~source_private_key
-      ~to_public_key
-      ~value
-      ~endpoint:evm_node_endpoint
-      ?data
-  in
-  wait_for_application ~sc_rollup_node ~node ~client send ()
 
 (* sending more than ~300 tx could fail, because or curl *)
 let send_n_transactions ~sc_rollup_node ~node ~client ~evm_node txs =
@@ -522,17 +492,6 @@ let send ~sender ~receiver ~value ?data full_evm_setup =
       ?data
   in
   wait_for_application ~sc_rollup_node ~node ~client send ()
-
-let send_external_message_and_wait ~sc_rollup_node ~node ~client ~sender
-    ~hex_msg =
-  let* () =
-    Client.Sc_rollup.send_message
-      ~src:sender
-      ~msg:("hex:[ \"" ^ hex_msg ^ "\" ]")
-      client
-  in
-  let* _ = next_evm_level ~sc_rollup_node ~node ~client in
-  unit
 
 let check_block_progression ~sc_rollup_node ~node ~client ~endpoint
     ~expected_block_level =
@@ -1461,7 +1420,7 @@ let test_simulate =
     ~tags:["evm"; "simulate"]
     ~title:"A block can be simulated in the rollup node"
     (fun protocol ->
-      let* {evm_node; sc_rollup_client; _} =
+      let* {evm_node; sc_rollup_node; _} =
         setup_past_genesis ~admin:None protocol
       in
       let* json =
@@ -1472,12 +1431,12 @@ let test_simulate =
       let block_number =
         JSON.(json |-> "result" |> as_string |> int_of_string)
       in
-      let*! simulation_result =
-        Sc_rollup_client.simulate
-          ~insight_requests:
-            [`Durable_storage_key ["evm"; "blocks"; "current"; "number"]]
-          sc_rollup_client
-          []
+      let* simulation_result =
+        Sc_rollup_node.RPC.call sc_rollup_node
+        @@ Sc_rollup_rpc.post_global_block_simulate
+             ~insight_requests:
+               [`Durable_storage_key ["evm"; "blocks"; "current"; "number"]]
+             []
       in
       let simulated_block_number =
         match simulation_result.insights with
@@ -1841,7 +1800,7 @@ let test_eth_call_storage_contract_proxy =
     ~tags:["evm"; "simulate"]
     ~title:"Try to call a view (directly through rollup node)"
     (fun protocol ->
-      let* ({sc_rollup_client; evm_node; _} as evm_setup) =
+      let* ({sc_rollup_node; evm_node; _} as evm_setup) =
         setup_past_genesis ~admin:None protocol
       in
 
@@ -1857,21 +1816,20 @@ let test_eth_call_storage_contract_proxy =
         = "0xd77420f73b4612a7a99dba8c2afd30a1886b0344")
           string
           ~error_msg:"Expected address to be %R but was %L.") ;
-
-      let*! simulation_result =
-        Sc_rollup_client.simulate
-          ~insight_requests:
-            [
-              `Durable_storage_key ["evm"; "simulation_result"];
-              `Durable_storage_key ["evm"; "simulation_status"];
-            ]
-          sc_rollup_client
-          [
-            Hex.to_string @@ `Hex "ff";
-            Hex.to_string
-            @@ `Hex
-                 "ff0100e68094d77420f73b4612a7a99dba8c2afd30a1886b03448857040000000000008080844e70b1dc";
-          ]
+      let* simulation_result =
+        Sc_rollup_node.RPC.call sc_rollup_node
+        @@ Sc_rollup_rpc.post_global_block_simulate
+             ~insight_requests:
+               [
+                 `Durable_storage_key ["evm"; "simulation_result"];
+                 `Durable_storage_key ["evm"; "simulation_status"];
+               ]
+             [
+               Hex.to_string @@ `Hex "ff";
+               Hex.to_string
+               @@ `Hex
+                    "ff0100e68094d77420f73b4612a7a99dba8c2afd30a1886b03448857040000000000008080844e70b1dc";
+             ]
       in
       let expected_insights =
         [
@@ -2193,9 +2151,8 @@ let get_kernel_boot_wasm ~sc_rollup_client =
   | None -> failwith "Kernel `boot.wasm` should be accessible/readable."
 
 let gen_test_kernel_upgrade ?evm_setup ?rollup_address ?(should_fail = false)
-    ?(from_ghostnet = false) ?(nonce = 2) ~base_installee ~installee
-    ?with_administrator ?expect_l1_failure ?(admin = Constant.bootstrap1)
-    ?(upgrador = admin) protocol =
+    ~base_installee ~installee ?with_administrator ?expect_l1_failure
+    ?(admin = Constant.bootstrap1) ?(upgrador = admin) protocol =
   let* {
          node;
          client;
@@ -2234,17 +2191,7 @@ let gen_test_kernel_upgrade ?evm_setup ?rollup_address ?(should_fail = false)
           "Couldn't obtain the root hash of the preimages of the chunked \
            kernel."
   in
-  let upgrade_payload =
-    let payload =
-      (* TODO: remove this condition whenever the ghostnet kernel is upgraded
-         to the version without an upgrade nonce. *)
-      if from_ghostnet then
-        let upgrade_nonce_bytes = Helpers.u16_to_bytes nonce in
-        upgrade_nonce_bytes ^ preimage_root_hash_bytes
-      else preimage_root_hash_bytes
-    in
-    Hex.of_string payload |> Hex.show
-  in
+  let upgrade_payload = Hex.of_string preimage_root_hash_bytes |> Hex.show in
   let* kernel_boot_wasm_before_upgrade =
     get_kernel_boot_wasm ~sc_rollup_client
   in
@@ -2544,7 +2491,7 @@ let test_validation_result =
     ~title:
       "Ensure validation returns appropriate address for a given transaction."
   @@ fun protocol ->
-  let* {sc_rollup_client; _} = setup_past_genesis ~admin:None protocol in
+  let* {sc_rollup_node; _} = setup_past_genesis ~admin:None protocol in
   (* tx is a signed legacy transaction obtained with the following data, using
      the following private key:
         data = {
@@ -2562,15 +2509,15 @@ let test_validation_result =
     "f86180825208809400000000000000000000000000000000000000008080820a95a0f47140763cf73d6d9b342727e5a0809f7997bb62375060932af9bbc2e74b6212a03a018079a2fd7fefb625451ce2fafcdf873b892ff9d4e3e1f2ada5650012f072"
   in
   let simulation_msg = "ff0101" ^ tx in
-  let*! simulation_result =
-    Sc_rollup_client.simulate
-      ~insight_requests:
-        [
-          `Durable_storage_key ["evm"; "simulation_status"];
-          `Durable_storage_key ["evm"; "simulation_result"];
-        ]
-      sc_rollup_client
-      [Hex.to_string @@ `Hex "ff"; Hex.to_string @@ `Hex simulation_msg]
+  let* simulation_result =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.post_global_block_simulate
+         ~insight_requests:
+           [
+             `Durable_storage_key ["evm"; "simulation_status"];
+             `Durable_storage_key ["evm"; "simulation_result"];
+           ]
+         [Hex.to_string @@ `Hex "ff"; Hex.to_string @@ `Hex simulation_msg]
   in
   let expected_insights =
     [Some "01"; Some "f0affc80a5f69f4a9a3ee01a640873b6ba53e539"]
@@ -2620,7 +2567,6 @@ let gen_kernel_migration_test ?config ?(admin = Constant.bootstrap5)
   let next_kernel_installee = "evm_kernel" in
   let* _ =
     gen_test_kernel_upgrade
-      ~from_ghostnet:true
       ~evm_setup
       ~base_installee:next_kernel_base_installee
       ~installee:next_kernel_installee
@@ -2636,32 +2582,6 @@ let gen_kernel_migration_test ?config ?(admin = Constant.bootstrap5)
   in
   (* Check the values after the upgrade with [sanity_check] results. *)
   scenario_after ~evm_setup ~sanity_check
-
-let test_genesis_parent_hash_migration =
-  Protocol.register_test
-    ~__FILE__
-    ~tags:["evm"; "migration"; "upgrade"; "genesis"]
-    ~title:"Replace genesis.parent_hash"
-  @@ fun protocol ->
-  let previous_genesis_parent_hash =
-    "0x0000000000000000000000000000000000000000000000000000000000000000"
-  in
-  let new_genesis_parent_hash =
-    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-  in
-  let check_genesis_parent_hash expected_parent_hash endpoint =
-    let* genesis_block = Eth_cli.get_block ~block_id:"0" ~endpoint in
-    Check.((genesis_block.parent = expected_parent_hash) string)
-      ~error_msg:"The genesis parent hash should be %R but got %L" ;
-    unit
-  in
-  let scenario_prior ~evm_setup =
-    check_genesis_parent_hash previous_genesis_parent_hash evm_setup.endpoint
-  in
-  let scenario_after ~evm_setup ~sanity_check:() =
-    check_genesis_parent_hash new_genesis_parent_hash evm_setup.endpoint
-  in
-  gen_kernel_migration_test ~scenario_prior ~scenario_after protocol
 
 let test_kernel_migration =
   Protocol.register_test
@@ -3012,7 +2932,6 @@ let test_transaction_storage_before_and_after_migration =
   gen_kernel_migration_test ~config ~scenario_prior ~scenario_after protocol
 
 let register_evm_migration ~protocols =
-  test_genesis_parent_hash_migration protocols ;
   test_kernel_migration protocols ;
   test_deposit_before_and_after_migration protocols ;
   test_block_storage_before_and_after_migration protocols ;
@@ -3917,10 +3836,7 @@ let register_evm_node ~protocols =
   test_kernel_upgrade_wrong_rollup_address protocols ;
   test_kernel_upgrade_no_administrator protocols ;
   test_kernel_upgrade_failing_migration protocols ;
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/6591
-     The MVP will be re-originated on ghostnet, instead of maintaining the tests,
-     we will reactivate them when we have the new version. *)
-  (* test_kernel_upgrade_version_change protocols ; *)
+  test_kernel_upgrade_version_change protocols ;
   test_rpc_sendRawTransaction protocols ;
   test_deposit_dailynet protocols ;
   test_rpc_sendRawTransaction_nonce_too_low protocols ;
@@ -3946,9 +3862,6 @@ let register_evm_node ~protocols =
   test_log_index protocols ;
   test_tx_pool_replacing_transactions protocols
 
-let register ~protocols = register_evm_node ~protocols
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/6591
-   The MVP will be re-originated on ghostnet, instead of maintaining the tests,
-   we will reactivate them when we have the new version. *)
-(* register_evm_migration
-   ~protocols *)
+let register ~protocols =
+  register_evm_node ~protocols ;
+  register_evm_migration ~protocols

@@ -255,7 +255,15 @@ let test_different_slots () =
    included. Then the delegate can no longer bake. *)
 let test_two_double_attestation_evidences_leadsto_no_bake () =
   let open Lwt_result_syntax in
-  let* genesis, _contracts = Context.init2 ~consensus_threshold:0 () in
+  let issuance_weights =
+    {
+      Default_parameters.constants_test.issuance_weights with
+      base_total_issued_per_minute = Tez.zero;
+    }
+  in
+  let* genesis, _contracts =
+    Context.init2 ~consensus_threshold:0 ~issuance_weights ()
+  in
   let* blk_1, blk_2 = block_fork genesis in
   let* blk_a = Block.bake blk_1 in
   let* blk_b = Block.bake blk_2 in
@@ -265,9 +273,6 @@ let test_two_double_attestation_evidences_leadsto_no_bake () =
   let operation = double_attestation (B genesis) attestation_a attestation_b in
   let* bakers = Context.get_bakers (B blk_a) in
   let baker = Context.get_first_different_baker delegate bakers in
-  let* (_full_balance : Tez.t) =
-    Context.Delegate.full_balance (B blk_a) baker
-  in
   let* frozen_deposits_before =
     Context.Delegate.current_frozen_deposits (B blk_a) delegate
   in
@@ -320,7 +325,9 @@ let test_two_double_attestation_evidences_leadsto_no_bake () =
   let*! b = Block.bake ~policy:(By_account delegate) blk_with_evidence2 in
   (* a delegate with 0 frozen deposits cannot bake *)
   let* () =
-    Assert.proto_error_with_info ~loc:__LOC__ b "Zero frozen deposits"
+    Assert.proto_error ~loc:__LOC__ b (function
+        | Validate_errors.Consensus.Forbidden_delegate _ -> true
+        | _ -> false)
   in
   (* Check that all frozen deposits have been slashed at the end of the cycle. *)
   let* b, metadata, _ =
@@ -429,7 +436,9 @@ let test_two_double_attestation_evidences_staggered () =
   let* () = Assert.is_true ~loc:__LOC__ is_forbidden in
   let*! b = Block.bake ~policy:(By_account delegate) blk_with_evidence2 in
   (* A forbidden delegate cannot bake *)
-  Assert.proto_error_with_info ~loc:__LOC__ b "Zero frozen deposits"
+  Assert.proto_error ~loc:__LOC__ b (function
+      | Validate_errors.Consensus.Forbidden_delegate _ -> true
+      | _ -> false)
 
 (** Say a delegate double-attests twice in two consecutive cycles,
     and say the 2 evidences are timely included. Then the delegate
@@ -503,7 +512,9 @@ let test_two_double_attestation_evidences_consecutive_cycles () =
   let* () = Assert.is_true ~loc:__LOC__ is_forbidden in
   let*! b = Block.bake ~policy:(By_account delegate) blk_with_evidence2 in
   (* A forbidden delegate cannot bake *)
-  Assert.proto_error_with_info ~loc:__LOC__ b "Zero frozen deposits"
+  Assert.proto_error ~loc:__LOC__ b (function
+      | Validate_errors.Consensus.Forbidden_delegate _ -> true
+      | _ -> false)
 
 (****************************************************************)
 (*  The following test scenarios are supposed to raise errors.  *)
@@ -804,7 +815,9 @@ let test_freeze_more_with_low_balance =
     let*! c3 = Block.bake c2 ~policy:(By_account account1) in
     (* Once the denunciations has summed up to 100%, the baker cannot bake anymore *)
     let* () =
-      Assert.proto_error_with_info ~loc:__LOC__ c3 "Zero frozen deposits"
+      Assert.proto_error ~loc:__LOC__ c3 (function
+          | Validate_errors.Consensus.Forbidden_delegate _ -> true
+          | _ -> false)
     in
     let* c3 = Block.bake_until_cycle_end c2 ~policy:(By_account account2) in
     (* Second slashing has happened: we check that the full balance of

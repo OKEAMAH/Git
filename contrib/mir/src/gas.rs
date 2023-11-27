@@ -92,6 +92,27 @@ pub mod tc_cost {
 
     pub const VALUE_STEP: u32 = 100;
 
+    // Corresponds to cost_PARSE_TYPE1 in the Tezos protocol.
+    pub const VERIFY_TYPE_STEP: u32 = 60;
+    // Taken to be the same as VERIFY_TYPE_STEP, but that's a guess
+    pub const TYPE_PROP_STEP: u32 = 60;
+
+    // corresponds to cost_B58CHECK_ENCODING_PUBLIC_KEY_HASH_bls in the
+    // protocol. the protocol computes cost as
+    // `max(bls,ed25519,p256,secp256k1)`, which happens to be `bls`
+    pub const KEY_HASH_READABLE: u32 = 3200;
+
+    // corresponds to cost_ENCODING_PUBLIC_KEY_HASH_bls in the
+    // protocol. the protocol computes cost as
+    // `max(bls,ed25519,p256,secp256k1)`, which happens to be `bls`
+    pub const KEY_HASH_OPTIMIZED: u32 = 80;
+
+    // corresponds to cost_B58CHECK_DECODING_CHAIN_ID in the protocol
+    pub const CHAIN_ID_READABLE: u32 = 1600;
+
+    // corresponds to cost_DECODING_CHAIN_ID in the protocol
+    pub const CHAIN_ID_OPTIMIZED: u32 = 50;
+
     fn variadic(depth: u16) -> Result<u32, OutOfGas> {
         let depth = Checked::from(depth as u32);
         (depth * 50).as_gas_cost()
@@ -156,6 +177,7 @@ pub mod interpret_cost {
     pub const AMOUNT: u32 = 10;
     pub const NIL: u32 = 10;
     pub const CONS: u32 = 15;
+    pub const CHAIN_ID: u32 = 15;
 
     pub const INTERPRET_RET: u32 = 15; // corresponds to KNil in the Tezos protocol
     pub const LOOP_ENTER: u32 = 10; // corresponds to KLoop_in in the Tezos protocol
@@ -221,6 +243,8 @@ pub mod interpret_cost {
             (c + compare(&l.0, &r.0)? + compare(&l.1, &r.1)?).as_gas_cost()
         };
         let cmp_option = Checked::from(10u32);
+        const ADDRESS_SIZE: usize = 20 + 31; // hash size + max entrypoint size
+        const CMP_CHAIN_ID: u32 = 30;
         Ok(match (v1, v2) {
             (V::Nat(l), V::Nat(r)) => {
                 // NB: eventually when using BigInts, use BigInt::bits() &c
@@ -242,6 +266,8 @@ pub mod interpret_cost {
                 (Some(l), Some(r)) => cmp_option + compare(l, r)?,
             }
             .as_gas_cost()?,
+            (V::Address(..), V::Address(..)) => cmp_bytes(ADDRESS_SIZE, ADDRESS_SIZE)?,
+            (V::ChainId(..), V::ChainId(..)) => CMP_CHAIN_ID,
             _ => unreachable!("Comparison of incomparable values"),
         })
     }

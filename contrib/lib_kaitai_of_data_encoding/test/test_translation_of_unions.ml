@@ -179,12 +179,6 @@ let%expect_test "test union with structures inside" =
         - id: r
           type: u1
           enum: bool
-      uint30:
-        seq:
-        - id: uint30
-          type: u4
-          valid:
-            max: 1073741823
     enums:
       bool:
         0: false

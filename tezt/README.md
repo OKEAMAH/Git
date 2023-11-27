@@ -95,8 +95,8 @@ In pseudo-TypeScript, the schema of `TESTOWNERS.json` is:
 ```typescript
 type TESTOWNERS = [PRODUCT_NAME: string]: PRODUCT_SPEC;
 type PRODUCT_SPEC = {
-  tags: string[];
-  path_prefixes: string[];
+  tags?: string[];
+  path_patterns?: string[];
 };
 ```
 
@@ -104,35 +104,41 @@ where the top-level element of `TESTOWNERS.json` has the type `TESTOWNERS`.
                                    
 Semantically, each `PRODUCT_NAME` - `PRODUCT_SPEC` association in
 `TESTOWNERS` corresponds to a product and a set of Tezt test tags and
-path prefixes to associated with the product. Path prefixes are
-interpreted such that a prefix `F` matches all tests for which `F` is
-a prefix of its `~__FILE__`. Tags match all the tests with the given
-tag. The full set of tests associated to a product is the union of all
-tests matched by any of the tags or the path prefixes associated to
-the test.
+path patterns to associated with the product. Path patterns are
+interpreted as Perl-style regular expressions such that a pattern `P`
+matches all tests with a `~__FILE__` that matches `P`. Tags match
+all the tests with the given tag. The full set of tests associated to
+a product is the union of all tests matched by any of the tags or the
+path patterns associated to the test. Each of the fields `tags` and
+`path_patterns` are optional, and their absence is interpreted as the
+empty list.
 
-
-For instance, a valid `TESTOWNERS.json` is:
+Note that `path_patterns` should be acceptable by the `--match` option
+or the `=~` TSL operator in Tezt. For instance, a valid
+`TESTOWNERS.json` is:
 
 ```json
 {
     "layer1": {
         "tags": ["michelson"],
-        "path_prefixes": [
-            "src/proto_alpha/lib_protocol/"
+        "path_patterns": [
+            "^src/proto_.*/lib_protocol/"
         ]
     }
 }
 ```
 
-This file defines one product `layer1` and declares that all tests
+This example defines a product called `layer1` and declares that all tezts
 tagged `michelson` or which are registered with `~__FILE__` in
-`src/proto_alpha/lib_protocol/` belong to that product. Or in other
-words, the union of the results returned by:
+`src/proto_.*/lib_protocol/` (that is,
+`/src/proto_alpha/lib_protocol` but also similar tests for any other
+supported Tezos protocol) belong to the Layer 1 product.
+
+In other words, this TEZTOWNERS entry declares the Layer 1 product to
+be the owner of the union of the results returned by:
 
 ```
-tezt --match "^src/proto_alpha/lib_protocol/"
-tezt michelson
+tezt 'michelson || file =~ "^src/proto_.*\/lib_protocol/"'
 ```
 
 To see all the tests associated with a product, run:

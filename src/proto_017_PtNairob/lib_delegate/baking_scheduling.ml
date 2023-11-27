@@ -130,8 +130,8 @@ let rec wait_next_event ~timeout loop_state =
     match loop_state.last_get_head_event with
     | None ->
         let t =
-          Lwt_stream.get loop_state.heads_stream >|= fun e ->
-          `New_head_proposal e
+          Lwt_stream.get loop_state.heads_stream >>= fun e ->
+          Lwt.return (`New_head_proposal e)
         in
         loop_state.last_get_head_event <- Some t ;
         t
@@ -704,13 +704,13 @@ let create_initial_state cctxt ?(synchronize = true) ~chain config
    create_round_durations constants >>? fun round_durations ->
    Baking_actions.compute_round current_proposal round_durations
    >>? fun current_round ->
-   ok {current_round; current_phase = Idle; delayed_prequorum = None}
+   ok {current_round; current_phase = Idle; delayed_quorum = None}
   else
     ok
       {
         Baking_state.current_round = Round.zero;
         current_phase = Idle;
-        delayed_prequorum = None;
+        delayed_quorum = None;
       })
   >>?= fun round_state ->
   let state = {global_state; level_state; round_state} in

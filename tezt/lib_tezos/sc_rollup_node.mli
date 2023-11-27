@@ -123,6 +123,10 @@ val create_with_endpoint :
   Client.endpoint ->
   t
 
+(** [write_in_stdin rollup_node str] write str into the stdin of the
+    rollup node process. *)
+val write_in_stdin : t -> string -> unit Lwt.t
+
 (** Get the name of an sc node. *)
 val name : t -> string
 
@@ -178,22 +182,7 @@ val run :
   ?gc_frequency:int ->
   ?history_mode:history_mode ->
   ?wait_ready:bool ->
-  t ->
-  string ->
-  string list ->
-  unit Lwt.t
-
-(** [run_sequencer ?event_level ?event_sections_levels ?allow_degraded
-    ?wait_ready node rollup_address arguments] launches the sequencer node for
-    the rollup at [rollup_address] with the given extra arguments.
-    [event_level] and [event_sections_levels] allow to select which events we
-    want the node to emit (see {!Daemon}).  If [wait_ready] is [false], tezt
-    does not wait for the node to be ready. *)
-val run_sequencer :
-  ?event_level:Daemon.Level.default_level ->
-  ?event_sections_levels:(string * Daemon.Level.level) list ->
-  ?allow_degraded:bool ->
-  ?wait_ready:bool ->
+  ?password_file:string ->
   t ->
   string ->
   string list ->

@@ -34,34 +34,35 @@ end
 (* Defining a few types now to break circular dependencies. *)
 
 let n_chunk_type =
-  {
-    (* TODO/nice to have: Add a docstring, i.e. [?description]
-                          to custom defined class spec. *)
-    (Helpers.default_class_spec ~id:"n_chunk" ())
-    with
-    seq =
-      [
-        {
-          (Helpers.default_attr_spec ~id:"has_more") with
-          dataType =
-            DataType.(
-              NumericType
-                (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
-        };
-        {
-          (Helpers.default_attr_spec ~id:"payload") with
-          dataType =
-            DataType.(
-              NumericType
-                (Int_type (BitsType {width = 7; bit_endian = BigBitEndian})));
-        };
-      ];
-  }
+  ( "n_chunk",
+    {
+      (* TODO/nice to have: Add a docstring, i.e. [?description]
+                            to custom defined class spec. *)
+      (Helpers.default_class_spec ())
+      with
+      seq =
+        [
+          {
+            (Helpers.default_attr_spec ~id:"has_more") with
+            dataType =
+              DataType.(
+                NumericType
+                  (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
+          };
+          {
+            (Helpers.default_attr_spec ~id:"payload") with
+            dataType =
+              DataType.(
+                NumericType
+                  (Int_type (BitsType {width = 7; bit_endian = BigBitEndian})));
+          };
+        ];
+    } )
 
 let n_seq_attr =
   {
     (Helpers.default_attr_spec ~id:"n") with
-    dataType = Helpers.usertype n_chunk_type;
+    dataType = ComplexDataType (UserType (fst n_chunk_type));
     cond =
       {
         Helpers.cond_no_cond with
@@ -82,74 +83,84 @@ let n_seq_attr =
   }
 
 let n_type =
-  {
-    (* TODO/nice to have: Add a docstring, i.e. [?description]
-                          to custom defined class spec. *)
-    (Helpers.default_class_spec ~id:"n" ())
-    with
-    seq = [n_seq_attr];
-  }
+  ( "n",
+    {
+      (* TODO/nice to have: Add a docstring, i.e. [?description]
+                            to custom defined class spec. *)
+      (Helpers.default_class_spec ())
+      with
+      seq = [n_seq_attr];
+    } )
 
 let z_type =
+  ( "z",
+    {
+      (Helpers.default_class_spec ()) with
+      seq =
+        [
+          {
+            (Helpers.default_attr_spec ~id:"has_tail") with
+            dataType =
+              DataType.(
+                NumericType
+                  (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
+          };
+          {
+            (Helpers.default_attr_spec ~id:"sign") with
+            dataType =
+              DataType.(
+                NumericType
+                  (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
+          };
+          {
+            (Helpers.default_attr_spec ~id:"payload") with
+            dataType =
+              DataType.(
+                NumericType
+                  (Int_type (BitsType {width = 6; bit_endian = BigBitEndian})));
+          };
+          {
+            (Helpers.default_attr_spec ~id:"tail") with
+            dataType = ComplexDataType (UserType (fst n_chunk_type));
+            cond =
+              {
+                ifExpr =
+                  Some
+                    (CastToType
+                       {
+                         value = Name "has_tail";
+                         typeName =
+                           {absolute = false; names = ["bool"]; isArray = false};
+                       });
+                repeat =
+                  RepeatUntil
+                    (UnaryOp
+                       {
+                         op = Not;
+                         operand =
+                           CastToType
+                             {
+                               value =
+                                 Attribute {value = Name "_"; attr = "has_more"};
+                               typeName =
+                                 {
+                                   absolute = false;
+                                   names = ["bool"];
+                                   isArray = false;
+                                 };
+                             };
+                       });
+              };
+          };
+        ];
+    } )
+
+let int_multi_type_attr_spec ~id ~signed width =
   {
-    (Helpers.default_class_spec ~id:"z" ()) with
-    seq =
-      [
-        {
-          (Helpers.default_attr_spec ~id:"has_tail") with
-          dataType =
-            DataType.(
-              NumericType
-                (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
-        };
-        {
-          (Helpers.default_attr_spec ~id:"sign") with
-          dataType =
-            DataType.(
-              NumericType
-                (Int_type (BitsType {width = 1; bit_endian = BigBitEndian})));
-        };
-        {
-          (Helpers.default_attr_spec ~id:"payload") with
-          dataType =
-            DataType.(
-              NumericType
-                (Int_type (BitsType {width = 6; bit_endian = BigBitEndian})));
-        };
-        {
-          (Helpers.default_attr_spec ~id:"tail") with
-          dataType = Helpers.usertype n_chunk_type;
-          cond =
-            {
-              ifExpr =
-                Some
-                  (CastToType
-                     {
-                       value = Name "has_tail";
-                       typeName =
-                         {absolute = false; names = ["bool"]; isArray = false};
-                     });
-              repeat =
-                RepeatUntil
-                  (UnaryOp
-                     {
-                       op = Not;
-                       operand =
-                         CastToType
-                           {
-                             value =
-                               Attribute {value = Name "_"; attr = "has_more"};
-                             typeName =
-                               {
-                                 absolute = false;
-                                 names = ["bool"];
-                                 isArray = false;
-                               };
-                           };
-                     });
-            };
-        };
-      ];
+    (Helpers.default_attr_spec ~id) with
+    dataType =
+      DataType.(
+        NumericType (Int_type (IntMultiType {signed; width; endian = None})));
   }
 
 let int1_type_attr_spec ~id ~signed =
@@ -177,31 +188,28 @@ let uint30_attr ~id =
 module Type = struct
   type assoc = (string * Kaitai.Types.ClassSpec.t) list
 
-  let n_chunk = ("n_chunk", n_chunk_type)
+  let n_chunk = n_chunk_type
 
-  let n = ("n", n_type)
+  let n = n_type
 
-  let z = ("z", z_type)
+  let z = z_type
 
   let uint30 =
     ( "uint30",
       (* the integer literal bounds are from data-encoding source, specifically
          the binary reader *)
-      {
-        (Helpers.default_class_spec ~id:"uint30" ()) with
-        seq = [uint30_attr ~id:"uint30"];
-      } )
+      {(Helpers.default_class_spec ()) with seq = [uint30_attr ~id:"uint30"]} )
 
   let int31 =
     ( "int31",
       (* the integer literal bounds are from data-encoding source, specifically
          the binary reader *)
       {
-        (Helpers.default_class_spec ~id:"int31" ()) with
+        (Helpers.default_class_spec ()) with
         seq =
           [
             {
-              (int_multi_type_atrr_spec ~id:"int31" ~signed:true DataType.W4) with
+              (int_multi_type_attr_spec ~id:"int31" ~signed:true DataType.W4) with
               valid =
                 Some
                   (ValidationSpec.ValidationRange
@@ -218,7 +226,7 @@ module Type = struct
     let size_id = "len_" ^ id in
     ( id,
       {
-        (Helpers.default_class_spec ~id ()) with
+        (Helpers.default_class_spec ()) with
         seq =
           [
             int1_type_attr_spec ~id:size_id ~signed:false;
@@ -245,10 +253,10 @@ module Type = struct
     let size_id = "len_" ^ id in
     ( id,
       {
-        (Helpers.default_class_spec ~id ()) with
+        (Helpers.default_class_spec ()) with
         seq =
           [
-            int_multi_type_atrr_spec ~id:size_id ~signed:false DataType.W2;
+            int_multi_type_attr_spec ~id:size_id ~signed:false DataType.W2;
             {
               (Helpers.default_attr_spec ~id) with
               dataType =
@@ -272,7 +280,7 @@ module Type = struct
     let size_id = "len_" ^ id in
     ( id,
       {
-        (Helpers.default_class_spec ~id ()) with
+        (Helpers.default_class_spec ()) with
         seq =
           [
             uint30_attr ~id:size_id;
@@ -309,7 +317,7 @@ module Attr = struct
       dataType = DataType.(NumericType (Int_type (Int1Type {signed})));
     }
 
-  let int_multi_type_atrr_spec ~id ~signed width =
+  let int_multi_type_attr_spec ~id ~signed width =
     {
       (Helpers.default_attr_spec ~id) with
       dataType =
@@ -336,25 +344,25 @@ module Attr = struct
 
   let int8 ~id = int1_type_attr_spec ~id ~signed:true
 
-  let uint16 ~id = int_multi_type_atrr_spec ~id ~signed:false DataType.W2
+  let uint16 ~id = int_multi_type_attr_spec ~id ~signed:false DataType.W2
 
-  let int16 ~id = int_multi_type_atrr_spec ~id ~signed:true DataType.W2
+  let int16 ~id = int_multi_type_attr_spec ~id ~signed:true DataType.W2
 
-  let int32 ~id = int_multi_type_atrr_spec ~id ~signed:true DataType.W4
+  let int32 ~id = int_multi_type_attr_spec ~id ~signed:true DataType.W4
 
-  let int64 ~id = int_multi_type_atrr_spec ~id ~signed:true DataType.W8
+  let int64 ~id = int_multi_type_attr_spec ~id ~signed:true DataType.W8
 
   let int31 ~id =
     {
       (Helpers.default_attr_spec ~id) with
-      dataType = Helpers.usertype (snd Type.int31);
+      dataType = ComplexDataType (UserType (fst Type.int31));
     }
 
   let uint30 ~id =
     (* the integer literal bounds are from data-encoding source, specifically
        the binary reader *)
     {
-      (int_multi_type_atrr_spec ~id ~signed:false DataType.W4) with
+      (int_multi_type_attr_spec ~id ~signed:false DataType.W4) with
       valid = Some (ValidationSpec.ValidationMax (Ast.IntNum ((1 lsl 30) - 1)));
     }
 
@@ -387,17 +395,17 @@ module Attr = struct
     | Dynamic8 ->
         {
           (Helpers.default_attr_spec ~id) with
-          dataType = Helpers.usertype (snd Type.bytes_dyn_uint8);
+          dataType = ComplexDataType (UserType (fst Type.bytes_dyn_uint8));
         }
     | Dynamic16 ->
         {
           (Helpers.default_attr_spec ~id) with
-          dataType = Helpers.usertype (snd Type.bytes_dyn_uint16);
+          dataType = ComplexDataType (UserType (fst Type.bytes_dyn_uint16));
         }
     | Dynamic30 ->
         {
           (Helpers.default_attr_spec ~id) with
-          dataType = Helpers.usertype (snd Type.bytes_dyn_uint30);
+          dataType = ComplexDataType (UserType (fst Type.bytes_dyn_uint30));
         }
     | Variable ->
         {
@@ -419,13 +427,13 @@ module Attr = struct
   let n ~id =
     {
       (Helpers.default_attr_spec ~id) with
-      dataType = Helpers.usertype (snd Type.n);
+      dataType = ComplexDataType (UserType (fst Type.n));
     }
 
   let z ~id =
     {
       (Helpers.default_attr_spec ~id) with
-      dataType = Helpers.usertype (snd Type.z);
+      dataType = ComplexDataType (UserType (fst Type.z));
     }
 
   let binary_length_kind ~id kind =

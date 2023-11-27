@@ -46,7 +46,9 @@ let pred_branch = function
 let level = function B b -> b.header.shell.level | I i -> Incremental.level i
 
 let get_level ctxt =
-  level ctxt |> Raw_level.of_int32 |> Environment.wrap_tzresult
+  let open Result_wrap_syntax in
+  let+@ res = level ctxt |> Raw_level.of_int32 in
+  res
 
 let rpc_ctxt =
   object
@@ -266,9 +268,10 @@ let get_attesting_reward ctxt ~expected_attesting_power =
       csts
       ~reward_kind:Attesting_reward_per_slot
   in
-  Lwt.return
-    (Environment.wrap_tzresult
-       Tez.(attesting_reward_per_slot *? Int64.of_int expected_attesting_power))
+  let*?@ t =
+    Tez.(attesting_reward_per_slot *? Int64.of_int expected_attesting_power)
+  in
+  return t
 
 let get_liquidity_baking_subsidy ctxt =
   let open Lwt_result_syntax in
@@ -621,7 +624,7 @@ let init_gen tup ?rng_state ?commitments ?bootstrap_balances
     ?bootstrap_delegations ?bootstrap_consensus_keys ?consensus_threshold
     ?min_proposal_quorum ?bootstrap_contracts ?level ?cost_per_byte
     ?issuance_weights ?origination_size ?blocks_per_cycle
-    ?cycles_per_voting_period ?sc_rollup_enable ?sc_rollup_arith_pvm_enable
+    ?cycles_per_voting_period ?sc_rollup_arith_pvm_enable
     ?sc_rollup_private_enable ?sc_rollup_riscv_pvm_enable ?dal_enable
     ?zk_rollup_enable ?hard_gas_limit_per_block ?nonce_revelation_threshold ?dal
     ?adaptive_issuance () =
@@ -650,7 +653,6 @@ let init_gen tup ?rng_state ?commitments ?bootstrap_balances
       ?origination_size
       ?blocks_per_cycle
       ?cycles_per_voting_period
-      ?sc_rollup_enable
       ?sc_rollup_arith_pvm_enable
       ?sc_rollup_private_enable
       ?sc_rollup_riscv_pvm_enable

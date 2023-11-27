@@ -103,7 +103,7 @@ For Tezos developers, this website mostly provides reference and API documentati
 - A complete reference of :doc:`active/michelson`
 - Important API concepts such as the :doc:`developer/rpc`
 - API references such as :doc:`shell/rpc`, :doc:`api/openapi`, or :doc:`api/errors`
-- Guidelines for writing smart contracts in Michelson, such as :doc:`developer/michelson_anti_patterns`.
+- Guidelines for writing smart contracts in Michelson, such as :doc:`active/michelson_anti_patterns`.
 
 .. raw:: html
 
@@ -171,6 +171,7 @@ Platform developers are also provided reference materials for internal APIs of O
    shell/the_big_picture
    shell/shell
    shell/data_availability_committees
+   shell/dal
    shell/smart_rollup_node
    shell/p2p_api
    shell/cli-commands
@@ -202,8 +203,6 @@ Platform developers are also provided reference materials for internal APIs of O
    :hidden:
 
    developer/rpc
-   developer/michelson_anti_patterns
-   developer/openmetrics
    api/errors
    api/openapi
 
