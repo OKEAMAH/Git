@@ -81,7 +81,7 @@ val get_total_voting_power :
   t -> int64 Environment.Error_monad.shell_tzresult Lwt.t
 
 val get_current_baking_power :
-  t -> public_key_hash -> int64 Environment.Error_monad.shell_tzresult Lwt.t
+  t -> public_key_hash -> Uint63.t Environment.Error_monad.shell_tzresult Lwt.t
 
 val get_bakers :
   ?filter:(Plugin.RPC.Baking_rights.t -> bool) ->

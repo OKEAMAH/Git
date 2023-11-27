@@ -224,7 +224,7 @@ let select_distribution_for_cycle ctxt ~slashings cycle =
         let+ pk =
           Delegate_consensus_key.active_pubkey_for_cycle ctxt pkh cycle
         in
-        (pk, Stake_repr.staking_weight stake) :: acc)
+        (pk, (Stake_repr.staking_weight stake :> Int64.t)) :: acc)
       []
       stakes
   in

@@ -40,6 +40,6 @@ val ( +? ) : t -> t -> t tzresult
 (** The weight of a staker or a set of stakers. Since this
     function is applied on a [Stake_repr.t], the limits should already
     have been applied using [apply_limits] if necessary. *)
-val staking_weight : t -> int64
+val staking_weight : t -> Uint63.t
 
 val compare : t -> t -> int

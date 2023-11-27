@@ -163,13 +163,13 @@ let of_string_opt s =
 let mk_encoding f g enc =
   mk_encoding ~err:"Non-negative integer expected" f g enc
 
-let encoding = mk_encoding (fun i -> i) of_int64 Data_encoding.int64
-
 let uint8_encoding = mk_encoding Int64.to_int of_int Data_encoding.uint8
 
 let uint16_encoding = mk_encoding Int64.to_int of_int Data_encoding.uint16
 
 let uint30_encoding = mk_encoding Int64.to_int of_int Data_encoding.int31
+
+let int64_encoding = mk_encoding (fun i -> i) of_int64 Data_encoding.int64
 
 let pp fp i = Format.fprintf fp "%Ld" i
 

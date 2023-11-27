@@ -265,7 +265,7 @@ let () =
         opb)
     ~description:
       ("A multiplication of a " ^ id ^ " amount by an integer overflowed")
-    (obj2 (req "amount" encoding) (req "multiplicator" Uint63.encoding))
+    (obj2 (req "amount" encoding) (req "multiplicator" Uint63.int64_encoding))
     (function Multiplication_overflow (a, b) -> Some (a, b) | _ -> None)
     (fun (a, b) -> Multiplication_overflow (a, b)) ;
   register_error_kind

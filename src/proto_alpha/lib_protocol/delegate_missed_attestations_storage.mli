@@ -32,8 +32,8 @@
 
 val expected_slots_for_given_active_stake :
   Raw_context.t ->
-  total_active_stake_weight:int64 ->
-  active_stake_weight:int64 ->
+  total_active_stake_weight:Uint63.t ->
+  active_stake_weight:Uint63.t ->
   int
 
 type level_participation = Participated | Didn't_participate

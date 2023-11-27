@@ -449,7 +449,7 @@ module S = struct
          the baking power that the delegate would have if a snapshot was taken \
          at the current block."
       ~query:RPC_query.empty
-      ~output:Data_encoding.int64
+      ~output:Uint63.int64_encoding
       RPC_path.(path / "current_baking_power")
 
   let voting_info =

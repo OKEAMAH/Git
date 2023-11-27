@@ -17,13 +17,13 @@ module Cmp : Compare.S with type t = t
 
 include module type of Cmp with type t := t
 
-val encoding : t Data_encoding.t
-
 val uint8_encoding : t Data_encoding.t
 
 val uint16_encoding : t Data_encoding.t
 
 val uint30_encoding : t Data_encoding.t
+
+val int64_encoding : t Data_encoding.t
 
 val pp : Format.formatter -> t -> unit
 

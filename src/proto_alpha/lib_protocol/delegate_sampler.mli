@@ -91,10 +91,10 @@ module For_RPC : sig
     Raw_context.t ->
     Cycle_repr.t ->
     Signature.public_key_hash ->
-    int64 tzresult Lwt.t
+    Uint63.t tzresult Lwt.t
 
   (** The baking power for a given delegate computed from its current
     stake. *)
   val delegate_current_baking_power :
-    Raw_context.t -> Signature.public_key_hash -> int64 tzresult Lwt.t
+    Raw_context.t -> Signature.public_key_hash -> Uint63.t tzresult Lwt.t
 end

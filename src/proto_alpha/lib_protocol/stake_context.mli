@@ -39,7 +39,7 @@ val baking_weight :
   Raw_context.t ->
   Staking_parameters_repr.t ->
   Full_staking_balance_repr.t ->
-  int64 tzresult
+  Uint63.t tzresult
 
 val optimal_frozen_wrt_delegated_without_ai :
   Raw_context.t -> Full_staking_balance_repr.t -> Tez_repr.t tzresult

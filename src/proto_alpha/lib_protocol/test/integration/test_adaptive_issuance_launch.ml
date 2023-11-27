@@ -100,7 +100,7 @@ let assert_voting_power ~loc block delegate ~ai_enabled ~expected_staked
   let* actual_baking_power =
     Context.get_current_baking_power (B block) delegate
   in
-  Assert.equal_int64 ~loc actual_baking_power expected_baking_power
+  Assert.equal_int64 ~loc (actual_baking_power :> Int64.t) expected_baking_power
 
 (* Test that:
    - the EMA of the adaptive issuance vote reaches the threshold after the
