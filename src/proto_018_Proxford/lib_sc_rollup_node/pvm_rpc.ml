@@ -26,7 +26,7 @@
 module type S = sig
   (** Build RPC directory of the PVM *)
   val build_sub_directory :
-    Node_context.rw ->
+    Irmin_context.repo Node_context_types.rw ->
     (unit * Rollup_node_services.Arg.block_id) Tezos_rpc.Directory.t
 end
 

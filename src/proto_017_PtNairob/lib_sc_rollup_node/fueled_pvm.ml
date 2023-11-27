@@ -31,10 +31,6 @@ open Pvm_plugin_sig
 
 type fuel
 
-type repo = Irmin_context.repo
-
-type tree = Irmin_context.tree
-
 module Make_fueled (F : Fuel.S) :
   FUELED_PVM
     with type fuel = F.t
@@ -42,9 +38,9 @@ module Make_fueled (F : Fuel.S) :
      and type tree = Irmin_context.tree = struct
   type fuel = F.t
 
-  type nonrec repo = repo
+  type repo = Irmin_context.repo
 
-  type nonrec tree = tree
+  type tree = Irmin_context.tree
 
   type pvm_state = tree
 
@@ -394,12 +390,7 @@ module Make_fueled (F : Fuel.S) :
    fun ~fuel
        (node_ctxt : (_, Irmin_context.repo) Node_context_types.t)
        (inbox, messages)
-       (state : pvm_state) (* : *) ->
-    (* ( (fuel, pvm_state) eval_result, *)
-    (*   Irmin_context.repo ) *)
-    (* Node_context_types.delayed_write *)
-    (* tzresult *)
-    (* Lwt.t *)
+       (state : pvm_state) ->
     let open Lwt_result_syntax in
     let open Delayed_write_monad.Lwt_result_syntax in
     let module PVM = (val Pvm.of_kind node_ctxt.kind) in

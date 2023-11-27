@@ -23,7 +23,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Plugin : Protocol_plugin_sig.S = struct
+module Plugin :
+  Protocol_plugin_sig.S
+    with type Pvm.Context.repo = Irmin_context.repo
+     and type Pvm.Context.tree = Irmin_context.tree = struct
   let protocol = Protocol.hash
 
   module RPC_directory = RPC_directory

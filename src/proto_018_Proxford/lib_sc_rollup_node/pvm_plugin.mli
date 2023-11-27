@@ -24,4 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include Pvm_plugin_sig.S
+include
+  Pvm_plugin_sig.S
+    with type Context.repo = Irmin_context.repo
+     and type Context.tree = Irmin_context.tree

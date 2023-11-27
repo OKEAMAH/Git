@@ -29,15 +29,14 @@ module Plugin :
      and type Pvm.Context.tree = Irmin_context.tree = struct
   let protocol = Protocol.hash
 
-  module Layer1_helpers = Layer1_helpers
-  module Pvm = Pvm_plugin
   module RPC_directory = RPC_directory
   module Dal_slots_tracker = Dal_slots_tracker
   module Inbox = Inbox
-  module Interpreter = Interpreter
   module Refutation_game_helpers = Refutation_game_helpers
   module Batcher_constants = Batcher_constants
+  module Layer1_helpers = Layer1_helpers
   module L1_processing = Daemon_helpers
+  module Pvm = Pvm_plugin
 end
 
 let () = Protocol_plugins.register (module Plugin)

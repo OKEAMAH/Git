@@ -31,7 +31,7 @@ open Alpha_context
 
 let lift promise = Lwt.map Environment.wrap_tzresult promise
 
-let get_messages Node_context.{l1_ctxt; _} head =
+let get_messages Node_context_types.{l1_ctxt; _} head =
   let open Lwt_result_syntax in
   let* block = Layer1_helpers.fetch_tezos_block l1_ctxt head in
   let apply (type kind) accu ~source:_ (operation : kind manager_operation)
@@ -92,7 +92,7 @@ let get_messages Node_context.{l1_ctxt; _} head =
 let same_as_layer_1 node_ctxt head_hash inbox =
   let open Lwt_result_syntax in
   let head_block = `Hash (head_hash, 0) in
-  let Node_context.{cctxt; _} = node_ctxt in
+  let Node_context_types.{cctxt; _} = node_ctxt in
   let cctxt = new Protocol_client_context.wrap_full cctxt in
   let* layer1_inbox =
     Plugin.RPC.Sc_rollup.inbox cctxt (cctxt#chain, head_block)
@@ -129,7 +129,7 @@ let add_messages ~is_first_block ~predecessor_timestamp ~predecessor inbox
          inbox,
          messages_with_protocol_internal_messages )
 
-let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
+let process_messages (node_ctxt : _ Node_context_types.t) ~is_first_block
     ~(predecessor : Layer1.header) (head : Layer1.header) messages =
   let open Lwt_result_syntax in
   let level = head.level in
@@ -188,8 +188,8 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
   return
     (inbox_hash, inbox, witness_hash, messages_with_protocol_internal_messages)
 
-let process_head (node_ctxt : _ Node_context.t) ~(predecessor : Layer1.header)
-    (head : Layer1.header) =
+let process_head (node_ctxt : _ Node_context_types.t)
+    ~(predecessor : Layer1.header) (head : Layer1.header) =
   let open Lwt_result_syntax in
   let first_inbox_level = node_ctxt.genesis_info.level |> Int32.succ in
   if head.level >= first_inbox_level then
@@ -203,7 +203,9 @@ let process_head (node_ctxt : _ Node_context.t) ~(predecessor : Layer1.header)
         head.level
         (List.length collected_messages)
     in
-    let* head_proto = Node_context.protocol_of_level node_ctxt head.level in
+    let* head_proto =
+      Node_context_types.protocol_of_level node_ctxt head.level
+    in
     let is_first_block = head_proto.first_level_of_protocol in
     process_messages
       node_ctxt

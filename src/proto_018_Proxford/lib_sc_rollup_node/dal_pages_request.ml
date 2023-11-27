@@ -89,8 +89,8 @@ let get_slot_pages =
       (Dal_node_client.get_slot_pages dal_cctxt)
       Lwt.return
 
-let download_confirmed_slot_pages ({Node_context.dal_cctxt; _} as node_ctxt)
-    ~published_level ~index =
+let download_confirmed_slot_pages
+    ({Node_context_types.dal_cctxt; _} as node_ctxt) ~published_level ~index =
   let open Lwt_result_syntax in
   let* published_in_block_hash =
     Node_context.hash_of_level node_ctxt (Raw_level.to_int32 published_level)

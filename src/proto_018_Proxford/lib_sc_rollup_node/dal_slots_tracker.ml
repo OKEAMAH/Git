@@ -26,8 +26,10 @@
 open Protocol
 open Alpha_context
 
+type repo = Irmin_context.repo
+
 let ancestor_hash ~number_of_levels
-    ({Node_context.genesis_info; _} as node_ctxt) head =
+    ({Node_context_types.genesis_info; _} as node_ctxt) head =
   let genesis_level = genesis_info.level in
   let rec go number_of_levels (Layer1.{hash; level} as head) =
     let open Lwt_result_syntax in
@@ -81,7 +83,9 @@ let slots_info constants node_ctxt (Layer1.{hash; _} as head) =
       return None
   | Some published_block_hash ->
       let* {metadata; _} =
-        Layer1_helpers.fetch_tezos_block node_ctxt.Node_context.l1_ctxt hash
+        Layer1_helpers.fetch_tezos_block
+          node_ctxt.Node_context_types.l1_ctxt
+          hash
       in
       let*? metadata =
         Option.to_result
@@ -128,7 +132,7 @@ let to_slot_index_list (constants : Rollup_constants.protocol_constants) bitset
    Use a shared storage between dal and rollup node to store slots data.
 *)
 
-let download_and_save_slots constants (node_context : _ Node_context.t)
+let download_and_save_slots constants (node_context : _ Node_context_types.t)
     ~current_block_hash {published_block_hash; confirmed_slots_indexes} =
   let open Lwt_result_syntax in
   let*? all_slots =
@@ -201,7 +205,8 @@ module Confirmed_slots_history = struct
           h)
       relevant_slots_indexes
 
-  let read_slots_history_from_l1 _constants {Node_context.cctxt; _} block =
+  let read_slots_history_from_l1 _constants {Node_context_types.cctxt; _} block
+      =
     let open Lwt_result_syntax in
     (* We return the empty Slots_history if DAL is not enabled. *)
     let* slots_list_opt =
@@ -217,7 +222,7 @@ module Confirmed_slots_history = struct
       [origination_level + attestation_lag] blocks. This function checks if
       that level is reached or not.  *)
   let should_process_dal_slots constants node_ctxt block_level =
-    let open Node_context in
+    let open Node_context_types in
     let lag = Int32.of_int constants.Rollup_constants.dal.attestation_lag in
     let block_level = Raw_level.to_int32 block_level in
     let genesis_level = node_ctxt.genesis_info.level in

@@ -30,6 +30,6 @@ open Protocol.Alpha_context
 (** [proof_of_output node_ctxt output] returns the last cemented commitment hash
     and the proof of the output in the LCC. *)
 val proof_of_output :
-  Node_context.rw ->
+  Irmin_context.repo Node_context_types.rw ->
   Sc_rollup.output ->
   (Octez_smart_rollup.Commitment.Hash.t * string) tzresult Lwt.t

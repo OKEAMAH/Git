@@ -25,4 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-include Protocol_plugin_sig.REFUTATION_GAME_HELPERS
+include
+  Protocol_plugin_sig.REFUTATION_GAME_HELPERS
+    with type tree = Irmin_context.tree
+     and type repo = Irmin_context.repo
