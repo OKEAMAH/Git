@@ -342,12 +342,6 @@ types:
     - id: tx_rollup_padding
       size: 1
       doc: This field is for padding, ignore
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   z:
     seq:
     - id: has_tail
@@ -394,22 +388,22 @@ enums:
       id: left
       doc: Left
     6:
-      id: none_
+      id: none_0
       doc: None
     7:
-      id: pair__
+      id: pair_1
       doc: Pair
     8:
       id: right
       doc: Right
     9:
-      id: some_
+      id: some_0
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit__
+      id: unit_1
       doc: Unit
     12:
       id: pack
@@ -520,16 +514,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int_
+      id: int_0
       doc: INT
     49:
-      id: lambda_
+      id: lambda_0
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left_
+      id: left_0
       doc: LEFT
     52:
       id: loop
@@ -544,7 +538,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map_
+      id: map_0
       doc: MAP
     57:
       id: mem
@@ -571,16 +565,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or_
+      id: or_0
       doc: OR
     66:
-      id: pair_
+      id: pair_0
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right_
+      id: right_0
       doc: RIGHT
     69:
       id: size
@@ -613,7 +607,7 @@ enums:
       id: set_delegate
       doc: SET_DELEGATE
     79:
-      id: unit_
+      id: unit_0
       doc: UNIT
     80:
       id: update
@@ -628,10 +622,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address_
+      id: address_0
       doc: ADDRESS
     85:
-      id: contract_
+      id: contract_0
       doc: CONTRACT
     86:
       id: isnat
@@ -681,7 +675,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id_
+      id: chain_id_0
       doc: CHAIN_ID
     118:
       id: level
@@ -691,7 +685,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never_
+      id: never_0
       doc: NEVER
     122:
       id: unpair
@@ -724,7 +718,7 @@ enums:
       doc: SAPLING_VERIFY_UPDATE
     135: ticket
     136:
-      id: ticket_
+      id: ticket_0
       doc: TICKET
     137:
       id: read_ticket
@@ -744,7 +738,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view_
+      id: view_0
       doc: VIEW
     145: view
     146: constant

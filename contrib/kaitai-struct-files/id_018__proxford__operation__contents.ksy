@@ -228,16 +228,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  endorsement_0:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
   id_018__proxford__block_header__alpha__full_header:
     seq:
     - id: id_018__proxford__block_header__alpha__full_header
@@ -312,7 +302,7 @@ types:
       type: u1
       enum: id_018__proxford__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement_0
+      type: endorsement
       if: (id_018__proxford__inlined__endorsement_mempool__contents_tag == id_018__proxford__inlined__endorsement_mempool__contents_tag::endorsement)
   id_018__proxford__inlined__preendorsement:
     seq:
@@ -332,7 +322,7 @@ types:
       type: u1
       enum: id_018__proxford__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: preendorsement_0
+      type: preendorsement
       if: (id_018__proxford__inlined__preendorsement__contents_tag == id_018__proxford__inlined__preendorsement__contents_tag::preendorsement)
   id_018__proxford__michelson__v1__primitives:
     seq:
@@ -848,16 +838,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  preendorsement_0:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
   price:
     seq:
     - id: id
@@ -1345,12 +1325,6 @@ types:
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   update:
     seq:
     - id: pending_pis
@@ -1488,22 +1462,22 @@ enums:
       id: left
       doc: Left
     6:
-      id: none_
+      id: none_0
       doc: None
     7:
-      id: pair__
+      id: pair_1
       doc: Pair
     8:
       id: right
       doc: Right
     9:
-      id: some_
+      id: some_0
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit_
+      id: unit_0
       doc: Unit
     12:
       id: pack
@@ -1614,16 +1588,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int_
+      id: int_0
       doc: INT
     49:
-      id: lambda_
+      id: lambda_0
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left_
+      id: left_0
       doc: LEFT
     52:
       id: loop
@@ -1638,7 +1612,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map_
+      id: map_0
       doc: MAP
     57:
       id: mem
@@ -1665,16 +1639,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or_
+      id: or_0
       doc: OR
     66:
-      id: pair_
+      id: pair_0
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right_
+      id: right_0
       doc: RIGHT
     69:
       id: size
@@ -1707,7 +1681,7 @@ enums:
       id: set_delegate
       doc: SET_DELEGATE
     79:
-      id: unit__
+      id: unit_1
       doc: UNIT
     80:
       id: update
@@ -1722,10 +1696,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address_
+      id: address_0
       doc: ADDRESS
     85:
-      id: contract_
+      id: contract_0
       doc: CONTRACT
     86:
       id: isnat
@@ -1775,7 +1749,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id_
+      id: chain_id_0
       doc: CHAIN_ID
     118:
       id: level
@@ -1785,7 +1759,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never_
+      id: never_0
       doc: NEVER
     122:
       id: unpair
@@ -1838,7 +1812,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view_
+      id: view_0
       doc: VIEW
     145: view
     146: constant
@@ -1857,16 +1831,16 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec_
+      id: lambda_rec_0
       doc: LAMBDA_REC
     154:
-      id: ticket_
+      id: ticket_0
       doc: TICKET
     155:
-      id: bytes_
+      id: bytes_0
       doc: BYTES
     156:
-      id: nat_
+      id: nat_0
       doc: NAT
   id_018__proxford__operation_with_legacy_attestation_name__alpha__contents_tag:
     1: seed_nonce_revelation

@@ -364,12 +364,6 @@ types:
       type: s4
     - id: dal_parameters
       type: s4
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   whitelist:
     seq:
     - id: whitelist_entries
@@ -526,9 +520,6 @@ seq:
   type: s1
 - id: dal_parametric
   type: dal_parametric
-- id: smart_rollup_enable
-  type: u1
-  enum: bool
 - id: smart_rollup_arith_pvm_enable
   type: u1
   enum: bool
@@ -580,5 +571,8 @@ seq:
 - id: adaptive_rewards_params
   type: adaptive_rewards_params
 - id: adaptive_issuance_activation_vote_enable
+  type: u1
+  enum: bool
+- id: autostaking_enable
   type: u1
   enum: bool

@@ -23,6 +23,22 @@ types:
     - id: originated
       type: originated
       if: (alpha__contract_id_tag == alpha__contract_id_tag::originated)
+  alpha__frozen_staker:
+    seq:
+    - id: alpha__frozen_staker_tag
+      type: u1
+      enum: alpha__frozen_staker_tag
+    - id: single
+      type: single
+      if: (alpha__frozen_staker_tag == alpha__frozen_staker_tag::single)
+    - id: shared
+      type: public_key_hash
+      if: (alpha__frozen_staker_tag == alpha__frozen_staker_tag::shared)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: baker
+      type: public_key_hash
+      if: (alpha__frozen_staker_tag == alpha__frozen_staker_tag::baker)
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
   alpha__operation_metadata__alpha__balance_and_update:
     seq:
     - id: alpha__operation_metadata__alpha__balance_and_update_tag
@@ -127,9 +143,12 @@ types:
       type: s8
   alpha__operation_metadata__alpha__update_origin:
     seq:
-    - id: origin
+    - id: alpha__operation_metadata__alpha__update_origin_tag
       type: u1
-      enum: origin_tag
+      enum: alpha__operation_metadata__alpha__update_origin_tag
+    - id: delayed_operation
+      size: 32
+      if: (alpha__operation_metadata__alpha__update_origin_tag == alpha__operation_metadata__alpha__update_origin_tag::delayed_operation)
   alpha__staker:
     seq:
     - id: alpha__staker_tag
@@ -160,10 +179,10 @@ types:
   deposits:
     seq:
     - id: staker
-      type: alpha__staker
+      type: alpha__frozen_staker
       doc: ! >-
-        staker: Abstract notion of staker used in operation receipts, either a single
-        staker or all the stakers delegating to some delegate.
+        frozen_staker: Abstract notion of staker used in operation receipts for frozen
+        deposits, either a single staker or all the stakers delegating to some delegate.
     - id: alpha__operation_metadata__alpha__tez_balance_update
       type: alpha__operation_metadata__alpha__tez_balance_update
   frozen_bonds:
@@ -245,8 +264,9 @@ types:
     - id: staker
       type: alpha__staker
       doc: ! >-
-        staker: Abstract notion of staker used in operation receipts, either a single
-        staker or all the stakers delegating to some delegate.
+        unstaked_frozen_staker: Abstract notion of staker used in operation receipts
+        for unstaked frozen deposits, either a single staker or all the stakers delegating
+        to some delegate.
     - id: cycle
       type: s4
     - id: alpha__operation_metadata__alpha__tez_balance_update
@@ -257,6 +277,10 @@ enums:
   alpha__contract_id_tag:
     0: implicit
     1: originated
+  alpha__frozen_staker_tag:
+    0: single
+    1: shared
+    2: baker
   alpha__operation_metadata__alpha__balance_and_update_tag:
     0: contract
     2: block_fees
@@ -281,17 +305,18 @@ enums:
     26: unstaked_deposits
     27: staking_delegator_numerator
     28: staking_delegate_denominator
+  alpha__operation_metadata__alpha__update_origin_tag:
+    0: block_application
+    1: protocol_migration
+    2: subsidy
+    3: simulation
+    4: delayed_operation
   alpha__staker_tag:
     0: single
     1: shared
   bool:
     0: false
     255: true
-  origin_tag:
-    0: block_application
-    1: protocol_migration
-    2: subsidy
-    3: simulation
   public_key_hash_tag:
     0: ed25519
     1: secp256k1

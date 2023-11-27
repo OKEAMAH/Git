@@ -217,12 +217,6 @@ types:
     - id: round_robin_over_delegates_elt
       type: round_robin_over_delegates_elt
       size: len_round_robin_over_delegates_elt
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   z:
     seq:
     - id: has_tail

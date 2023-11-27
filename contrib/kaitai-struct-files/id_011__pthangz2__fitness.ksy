@@ -33,12 +33,6 @@ types:
     seq:
     - id: fitness__elem
       type: fitness__elem
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: fitness
   type: fitness_0

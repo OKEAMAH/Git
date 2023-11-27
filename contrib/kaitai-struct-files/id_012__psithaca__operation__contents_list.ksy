@@ -105,16 +105,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  endorsement_0:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
   id_012__psithaca__block_header__alpha__full_header:
     seq:
     - id: id_012__psithaca__block_header__alpha__full_header
@@ -182,7 +172,7 @@ types:
       type: u1
       enum: id_012__psithaca__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement_0
+      type: endorsement
       if: (id_012__psithaca__inlined__endorsement_mempool__contents_tag == id_012__psithaca__inlined__endorsement_mempool__contents_tag::endorsement)
   id_012__psithaca__inlined__preendorsement:
     seq:
@@ -202,7 +192,7 @@ types:
       type: u1
       enum: id_012__psithaca__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: preendorsement_0
+      type: preendorsement
       if: (id_012__psithaca__inlined__preendorsement__contents_tag == id_012__psithaca__inlined__preendorsement__contents_tag::preendorsement)
   id_012__psithaca__mutez:
     seq:
@@ -396,16 +386,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  preendorsement_0:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
   proposals:
     seq:
     - id: proposals_entries
@@ -543,12 +523,6 @@ types:
     - id: parameters
       type: parameters
       if: (parameters_tag == bool::true)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

@@ -15,12 +15,6 @@ types:
     seq:
     - id: p2p_point__id
       type: bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: p2p_point__id
   type: p2p_point__id

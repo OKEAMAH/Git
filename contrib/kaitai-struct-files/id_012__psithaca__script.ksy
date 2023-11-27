@@ -17,12 +17,6 @@ types:
       type: bytes_dyn_uint30
     - id: storage
       type: bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: id_012__psithaca__scripted__contracts
   type: id_012__psithaca__scripted__contracts

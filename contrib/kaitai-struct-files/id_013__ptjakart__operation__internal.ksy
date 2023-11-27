@@ -186,12 +186,6 @@ types:
     - id: tx_rollup_padding
       size: 1
       doc: This field is for padding, ignore
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

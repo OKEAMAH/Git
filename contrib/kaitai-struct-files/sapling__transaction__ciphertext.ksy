@@ -17,12 +17,6 @@ types:
     seq:
     - id: sapling__dh__epk
       size: 32
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: cv
   type: sapling__transaction__commitment_value

@@ -309,6 +309,33 @@ types:
     - id: case__131
       type: case__131
       size: len_case__131
+  case__131_1:
+    seq:
+    - id: len_case__131
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__131
+      type: case__131
+      size: len_case__131
+  case__131_2:
+    seq:
+    - id: len_case__131
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__131
+      type: case__131
+      size: len_case__131
+  case__131_3:
+    seq:
+    - id: len_case__131
+      type: u4
+      valid:
+        max: 1073741823
+    - id: case__131
+      type: case__131
+      size: len_case__131
   case__131_elt_field0:
     seq:
     - id: case__131_elt_field0
@@ -388,11 +415,65 @@ types:
     - id: case__192
       type: case__192
       size: len_case__192
+  case__192_1:
+    seq:
+    - id: len_case__192
+      type: u1
+      valid:
+        max: 255
+    - id: case__192
+      type: case__192
+      size: len_case__192
+  case__192_2:
+    seq:
+    - id: len_case__192
+      type: u1
+      valid:
+        max: 255
+    - id: case__192
+      type: case__192
+      size: len_case__192
+  case__192_3:
+    seq:
+    - id: len_case__192
+      type: u1
+      valid:
+        max: 255
+    - id: case__192
+      type: case__192
+      size: len_case__192
   case__193:
     seq:
     - id: case__193
       size-eos: true
   case__193_0:
+    seq:
+    - id: len_case__193
+      type: u2
+      valid:
+        max: 65535
+    - id: case__193
+      type: case__193
+      size: len_case__193
+  case__193_1:
+    seq:
+    - id: len_case__193
+      type: u2
+      valid:
+        max: 65535
+    - id: case__193
+      type: case__193
+      size: len_case__193
+  case__193_2:
+    seq:
+    - id: len_case__193
+      type: u2
+      valid:
+        max: 65535
+    - id: case__193
+      type: case__193
+      size: len_case__193
+  case__193_3:
     seq:
     - id: len_case__193
       type: u2
@@ -475,13 +556,13 @@ types:
       type: case__130_entries
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_0
+      type: case__131_2
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_0
+      type: case__192_2
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_0
+      type: case__193_2
       if: (case__1_field3_elt_tag == case__1_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -672,13 +753,13 @@ types:
       type: case__130_entries
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_0
+      type: case__131_1
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_0
+      type: case__192_1
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_0
+      type: case__193_1
       if: (case__2_field3_elt_tag == case__2_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -781,13 +862,13 @@ types:
       type: case__130_entries
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__130)
     - id: case__131
-      type: case__131_0
+      type: case__131_3
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__131)
     - id: case__192
-      type: case__192_0
+      type: case__192_3
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__192)
     - id: case__193
-      type: case__193_0
+      type: case__193_3
       if: (case__3_field3_elt_tag == case__3_field3_elt_tag::case__193)
     - id: case__195
       type: bytes_dyn_uint30
@@ -945,16 +1026,6 @@ types:
       type: s4
     - id: block_payload_hash
       size: 32
-  endorsement_0:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
   id_013__ptjakart__block_header__alpha__full_header:
     seq:
     - id: id_013__ptjakart__block_header__alpha__full_header
@@ -1021,7 +1092,7 @@ types:
       type: u1
       enum: id_013__ptjakart__inlined__endorsement_mempool__contents_tag
     - id: endorsement
-      type: endorsement_0
+      type: endorsement
       if: (id_013__ptjakart__inlined__endorsement_mempool__contents_tag == id_013__ptjakart__inlined__endorsement_mempool__contents_tag::endorsement)
   id_013__ptjakart__inlined__preendorsement:
     seq:
@@ -1041,7 +1112,7 @@ types:
       type: u1
       enum: id_013__ptjakart__inlined__preendorsement__contents_tag
     - id: preendorsement
-      type: preendorsement_0
+      type: preendorsement
       if: (id_013__ptjakart__inlined__preendorsement__contents_tag == id_013__ptjakart__inlined__preendorsement__contents_tag::preendorsement)
   id_013__ptjakart__liquidity_baking_toggle_vote:
     seq:
@@ -1244,25 +1315,7 @@ types:
     - id: message_result_path
       type: message_result_path
       size: len_message_result_path
-  message_result_path_1:
-    seq:
-    - id: message_result_path_entries
-      type: message_result_path_entries_0
-      repeat: eos
-  message_result_path_2:
-    seq:
-    - id: len_message_result_path
-      type: u4
-      valid:
-        max: 1073741823
-    - id: message_result_path
-      type: message_result_path_1
-      size: len_message_result_path
   message_result_path_entries:
-    seq:
-    - id: message_result_list_hash
-      size: 32
-  message_result_path_entries_0:
     seq:
     - id: message_result_list_hash
       size: 32
@@ -1408,16 +1461,6 @@ types:
       size: 32
       if: (predecessor_tag == predecessor_tag::some)
   preendorsement:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  preendorsement_0:
     seq:
     - id: slot
       type: u2
@@ -1801,7 +1844,7 @@ types:
     - id: message_index
       type: int31
     - id: message_result_path
-      type: message_result_path_2
+      type: message_result_path_0
     - id: tickets_info
       type: tickets_info_0
   tx_rollup_finalize_commitment:
@@ -1933,12 +1976,6 @@ types:
     - id: burn_limit
       type: id_013__ptjakart__mutez
       if: (burn_limit_tag == bool::true)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   amount_tag:
     0: case__0

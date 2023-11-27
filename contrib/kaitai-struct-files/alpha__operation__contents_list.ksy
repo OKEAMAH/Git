@@ -68,46 +68,46 @@ types:
     - id: named
       type: named_0
       if: (alpha__entrypoint_tag == alpha__entrypoint_tag::named)
-  alpha__inlined__attestation:
+  alpha__inlined__endorsement:
     seq:
-    - id: alpha__inlined__attestation
+    - id: alpha__inlined__endorsement
       type: operation__shell_header
     - id: operations
-      type: alpha__inlined__attestation_mempool__contents
+      type: alpha__inlined__endorsement_mempool__contents
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  alpha__inlined__attestation_mempool__contents:
+  alpha__inlined__endorsement_mempool__contents:
     seq:
-    - id: alpha__inlined__attestation_mempool__contents_tag
+    - id: alpha__inlined__endorsement_mempool__contents_tag
       type: u1
-      enum: alpha__inlined__attestation_mempool__contents_tag
-    - id: attestation
-      type: attestation_0
-      if: (alpha__inlined__attestation_mempool__contents_tag == alpha__inlined__attestation_mempool__contents_tag::attestation)
-  alpha__inlined__preattestation:
+      enum: alpha__inlined__endorsement_mempool__contents_tag
+    - id: endorsement
+      type: endorsement
+      if: (alpha__inlined__endorsement_mempool__contents_tag == alpha__inlined__endorsement_mempool__contents_tag::endorsement)
+  alpha__inlined__preendorsement:
     seq:
-    - id: alpha__inlined__preattestation
+    - id: alpha__inlined__preendorsement
       type: operation__shell_header
     - id: operations
-      type: alpha__inlined__preattestation__contents
+      type: alpha__inlined__preendorsement__contents
     - id: signature_tag
       type: u1
       enum: bool
     - id: signature
       size-eos: true
       if: (signature_tag == bool::true)
-  alpha__inlined__preattestation__contents:
+  alpha__inlined__preendorsement__contents:
     seq:
-    - id: alpha__inlined__preattestation__contents_tag
+    - id: alpha__inlined__preendorsement__contents_tag
       type: u1
-      enum: alpha__inlined__preattestation__contents_tag
-    - id: preattestation
-      type: preattestation_0
-      if: (alpha__inlined__preattestation__contents_tag == alpha__inlined__preattestation__contents_tag::preattestation)
+      enum: alpha__inlined__preendorsement__contents_tag
+    - id: preendorsement
+      type: preendorsement
+      if: (alpha__inlined__preendorsement__contents_tag == alpha__inlined__preendorsement__contents_tag::preendorsement)
   alpha__michelson__v1__primitives:
     seq:
     - id: alpha__michelson__v1__primitives
@@ -117,114 +117,117 @@ types:
     seq:
     - id: alpha__mutez
       type: n
-  alpha__operation__alpha__contents:
-    seq:
-    - id: alpha__operation__alpha__contents_tag
-      type: u1
-      enum: alpha__operation__alpha__contents_tag
-    - id: preattestation
-      type: preattestation
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::preattestation)
-    - id: attestation
-      type: attestation
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::attestation)
-    - id: double_preattestation_evidence
-      type: double_preattestation_evidence
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::double_preattestation_evidence)
-    - id: double_attestation_evidence
-      type: double_attestation_evidence
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::double_attestation_evidence)
-    - id: dal_attestation
-      type: dal_attestation
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::dal_attestation)
-    - id: seed_nonce_revelation
-      type: seed_nonce_revelation
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::seed_nonce_revelation)
-    - id: vdf_revelation
-      type: solution
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::vdf_revelation)
-    - id: double_baking_evidence
-      type: double_baking_evidence
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::double_baking_evidence)
-    - id: activate_account
-      type: activate_account
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::activate_account)
-    - id: proposals
-      type: proposals_1
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::proposals)
-    - id: ballot
-      type: ballot
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::ballot)
-    - id: reveal
-      type: reveal
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::reveal)
-    - id: transaction
-      type: transaction
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::transaction)
-    - id: origination
-      type: origination
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::origination)
-    - id: delegation
-      type: delegation
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::delegation)
-    - id: increase_paid_storage
-      type: increase_paid_storage
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::increase_paid_storage)
-    - id: update_consensus_key
-      type: update_consensus_key
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::update_consensus_key)
-    - id: drain_delegate
-      type: drain_delegate
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::drain_delegate)
-    - id: failing_noop
-      type: bytes_dyn_uint30
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::failing_noop)
-    - id: register_global_constant
-      type: register_global_constant
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::register_global_constant)
-    - id: transfer_ticket
-      type: transfer_ticket
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::transfer_ticket)
-    - id: dal_publish_slot_header
-      type: dal_publish_slot_header
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::dal_publish_slot_header)
-    - id: smart_rollup_originate
-      type: smart_rollup_originate
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_originate)
-    - id: smart_rollup_add_messages
-      type: smart_rollup_add_messages
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_add_messages)
-    - id: smart_rollup_cement
-      type: smart_rollup_cement
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_cement)
-    - id: smart_rollup_publish
-      type: smart_rollup_publish
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_publish)
-    - id: smart_rollup_refute
-      type: smart_rollup_refute
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_refute)
-    - id: smart_rollup_timeout
-      type: smart_rollup_timeout
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_timeout)
-    - id: smart_rollup_execute_outbox_message
-      type: smart_rollup_execute_outbox_message
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_execute_outbox_message)
-    - id: smart_rollup_recover_bond
-      type: smart_rollup_recover_bond
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::smart_rollup_recover_bond)
-    - id: zk_rollup_origination
-      type: zk_rollup_origination
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::zk_rollup_origination)
-    - id: zk_rollup_publish
-      type: zk_rollup_publish
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::zk_rollup_publish)
-    - id: zk_rollup_update
-      type: zk_rollup_update
-      if: (alpha__operation__alpha__contents_tag == alpha__operation__alpha__contents_tag::zk_rollup_update)
   alpha__operation__contents_list_entries:
     seq:
-    - id: alpha__operation__alpha__contents
-      type: alpha__operation__alpha__contents
+    - id: alpha__operation_with_legacy_attestation_name__alpha__contents
+      type: alpha__operation_with_legacy_attestation_name__alpha__contents
+  alpha__operation_with_legacy_attestation_name__alpha__contents:
+    seq:
+    - id: alpha__operation_with_legacy_attestation_name__alpha__contents_tag
+      type: u1
+      enum: alpha__operation_with_legacy_attestation_name__alpha__contents_tag
+    - id: preendorsement
+      type: preendorsement
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::preendorsement)
+    - id: endorsement
+      type: endorsement
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::endorsement)
+    - id: double_preendorsement_evidence
+      type: double_preendorsement_evidence
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::double_preendorsement_evidence)
+    - id: double_endorsement_evidence
+      type: double_endorsement_evidence
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::double_endorsement_evidence)
+    - id: dal_attestation
+      type: dal_attestation
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::dal_attestation)
+    - id: seed_nonce_revelation
+      type: seed_nonce_revelation
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::seed_nonce_revelation)
+    - id: vdf_revelation
+      type: solution
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::vdf_revelation)
+    - id: double_baking_evidence
+      type: double_baking_evidence
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::double_baking_evidence)
+    - id: activate_account
+      type: activate_account
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::activate_account)
+    - id: proposals
+      type: proposals_1
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::proposals)
+    - id: ballot
+      type: ballot
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::ballot)
+    - id: reveal
+      type: reveal
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::reveal)
+    - id: transaction
+      type: transaction
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::transaction)
+    - id: origination
+      type: origination
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::origination)
+    - id: delegation
+      type: delegation
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::delegation)
+    - id: set_deposits_limit
+      type: set_deposits_limit
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::set_deposits_limit)
+    - id: increase_paid_storage
+      type: increase_paid_storage
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::increase_paid_storage)
+    - id: update_consensus_key
+      type: update_consensus_key
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::update_consensus_key)
+    - id: drain_delegate
+      type: drain_delegate
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::drain_delegate)
+    - id: failing_noop
+      type: bytes_dyn_uint30
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::failing_noop)
+    - id: register_global_constant
+      type: register_global_constant
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::register_global_constant)
+    - id: transfer_ticket
+      type: transfer_ticket
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::transfer_ticket)
+    - id: dal_publish_slot_header
+      type: dal_publish_slot_header
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::dal_publish_slot_header)
+    - id: smart_rollup_originate
+      type: smart_rollup_originate
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_originate)
+    - id: smart_rollup_add_messages
+      type: smart_rollup_add_messages
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_add_messages)
+    - id: smart_rollup_cement
+      type: smart_rollup_cement
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_cement)
+    - id: smart_rollup_publish
+      type: smart_rollup_publish
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_publish)
+    - id: smart_rollup_refute
+      type: smart_rollup_refute
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_refute)
+    - id: smart_rollup_timeout
+      type: smart_rollup_timeout
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_timeout)
+    - id: smart_rollup_execute_outbox_message
+      type: smart_rollup_execute_outbox_message
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_execute_outbox_message)
+    - id: smart_rollup_recover_bond
+      type: smart_rollup_recover_bond
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::smart_rollup_recover_bond)
+    - id: zk_rollup_origination
+      type: zk_rollup_origination
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::zk_rollup_origination)
+    - id: zk_rollup_publish
+      type: zk_rollup_publish
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::zk_rollup_publish)
+    - id: zk_rollup_update
+      type: zk_rollup_update
+      if: (alpha__operation_with_legacy_attestation_name__alpha__contents_tag == alpha__operation_with_legacy_attestation_name__alpha__contents_tag::zk_rollup_update)
   alpha__per_block_votes:
     seq:
     - id: alpha__per_block_votes_tag
@@ -254,26 +257,6 @@ types:
     seq:
     - id: args_elt
       type: micheline__alpha__michelson_v1__expression
-  attestation:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  attestation_0:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
   ballot:
     seq:
     - id: source
@@ -432,19 +415,19 @@ types:
       if: (state_tag == bool::true)
     - id: tick
       type: n
-  double_attestation_evidence:
-    seq:
-    - id: op1
-      type: op1_2
-    - id: op2
-      type: op2_2
   double_baking_evidence:
     seq:
     - id: bh1
       type: bh1_0
     - id: bh2
       type: bh2_0
-  double_preattestation_evidence:
+  double_endorsement_evidence:
+    seq:
+    - id: op1
+      type: op1_2
+    - id: op2
+      type: op2_2
+  double_preendorsement_evidence:
     seq:
     - id: op1
       type: op1_0
@@ -461,6 +444,16 @@ types:
     - id: destination
       type: public_key_hash
       doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+  endorsement:
+    seq:
+    - id: slot
+      type: u2
+    - id: level
+      type: s4
+    - id: round
+      type: s4
+    - id: block_payload_hash
+      size: 32
   inbox__proof:
     seq:
     - id: level
@@ -637,8 +630,8 @@ types:
       repeat: eos
   op1:
     seq:
-    - id: alpha__inlined__preattestation
-      type: alpha__inlined__preattestation
+    - id: alpha__inlined__preendorsement
+      type: alpha__inlined__preendorsement
   op1_0:
     seq:
     - id: len_op1
@@ -650,8 +643,8 @@ types:
       size: len_op1
   op1_1:
     seq:
-    - id: alpha__inlined__attestation
-      type: alpha__inlined__attestation
+    - id: alpha__inlined__endorsement
+      type: alpha__inlined__endorsement
   op1_2:
     seq:
     - id: len_op1
@@ -663,8 +656,8 @@ types:
       size: len_op1
   op2:
     seq:
-    - id: alpha__inlined__preattestation
-      type: alpha__inlined__preattestation
+    - id: alpha__inlined__preendorsement
+      type: alpha__inlined__preendorsement
   op2_0:
     seq:
     - id: len_op2
@@ -676,8 +669,8 @@ types:
       size: len_op2
   op2_1:
     seq:
-    - id: alpha__inlined__attestation
-      type: alpha__inlined__attestation
+    - id: alpha__inlined__endorsement
+      type: alpha__inlined__endorsement
   op2_2:
     seq:
     - id: len_op2
@@ -808,17 +801,7 @@ types:
       type: bytes_dyn_uint30
     - id: pending_pis_elt_field1
       type: pending_pis_elt_field1
-  preattestation:
-    seq:
-    - id: slot
-      type: u2
-    - id: level
-      type: s4
-    - id: round
-      type: s4
-    - id: block_payload_hash
-      size: 32
-  preattestation_0:
+  preendorsement:
     seq:
     - id: slot
       type: u2
@@ -1067,6 +1050,25 @@ types:
     seq:
     - id: sequence_elt
       type: micheline__alpha__michelson_v1__expression
+  set_deposits_limit:
+    seq:
+    - id: source
+      type: public_key_hash
+      doc: A Ed25519, Secp256k1, P256, or BLS public key hash
+    - id: fee
+      type: alpha__mutez
+    - id: counter
+      type: n
+    - id: gas_limit
+      type: n
+    - id: storage_limit
+      type: n
+    - id: limit_tag
+      type: u1
+      enum: bool
+    - id: limit
+      type: alpha__mutez
+      if: (limit_tag == bool::true)
   slot_header:
     seq:
     - id: slot_index
@@ -1321,12 +1323,6 @@ types:
         Can be a base58 implicit contract hash or a base58 originated contract hash.
     - id: entrypoint
       type: bytes_dyn_uint30
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   update:
     seq:
     - id: pending_pis
@@ -1458,10 +1454,10 @@ enums:
     8: finalize_unstake
     9: set_delegate_parameters
     255: named
-  alpha__inlined__attestation_mempool__contents_tag:
-    21: attestation
-  alpha__inlined__preattestation__contents_tag:
-    20: preattestation
+  alpha__inlined__endorsement_mempool__contents_tag:
+    21: endorsement
+  alpha__inlined__preendorsement__contents_tag:
+    20: preendorsement
   alpha__michelson__v1__primitives:
     0: parameter
     1: storage
@@ -1476,22 +1472,22 @@ enums:
       id: left
       doc: Left
     6:
-      id: none_
+      id: none_0
       doc: None
     7:
-      id: pair__
+      id: pair_1
       doc: Pair
     8:
       id: right
       doc: Right
     9:
-      id: some_
+      id: some_0
       doc: Some
     10:
       id: true
       doc: True
     11:
-      id: unit_
+      id: unit_0
       doc: Unit
     12:
       id: pack
@@ -1602,16 +1598,16 @@ enums:
       id: if_none
       doc: IF_NONE
     48:
-      id: int_
+      id: int_0
       doc: INT
     49:
-      id: lambda_
+      id: lambda_0
       doc: LAMBDA
     50:
       id: le
       doc: LE
     51:
-      id: left_
+      id: left_0
       doc: LEFT
     52:
       id: loop
@@ -1626,7 +1622,7 @@ enums:
       id: lt
       doc: LT
     56:
-      id: map_
+      id: map_0
       doc: MAP
     57:
       id: mem
@@ -1653,16 +1649,16 @@ enums:
       id: now
       doc: NOW
     65:
-      id: or_
+      id: or_0
       doc: OR
     66:
-      id: pair_
+      id: pair_0
       doc: PAIR
     67:
       id: push
       doc: PUSH
     68:
-      id: right_
+      id: right_0
       doc: RIGHT
     69:
       id: size
@@ -1695,7 +1691,7 @@ enums:
       id: set_delegate
       doc: SET_DELEGATE
     79:
-      id: unit__
+      id: unit_1
       doc: UNIT
     80:
       id: update
@@ -1710,10 +1706,10 @@ enums:
       id: loop_left
       doc: LOOP_LEFT
     84:
-      id: address_
+      id: address_0
       doc: ADDRESS
     85:
-      id: contract_
+      id: contract_0
       doc: CONTRACT
     86:
       id: isnat
@@ -1763,7 +1759,7 @@ enums:
       doc: APPLY
     116: chain_id
     117:
-      id: chain_id_
+      id: chain_id_0
       doc: CHAIN_ID
     118:
       id: level
@@ -1773,7 +1769,7 @@ enums:
       doc: SELF_ADDRESS
     120: never
     121:
-      id: never_
+      id: never_0
       doc: NEVER
     122:
       id: unpair
@@ -1826,7 +1822,7 @@ enums:
       id: open_chest
       doc: OPEN_CHEST
     144:
-      id: view_
+      id: view_0
       doc: VIEW
     145: view
     146: constant
@@ -1845,36 +1841,37 @@ enums:
       id: lambda_rec
       doc: Lambda_rec
     153:
-      id: lambda_rec_
+      id: lambda_rec_0
       doc: LAMBDA_REC
     154:
-      id: ticket_
+      id: ticket_0
       doc: TICKET
     155:
-      id: bytes_
+      id: bytes_0
       doc: BYTES
     156:
-      id: nat_
+      id: nat_0
       doc: NAT
-  alpha__operation__alpha__contents_tag:
+  alpha__operation_with_legacy_attestation_name__alpha__contents_tag:
     1: seed_nonce_revelation
-    2: double_attestation_evidence
+    2: double_endorsement_evidence
     3: double_baking_evidence
     4: activate_account
     5: proposals
     6: ballot
-    7: double_preattestation_evidence
+    7: double_preendorsement_evidence
     8: vdf_revelation
     9: drain_delegate
     17: failing_noop
-    20: preattestation
-    21: attestation
+    20: preendorsement
+    21: endorsement
     22: dal_attestation
     107: reveal
     108: transaction
     109: origination
     110: delegation
     111: register_global_constant
+    112: set_deposits_limit
     113: increase_paid_storage
     114: update_consensus_key
     158: transfer_ticket

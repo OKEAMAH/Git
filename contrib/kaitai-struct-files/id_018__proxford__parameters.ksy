@@ -350,12 +350,6 @@ types:
       type: s4
     - id: dal_page
       type: s4
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   z:
     seq:
     - id: has_tail

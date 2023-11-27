@@ -144,12 +144,6 @@ types:
     - id: p256
       size: 20
       if: (public_key_hash_tag == public_key_hash_tag::p256)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

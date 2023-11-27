@@ -56,12 +56,6 @@ types:
     seq:
     - id: outputs_elt
       type: sapling__transaction__output
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 seq:
 - id: inputs
   type: inputs_0

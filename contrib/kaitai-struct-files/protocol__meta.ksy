@@ -37,12 +37,6 @@ types:
     seq:
     - id: protocol__environment_version
       type: u2
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

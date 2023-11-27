@@ -431,12 +431,6 @@ types:
     - id: parameters
       type: parameters
       if: (parameters_tag == bool::true)
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
 enums:
   bool:
     0: false

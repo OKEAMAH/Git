@@ -229,12 +229,6 @@ types:
       type: u2
     - id: denominator
       type: u2
-  uint30:
-    seq:
-    - id: uint30
-      type: u4
-      valid:
-        max: 1073741823
   z:
     seq:
     - id: has_tail
