@@ -225,7 +225,9 @@ and types_spec types =
 
 let to_string t =
   let y = to_yaml ~toplevel:true t in
-  match Yaml.yaml_to_string ~len:(65535 * 8) y with Ok x -> x | Error (`Msg m) -> failwith m
+  match Yaml.yaml_to_string ~len:(65535 * 8) y with
+  | Ok x -> x
+  | Error (`Msg m) -> failwith m
 
 let print_diff difftool a b =
   let a_str = Sexplib.Sexp.to_string_hum (Types.ClassSpec.sexp_of_t a) in
