@@ -52,6 +52,7 @@
   Ratio_repr
   Int_percentage
   Uint63
+  Centile_of_percentage
   Michelson_v1_primitives
   Slot_repr
   Cycle_repr
@@ -347,6 +348,7 @@
   ratio_repr.ml ratio_repr.mli
   int_percentage.ml int_percentage.mli
   uint63.ml uint63.mli
+  centile_of_percentage.ml centile_of_percentage.mli
   michelson_v1_primitives.ml michelson_v1_primitives.mli
   slot_repr.ml slot_repr.mli
   cycle_repr.ml cycle_repr.mli
@@ -647,6 +649,7 @@
   ratio_repr.ml ratio_repr.mli
   int_percentage.ml int_percentage.mli
   uint63.ml uint63.mli
+  centile_of_percentage.ml centile_of_percentage.mli
   michelson_v1_primitives.ml michelson_v1_primitives.mli
   slot_repr.ml slot_repr.mli
   cycle_repr.ml cycle_repr.mli
@@ -931,6 +934,7 @@
   ratio_repr.ml ratio_repr.mli
   int_percentage.ml int_percentage.mli
   uint63.ml uint63.mli
+  centile_of_percentage.ml centile_of_percentage.mli
   michelson_v1_primitives.ml michelson_v1_primitives.mli
   slot_repr.ml slot_repr.mli
   cycle_repr.ml cycle_repr.mli
