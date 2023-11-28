@@ -83,7 +83,7 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
       to_int32
         (div
            (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
-           (Z.of_int64 total_voting_power)))
+           (Uint63.Div_safe.to_z total_voting_power)))
   in
   let approval =
     Compare.Int32.(participation >= expected_quorum)
@@ -96,20 +96,23 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
 
 let get_approval_and_update_participation_ema ctxt =
   let open Lwt_result_syntax in
-  let* ballots = Vote.get_ballots ctxt in
   let* total_voting_power = Vote.get_total_voting_power_free ctxt in
-  let* participation_ema = Vote.get_participation_ema ctxt in
-  let* expected_quorum = Vote.get_current_quorum ctxt in
-  let*! ctxt = Vote.clear_ballots ctxt in
-  let approval, new_participation_ema =
-    approval_and_participation_ema
-      ballots
-      ~total_voting_power
-      ~participation_ema
-      ~expected_quorum
-  in
-  let+ ctxt = Vote.set_participation_ema ctxt new_participation_ema in
-  (ctxt, approval)
+  match Uint63.Div_safe.of_int64 total_voting_power with
+  | None -> return (ctxt, false)
+  | Some total_voting_power ->
+      let* ballots = Vote.get_ballots ctxt in
+      let* participation_ema = Vote.get_participation_ema ctxt in
+      let* expected_quorum = Vote.get_current_quorum ctxt in
+      let*! ctxt = Vote.clear_ballots ctxt in
+      let approval, new_participation_ema =
+        approval_and_participation_ema
+          ballots
+          ~total_voting_power
+          ~participation_ema
+          ~expected_quorum
+      in
+      let+ ctxt = Vote.set_participation_ema ctxt new_participation_ema in
+      (ctxt, approval)
 
 (** Implements the state machine of the amendment procedure. Note that
    [update_listings], that computes the vote weight of each delegate, is run at

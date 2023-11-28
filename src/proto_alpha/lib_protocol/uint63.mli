@@ -69,6 +69,8 @@ module Div_safe : sig
 
   val to_int : t -> int
 
+  val to_z : t -> Z.t
+
   val two : t
 
   val three : t

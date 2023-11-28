@@ -94,6 +94,8 @@ module Div_safe = struct
 
   let to_int (i : t) = Int64.to_int (i :> Int64.t)
 
+  let to_z (i : t) = Z.of_int64 (i :> Int64.t)
+
   let two = of_int64_exn 2L
 
   let three = of_int64_exn 3L
