@@ -607,9 +607,11 @@ module Vote : sig
       with type value = Voting_period_repr.t
        and type t := Raw_context.t
 
-  (** Participation exponential moving average, in centile of percentage *)
+  (** Participation exponential moving average. *)
   module Participation_ema :
-    Single_data_storage with type value = int32 and type t := Raw_context.t
+    Single_data_storage
+      with type value = Centile_of_percentage.t
+       and type t := Raw_context.t
 
   module Current_proposal :
     Single_data_storage

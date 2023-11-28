@@ -29,6 +29,10 @@ let to_z = Uint63.to_z
 
 let encoding = Uint63.uint30_encoding
 
+let mul a b =
+  let a_times_b = Uint63.With_exceptions.mul a b in
+  Uint63.div a_times_b Uint63.Div_safe.ten_thousand
+
 module Saturating = struct
   let sub a b = Uint63.sub a b |> Option.value ~default:zero
 end

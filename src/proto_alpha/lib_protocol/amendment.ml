@@ -89,8 +89,12 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
     Compare.Int32.(participation >= expected_quorum)
     && Compare.Int64.(ballots.yay >= supermajority)
   in
+  let participation_ema = Centile_of_percentage.to_int32 participation_ema in
   let new_participation_ema =
     Int32.(div (add (mul 8l participation_ema) (mul 2l participation)) 10l)
+  in
+  let new_participation_ema =
+    Centile_of_percentage.With_exceptions.of_int32 new_participation_ema
   in
   (approval, new_participation_ema)
 

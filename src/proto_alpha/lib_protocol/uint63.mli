@@ -91,6 +91,8 @@ module Div_safe : sig
 
   val seven_thousand : t
 
+  val ten_thousand : t
+
   val one_million : t
 
   val one_billion : t

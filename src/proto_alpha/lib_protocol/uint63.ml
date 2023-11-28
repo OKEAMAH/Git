@@ -116,6 +116,8 @@ module Div_safe = struct
 
   let seven_thousand = of_int64_exn 7000L
 
+  let ten_thousand = of_int64_exn 10_000L
+
   let one_million = of_int64_exn 1_000_000L
 
   let one_billion = of_int64_exn 1_000_000_000L

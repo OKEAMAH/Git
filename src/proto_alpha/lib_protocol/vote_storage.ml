@@ -263,10 +263,13 @@ let get_current_quorum ctxt =
   let quorum_max = Constants_storage.quorum_max ctxt in
   let quorum_diff =
     Centile_of_percentage.Saturating.sub quorum_max quorum_min
-    |> Centile_of_percentage.to_int32
   in
   let quorum_min = Centile_of_percentage.to_int32 quorum_min in
-  Int32.(add quorum_min (div (mul participation_ema quorum_diff) 100_00l))
+  let delta =
+    Centile_of_percentage.mul participation_ema quorum_diff
+    |> Centile_of_percentage.to_int32
+  in
+  Int32.add quorum_min delta
 
 let get_participation_ema = Storage.Vote.Participation_ema.get
 
@@ -284,9 +287,6 @@ let clear_current_proposal = Storage.Vote.Current_proposal.remove
 
 let init ctxt ~start_position =
   let open Lwt_result_syntax in
-  (* participation EMA is in centile of a percentage *)
-  let participation_ema =
-    Constants_storage.quorum_max ctxt |> Centile_of_percentage.to_int32
-  in
+  let participation_ema = Constants_storage.quorum_max ctxt in
   let* ctxt = Storage.Vote.Participation_ema.init ctxt participation_ema in
   Voting_period_storage.init_first_period ctxt ~start_position

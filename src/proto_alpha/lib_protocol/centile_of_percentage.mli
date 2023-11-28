@@ -24,6 +24,8 @@ val to_z : t -> Z.t
 
 val encoding : t Data_encoding.t
 
+val mul : t -> t -> t
+
 module Saturating : sig
   val sub : t -> t -> t
 end

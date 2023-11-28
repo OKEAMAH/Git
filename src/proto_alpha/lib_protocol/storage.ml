@@ -1433,7 +1433,7 @@ module Vote = struct
       (struct
         let name = ["participation_ema"]
       end)
-      (Encoding.Int32)
+      (Centile_of_percentage)
 
   module Current_proposal =
     Make_single_data_storage (Registered) (Raw_context)

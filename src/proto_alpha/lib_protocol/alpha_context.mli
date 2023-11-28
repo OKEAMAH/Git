@@ -2599,9 +2599,10 @@ module Vote : sig
 
   val get_current_quorum : context -> int32 tzresult Lwt.t
 
-  val get_participation_ema : context -> int32 tzresult Lwt.t
+  val get_participation_ema : context -> Centile_of_percentage.t tzresult Lwt.t
 
-  val set_participation_ema : context -> int32 -> context tzresult Lwt.t
+  val set_participation_ema :
+    context -> Centile_of_percentage.t -> context tzresult Lwt.t
 
   (** See {!Vote_storage.current_proposal_exists}. *)
   val current_proposal_exists : context -> bool Lwt.t

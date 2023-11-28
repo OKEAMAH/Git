@@ -155,10 +155,11 @@ val get_total_voting_power :
 
 val get_current_quorum : Raw_context.t -> int32 tzresult Lwt.t
 
-val get_participation_ema : Raw_context.t -> int32 tzresult Lwt.t
+val get_participation_ema :
+  Raw_context.t -> Centile_of_percentage.t tzresult Lwt.t
 
 val set_participation_ema :
-  Raw_context.t -> int32 -> Raw_context.t tzresult Lwt.t
+  Raw_context.t -> Centile_of_percentage.t -> Raw_context.t tzresult Lwt.t
 
 (** Indicates whether there is a current proposal in the storage. *)
 val current_proposal_exists : Raw_context.t -> bool Lwt.t
