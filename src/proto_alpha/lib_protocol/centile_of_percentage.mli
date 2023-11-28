@@ -27,8 +27,6 @@ val to_z : t -> Z.t
 
 val encoding : t Data_encoding.t
 
-val mul : t -> t -> t
-
 (** [average ~left_weight left right] computes
     [left * left_weight + right * (100% - left_weight)]. *)
 val average : left_weight:t -> t -> t -> t

@@ -36,10 +36,6 @@ let to_z = Uint63.to_z
 
 let encoding = Uint63.uint30_encoding
 
-let mul a b =
-  let a_times_b = Uint63.With_exceptions.mul a b in
-  Uint63.div a_times_b Uint63.Div_safe.ten_thousand
-
 let average ~left_weight a b =
   let weighted_a = Uint63.With_exceptions.mul a left_weight in
   let right_weight =
