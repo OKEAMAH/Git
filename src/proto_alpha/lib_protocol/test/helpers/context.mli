@@ -153,7 +153,7 @@ module Vote : sig
 
   val get_current_period : t -> Voting_period.info tzresult Lwt.t
 
-  val get_current_quorum : t -> int32 tzresult Lwt.t
+  val get_current_quorum : t -> Centile_of_percentage.t tzresult Lwt.t
 
   val get_participation_ema : Block.t -> int32 tzresult Lwt.t
 

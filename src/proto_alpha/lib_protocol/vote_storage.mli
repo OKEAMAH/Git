@@ -153,7 +153,7 @@ val get_total_voting_power_free : Raw_context.t -> int64 tzresult Lwt.t
 val get_total_voting_power :
   Raw_context.t -> (Raw_context.t * int64) tzresult Lwt.t
 
-val get_current_quorum : Raw_context.t -> int32 tzresult Lwt.t
+val get_current_quorum : Raw_context.t -> Centile_of_percentage.t tzresult Lwt.t
 
 val get_participation_ema :
   Raw_context.t -> Centile_of_percentage.t tzresult Lwt.t

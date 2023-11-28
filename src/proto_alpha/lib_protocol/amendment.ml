@@ -84,8 +84,7 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
       ~den:total_voting_power
   in
   let approval =
-    Compare.Int32.(
-      Centile_of_percentage.to_int32 participation >= expected_quorum)
+    Centile_of_percentage.(participation >= expected_quorum)
     && Compare.Int64.(ballots.yay >= supermajority)
   in
   let new_participation_ema =

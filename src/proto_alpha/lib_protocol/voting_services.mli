@@ -42,7 +42,7 @@ val successor_period :
   'a #RPC_context.simple -> 'a -> Voting_period.info shell_tzresult Lwt.t
 
 val current_quorum :
-  'a #RPC_context.simple -> 'a -> Int32.t shell_tzresult Lwt.t
+  'a #RPC_context.simple -> 'a -> Centile_of_percentage.t shell_tzresult Lwt.t
 
 val listings :
   'a #RPC_context.simple ->

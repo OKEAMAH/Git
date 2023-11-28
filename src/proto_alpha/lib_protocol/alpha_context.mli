@@ -2597,7 +2597,7 @@ module Vote : sig
 
   val clear_ballots : context -> context Lwt.t
 
-  val get_current_quorum : context -> int32 tzresult Lwt.t
+  val get_current_quorum : context -> Centile_of_percentage.t tzresult Lwt.t
 
   val get_participation_ema : context -> Centile_of_percentage.t tzresult Lwt.t
 

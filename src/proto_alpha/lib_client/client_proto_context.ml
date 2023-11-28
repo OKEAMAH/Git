@@ -851,7 +851,7 @@ type period_info = {
 }
 
 type ballots_info = {
-  current_quorum : Int32.t;
+  current_quorum : Centile_of_percentage.t;
   participation : Int32.t;
   supermajority : Int64.t;
   ballots : Vote.ballots;

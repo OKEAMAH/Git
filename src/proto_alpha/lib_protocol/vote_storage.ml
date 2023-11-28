@@ -265,7 +265,6 @@ let get_current_quorum ctxt =
     ~left_weight:participation_ema
     quorum_max
     quorum_min
-  |> Centile_of_percentage.to_int32
 
 let get_participation_ema = Storage.Vote.Participation_ema.get
 

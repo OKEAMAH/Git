@@ -770,7 +770,7 @@ let commands_ro () =
                   (Tez.of_mutez_exn ballots_info.ballots.pass)
                   Operation_result.tez_sym
                   (Int32.to_float ballots_info.participation /. 100.)
-                  (Int32.to_float ballots_info.current_quorum /. 100.)
+                  (Int64.(to_float (ballots_info.current_quorum :> t)) /. 100.)
                   Tez.pp
                   (Tez.of_mutez_exn ballots_info.ballots.yay)
                   Operation_result.tez_sym

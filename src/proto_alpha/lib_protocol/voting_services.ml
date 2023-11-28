@@ -70,7 +70,7 @@ module S = struct
     RPC_service.get_service
       ~description:"Current expected quorum."
       ~query:RPC_query.empty
-      ~output:Data_encoding.int32
+      ~output:Centile_of_percentage.encoding
       RPC_path.(path / "current_quorum")
 
   let listings =

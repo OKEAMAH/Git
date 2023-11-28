@@ -9,6 +9,8 @@
     between 0 and 100_00. *)
 type t = private Uint63.t
 
+include Compare.S with type t := t
+
 val zero : t
 
 val five_percent : t
