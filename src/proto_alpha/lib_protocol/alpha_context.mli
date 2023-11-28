@@ -904,8 +904,8 @@ module Constants : sig
       issuance_weights : issuance_weights;
       cost_per_byte : Tez.t;
       hard_storage_limit_per_operation : Z.t;
-      quorum_min : int32;
-      quorum_max : int32;
+      quorum_min : Centile_of_percentage.t;
+      quorum_max : Centile_of_percentage.t;
       min_proposal_quorum : Centile_of_percentage.t;
       liquidity_baking_toggle_ema_threshold : int32;
       max_operations_time_to_live : int;
@@ -978,9 +978,9 @@ module Constants : sig
 
   val issuance_weights : context -> Parametric.issuance_weights
 
-  val quorum_min : context -> int32
+  val quorum_min : context -> Centile_of_percentage.t
 
-  val quorum_max : context -> int32
+  val quorum_max : context -> Centile_of_percentage.t
 
   val min_proposal_quorum : context -> Centile_of_percentage.t
 

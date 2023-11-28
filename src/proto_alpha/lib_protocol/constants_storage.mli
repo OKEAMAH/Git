@@ -63,9 +63,9 @@ val origination_size : Raw_context.t -> Uint63.t
 val issuance_weights :
   Raw_context.t -> Constants_parametric_repr.issuance_weights
 
-val quorum_min : Raw_context.t -> int32
+val quorum_min : Raw_context.t -> Centile_of_percentage.t
 
-val quorum_max : Raw_context.t -> int32
+val quorum_max : Raw_context.t -> Centile_of_percentage.t
 
 val min_proposal_quorum : Raw_context.t -> Centile_of_percentage.t
 

@@ -31,6 +31,10 @@ let two_hundred_fifty_seven = 257L
 
 let five_hundred = 500L
 
+let two_thousand = 2_000L
+
+let seven_thousand = 7_000L
+
 let ten_thousand = 10_000L
 
 let one_million = 1_000_000L
@@ -234,6 +238,11 @@ module With_exceptions = struct
     match of_z z with
     | Some res -> res
     | None -> invalid_arg "Uint63.With_exceptions.of_z"
+
+  let to_int32 i =
+    match to_int32 i with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.to_int32"
 
   let succ a =
     match Div_safe_base.of_succ_uint63 a with

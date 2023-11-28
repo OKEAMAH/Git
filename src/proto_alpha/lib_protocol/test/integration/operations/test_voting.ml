@@ -1153,7 +1153,7 @@ let test_quorum_capped_maximum num_delegates () =
   (* take percentage of the delegates equal or greater than quorum_max *)
   let minimum_to_pass =
     Float.of_int (List.length delegates)
-    *. Int32.(to_float quorum_max)
+    *. Int64.(to_float (quorum_max :> t))
     /. 100_00.
     |> Float.ceil |> Float.to_int
   in
@@ -1197,7 +1197,7 @@ let test_quorum_capped_minimum num_delegates () =
   (* take percentage of the delegates equal or greater than quorum_min *)
   let minimum_to_pass =
     Float.of_int (List.length delegates)
-    *. Int32.(to_float quorum_min)
+    *. Int64.(to_float (quorum_min :> t))
     /. 100_00.
     |> Float.ceil |> Float.to_int
   in

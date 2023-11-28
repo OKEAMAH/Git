@@ -1130,6 +1130,12 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
         let min_proposal_quorum =
           Centile_of_percentage.With_exceptions.of_int32 c.min_proposal_quorum
         in
+        let quorum_min =
+          Centile_of_percentage.With_exceptions.of_int32 c.quorum_min
+        in
+        let quorum_max =
+          Centile_of_percentage.With_exceptions.of_int32 c.quorum_max
+        in
         let constants =
           Constants_parametric_repr.
             {
@@ -1151,8 +1157,8 @@ let prepare_first_block ~level ~timestamp chain_id ctxt =
               cost_per_byte = c.cost_per_byte;
               hard_storage_limit_per_operation =
                 c.hard_storage_limit_per_operation;
-              quorum_min = c.quorum_min;
-              quorum_max = c.quorum_max;
+              quorum_min;
+              quorum_max;
               min_proposal_quorum;
               liquidity_baking_toggle_ema_threshold =
                 c.liquidity_baking_toggle_ema_threshold;

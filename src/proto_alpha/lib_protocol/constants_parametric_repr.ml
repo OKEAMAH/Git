@@ -182,8 +182,8 @@ type t = {
   issuance_weights : issuance_weights;
   cost_per_byte : Tez_repr.t;
   hard_storage_limit_per_operation : Z.t;
-  quorum_min : int32;
-  quorum_max : int32;
+  quorum_min : Centile_of_percentage.t;
+  quorum_max : Centile_of_percentage.t;
   min_proposal_quorum : Centile_of_percentage.t;
   liquidity_baking_toggle_ema_threshold : int32;
   max_operations_time_to_live : int;
@@ -616,10 +616,10 @@ let encoding =
              (req "issuance_weights" issuance_weights_encoding)
              (req "cost_per_byte" Tez_repr.encoding)
              (req "hard_storage_limit_per_operation" z)
-             (req "quorum_min" int32))
+             (req "quorum_min" Centile_of_percentage.encoding))
           (merge_objs
              (obj8
-                (req "quorum_max" int32)
+                (req "quorum_max" Centile_of_percentage.encoding)
                 (req "min_proposal_quorum" Centile_of_percentage.encoding)
                 (req "liquidity_baking_toggle_ema_threshold" int32)
                 (req "max_operations_time_to_live" int16)

@@ -169,8 +169,8 @@ let constants_mainnet =
       };
     hard_storage_limit_per_operation = Z.of_int 60_000;
     cost_per_byte = Tez.of_mutez_exn 250L;
-    quorum_min = 20_00l;
-    quorum_max = 70_00l;
+    quorum_min = Protocol.Centile_of_percentage.twenty_percent;
+    quorum_max = Protocol.Centile_of_percentage.seventy_percent;
     min_proposal_quorum = Protocol.Centile_of_percentage.five_percent;
     (* 1/2 window size of 2000 blocks with precision of 1_000_000
        for integer computation *)
