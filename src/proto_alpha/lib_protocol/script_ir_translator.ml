@@ -1541,11 +1541,8 @@ let parse_mutez ctxt : Script.node -> (Tez.t * context) tzresult =
   let open Result_syntax in
   function
   | Int (loc, v) as expr -> (
-      match
-        let open Option in
-        bind (catch (fun () -> Z.to_int64 v)) Tez.of_mutez
-      with
-      | Some tez -> Ok (tez, ctxt)
+      match Uint63.of_z v with
+      | Some uint63 -> Ok (Tez.of_mutez' uint63, ctxt)
       | None ->
           tzfail
           @@ Invalid_syntactic_constant
