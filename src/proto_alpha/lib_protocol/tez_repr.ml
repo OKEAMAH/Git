@@ -190,11 +190,10 @@ let to_mutez tez = (to_mutez' tez :> Int64.t)
 let encoding =
   let open Data_encoding in
   let decode (Tez_tag t) = Z.of_int64 (t :> Int64.t) in
-  let encode =
-    Json.wrap_error (fun z ->
-        match Uint63.of_int64 (Z.to_int64 z) with
-        | None -> Error "Non-negative integer expected"
-        | Some i -> Ok (Tez_tag i))
+  let encode z =
+    match Uint63.of_z z with
+    | None -> Error "Non-negative integer expected"
+    | Some i -> Ok (Tez_tag i)
   in
   Data_encoding.def name (check_size 10 (conv_with_guard decode encode n))
 
