@@ -51,6 +51,8 @@ val two_thousand : t
 
 val seven_thousand : t
 
+val eight_thousand : t
+
 val ten_thousand : t
 
 val one_million : t
@@ -167,6 +169,8 @@ module With_exceptions : sig
   val succ : t -> Div_safe.t
 
   val add : t -> t -> t
+
+  val sub : t -> t -> t
 
   val mul : t -> t -> t
 end

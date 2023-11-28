@@ -78,23 +78,19 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
   let all_votes = Int64.add casted_votes ballots.pass in
   let supermajority = Int64.div (Int64.mul 8L casted_votes) 10L in
   let participation =
-    (* in centile of percentage *)
-    Z.(
-      to_int32
-        (div
-           (mul (Z.of_int64 all_votes) (Z.of_int 100_00))
-           (Uint63.Div_safe.to_z total_voting_power)))
+    Centile_of_percentage.Saturating.of_ratio
+      ~rounding:`Down
+      ~num:(Uint63.With_exceptions.of_int64 all_votes)
+      ~den:total_voting_power
   in
   let approval =
-    Compare.Int32.(participation >= expected_quorum)
+    Compare.Int32.(
+      Centile_of_percentage.to_int32 participation >= expected_quorum)
     && Compare.Int64.(ballots.yay >= supermajority)
   in
-  let participation_ema = Centile_of_percentage.to_int32 participation_ema in
   let new_participation_ema =
-    Int32.(div (add (mul 8l participation_ema) (mul 2l participation)) 10l)
-  in
-  let new_participation_ema =
-    Centile_of_percentage.With_exceptions.of_int32 new_participation_ema
+    Centile_of_percentage.(
+      average ~left_weight:eighty_percent participation_ema participation)
   in
   (approval, new_participation_ema)
 

@@ -35,6 +35,8 @@ let two_thousand = 2_000L
 
 let seven_thousand = 7_000L
 
+let eight_thousand = 8_000L
+
 let ten_thousand = 10_000L
 
 let one_million = 1_000_000L
@@ -255,6 +257,11 @@ module With_exceptions = struct
     match add a b with
     | Some res -> res
     | None -> invalid_arg "Uint63.With_exceptions.add"
+
+  let sub a b =
+    match sub a b with
+    | Some res -> res
+    | None -> invalid_arg "Uint63.With_exceptions.sub"
 
   let mul a b =
     match mul a b with
