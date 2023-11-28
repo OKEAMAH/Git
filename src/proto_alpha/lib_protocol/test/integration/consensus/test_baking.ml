@@ -110,10 +110,10 @@ let test_voting_power_cache () =
   let* full_balance = Context.Delegate.full_balance (B genesis) baker in
   let assert_voting_power ~loc n block =
     let* voting_power = Context.get_voting_power (B block) baker in
-    Assert.equal_int64 ~loc n voting_power
+    Assert.equal_uint63 ~loc n voting_power
   in
   (* the voting power is the full staking balance *)
-  let initial_voting_power_at_genesis = Tez.to_mutez full_balance in
+  let initial_voting_power_at_genesis = Tez.to_mutez' full_balance in
   let* () =
     assert_voting_power ~loc:__LOC__ initial_voting_power_at_genesis genesis
   in
@@ -121,13 +121,13 @@ let test_voting_power_cache () =
     Test_tez.(baking_reward *! Int64.pred (blocks_per_voting_periods 1))
   in
   let expected_delta_voting_power_after_one_voting_period =
-    Tez.to_mutez rewards_after_one_voting_period
+    Tez.to_mutez' rewards_after_one_voting_period
   in
   let* block =
     Block.bake_n ~policy (Int32.to_int blocks_per_voting_period - 1) genesis
   in
   let expected_voting_power_after_one_voting_period =
-    Int64.add
+    Uint63.With_exceptions.add
       initial_voting_power_at_genesis
       expected_delta_voting_power_after_one_voting_period
   in
@@ -141,13 +141,13 @@ let test_voting_power_cache () =
     Test_tez.(baking_reward *! Int64.pred (blocks_per_voting_periods 2))
   in
   let expected_delta_voting_power_after_two_voting_periods =
-    Tez.to_mutez rewards_after_two_voting_periods
+    Tez.to_mutez' rewards_after_two_voting_periods
   in
   let* block =
     Block.bake_n ~policy (Int32.to_int blocks_per_voting_period) block
   in
   let expected_voting_power_after_two_voting_periods =
-    Int64.add
+    Uint63.With_exceptions.add
       initial_voting_power_at_genesis
       expected_delta_voting_power_after_two_voting_periods
   in

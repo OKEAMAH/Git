@@ -72,13 +72,13 @@ val get_cumulated_attesting_power_for_delegate :
   t -> levels:Raw_level.t list -> public_key_hash -> int tzresult Lwt.t
 
 val get_current_voting_power :
-  t -> public_key_hash -> int64 Environment.Error_monad.shell_tzresult Lwt.t
+  t -> public_key_hash -> Uint63.t Environment.Error_monad.shell_tzresult Lwt.t
 
 val get_voting_power :
-  t -> public_key_hash -> int64 Environment.Error_monad.shell_tzresult Lwt.t
+  t -> public_key_hash -> Uint63.t Environment.Error_monad.shell_tzresult Lwt.t
 
 val get_total_voting_power :
-  t -> int64 Environment.Error_monad.shell_tzresult Lwt.t
+  t -> Uint63.t Environment.Error_monad.shell_tzresult Lwt.t
 
 val get_current_baking_power :
   t -> public_key_hash -> Uint63.t Environment.Error_monad.shell_tzresult Lwt.t
@@ -158,9 +158,9 @@ module Vote : sig
   val get_participation_ema : Block.t -> int32 tzresult Lwt.t
 
   val get_listings :
-    t -> (Signature.Public_key_hash.t * int64) list tzresult Lwt.t
+    t -> (Signature.Public_key_hash.t * Uint63.t) list tzresult Lwt.t
 
-  val get_proposals : t -> int64 Protocol_hash.Map.t tzresult Lwt.t
+  val get_proposals : t -> Uint63.t Protocol_hash.Map.t tzresult Lwt.t
 
   val get_current_proposal : t -> Protocol_hash.t option tzresult Lwt.t
 
@@ -169,7 +169,7 @@ module Vote : sig
   val set_participation_ema : Block.t -> int32 -> Block.t Lwt.t
 
   type delegate_info = Alpha_context.Vote.delegate_info = {
-    voting_power : Int64.t option;
+    voting_power : Uint63.t option;
     current_ballot : Alpha_context.Vote.ballot option;
     current_proposals : Protocol_hash.t list;
     remaining_proposals : int;

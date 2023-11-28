@@ -148,6 +148,8 @@ module Tez : sig
 
   val of_mutez : int64 -> t option
 
+  val of_mutez' : Uint63.t -> t
+
   val to_mutez : t -> int64
 
   val to_mutez' : t -> Uint63.t
@@ -2526,17 +2528,17 @@ module Vote : sig
   (** See {!Vote_storage.add_proposal}. *)
   val add_proposal : context -> public_key_hash -> proposal -> context Lwt.t
 
-  val get_proposals : context -> int64 Protocol_hash.Map.t tzresult Lwt.t
+  val get_proposals : context -> Uint63.t Protocol_hash.Map.t tzresult Lwt.t
 
   val clear_proposals : context -> context Lwt.t
 
-  val listings_encoding : (public_key_hash * int64) list Data_encoding.t
+  val listings_encoding : (public_key_hash * Uint63.t) list Data_encoding.t
 
   val update_listings : context -> context tzresult Lwt.t
 
   val in_listings : context -> public_key_hash -> bool Lwt.t
 
-  val get_listings : context -> (public_key_hash * int64) list Lwt.t
+  val get_listings : context -> (public_key_hash * Uint63.t) list Lwt.t
 
   type ballot = Yay | Nay | Pass
 
@@ -2545,7 +2547,7 @@ module Vote : sig
   val pp_ballot : Format.formatter -> ballot -> unit
 
   type delegate_info = {
-    voting_power : Int64.t option;
+    voting_power : Uint63.t option;
     current_ballot : ballot option;
     current_proposals : Protocol_hash.t list;
     remaining_proposals : int;
@@ -2558,21 +2560,22 @@ module Vote : sig
   val get_delegate_info :
     context -> public_key_hash -> delegate_info tzresult Lwt.t
 
-  val get_voting_power_free : context -> public_key_hash -> int64 tzresult Lwt.t
+  val get_voting_power_free :
+    context -> public_key_hash -> Uint63.t tzresult Lwt.t
 
   val get_voting_power :
-    context -> public_key_hash -> (context * int64) tzresult Lwt.t
+    context -> public_key_hash -> (context * Uint63.t) tzresult Lwt.t
 
   val get_current_voting_power_free :
-    context -> public_key_hash -> int64 tzresult Lwt.t
+    context -> public_key_hash -> Uint63.t tzresult Lwt.t
 
-  val get_total_voting_power_free : context -> int64 tzresult Lwt.t
+  val get_total_voting_power_free : context -> Uint63.t tzresult Lwt.t
 
-  val get_total_voting_power : context -> (context * int64) tzresult Lwt.t
+  val get_total_voting_power : context -> (context * Uint63.t) tzresult Lwt.t
 
   val ballot_encoding : ballot Data_encoding.t
 
-  type ballots = {yay : int64; nay : int64; pass : int64}
+  type ballots = {yay : Uint63.t; nay : Uint63.t; pass : Uint63.t}
 
   (** See {!Vote_storage.ballots_zero}. *)
   val ballots_zero : ballots

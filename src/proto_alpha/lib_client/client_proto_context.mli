@@ -491,8 +491,8 @@ type period_info = {
 
 type ballots_info = {
   current_quorum : Centile_of_percentage.t;
-  participation : Int32.t;
-  supermajority : Int64.t;
+  participation : Centile_of_percentage.t;
+  supermajority : Uint63.t;
   ballots : Vote.ballots;
 }
 
@@ -525,7 +525,7 @@ val get_proposals :
   #Protocol_client_context.full ->
   chain:Shell_services.chain ->
   block:Shell_services.block ->
-  Int64.t Environment.Protocol_hash.Map.t tzresult Lwt.t
+  Uint63.t Environment.Protocol_hash.Map.t tzresult Lwt.t
 
 (** Calls {!Injection.inject_operation}
     where [contents] is {!Alpha_context.Single} [(Proposals {source; period = index; proposals})]

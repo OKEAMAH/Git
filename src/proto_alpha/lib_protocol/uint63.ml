@@ -92,6 +92,8 @@ module Div_safe = struct
 
   let of_int64 = B.of_int64
 
+  let of_uint63 = of_int64
+
   let of_int i = of_int64 (Int64.of_int i)
 
   let of_z z = if Z.fits_int64 z then of_int64 (Z.to_int64 z) else None
@@ -138,6 +140,11 @@ module Div_safe = struct
 
   module With_exceptions = struct
     include B.With_exceptions
+
+    let of_uint63 i =
+      match of_uint63 i with
+      | Some res -> res
+      | None -> invalid_arg "Uint63.Div_safe.With_exceptions.of_uint63"
 
     let of_int i =
       match of_int i with

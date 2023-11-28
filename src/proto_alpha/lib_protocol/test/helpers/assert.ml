@@ -136,6 +136,9 @@ let not_equal_int64 ~loc (a : int64) (b : int64) =
 let leq_int64 ~loc (a : int64) (b : int64) =
   leq ~loc Compare.Int64.compare "Int64 comparison" Int64.pp a b
 
+let equal_uint63 ~loc (a : Uint63.t) (b : Uint63.t) =
+  equal ~loc Uint63.equal "Uint63 aren't equal" Uint63.pp a b
+
 let equal_z ~loc (a : Z.t) (b : Z.t) =
   equal ~loc Compare.Z.( = ) "Z are not equal" Z.pp_print a b
 

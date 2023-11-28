@@ -36,23 +36,26 @@ let select_winning_proposal ctxt =
     match winners with
     | None -> Some ([proposal], vote)
     | Some (winners, winners_vote) as previous ->
-        if Compare.Int64.(vote = winners_vote) then
+        if Uint63.(vote = winners_vote) then
           Some (proposal :: winners, winners_vote)
-        else if Compare.Int64.(vote > winners_vote) then Some ([proposal], vote)
+        else if Uint63.(vote > winners_vote) then Some ([proposal], vote)
         else previous
   in
   match Protocol_hash.Map.fold merge proposals None with
   | Some ([proposal], vote) ->
       let* max_vote = Vote.get_total_voting_power_free ctxt in
-      let min_proposal_quorum =
-        Centile_of_percentage.to_z (Constants.min_proposal_quorum ctxt)
-      in
+      let min_proposal_quorum = Constants.min_proposal_quorum ctxt in
       let min_vote_to_pass =
-        Z.(
-          to_int64
-            (div (mul min_proposal_quorum (of_int64 max_vote)) (of_int 100_00)))
+        Uint63.(
+          mul_ratio
+            ~rounding:`Down
+            max_vote
+            ~num:(min_proposal_quorum :> t)
+            ~den:
+              (Centile_of_percentage.Div_safe.one_hundred_percent :> Div_safe.t))
+        |> Option.value ~default:Uint63.max_int
       in
-      if Compare.Int64.(vote >= min_vote_to_pass) then return_some proposal
+      if Uint63.(vote >= min_vote_to_pass) then return_some proposal
       else return_none
   | _ -> return_none
 
@@ -71,21 +74,21 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
     ~participation_ema ~expected_quorum =
   (* Note overflows: considering a maximum of 1e9 tokens (around 2^30),
      hence 1e15 mutez (around 2^50)
-     In 'participation' a Z is used because in the worst case 'all_votes is
-     1e15 and after the multiplication is 1e19 (around 2^64).
   *)
-  let casted_votes = Int64.add ballots.yay ballots.nay in
-  let all_votes = Int64.add casted_votes ballots.pass in
-  let supermajority = Int64.div (Int64.mul 8L casted_votes) 10L in
+  let casted_votes = Uint63.With_exceptions.add ballots.yay ballots.nay in
+  let all_votes = Uint63.With_exceptions.add casted_votes ballots.pass in
+  let supermajority =
+    Uint63.mul_percentage ~rounding:`Down casted_votes Int_percentage.p80
+  in
   let participation =
     Centile_of_percentage.Saturating.of_ratio
       ~rounding:`Down
-      ~num:(Uint63.With_exceptions.of_int64 all_votes)
+      ~num:all_votes
       ~den:total_voting_power
   in
   let approval =
     Centile_of_percentage.(participation >= expected_quorum)
-    && Compare.Int64.(ballots.yay >= supermajority)
+    && Uint63.(ballots.yay >= supermajority)
   in
   let new_participation_ema =
     Centile_of_percentage.(
@@ -96,7 +99,7 @@ let approval_and_participation_ema (ballots : Vote.ballots) ~total_voting_power
 let get_approval_and_update_participation_ema ctxt =
   let open Lwt_result_syntax in
   let* total_voting_power = Vote.get_total_voting_power_free ctxt in
-  match Uint63.Div_safe.of_int64 total_voting_power with
+  match Uint63.Div_safe.of_uint63 total_voting_power with
   | None -> return (ctxt, false)
   | Some total_voting_power ->
       let* ballots = Vote.get_ballots ctxt in

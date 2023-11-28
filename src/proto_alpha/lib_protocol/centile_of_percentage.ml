@@ -19,6 +19,12 @@ let eighty_percent = Uint63.eight_thousand
 
 let one_hundred_percent = Uint63.ten_thousand
 
+module Div_safe = struct
+  type t = Uint63.Div_safe.t
+
+  let one_hundred_percent = Uint63.Div_safe.ten_thousand
+end
+
 let of_uint63 i = if Uint63.(i <= one_hundred_percent) then Some i else None
 
 let of_int i = Option.bind (Uint63.of_int i) of_uint63
@@ -43,7 +49,7 @@ let average ~left_weight a b =
   in
   let weighted_b = Uint63.With_exceptions.mul b right_weight in
   let total = Uint63.With_exceptions.add weighted_a weighted_b in
-  Uint63.div total Uint63.Div_safe.ten_thousand
+  Uint63.div total Div_safe.one_hundred_percent
 
 module Saturating = struct
   let of_ratio ~rounding ~num ~den =

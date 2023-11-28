@@ -1447,13 +1447,13 @@ module Raw = struct
               let key_hash = accu in
               let ctxt = update_context gas ctxt in
               let* ctxt, power = Vote.get_voting_power ctxt key_hash in
-              let power = Script_int.(abs (of_int64 power)) in
+              let power = Script_int.of_uint63 power in
               let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
               (step [@ocaml.tailcall]) (ctxt, sc) gas k ks power stack
           | ITotal_voting_power (_, k) ->
               let ctxt = update_context gas ctxt in
               let* ctxt, power = Vote.get_total_voting_power ctxt in
-              let power = Script_int.(abs (of_int64 power)) in
+              let power = Script_int.of_uint63 power in
               let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
               let g = (ctxt, sc) in
               (step [@ocaml.tailcall]) g gas k ks power (accu, stack)

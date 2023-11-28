@@ -96,7 +96,12 @@ let assert_voting_power ~loc block delegate ~ai_enabled ~expected_staked
   let* actual_voting_power =
     Context.get_current_voting_power (B block) delegate
   in
-  let* () = Assert.equal_int64 ~loc actual_voting_power expected_voting_power in
+  let* () =
+    Assert.equal_int64
+      ~loc
+      (actual_voting_power :> Int64.t)
+      expected_voting_power
+  in
   let* actual_baking_power =
     Context.get_current_baking_power (B block) delegate
   in

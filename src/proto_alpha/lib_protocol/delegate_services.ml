@@ -431,14 +431,14 @@ module S = struct
         "The voting power of a given delegate, as computed from its current \
          stake."
       ~query:RPC_query.empty
-      ~output:Data_encoding.int64
+      ~output:Uint63.int64_encoding
       RPC_path.(path / "current_voting_power")
 
   let voting_power =
     RPC_service.get_service
       ~description:"The voting power in the vote listings for a given delegate."
       ~query:RPC_query.empty
-      ~output:Data_encoding.int64
+      ~output:Uint63.int64_encoding
       RPC_path.(path / "voting_power")
 
   let current_baking_power =

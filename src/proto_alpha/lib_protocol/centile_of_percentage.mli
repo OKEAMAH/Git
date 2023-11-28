@@ -33,6 +33,12 @@ val encoding : t Data_encoding.t
     [left * left_weight + right * (100% - left_weight)]. *)
 val average : left_weight:t -> t -> t -> t
 
+module Div_safe : sig
+  type t = private Uint63.Div_safe.t
+
+  val one_hundred_percent : t
+end
+
 module Saturating : sig
   val of_ratio :
     rounding:[`Down | `Up] -> num:Uint63.t -> den:Uint63.Div_safe.t -> t

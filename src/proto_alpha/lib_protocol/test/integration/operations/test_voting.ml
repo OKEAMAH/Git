@@ -233,7 +233,7 @@ let assert_listings_not_empty b ~loc =
   | _ -> return_unit
 
 let equal_delegate_info a b =
-  Option.equal Int64.equal a.Vote.voting_power b.Vote.voting_power
+  Option.equal Uint63.equal a.Vote.voting_power b.Vote.voting_power
   && Option.equal Vote.equal_ballot a.current_ballot b.current_ballot
   && List.equal
        Protocol_hash.equal
@@ -526,14 +526,21 @@ let test_successful_vote num_delegates () =
   (* correctly count the double proposal for zero *)
   let* () =
     let weight =
-      Int64.add
+      Uint63.With_exceptions.add
         (WithExceptions.Option.get ~loc:__LOC__ @@ List.nth power_p1 0)
         (WithExceptions.Option.get ~loc:__LOC__ @@ List.nth power_p1 1)
     in
     match Environment.Protocol_hash.(Map.find zero ps) with
     | Some v ->
         if v = weight then return_unit
-        else failwith "%s - Wrong count %Ld is not %Ld" __LOC__ v weight
+        else
+          failwith
+            "%s - Wrong count %a is not %a"
+            __LOC__
+            Uint63.pp
+            v
+            Uint63.pp
+            weight
     | None -> failwith "%s - Missing proposal" __LOC__
   in
   (* proposing more than maximum_proposals fails *)
@@ -613,11 +620,14 @@ let test_successful_vote num_delegates () =
       __LOC__
   in
   (* Allocate votes from weight of active delegates *)
-  List.fold_left (fun acc v -> Int64.(add v acc)) 0L power_p2
+  List.fold_left Uint63.With_exceptions.add Uint63.zero power_p2
   |> fun power_sum ->
   (* # of Yay in ballots matches votes of the delegates *)
   let* () =
-    assert_ballots Vote.{yay = power_sum; nay = 0L; pass = 0L} b __LOC__
+    assert_ballots
+      Vote.{yay = power_sum; nay = Uint63.zero; pass = Uint63.zero}
+      b
+      __LOC__
   in
   (* One Yay ballot per delegate *)
   let* () =
@@ -677,11 +687,14 @@ let test_successful_vote num_delegates () =
       delegates_p4
   in
   let* b = Block.bake ~operations b in
-  List.fold_left (fun acc v -> Int64.(add v acc)) 0L power_p4
+  List.fold_left Uint63.With_exceptions.add Uint63.zero power_p4
   |> fun power_sum ->
   (* # of Yays in ballots matches voting power of the delegate *)
   let* () =
-    assert_ballots Vote.{yay = power_sum; nay = 0L; pass = 0L} b __LOC__
+    assert_ballots
+      Vote.{yay = power_sum; nay = Uint63.zero; pass = Uint63.zero}
+      b
+      __LOC__
   in
   (* One Yay ballot per delegate *)
   let* () =
@@ -728,7 +741,7 @@ let test_successful_vote num_delegates () =
 let get_smallest_prefix_voters_for_quorum active_delegates active_power
     participation_ema =
   let expected_quorum = expected_qr_num participation_ema in
-  List.fold_left (fun acc v -> Int64.(add v acc)) 0L active_power
+  List.fold_left Uint63.With_exceptions.add Uint63.zero active_power
   |> fun active_power_sum ->
   let rec loop delegates power sum selected =
     match (delegates, power) with
@@ -736,9 +749,10 @@ let get_smallest_prefix_voters_for_quorum active_delegates active_power
     | del :: delegates, del_power :: power ->
         if
           den * sum
-          < Float.to_int (expected_quorum *. Int64.to_float active_power_sum)
+          < Float.to_int
+              (expected_quorum *. Int64.(to_float (active_power_sum :> t)))
         then
-          loop delegates power (sum + Int64.to_int del_power) (del :: selected)
+          loop delegates power (sum + Uint63.to_int del_power) (del :: selected)
         else selected
     | _, _ -> []
   in
@@ -751,11 +765,14 @@ let get_expected_participation_ema power voter_power old_participation_ema =
     + (pr_num * participation))
     / den
   in
-  List.fold_left (fun acc v -> Int64.(add v acc)) 0L power |> fun power_sum ->
-  List.fold_left (fun acc v -> Int64.(add v acc)) 0L voter_power
-  |> fun voter_power_sum ->
+  let power_sum = List.fold_left Uint63.With_exceptions.add Uint63.zero power in
+  let voter_power_sum =
+    List.fold_left Uint63.With_exceptions.add Uint63.zero voter_power
+  in
   let participation =
-    Int64.(to_int (div (mul voter_power_sum (of_int percent_mul)) power_sum))
+    Int64.(
+      to_int
+        (div (mul (voter_power_sum :> t) (of_int percent_mul)) (power_sum :> t)))
   in
   get_updated_participation_ema old_participation_ema participation
 
@@ -1268,27 +1285,27 @@ let test_voting_power_updated_each_voting_period () =
   (* Auxiliary assert_voting_power *)
   let assert_voting_power ~loc n block baker =
     let* voting_power = get_voting_power block baker in
-    Assert.equal_int64 ~loc n voting_power
+    Assert.equal_uint63 ~loc n voting_power
   in
   (* Auxiliary assert_total_voting_power *)
   let assert_total_voting_power ~loc n block =
     let* total_voting_power = Context.get_total_voting_power (B block) in
-    Assert.equal_int64 ~loc n total_voting_power
+    Assert.equal_uint63 ~loc n total_voting_power
   in
-  let expected_power_of_baker_1 = Tez.to_mutez full_balance1 in
+  let expected_power_of_baker_1 = Tez.to_mutez' full_balance1 in
   let* () =
     assert_voting_power ~loc:__LOC__ expected_power_of_baker_1 genesis baker1
   in
-  let expected_power_of_baker_2 = Tez.to_mutez full_balance2 in
+  let expected_power_of_baker_2 = Tez.to_mutez' full_balance2 in
   let* () =
     assert_voting_power ~loc:__LOC__ expected_power_of_baker_2 genesis baker2
   in
   (* Assert total voting power *)
-  let expected_power_of_baker_3 = Tez.to_mutez full_balance3 in
+  let expected_power_of_baker_3 = Tez.to_mutez' full_balance3 in
   let* () =
     assert_total_voting_power
       ~loc:__LOC__
-      Int64.(
+      Uint63.With_exceptions.(
         add
           (add expected_power_of_baker_1 expected_power_of_baker_2)
           expected_power_of_baker_3)
@@ -1337,7 +1354,7 @@ let test_voting_power_updated_each_voting_period () =
   let* () =
     assert_total_voting_power
       ~loc:__LOC__
-      Int64.(
+      Uint63.With_exceptions.(
         add
           (add expected_power_of_baker_1 expected_power_of_baker_2)
           expected_power_of_baker_3)
@@ -1346,14 +1363,14 @@ let test_voting_power_updated_each_voting_period () =
   let* block = bake_until_first_block_of_next_period block in
   (* Assert voting power of baker1 has decreased by [amount] *)
   let expected_power_of_baker_1 =
-    Int64.sub expected_power_of_baker_1 (Tez.to_mutez amount)
+    Uint63.With_exceptions.sub expected_power_of_baker_1 (Tez.to_mutez' amount)
   in
   let* () =
     assert_voting_power ~loc:__LOC__ expected_power_of_baker_1 block baker1
   in
   (* Assert voting power of baker2 has increased by [amount] *)
   let expected_power_of_baker_2 =
-    Int64.add expected_power_of_baker_2 (Tez.to_mutez amount)
+    Uint63.With_exceptions.add expected_power_of_baker_2 (Tez.to_mutez' amount)
   in
   let* () =
     assert_voting_power ~loc:__LOC__ expected_power_of_baker_2 block baker2
@@ -1364,7 +1381,7 @@ let test_voting_power_updated_each_voting_period () =
   (* Assert total voting power *)
   assert_total_voting_power
     ~loc:__LOC__
-    Int64.(
+    Uint63.With_exceptions.(
       add
         (add expected_power_of_baker_1 expected_power_of_baker_2)
         power_of_baker_3)
@@ -1776,17 +1793,17 @@ let observe_proposals pre_state post_state op caller_loc =
     (fun proposal ->
       let weight_pre =
         Environment.Protocol_hash.Map.find proposal proposal_weights_pre
-        |> Option.value ~default:Int64.zero
+        |> Option.value ~default:Uint63.zero
       in
       let* weight_post =
         Assert.get_some
           ~loc:(make_loc __LOC__)
           (Environment.Protocol_hash.Map.find proposal proposal_weights_post)
       in
-      Assert.equal_int64
+      Assert.equal_uint63
         ~loc:(make_loc __LOC__)
         weight_post
-        (Int64.add weight_pre source_power))
+        (Uint63.With_exceptions.add weight_pre source_power))
     proposals
 
 let test_too_many_proposals_in_one_operation () =
@@ -2092,9 +2109,21 @@ let observe_ballot pre_state post_state op caller_loc =
   in
   let expected_ballots_post =
     match ballot with
-    | Yay -> {ballots_pre with yay = Int64.add ballots_pre.yay source_power}
-    | Nay -> {ballots_pre with nay = Int64.add ballots_pre.nay source_power}
-    | Pass -> {ballots_pre with pass = Int64.add ballots_pre.pass source_power}
+    | Yay ->
+        {
+          ballots_pre with
+          yay = Uint63.With_exceptions.add ballots_pre.yay source_power;
+        }
+    | Nay ->
+        {
+          ballots_pre with
+          nay = Uint63.With_exceptions.add ballots_pre.nay source_power;
+        }
+    | Pass ->
+        {
+          ballots_pre with
+          pass = Uint63.With_exceptions.add ballots_pre.pass source_power;
+        }
   in
   assert_ballots expected_ballots_post post_state (make_loc __LOC__)
 

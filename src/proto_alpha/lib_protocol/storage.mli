@@ -620,13 +620,13 @@ module Vote : sig
 
   (** Sum of voting weights of all delegates. *)
   module Voting_power_in_listings :
-    Single_data_storage with type value = int64 and type t := Raw_context.t
+    Single_data_storage with type value = Uint63.t and type t := Raw_context.t
 
   (** Contains all delegates with their assigned voting weight. *)
   module Listings :
     Indexed_data_storage
       with type key = Signature.Public_key_hash.t
-       and type value = int64
+       and type value = Uint63.t
        and type t := Raw_context.t
 
   (** Set of protocol proposal with corresponding proposer delegate *)

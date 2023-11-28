@@ -46,6 +46,12 @@ module Encoding = struct
     let encoding = Data_encoding.int64
   end
 
+  module Uint63 : VALUE with type t = Uint63.t = struct
+    type t = Uint63.t
+
+    let encoding = Uint63.int64_encoding
+  end
+
   module Z : VALUE with type t = Z.t = struct
     type t = Z.t
 
@@ -1447,7 +1453,7 @@ module Vote = struct
       (struct
         let name = ["voting_power_in_listings"]
       end)
-      (Encoding.Int64)
+      (Encoding.Uint63)
 
   module Listings =
     Make_indexed_data_storage
@@ -1456,7 +1462,7 @@ module Vote = struct
            let name = ["listings"]
          end))
          (Public_key_hash_index)
-      (Encoding.Int64)
+      (Encoding.Uint63)
 
   module Proposals =
     Make_data_set_storage

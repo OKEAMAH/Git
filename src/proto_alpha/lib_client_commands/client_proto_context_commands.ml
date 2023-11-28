@@ -703,7 +703,7 @@ let commands_ro () =
         in
         let ranks =
           Environment.Protocol_hash.Map.bindings props
-          |> List.sort (fun (_, v1) (_, v2) -> Int64.(compare v2 v1))
+          |> List.sort (fun (_, v1) (_, v2) -> Uint63.compare v2 v1)
         in
         let print_proposal = function
           | None ->
@@ -734,7 +734,7 @@ let commands_ro () =
                             Protocol_hash.pp
                             p
                             Tez.pp
-                            (Tez.of_mutez_exn w)
+                            (Tez.of_mutez' w)
                             Operation_result.tez_sym
                             (if
                              List.mem ~equal:Protocol_hash.equal p known_protos
@@ -761,21 +761,21 @@ let commands_ro () =
                    Current participation %.2f%%, necessary quorum %.2f%%@,\
                    Current in favor %a %s, needed supermajority %a %s@]"
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.ballots.yay)
+                  (Tez.of_mutez' ballots_info.ballots.yay)
                   Operation_result.tez_sym
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.ballots.nay)
+                  (Tez.of_mutez' ballots_info.ballots.nay)
                   Operation_result.tez_sym
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.ballots.pass)
+                  (Tez.of_mutez' ballots_info.ballots.pass)
                   Operation_result.tez_sym
-                  (Int32.to_float ballots_info.participation /. 100.)
+                  (Int64.(to_float (ballots_info.participation :> t)) /. 100.)
                   (Int64.(to_float (ballots_info.current_quorum :> t)) /. 100.)
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.ballots.yay)
+                  (Tez.of_mutez' ballots_info.ballots.yay)
                   Operation_result.tez_sym
                   Tez.pp
-                  (Tez.of_mutez_exn ballots_info.supermajority)
+                  (Tez.of_mutez' ballots_info.supermajority)
                   Operation_result.tez_sym
               in
               return_unit
@@ -2518,7 +2518,7 @@ let commands_rw () =
               src_pkh
           in
           match r with
-          | Ok voting_power -> return (voting_power <> 0L)
+          | Ok voting_power -> return (voting_power <> Uint63.zero)
           | Error
               (Environment.Ecoproto_error (Delegate_services.Not_registered _)
               :: _) ->
@@ -2721,7 +2721,7 @@ let commands_rw () =
               src_pkh
           in
           match r with
-          | Ok voting_power -> return (voting_power <> 0L)
+          | Ok voting_power -> return (voting_power <> Uint63.zero)
           | Error
               (Environment.Ecoproto_error (Delegate_services.Not_registered _)
               :: _) ->

@@ -31,3 +31,5 @@ let p0 = 0
 let p5 = 5
 
 let p50 = 50
+
+let p80 = 80

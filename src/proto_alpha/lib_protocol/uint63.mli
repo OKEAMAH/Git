@@ -69,6 +69,8 @@ module Div_safe : sig
 
   val of_int64 : int64 -> t option
 
+  val of_uint63 : uint63 -> t option
+
   val of_int : int -> t option
 
   val of_z : Z.t -> t option
@@ -111,6 +113,8 @@ module Div_safe : sig
 
   module With_exceptions : sig
     val of_int64 : Int64.t -> t
+
+    val of_uint63 : uint63 -> t
 
     val of_int : int -> t
   end

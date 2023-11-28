@@ -61,12 +61,12 @@ val add_proposal :
   Raw_context.t Lwt.t
 
 (** Computes for each proposal how many delegates proposed it. *)
-val get_proposals : Raw_context.t -> int64 Protocol_hash.Map.t tzresult Lwt.t
+val get_proposals : Raw_context.t -> Uint63.t Protocol_hash.Map.t tzresult Lwt.t
 
 val clear_proposals : Raw_context.t -> Raw_context.t Lwt.t
 
 (** Counts of the votes *)
-type ballots = {yay : int64; nay : int64; pass : int64}
+type ballots = {yay : Uint63.t; nay : Uint63.t; pass : Uint63.t}
 
 (** All vote counts set to zero. *)
 val ballots_zero : ballots
@@ -100,7 +100,7 @@ val get_ballot_list :
 val clear_ballots : Raw_context.t -> Raw_context.t Lwt.t
 
 val listings_encoding :
-  (Signature.Public_key_hash.t * int64) list Data_encoding.t
+  (Signature.Public_key_hash.t * Uint63.t) list Data_encoding.t
 
 (** Populates [!Storage.Vote.Listings] using the currently existing
    staking power and sets `Voting_power_in_listings`. Inactive
@@ -112,10 +112,10 @@ val update_listings : Raw_context.t -> Raw_context.t tzresult Lwt.t
 val in_listings : Raw_context.t -> Signature.Public_key_hash.t -> bool Lwt.t
 
 val get_listings :
-  Raw_context.t -> (Signature.Public_key_hash.t * int64) list Lwt.t
+  Raw_context.t -> (Signature.Public_key_hash.t * Uint63.t) list Lwt.t
 
 type delegate_info = {
-  voting_power : Int64.t option;
+  voting_power : Uint63.t option;
   current_ballot : Vote_repr.ballot option;
   current_proposals : Protocol_hash.t list;
   remaining_proposals : int;
@@ -131,27 +131,27 @@ val get_delegate_info :
 (** Returns the voting power of a delegate from the voting power
     listings.  This function does not account for gas cost. *)
 val get_voting_power_free :
-  Raw_context.t -> Signature.public_key_hash -> int64 tzresult Lwt.t
+  Raw_context.t -> Signature.public_key_hash -> Uint63.t tzresult Lwt.t
 
 (** Same as [get_voting_power_free] but consumes gas. *)
 val get_voting_power :
   Raw_context.t ->
   Signature.public_key_hash ->
-  (Raw_context.t * int64) tzresult Lwt.t
+  (Raw_context.t * Uint63.t) tzresult Lwt.t
 
 (** Same as [get_voting_power_free] but computes the voting power
     based on the current stake of the delegate instead of reading it
     from the vote listings. *)
 val get_current_voting_power_free :
-  Raw_context.t -> Signature.public_key_hash -> int64 tzresult Lwt.t
+  Raw_context.t -> Signature.public_key_hash -> Uint63.t tzresult Lwt.t
 
 (** Returns the sum of all voting power in the listings,
     without accounting for gas cost. *)
-val get_total_voting_power_free : Raw_context.t -> int64 tzresult Lwt.t
+val get_total_voting_power_free : Raw_context.t -> Uint63.t tzresult Lwt.t
 
 (** Returns the sum of all voting power in the listings. *)
 val get_total_voting_power :
-  Raw_context.t -> (Raw_context.t * int64) tzresult Lwt.t
+  Raw_context.t -> (Raw_context.t * Uint63.t) tzresult Lwt.t
 
 val get_current_quorum : Raw_context.t -> Centile_of_percentage.t tzresult Lwt.t
 

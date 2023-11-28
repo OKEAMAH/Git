@@ -852,8 +852,8 @@ type period_info = {
 
 type ballots_info = {
   current_quorum : Centile_of_percentage.t;
-  participation : Int32.t;
-  supermajority : Int64.t;
+  participation : Centile_of_percentage.t;
+  supermajority : Uint63.t;
   ballots : Vote.ballots;
 }
 
@@ -864,15 +864,17 @@ let get_ballots_info (cctxt : #full) ~chain ~block =
   let* ballots = Alpha_services.Voting.ballots cctxt cb in
   let* current_quorum = Alpha_services.Voting.current_quorum cctxt cb in
   let* max_participation = Alpha_services.Voting.total_voting_power cctxt cb in
-  let all_votes = Int64.(add (add ballots.yay ballots.nay) ballots.pass) in
+  let casted_votes = Uint63.With_exceptions.add ballots.yay ballots.nay in
+  let all_votes = Uint63.With_exceptions.add casted_votes ballots.pass in
   let participation =
-    Z.(
-      to_int32
-        (div
-           (mul (of_int64 all_votes) (of_int 100_00))
-           (of_int64 max_participation)))
+    Centile_of_percentage.Saturating.of_ratio
+      ~rounding:`Down
+      ~num:all_votes
+      ~den:(Uint63.Div_safe.With_exceptions.of_uint63 max_participation)
   in
-  let supermajority = Int64.(div (mul 8L (add ballots.yay ballots.nay)) 10L) in
+  let supermajority =
+    Uint63.mul_percentage ~rounding:`Down casted_votes Int_percentage.p80
+  in
   return {current_quorum; participation; supermajority; ballots}
 
 let get_period_info ?(successor = false) (cctxt : #full) ~chain ~block =
