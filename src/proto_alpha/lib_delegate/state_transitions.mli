@@ -73,7 +73,7 @@ val time_to_bake_at_next_level : state -> Round.t -> (state * action) Lwt.t
 
 val update_locked_round : state -> Round.t -> Block_payload_hash.t -> state
 
-val make_attest_action : state -> proposal -> action
+val make_attest_action : state -> proposal -> action Lwt.t
 
 val prequorum_reached_when_awaiting_preattestations :
   state ->

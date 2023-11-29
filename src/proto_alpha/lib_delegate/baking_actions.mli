@@ -40,11 +40,19 @@ type action =
   | Do_nothing
   | Prepare_block of {block_to_bake : block_to_bake; updated_state : state}
   | Inject_block of {prepared_block : prepared_block; updated_state : state}
-  | Inject_preattestations of {
+  | Prepare_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
-  | Inject_attestations of {
+  | Inject_preattestations of {
+      signed_preattestations :
+        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+    }
+  | Prepare_attestations of {
       attestations : (consensus_key_and_delegate * consensus_content) list;
+    }
+  | Inject_attestations of {
+      signed_attestations :
+        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
     }
   | Update_to_level of level_update
   | Synchronize_round of round_update

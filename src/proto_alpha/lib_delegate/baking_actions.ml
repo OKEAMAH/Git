@@ -37,11 +37,19 @@ type action =
   | Do_nothing
   | Prepare_block of {block_to_bake : block_to_bake; updated_state : state}
   | Inject_block of {prepared_block : prepared_block; updated_state : state}
-  | Inject_preattestations of {
+  | Prepare_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
-  | Inject_attestations of {
+  | Inject_preattestations of {
+      signed_preattestations :
+        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+    }
+  | Prepare_attestations of {
       attestations : (consensus_key_and_delegate * consensus_content) list;
+    }
+  | Inject_attestations of {
+      signed_attestations :
+        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
     }
   | Update_to_level of level_update
   | Synchronize_round of round_update
@@ -67,7 +75,9 @@ let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
   | Prepare_block _ -> Format.fprintf fmt "prepare block"
   | Inject_block _ -> Format.fprintf fmt "inject block"
+  | Prepare_preattestations _ -> Format.fprintf fmt "prepare preattestations"
   | Inject_preattestations _ -> Format.fprintf fmt "inject preattestations"
+  | Prepare_attestations _ -> Format.fprintf fmt "prepare attestations"
   | Inject_attestations _ -> Format.fprintf fmt "inject attestations"
   | Update_to_level _ -> Format.fprintf fmt "update to level"
   | Synchronize_round _ -> Format.fprintf fmt "synchronize round"
@@ -474,19 +484,21 @@ let rec perform_action ~state_recorder state (action : action) =
       let* updated_state = inject_block state ~updated_state prepared_block in
       let* () = state_recorder ~new_state:updated_state in
       return updated_state
-  | Inject_preattestations {preattestations} ->
-      let* signed_preattestations =
-        sign_consensus_votes state preattestations `Preattestation
-      in
+  | Prepare_preattestations {preattestations} ->
+      let request = Forge_and_sign_preattestations (state, preattestations) in
+      let () = state.global_state.forge_worker_hooks.push_request request in
+      return state
+  | Inject_preattestations {signed_preattestations} ->
       let* state =
         inject_consensus_votes state signed_preattestations `Preattestation
       in
       perform_action ~state_recorder state Watch_proposal
-  | Inject_attestations {attestations} ->
+  | Prepare_attestations {attestations} ->
+      let request = Forge_and_sign_attestations (state, attestations) in
+      let () = state.global_state.forge_worker_hooks.push_request request in
+      return state
+  | Inject_attestations {signed_attestations} ->
       let* () = state_recorder ~new_state:state in
-      let* signed_attestations =
-        sign_consensus_votes state attestations `Attestation
-      in
       let* state =
         inject_consensus_votes state signed_attestations `Attestation
       in

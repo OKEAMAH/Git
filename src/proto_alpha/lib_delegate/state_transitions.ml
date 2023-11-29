@@ -90,10 +90,17 @@ let make_consensus_list state proposal =
 (* If we do not have any slots, we won't inject any operation but we
    will still participate to determine an elected block *)
 let make_preattest_action state proposal =
+  let open Lwt_syntax in
   let preattestations : (consensus_key_and_delegate * consensus_content) list =
     make_consensus_list state proposal
   in
-  Inject_preattestations {preattestations}
+  let* signed_preattestations =
+    Forge_worker.sign_consensus_votes state preattestations `Preattestation
+  in
+  match signed_preattestations with
+  | Ok signed_preattestations ->
+      return @@ Inject_preattestations {signed_preattestations}
+  | Error _ -> assert false
 
 let update_proposal ~is_proposal_applied state proposal =
   let open Lwt_syntax in
@@ -138,7 +145,8 @@ let preattest state proposal =
          We switch to the `Awaiting_preattestations` phase. *)
       update_current_phase state Awaiting_preattestations
     in
-    return (new_state, make_preattest_action state proposal)
+    let* preattest_action = make_preattest_action state proposal in
+    return (new_state, preattest_action)
 
 let extract_pqc state (new_proposal : proposal) =
   match new_proposal.block.prequorum with
@@ -751,10 +759,17 @@ let update_locked_round state round payload_hash =
   {state with level_state = new_level_state}
 
 let make_attest_action state proposal =
+  let open Lwt_syntax in
   let attestations : (consensus_key_and_delegate * consensus_content) list =
     make_consensus_list state proposal
   in
-  Inject_attestations {attestations}
+  let* signed_attestations =
+    Forge_worker.sign_consensus_votes state attestations `Attestation
+  in
+  match signed_attestations with
+  | Ok signed_attestations ->
+      return @@ Inject_attestations {signed_attestations}
+  | Error _ -> assert false
 
 let prequorum_reached_when_awaiting_preattestations state candidate
     preattestations =
@@ -805,7 +820,8 @@ let prequorum_reached_when_awaiting_preattestations state candidate
         latest_proposal.block.payload_hash
     in
     let new_state = update_current_phase new_state Awaiting_attestations in
-    return (new_state, make_attest_action new_state latest_proposal)
+    let* attest_action = make_attest_action new_state latest_proposal in
+    return (new_state, attest_action)
 
 let quorum_reached_when_waiting_attestations state candidate attestation_qc =
   let open Lwt_syntax in
