@@ -308,11 +308,14 @@ type elected_block = {
   attestation_qc : Kind.attestation Operation.t list;
 }
 
-type signed_block = {
+type prepared_block = {
+  signed_block_header : block_header;
   round : Round.t;
   delegate : consensus_key_and_delegate;
-  block_header : block_header;
+  cctxt : Protocol_client_context.full;
   operations : Tezos_base.Operation.t list list;
+  liquidity_baking_vote : Per_block_votes_repr.per_block_vote;
+  adaptive_issuance_vote : Per_block_votes_repr.per_block_vote;
 }
 
 (* The fields {current_level}, {delegate_slots}, {next_level_delegate_slots},
@@ -333,7 +336,7 @@ type level_state = {
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
-  next_forged_block : signed_block option;
+  next_forged_block : prepared_block option;
       (* Block that is preemptively forged for the next level when baker is
            round 0 proposer. *)
 }
@@ -915,7 +918,11 @@ let pp_delegate_slots fmt Delegate_slots.{own_delegate_slots; _} =
     (SlotMap.bindings (delegate_slots_for_pp own_delegate_slots))
 
 let pp_next_forged_block fmt
-    {delegate = consensus_key_and_delegate; block_header; _} =
+    {
+      delegate = consensus_key_and_delegate;
+      signed_block_header = block_header;
+      _;
+    } =
   Format.fprintf
     fmt
     "predecessor block hash: %a, payload hash: %a, level: %ld, delegate: %a"

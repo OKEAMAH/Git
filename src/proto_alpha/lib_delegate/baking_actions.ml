@@ -138,7 +138,7 @@ type block_to_bake = {
 
 type inject_block_kind =
   | Forge_and_inject of block_to_bake
-  | Inject_only of signed_block
+  | Inject_only of prepared_block
 
 type action =
   | Do_nothing
@@ -248,7 +248,7 @@ let sign_block_header state proposer unsigned_block_header =
       in
       return {Block_header.shell; protocol_data = {contents; signature}}
 
-let forge_signed_block ~state_recorder ~updated_state block_to_bake state =
+let prepare_block state block_to_bake =
   let open Lwt_result_syntax in
   let {
     predecessor;
@@ -342,26 +342,6 @@ let forge_signed_block ~state_recorder ~updated_state block_to_bake state =
           ~per_block_vote_file
     | None -> Lwt.return default
   in
-  (* Cache last per-block votes to use in case of vote file errors *)
-  let updated_state =
-    {
-      updated_state with
-      global_state =
-        {
-          updated_state.global_state with
-          config =
-            {
-              updated_state.global_state.config with
-              per_block_votes =
-                {
-                  updated_state.global_state.config.per_block_votes with
-                  liquidity_baking_vote;
-                  adaptive_issuance_vote;
-                };
-            };
-        };
-    }
-  in
   let*! () =
     Events.(emit vote_for_liquidity_baking_toggle) liquidity_baking_vote
   in
@@ -410,29 +390,65 @@ let forge_signed_block ~state_recorder ~updated_state block_to_bake state =
         let block_hash = Block_header.hash signed_block_header in
         Baking_nonces.register_nonce cctxt ~chain_id block_hash nonce
   in
-  let* () = state_recorder ~new_state:updated_state in
-  let signed_block =
-    {round; delegate; operations; block_header = signed_block_header}
-  in
-  return (signed_block, updated_state)
+  return
+    {
+      signed_block_header;
+      round;
+      delegate;
+      cctxt;
+      operations;
+      liquidity_baking_vote;
+      adaptive_issuance_vote;
+    }
 
-let inject_block ~updated_state state signed_block =
+let inject_block state ~updated_state prepared_block =
   let open Lwt_result_syntax in
-  let {round; delegate; block_header; operations} = signed_block in
-  let*! () =
-    Events.(emit injecting_block (block_header.shell.level, round, delegate))
+  let {
+    signed_block_header;
+    round;
+    delegate;
+    cctxt;
+    operations;
+    liquidity_baking_vote;
+    adaptive_issuance_vote;
+  } =
+    prepared_block
   in
-  let cctxt = state.global_state.cctxt in
+  (* Cache last per-block votes to use in case of vote file errors *)
+  let updated_state =
+    {
+      updated_state with
+      global_state =
+        {
+          updated_state.global_state with
+          config =
+            {
+              updated_state.global_state.config with
+              per_block_votes =
+                {
+                  updated_state.global_state.config.per_block_votes with
+                  liquidity_baking_vote;
+                  adaptive_issuance_vote;
+                };
+            };
+        };
+    }
+  in
+  let*! () =
+    Events.(
+      emit injecting_block (signed_block_header.shell.level, round, delegate))
+  in
   let* bh =
     Node_rpc.inject_block
       cctxt
       ~force:state.global_state.config.force
       ~chain:(`Hash state.global_state.chain_id)
-      block_header
+      signed_block_header
       operations
   in
   let*! () =
-    Events.(emit block_injected (bh, block_header.shell.level, round, delegate))
+    Events.(
+      emit block_injected (bh, signed_block_header.shell.level, round, delegate))
   in
   return updated_state
 
@@ -925,21 +941,16 @@ let rec perform_action ~state_recorder state (action : action) =
       let* () = state_recorder ~new_state:state in
       return state
   | Inject_block {kind; updated_state} ->
-      let* signed_block, updated_state =
+      let* signed_block =
         match kind with
-        | Forge_and_inject block_to_bake ->
-            forge_signed_block
-              ~state_recorder
-              ~updated_state
-              block_to_bake
-              state
-        | Inject_only signed_block -> return (signed_block, updated_state)
+        | Forge_and_inject block_to_bake -> prepare_block state block_to_bake
+        | Inject_only signed_block -> return signed_block
       in
-      inject_block ~updated_state state signed_block
+      let* updated_state = inject_block state ~updated_state signed_block in
+      let* () = state_recorder ~new_state:updated_state in
+      return updated_state
   | Forge_block {block_to_bake; updated_state} ->
-      let+ signed_block, updated_state =
-        forge_signed_block ~state_recorder ~updated_state block_to_bake state
-      in
+      let* signed_block = prepare_block updated_state block_to_bake in
       let updated_state =
         {
           updated_state with
@@ -950,7 +961,7 @@ let rec perform_action ~state_recorder state (action : action) =
             };
         }
       in
-      updated_state
+      return updated_state
   | Inject_preattestations {preattestations} ->
       let* () = inject_consensus_vote state preattestations `Preattestation in
       perform_action ~state_recorder state Watch_proposal

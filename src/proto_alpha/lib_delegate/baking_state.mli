@@ -149,11 +149,14 @@ type elected_block = {
   attestation_qc : Kind.attestation operation list;
 }
 
-type signed_block = {
+type prepared_block = {
+  signed_block_header : block_header;
   round : Round.t;
   delegate : consensus_key_and_delegate;
-  block_header : block_header;
+  cctxt : Protocol_client_context.full;
   operations : Tezos_base.Operation.t list list;
+  liquidity_baking_vote : Per_block_votes_repr.per_block_vote;
+  adaptive_issuance_vote : Per_block_votes_repr.per_block_vote;
 }
 
 type level_state = {
@@ -166,7 +169,7 @@ type level_state = {
   delegate_slots : delegate_slots;
   next_level_delegate_slots : delegate_slots;
   next_level_proposed_round : Round.t option;
-  next_forged_block : signed_block option;
+  next_forged_block : prepared_block option;
 }
 
 type phase =

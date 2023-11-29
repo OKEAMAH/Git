@@ -510,8 +510,9 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
   let open Lwt_syntax in
   let+ kind, updated_state =
     match state.level_state.next_forged_block with
-    | Some ({delegate; round; block_header = _; operations = _} as signed_block)
-      ->
+    | Some
+        ({delegate; round; signed_block_header = _; operations = _; _} as
+        signed_block) ->
         let+ () =
           Events.(emit found_preemptively_forged_block (delegate, round))
         in
