@@ -199,7 +199,42 @@ let check_l2_chain ~message ~data_dir (store : _ Store.t) context
   in
   check_chain head.header.block_hash
 
-let post_checks ~action ~message ~dest =
+let check_last_commitment cctxt head snapshot_metadata =
+  let open Lwt_result_syntax in
+  let last_snapshot_commitment =
+    Sc_rollup_block.most_recent_commitment head.Sc_rollup_block.header
+  in
+  let*? () =
+    error_unless
+      Commitment.Hash.(
+        snapshot_metadata.last_commitment = last_snapshot_commitment)
+    @@ error_of_fmt
+         "Last commitment in snapshot is %a but should be %a."
+         Commitment.Hash.pp
+         last_snapshot_commitment
+         Commitment.Hash.pp
+         snapshot_metadata.last_commitment
+  in
+  Error.trace_lwt_result_with
+    "Last commitment of snapshot is not published on L1."
+  @@ let* {current_protocol; _} =
+       Tezos_shell_services.Shell_services.Blocks.protocols
+         cctxt
+         ~block:(`Hash (head.header.block_hash, 0))
+         ()
+     in
+     let*? (module Plugin) =
+       Protocol_plugins.proto_plugin_for_protocol current_protocol
+     in
+     let* (_commitment : Commitment.t) =
+       Plugin.Layer1_helpers.get_commitment
+         cctxt
+         snapshot_metadata.address
+         snapshot_metadata.last_commitment
+     in
+     return_unit
+
+let post_checks ~action ~message snapshot_metadata ~dest =
   let open Lwt_result_syntax in
   let store_dir = Configuration.default_storage_dir dest in
   let context_dir = Configuration.default_context_dir dest in
@@ -217,11 +252,13 @@ let post_checks ~action ~message ~dest =
   let* check_block_data =
     match action with
     | `Export -> return check_block_data
-    | `Import _cctxt -> (
+    | `Import cctxt -> (
         let* metadata = Metadata.read_metadata_file ~dir:dest in
         match metadata with
         | None -> failwith "No metadata (needs rollup kind)."
-        | Some {kind; _} -> return (check_block_data_consistency kind))
+        | Some {kind; _} ->
+            let+ () = check_last_commitment cctxt head snapshot_metadata in
+            check_block_data_consistency kind)
   in
   let* () =
     check_l2_chain ~message ~data_dir:dest store context head check_block_data
@@ -233,7 +270,7 @@ let post_checks ~action ~message ~dest =
 let post_export_checks ~snapshot_file =
   let open Lwt_result_syntax in
   Lwt_utils_unix.with_tempdir "snapshot_checks_" @@ fun dest ->
-  let* () =
+  let* snapshot_metadata =
     extract
       gzip_reader
       stdlib_writer
@@ -241,7 +278,11 @@ let post_export_checks ~snapshot_file =
       ~snapshot_file
       ~dest
   in
-  post_checks ~action:`Export ~message:"Checking snapshot   " ~dest
+  post_checks
+    ~action:`Export
+    ~message:"Checking snapshot   "
+    snapshot_metadata
+    ~dest
 
 let operator_local_file_regexp =
   Re.Str.regexp "^storage/\\(commitments_published_at_level.*\\|lpc$\\)"
@@ -358,7 +399,7 @@ let import cctxt ~data_dir ~snapshot_file =
     ~when_locked:`Fail
     (Node_context.global_lockfile_path ~data_dir)
   @@ fun () ->
-  let* () =
+  let* snapshot_metadata =
     extract
       gzip_reader
       stdlib_writer
@@ -369,4 +410,5 @@ let import cctxt ~data_dir ~snapshot_file =
   post_checks
     ~action:(`Import cctxt)
     ~message:"Checking snapshot import"
+    snapshot_metadata
     ~dest:data_dir
