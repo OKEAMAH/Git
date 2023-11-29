@@ -164,7 +164,7 @@ trigger:
       when: manual
     # We do not want to trigger anything for merged_result pipelines as
     # the phony always succeed job will run instead.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_NAMESPACE == "tezos" && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_NAMESPACE == "tezos" && ( $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" || $CI_MERGE_REQUEST_EVENT_TYPE == "detached" )'
       when: never
     # Automatic trigger in all other pipelines types, that is "detached" and "merge_train"
     - when: always
