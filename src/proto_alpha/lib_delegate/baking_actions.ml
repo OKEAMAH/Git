@@ -600,12 +600,10 @@ let sign_consensus_votes state operations kind =
                 (Single (Preattestation consensus_content)))
         authorized_consensus_votes
 
-let inject_consensus_vote state preattestations kind =
+let inject_consensus_votes state signed_operations kind =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  let* signed_operations = sign_consensus_votes state preattestations kind in
-  (* TODO: add a RPC to inject multiple operations *)
   let fail_inject_event, injected_event =
     match kind with
     | `Preattestation ->
@@ -613,21 +611,25 @@ let inject_consensus_vote state preattestations kind =
     | `Attestation ->
         (Events.failed_to_inject_attestation, Events.attestation_injected)
   in
-  List.iter_ep
-    (fun (delegate, operation, level, round) ->
-      protect
-        ~on_error:(fun err ->
-          let*! () = Events.(emit fail_inject_event (delegate, err)) in
-          return_unit)
-        (fun () ->
-          let* oph =
-            Node_rpc.inject_operation cctxt ~chain:(`Hash chain_id) operation
-          in
-          let*! () =
-            Events.(emit injected_event (oph, delegate, level, round))
-          in
-          return_unit))
-    signed_operations
+  (* TODO: add a RPC to inject multiple operations *)
+  let* () =
+    List.iter_ep
+      (fun (delegate, operation, level, round) ->
+        protect
+          ~on_error:(fun err ->
+            let*! () = Events.(emit fail_inject_event (delegate, err)) in
+            return_unit)
+          (fun () ->
+            let* oph =
+              Node_rpc.inject_operation cctxt ~chain:(`Hash chain_id) operation
+            in
+            let*! () =
+              Events.(emit injected_event (oph, delegate, level, round))
+            in
+            return_unit))
+      signed_operations
+  in
+  return state
 
 let sign_dal_attestations state attestations =
   let open Lwt_result_syntax in
@@ -963,11 +965,21 @@ let rec perform_action ~state_recorder state (action : action) =
       in
       return updated_state
   | Inject_preattestations {preattestations} ->
-      let* () = inject_consensus_vote state preattestations `Preattestation in
+      let* signed_preattestations =
+        sign_consensus_votes state preattestations `Preattestation
+      in
+      let* state =
+        inject_consensus_votes state signed_preattestations `Preattestation
+      in
       perform_action ~state_recorder state Watch_proposal
   | Inject_attestations {attestations} ->
       let* () = state_recorder ~new_state:state in
-      let* () = inject_consensus_vote state attestations `Attestation in
+      let* signed_attestations =
+        sign_consensus_votes state attestations `Attestation
+      in
+      let* state =
+        inject_consensus_votes state signed_attestations `Attestation
+      in
       (* We wait for attestations to trigger the [Quorum_reached]
          event *)
       let*! () = start_waiting_for_attestation_quorum state in

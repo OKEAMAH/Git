@@ -106,11 +106,11 @@ val sign_consensus_votes :
   tzresult
   Lwt.t
 
-val inject_consensus_vote :
+val inject_consensus_votes :
   state ->
-  (consensus_key_and_delegate * consensus_content) list ->
+  ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list ->
   [`Preattestation | `Attestation] ->
-  unit tzresult Lwt.t
+  state tzresult Lwt.t
 
 val sign_dal_attestations :
   state ->
