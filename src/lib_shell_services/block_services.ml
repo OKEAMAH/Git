@@ -1499,6 +1499,7 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
             branch_refused
             branch_delayed
             validation_passes
+            delegates
           ->
             object
               method version = version
@@ -1516,6 +1517,8 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
               method branch_delayed = branch_delayed
 
               method validation_passes = validation_passes
+
+              method delegates = delegates
             end)
         |+ field
              "version"
@@ -1567,6 +1570,11 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
              "validation_pass"
              Tezos_rpc.Arg.int
              (fun t -> t#validation_passes)
+        |+ multi_field
+             ~descr:"Include operations filtered by delegate (all by default)"
+             "delegate"
+             Tezos_rpc.Arg.string
+             (fun t -> t#delegates)
         |> seal
 
       let pending_operations_encoding =
@@ -2085,7 +2093,8 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
     let pending_operations ctxt ?(chain = `Main)
         ?(version = S.Mempool.pending_operations_versions.default)
         ?(validated = true) ?(branch_delayed = true) ?(branch_refused = true)
-        ?(refused = true) ?(outdated = true) ?(validation_passes = []) () =
+        ?(refused = true) ?(outdated = true) ?(validation_passes = [])
+        ?(delegates = []) () =
       let open Lwt_result_syntax in
       let* _version, pending_operations =
         Tezos_rpc.Context.make_call1
@@ -2108,6 +2117,8 @@ module Make (Proto : PROTO) (Next_proto : PROTO) = struct
              method branch_delayed = branch_delayed
 
              method validation_passes = validation_passes
+
+             method delegates = delegates
           end)
           ()
       in
