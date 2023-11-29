@@ -35,8 +35,8 @@ type inject_block_kind =
 
 type action =
   | Do_nothing
-  | Inject_block of {kind : inject_block_kind; updated_state : state}
-  | Forge_block of {block_to_bake : block_to_bake; updated_state : state}
+  | Prepare_block of {block_to_bake : block_to_bake; updated_state : state}
+  | Inject_block of {prepared_block : prepared_block; updated_state : state}
   | Inject_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
@@ -65,11 +65,8 @@ type t = action
 
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
-  | Inject_block {kind; _} -> (
-      match kind with
-      | Forge_and_inject _ -> Format.fprintf fmt "forge and inject block"
-      | Inject_only _ -> Format.fprintf fmt "inject forged block")
-  | Forge_block _ -> Format.fprintf fmt "forge_block"
+  | Prepare_block _ -> Format.fprintf fmt "prepare block"
+  | Inject_block _ -> Format.fprintf fmt "inject block"
   | Inject_preattestations _ -> Format.fprintf fmt "inject preattestations"
   | Inject_attestations _ -> Format.fprintf fmt "inject attestations"
   | Update_to_level _ -> Format.fprintf fmt "update to level"
@@ -469,27 +466,13 @@ let rec perform_action ~state_recorder state (action : action) =
   | Do_nothing ->
       let* () = state_recorder ~new_state:state in
       return state
-  | Inject_block {kind; updated_state} ->
-      let* signed_block =
-        match kind with
-        | Forge_and_inject block_to_bake -> prepare_block state block_to_bake
-        | Inject_only signed_block -> return signed_block
-      in
-      let* updated_state = inject_block state ~updated_state signed_block in
-      let* () = state_recorder ~new_state:updated_state in
+  | Prepare_block {block_to_bake; updated_state} ->
+      let request = Forge_and_sign_block (state, block_to_bake) in
+      let () = state.global_state.forge_worker_hooks.push_request request in
       return updated_state
-  | Forge_block {block_to_bake; updated_state} ->
-      let* signed_block = prepare_block updated_state block_to_bake in
-      let updated_state =
-        {
-          updated_state with
-          level_state =
-            {
-              updated_state.level_state with
-              next_forged_block = Some signed_block;
-            };
-        }
-      in
+  | Inject_block {prepared_block; updated_state} ->
+      let* updated_state = inject_block state ~updated_state prepared_block in
+      let* () = state_recorder ~new_state:updated_state in
       return updated_state
   | Inject_preattestations {preattestations} ->
       let* signed_preattestations =

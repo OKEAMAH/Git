@@ -38,8 +38,8 @@ type inject_block_kind =
 
 type action =
   | Do_nothing
-  | Inject_block of {kind : inject_block_kind; updated_state : state}
-  | Forge_block of {block_to_bake : block_to_bake; updated_state : state}
+  | Prepare_block of {block_to_bake : block_to_bake; updated_state : state}
+  | Inject_block of {prepared_block : prepared_block; updated_state : state}
   | Inject_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }

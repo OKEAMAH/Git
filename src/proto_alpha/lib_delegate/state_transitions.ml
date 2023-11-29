@@ -484,23 +484,23 @@ let prepare_block_to_bake ~attestations ~dal_attestations ?last_proposal
     (* This is used as a safety net by applying blocks on round > 0, in case
        validation-only did not produce a correct round-0 block. *)
   in
-  return {predecessor; round; delegate; kind; force_apply}
+  let block_to_bake = {predecessor; round; delegate; kind; force_apply} in
+  let updated_state = update_current_phase state Idle in
+  let* prepared_block = Forge_worker.prepare_block state block_to_bake in
+  match prepared_block with
+  | Ok prepared_block -> return @@ Inject_block {prepared_block; updated_state}
+  | Error _ -> assert false
 
 let forge_fresh_block_action ~attestations ~dal_attestations ?last_proposal
     ~(predecessor : block_info) state delegate =
-  let open Lwt_syntax in
-  let* block_to_bake =
-    prepare_block_to_bake
-      ~attestations
-      ~dal_attestations
-      ?last_proposal
-      ~predecessor
-      state
-      delegate
-      Round.zero
-  in
-  let updated_state = update_current_phase state Idle in
-  return @@ Forge_block {block_to_bake; updated_state}
+  prepare_block_to_bake
+    ~attestations
+    ~dal_attestations
+    ?last_proposal
+    ~predecessor
+    state
+    delegate
+    Round.zero
 
 (** Create an inject action that will inject either a fresh block or the pre-emptively
     forged block if it exists. *)
@@ -508,36 +508,29 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
     ~(predecessor : block_info) state delegate round =
   (* TODO check if there is a trace where we could not have updated the level *)
   let open Lwt_syntax in
-  let* kind, updated_state =
-    match state.level_state.next_forged_block with
-    | Some
-        ({delegate; round; signed_block_header = _; operations = _; _} as
-        signed_block) ->
-        let* () =
-          Events.(emit found_preemptively_forged_block (delegate, round))
-        in
-        let updated_state =
-          {
-            state with
-            level_state = {state.level_state with next_forged_block = None};
-          }
-        in
-        return (Inject_only signed_block, updated_state)
-    | None ->
-        let* block_to_bake =
-          prepare_block_to_bake
-            ~attestations
-            ~dal_attestations
-            ?last_proposal
-            ~predecessor
-            state
-            delegate
-            round
-        in
-        return (Forge_and_inject block_to_bake, state)
-  in
-  let updated_state = update_current_phase updated_state Idle in
-  return (Inject_block {kind; updated_state})
+  match state.level_state.next_forged_block with
+  | Some
+      ({delegate; round; signed_block_header = _; operations = _; _} as
+      signed_block) ->
+      let* () =
+        Events.(emit found_preemptively_forged_block (delegate, round))
+      in
+      let updated_state =
+        {
+          state with
+          level_state = {state.level_state with next_forged_block = None};
+        }
+      in
+      return (Inject_block {prepared_block = signed_block; updated_state})
+  | None ->
+      prepare_block_to_bake
+        ~attestations
+        ~dal_attestations
+        ?last_proposal
+        ~predecessor
+        state
+        delegate
+        round
 
 let propose_block_action state delegate round ~last_proposal =
   let open Lwt_syntax in
@@ -573,7 +566,7 @@ let propose_block_action state delegate round ~last_proposal =
         ~predecessor:last_proposal.predecessor
         delegate
         round
-  | Some {proposal; prequorum} ->
+  | Some {proposal; prequorum} -> (
       let* () = Events.(emit repropose_block proposal.block.payload_hash) in
       (* For case 2, we re-inject the same block as [attestable_round]
          but we may add some left-overs attestations. Therefore, the
@@ -639,8 +632,11 @@ let propose_block_action state delegate round ~last_proposal =
         {predecessor = proposal.predecessor; round; delegate; kind; force_apply}
       in
       let updated_state = update_current_phase state Idle in
-      return
-      @@ Inject_block {kind = Forge_and_inject block_to_bake; updated_state}
+      let* prepared_block = Forge_worker.prepare_block state block_to_bake in
+      match prepared_block with
+      | Ok prepared_block ->
+          return @@ Inject_block {prepared_block; updated_state}
+      | Error _ -> assert false)
 
 let end_of_round state current_round =
   let open Lwt_syntax in
