@@ -119,27 +119,6 @@ type cache = {
     Baking_cache.Round_timestamp_interval_cache.t;
 }
 
-type global_state = {
-  (* client context *)
-  cctxt : Protocol_client_context.full;
-  (* chain id *)
-  chain_id : Chain_id.t;
-  (* baker configuration *)
-  config : Baking_configuration.t;
-  (* protocol constants *)
-  constants : Constants.t;
-  (* round durations *)
-  round_durations : Round.round_durations;
-  (* worker that monitor and aggregates new operations *)
-  operation_worker : Operation_worker.t;
-  (* the validation mode used by the baker*)
-  validation_mode : validation_mode;
-  (* the delegates on behalf of which the baker is running *)
-  delegates : consensus_key list;
-  cache : cache;
-  dal_node_rpc_ctxt : Tezos_rpc.Context.generic option;
-}
-
 let prequorum_encoding =
   let open Data_encoding in
   conv
@@ -401,7 +380,49 @@ type block_to_bake = {
   force_apply : bool;
 }
 
-type state = {
+type forge_event =
+  | Preattestation_ready of
+      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
+  | Attestation_ready of
+      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
+  | Block_ready of prepared_block
+
+type forge_request =
+  | Forge_and_sign_preattestations of
+      (state * (consensus_key_and_delegate * consensus_content) list)
+  | Forge_and_sign_attestations of
+      (state * (consensus_key_and_delegate * consensus_content) list)
+  | Forge_and_sign_block of (state * block_to_bake)
+
+and forge_worker_hooks = {
+  push_request : forge_request -> unit;
+  get_forge_event_stream : unit -> forge_event Lwt_stream.t;
+}
+
+and global_state = {
+  (* client context *)
+  cctxt : Protocol_client_context.full;
+  (* chain id *)
+  chain_id : Chain_id.t;
+  (* baker configuration *)
+  config : Baking_configuration.t;
+  (* protocol constants *)
+  constants : Constants.t;
+  (* round durations *)
+  round_durations : Round.round_durations;
+  (* worker that monitor and aggregates new operations *)
+  operation_worker : Operation_worker.t;
+  (* worker that does stuff *)
+  forge_worker_hooks : forge_worker_hooks;
+  (* the validation mode used by the baker*)
+  validation_mode : validation_mode;
+  (* the delegates on behalf of which the baker is running *)
+  delegates : consensus_key list;
+  cache : cache;
+  dal_node_rpc_ctxt : Tezos_rpc.Context.generic option;
+}
+
+and state = {
   global_state : global_state;
   level_state : level_state;
   round_state : round_state;

@@ -467,3 +467,58 @@ let sign_consensus_votes state operations kind =
                 delegate
                 (Single (Preattestation consensus_content)))
         authorized_consensus_votes
+
+type worker = {
+  push_task : forge_request option -> unit;
+  push_event : forge_event option -> unit;
+  event_stream : forge_event Lwt_stream.t;
+}
+
+type t = worker
+
+let push_request state request = state.push_task (Some request)
+
+let get_event_stream state = state.event_stream
+
+let shutdown_worker state = state.push_task None
+
+let create () =
+  let open Lwt_result_syntax in
+  let task_stream, push_task = Lwt_stream.create () in
+  let event_stream, push_event = Lwt_stream.create () in
+  let state : worker = {push_task; push_event; event_stream} in
+  let rec worker_loop () =
+    let*! (forge_request_opt : forge_request option) =
+      Lwt_stream.get task_stream
+    in
+    let* (forge_event : forge_event) =
+      match forge_request_opt with
+      | None -> assert false
+      | Some (Forge_and_sign_preattestations (state, v)) ->
+          let* signed_preattestations =
+            sign_consensus_votes state v `Preattestation
+          in
+          return @@ Preattestation_ready signed_preattestations
+      | Some (Forge_and_sign_attestations (state, v)) ->
+          let* signed_attestations =
+            sign_consensus_votes state v `Attestation
+          in
+          return @@ Attestation_ready signed_attestations
+      | Some (Forge_and_sign_block (state, block_to_bake)) ->
+          let* prepared_block = prepare_block state block_to_bake in
+          return @@ Block_ready prepared_block
+    in
+    let () = push_event (Some forge_event) in
+    worker_loop ()
+  in
+  Lwt.dont_wait
+    (fun () ->
+      Lwt.finalize
+        (fun () ->
+          let*! _ = worker_loop () in
+          Lwt.return_unit)
+        (fun () ->
+          let _ = shutdown_worker state in
+          Lwt.return_unit))
+    (fun _ -> assert false) ;
+  return state

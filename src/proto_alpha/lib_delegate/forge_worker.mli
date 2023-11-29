@@ -32,3 +32,15 @@ val sign_consensus_votes :
   ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list
   tzresult
   Lwt.t
+
+type worker
+
+type t = worker
+
+val push_request : worker -> forge_request -> unit
+
+val get_event_stream : worker -> forge_event Lwt_stream.t
+
+val shutdown_worker : worker -> unit
+
+val create : unit -> worker tzresult Lwt.t

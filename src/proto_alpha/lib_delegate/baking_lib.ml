@@ -35,12 +35,14 @@ let create_state cctxt ?synchronize ?monitor_node_mempool ~config
   let*! operation_worker =
     Operation_worker.create ?monitor_node_operations cctxt
   in
+  let* forge_worker = Forge_worker.create () in
   Baking_scheduling.create_initial_state
     cctxt
     ?synchronize
     ~chain
     config
     operation_worker
+    forge_worker
     ~current_proposal
     delegates
 
