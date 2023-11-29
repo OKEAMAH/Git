@@ -508,12 +508,12 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
     ~(predecessor : block_info) state delegate round =
   (* TODO check if there is a trace where we could not have updated the level *)
   let open Lwt_syntax in
-  let+ kind, updated_state =
+  let* kind, updated_state =
     match state.level_state.next_forged_block with
     | Some
         ({delegate; round; signed_block_header = _; operations = _; _} as
         signed_block) ->
-        let+ () =
+        let* () =
           Events.(emit found_preemptively_forged_block (delegate, round))
         in
         let updated_state =
@@ -522,9 +522,9 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
             level_state = {state.level_state with next_forged_block = None};
           }
         in
-        (Inject_only signed_block, updated_state)
+        return (Inject_only signed_block, updated_state)
     | None ->
-        let+ block_to_bake =
+        let* block_to_bake =
           prepare_block_to_bake
             ~attestations
             ~dal_attestations
@@ -534,10 +534,10 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
             delegate
             round
         in
-        (Forge_and_inject block_to_bake, state)
+        return (Forge_and_inject block_to_bake, state)
   in
   let updated_state = update_current_phase updated_state Idle in
-  Inject_block {kind; updated_state}
+  return (Inject_block {kind; updated_state})
 
 let propose_block_action state delegate round ~last_proposal =
   let open Lwt_syntax in

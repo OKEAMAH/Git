@@ -27,27 +27,6 @@ open Protocol
 open Alpha_context
 open Baking_state
 
-type block_kind =
-  | Fresh of Operation_pool.pool
-  | Reproposal of {
-      consensus_operations : packed_operation list;
-      payload_hash : Block_payload_hash.t;
-      payload_round : Round.t;
-      payload : Operation_pool.payload;
-    }
-
-type block_to_bake = {
-  predecessor : block_info;
-  round : Round.t;
-  delegate : consensus_key_and_delegate;
-  kind : block_kind;
-  force_apply : bool;
-      (** if true, while baking the block, try and apply the block and its
-          operations instead of only validating them. this can be permanently
-          set using the [--force-apply] flag (see [force_apply_switch_arg] in
-          [baking_commands.ml]). *)
-}
-
 type inject_block_kind =
   | Forge_and_inject of block_to_bake
       (** Forge and inject a freshly forged block. [block_to_bake] should be
@@ -87,24 +66,8 @@ and round_update = {
 
 type t = action
 
-val generate_seed_nonce_hash :
-  Baking_configuration.nonce_config ->
-  consensus_key ->
-  Level.t ->
-  (Nonce_hash.t * Nonce.t) option tzresult Lwt.t
-
-val prepare_block : state -> block_to_bake -> prepared_block tzresult Lwt.t
-
 val inject_block :
   state -> updated_state:state -> prepared_block -> state tzresult Lwt.t
-
-val sign_consensus_votes :
-  state ->
-  (consensus_key_and_delegate * consensus_content) list ->
-  [`Preattestation | `Attestation] ->
-  ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list
-  tzresult
-  Lwt.t
 
 val inject_consensus_votes :
   state ->

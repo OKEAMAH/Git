@@ -91,7 +91,7 @@ let preattest (cctxt : Protocol_client_context.full) ?(force = false) delegates
       (List.map fst consensus_list)
   in
   let* signed_preattestations =
-    Baking_actions.sign_consensus_votes state consensus_list `Preattestation
+    Forge_worker.sign_consensus_votes state consensus_list `Preattestation
   in
   let* (_ : state) =
     Baking_actions.inject_consensus_votes
@@ -137,7 +137,7 @@ let attest (cctxt : Protocol_client_context.full) ?(force = false) delegates =
     Baking_state.may_record_new_state ~previous_state:state ~new_state:state
   in
   let* signed_attestations =
-    Baking_actions.sign_consensus_votes state consensus_list `Attestation
+    Forge_worker.sign_consensus_votes state consensus_list `Attestation
   in
   let* (_ : state) =
     Baking_actions.inject_consensus_votes state signed_attestations `Attestation
@@ -253,10 +253,10 @@ let propose_at_next_level ~minimal_timestamp state =
       Operation_worker.get_current_operations
         state.global_state.operation_worker
     in
-    let kind = Baking_actions.Fresh pool in
-    let block_to_bake : Baking_actions.block_to_bake =
+    let kind = Baking_state.Fresh pool in
+    let block_to_bake : Baking_state.block_to_bake =
       {
-        Baking_actions.predecessor = state.level_state.latest_proposal.block;
+        Baking_state.predecessor = state.level_state.latest_proposal.block;
         round = minimal_round;
         delegate;
         kind;
@@ -557,7 +557,7 @@ let rec baking_minimal_timestamp ~count state
     | Some first_potential_round -> return first_potential_round
   in
   let* signed_attestations =
-    Baking_actions.sign_consensus_votes state own_attestations `Attestation
+    Forge_worker.sign_consensus_votes state own_attestations `Attestation
   in
   let pool =
     Operation_pool.add_operations
@@ -575,10 +575,10 @@ let rec baking_minimal_timestamp ~count state
          (fun (_delegate, op, _bitset, _published_level) -> op)
          signed_dal_attestations)
   in
-  let kind = Baking_actions.Fresh pool in
-  let block_to_bake : Baking_actions.block_to_bake =
+  let kind = Baking_state.Fresh pool in
+  let block_to_bake : Baking_state.block_to_bake =
     {
-      Baking_actions.predecessor = latest_proposal.block;
+      Baking_state.predecessor = latest_proposal.block;
       round = minimal_round;
       delegate;
       kind;
