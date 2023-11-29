@@ -470,6 +470,7 @@ type event =
       Operation_worker.candidate * Kind.preattestation operation list
   | Quorum_reached of
       Operation_worker.candidate * Kind.attestation operation list
+  | Ready_to_inject of forge_event
   | Timeout of timeout_kind
 
 let event_encoding =
@@ -1045,6 +1046,40 @@ let pp_timeout_kind fmt = function
       Format.fprintf fmt "time to bake next level at round %a" Round.pp at_round
   | Time_to_forge_block -> Format.fprintf fmt "time to forge block"
 
+let pp_forge_event fmt = function
+  | Preattestation_ready signed_preattestations ->
+      List.iter
+        (fun (delegate, _operation, level, round) ->
+          Format.fprintf
+            fmt
+            "Preattestation: delegate: %a, level: %ld, round: %a @."
+            pp_consensus_key_and_delegate
+            delegate
+            level
+            Round.pp
+            round)
+        signed_preattestations
+  | Attestation_ready signed_attestations ->
+      List.iter
+        (fun (delegate, _operation, level, round) ->
+          Format.fprintf
+            fmt
+            "Attestation: delegate: %a, level: %ld, round: %a @."
+            pp_consensus_key_and_delegate
+            delegate
+            level
+            Round.pp
+            round)
+        signed_attestations
+  | Block_ready {round; delegate; _} ->
+      Format.fprintf
+        fmt
+        "Block: delegate: %a, round: %a @."
+        pp_consensus_key_and_delegate
+        delegate
+        Round.pp
+        round
+
 let pp_event fmt = function
   | New_valid_proposal proposal ->
       Format.fprintf
@@ -1076,5 +1111,7 @@ let pp_event fmt = function
         candidate.Operation_worker.hash
         Round.pp
         candidate.round_watched
+  | Ready_to_inject forge_event ->
+      Format.printf "ready to inject %a" pp_forge_event forge_event
   | Timeout kind ->
       Format.fprintf fmt "timeout reached: %a" pp_timeout_kind kind

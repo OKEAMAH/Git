@@ -933,6 +933,15 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       (* If the round is ending, stop everything currently going on and
          increment the round. *)
       end_of_round state ending_round
+  | _, Ready_to_inject forge_event -> (
+      match forge_event with
+      | Preattestation_ready signed_preattestations ->
+          Lwt.return (state, Inject_preattestations {signed_preattestations})
+      | Attestation_ready signed_attestations ->
+          Lwt.return (state, Inject_attestations {signed_attestations})
+      | Block_ready prepared_block ->
+          Lwt.return
+            (state, Inject_block {prepared_block; updated_state = state}))
   | _, Timeout (Time_to_bake_next_level {at_round}) ->
       (* If it is time to bake the next level, stop everything currently
          going on and propose the next level block *)

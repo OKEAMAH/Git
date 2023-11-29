@@ -469,6 +469,8 @@ let bake_using_automaton ~count config state heads_stream =
   let loop_state =
     Baking_scheduling.create_loop_state
       ~heads_stream
+      ~get_forge_event_stream:
+        state.global_state.forge_worker_hooks.get_forge_event_stream
       state.global_state.operation_worker
   in
   let stop_on_next_level_block = function

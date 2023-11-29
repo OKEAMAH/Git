@@ -31,6 +31,7 @@ type loop_state
 val create_loop_state :
   ?get_valid_blocks_stream:proposal Lwt_stream.t Lwt.t ->
   heads_stream:proposal Lwt_stream.t ->
+  get_forge_event_stream:(unit -> forge_event Lwt_stream.t) ->
   Operation_worker.t ->
   loop_state
 

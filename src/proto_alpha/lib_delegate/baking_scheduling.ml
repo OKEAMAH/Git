@@ -31,6 +31,7 @@ type loop_state = {
   heads_stream : Baking_state.proposal Lwt_stream.t;
   get_valid_blocks_stream : Baking_state.proposal Lwt_stream.t Lwt.t;
   qc_stream : Operation_worker.event Lwt_stream.t;
+  forge_stream : forge_event Lwt_stream.t;
   future_block_stream :
     [`New_future_head of proposal | `New_future_valid_proposal of proposal]
     Lwt_stream.t;
@@ -47,6 +48,8 @@ type loop_state = {
     option;
   mutable last_get_qc_event :
     [`QC_reached of Operation_worker.event option] Lwt.t option;
+  mutable last_get_ready_to_inject_event :
+    [`Ready_to_inject of forge_event option] Lwt.t option;
 }
 
 type events =
@@ -55,11 +58,13 @@ type events =
   | `New_valid_proposal of proposal option
   | `New_head_proposal of proposal option
   | `QC_reached of Operation_worker.event option
+  | `Ready_to_inject of forge_event option
   | `Termination
   | `Timeout of timeout_kind ]
   Lwt.t
 
-let create_loop_state ?get_valid_blocks_stream ~heads_stream operation_worker =
+let create_loop_state ?get_valid_blocks_stream ~heads_stream
+    ~get_forge_event_stream operation_worker =
   let future_block_stream, push_future_block = Lwt_stream.create () in
   let get_valid_blocks_stream =
     match get_valid_blocks_stream with
@@ -70,12 +75,14 @@ let create_loop_state ?get_valid_blocks_stream ~heads_stream operation_worker =
     heads_stream;
     get_valid_blocks_stream;
     qc_stream = Operation_worker.get_quorum_event_stream operation_worker;
+    forge_stream = get_forge_event_stream ();
     future_block_stream;
     push_future_block = (fun x -> push_future_block (Some x));
     last_get_head_event = None;
     last_get_valid_block_event = None;
     last_future_block_event = None;
     last_get_qc_event = None;
+    last_get_ready_to_inject_event = None;
   }
 
 let find_in_known_round_intervals known_round_intervals ~predecessor_timestamp
@@ -190,6 +197,17 @@ let rec wait_next_event ~timeout loop_state =
         t
     | Some t -> t
   in
+  let get_ready_to_inject_event () =
+    match loop_state.last_get_ready_to_inject_event with
+    | None ->
+        let t =
+          let*! e = Lwt_stream.get loop_state.forge_stream in
+          Lwt.return (`Ready_to_inject e)
+        in
+        loop_state.last_get_ready_to_inject_event <- Some t ;
+        t
+    | Some t -> t
+  in
   (* event construction *)
   let open Baking_state in
   let*! result =
@@ -200,6 +218,7 @@ let rec wait_next_event ~timeout loop_state =
         (get_valid_block_event () :> events);
         (get_future_block_event () :> events);
         (get_qc_event () :> events);
+        (get_ready_to_inject_event () :> events);
         (timeout :> events);
       ]
   in
@@ -219,6 +238,10 @@ let rec wait_next_event ~timeout loop_state =
   | `QC_reached None ->
       (* Not supposed to happen: exit the loop *)
       loop_state.last_get_qc_event <- None ;
+      return_none
+  | `Ready_to_inject None ->
+      (* Not supposed to happen: exit the loop *)
+      loop_state.last_get_ready_to_inject_event <- None ;
       return_none
   | `New_valid_proposal (Some proposal) -> (
       loop_state.last_get_valid_block_event <- None ;
@@ -271,6 +294,9 @@ let rec wait_next_event ~timeout loop_state =
       (Some (Operation_worker.Quorum_reached (candidate, attestation_qc))) ->
       loop_state.last_get_qc_event <- None ;
       return_some (Quorum_reached (candidate, attestation_qc))
+  | `Ready_to_inject (Some event) ->
+      loop_state.last_get_qc_event <- None ;
+      return_some (Ready_to_inject event)
   | `Timeout e -> return_some (Timeout e)
 
 (** From the current [state], the function returns an optional
@@ -1014,6 +1040,8 @@ let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
   let loop_state =
     create_loop_state
       ~get_valid_blocks_stream
+      ~get_forge_event_stream:
+        initial_state.global_state.forge_worker_hooks.get_forge_event_stream
       ~heads_stream
       initial_state.global_state.operation_worker
   in
