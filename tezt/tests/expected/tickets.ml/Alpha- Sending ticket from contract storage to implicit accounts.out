@@ -171,7 +171,7 @@ This sequence of operations was run:
 
 ./octez-client --mode mockup --wait none transfer 1 tickets from bootstrap1 to '[CONTRACT_HASH]' with entrypoint save and contents '"Ticket"' and type string and ticketer '[CONTRACT_HASH]' --burn-cap 1
 Node is bootstrapped.
-Estimated gas: 3176.332 units (will add 100 for safety)
+Estimated gas: 3175.934 units (will add 100 for safety)
 Estimated storage: 44 bytes added (will add 20 for safety)
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -184,7 +184,7 @@ This sequence of operations was run:
     From: [PUBLIC_KEY_HASH]
     Fee to the baker: ꜩ0.000626
     Expected counter: 4
-    Gas limit: 3277
+    Gas limit: 3276
     Storage limit: 64 bytes
     Balance updates:
       [PUBLIC_KEY_HASH] ... -ꜩ0.000626
@@ -217,16 +217,10 @@ This sequence of operations was run:
             { Pair 0x01fca241ad513615858a813a6019c5a5b3977c27dc00 (Pair "Ticket" 1) }
           Storage size: 227 bytes
           Paid storage size diff: 44 bytes
-          Consumed gas: 1910.352
+          Consumed gas: 1909.954
           Balance updates:
             [PUBLIC_KEY_HASH] ... -ꜩ0.011
             storage fees ........................... +ꜩ0.011
-          Ticket updates:
-            Ticketer: [CONTRACT_HASH]
-            Content type: string
-            Content: "Ticket"
-            Account updates:
-              [CONTRACT_HASH] ... +1
 
 
 ./octez-client --mode mockup get ticket balance for bootstrap1 with ticketer '[CONTRACT_HASH]' and type string and content '"Ticket"'
@@ -237,7 +231,7 @@ This sequence of operations was run:
 
 ./octez-client --mode mockup --wait none transfer 0 from bootstrap1 to '[CONTRACT_HASH]' --burn-cap 1 --entrypoint send --arg '"[PUBLIC_KEY_HASH]"'
 Node is bootstrapped.
-Estimated gas: 2511.210 units (will add 100 for safety)
+Estimated gas: 2510.812 units (will add 100 for safety)
 Estimated storage: no bytes added
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -250,7 +244,7 @@ This sequence of operations was run:
     From: [PUBLIC_KEY_HASH]
     Fee to the baker: ꜩ0.000561
     Expected counter: 5
-    Gas limit: 2612
+    Gas limit: 2611
     Storage limit: 0 bytes
     Balance updates:
       [PUBLIC_KEY_HASH] ... -ꜩ0.000561
@@ -264,13 +258,7 @@ This sequence of operations was run:
       This transaction was successfully applied
       Updated storage: {}
       Storage size: 183 bytes
-      Consumed gas: 2411.347
-      Ticket updates:
-        Ticketer: [CONTRACT_HASH]
-        Content type: string
-        Content: "Ticket"
-        Account updates:
-          [CONTRACT_HASH] ... -1
+      Consumed gas: 2410.949
       Internal operations:
         Internal Transaction:
           Amount: ꜩ0

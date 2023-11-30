@@ -34,8 +34,14 @@ type update = {account : Destination.t; amount : Z.t}
 (** List of updates for a [ticket]  *)
 type item = {ticket_token : Ticket_token.unparsed_token; updates : update list}
 
+module Map : Map.S with type key = Ticket_token.unparsed_token
+
 (** A list of ticket tokens and their corresponding updates *)
-type t = item list
+type t = item Map.t
+
+val of_list : item list -> t
+
+val to_list : t -> item list
 
 val item_encoding : item Data_encoding.t
 

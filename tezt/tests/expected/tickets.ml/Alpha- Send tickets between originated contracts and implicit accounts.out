@@ -263,7 +263,7 @@ This sequence of operations was run:
 
 ./octez-client --mode mockup --wait none transfer 1 tickets from bootstrap2 to '[CONTRACT_HASH]' with entrypoint save and contents '"Ticket"' and type string and ticketer '[CONTRACT_HASH]' --burn-cap 1
 Node is bootstrapped.
-Estimated gas: 3206.843 units (will add 100 for safety)
+Estimated gas: 3206.445 units (will add 100 for safety)
 Estimated storage: 110 bytes added (will add 20 for safety)
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -313,16 +313,10 @@ This sequence of operations was run:
             { Pair 0x01fca241ad513615858a813a6019c5a5b3977c27dc00 (Pair "Ticket" 1) }
           Storage size: 238 bytes
           Paid storage size diff: 44 bytes
-          Consumed gas: 1910.859
+          Consumed gas: 1910.461
           Balance updates:
             [PUBLIC_KEY_HASH] ... -ꜩ0.011
             storage fees ........................... +ꜩ0.011
-          Ticket updates:
-            Ticketer: [CONTRACT_HASH]
-            Content type: string
-            Content: "Ticket"
-            Account updates:
-              [CONTRACT_HASH] ... +1
 
 
 ./octez-client --mode mockup get ticket balance for bootstrap2 with ticketer '[CONTRACT_HASH]' and type string and content '"Ticket"'
@@ -333,7 +327,7 @@ This sequence of operations was run:
 
 ./octez-client --mode mockup --wait none transfer 0 from bootstrap1 to '[CONTRACT_HASH]' --burn-cap 1 --entrypoint send --arg '"[CONTRACT_HASH]"'
 Node is bootstrapped.
-Estimated gas: 4716.890 units (will add 100 for safety)
+Estimated gas: 4716.492 units (will add 100 for safety)
 Estimated storage: no bytes added
 Operation successfully injected in the node.
 Operation hash is '[OPERATION_HASH]'
@@ -360,13 +354,7 @@ This sequence of operations was run:
       This transaction was successfully applied
       Updated storage: {}
       Storage size: 194 bytes
-      Consumed gas: 2864.303
-      Ticket updates:
-        Ticketer: [CONTRACT_HASH]
-        Content type: string
-        Content: "Ticket"
-        Account updates:
-          [CONTRACT_HASH] ... -1
+      Consumed gas: 2863.905
       Internal operations:
         Internal Transaction:
           Amount: ꜩ0

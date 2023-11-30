@@ -461,7 +461,10 @@ let assert_ticket_diffs ctxt ~loc ~self_contract ~arg_type ~storage_type ~arg
         (contract, contents, amounts))
       expected_receipt
   in
-  assert_equal_ticket_receipt ~loc ticket_receipt expected_receipt
+  assert_equal_ticket_receipt
+    ~loc
+    (Ticket_receipt.to_list ticket_receipt)
+    expected_receipt
 
 let assert_balance = Ticket_helpers.assert_balance
 

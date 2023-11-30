@@ -347,7 +347,7 @@ let apply_transaction_to_implicit ~ctxt ~sender ~amount ~pkh ~before_operation =
         storage = None;
         lazy_storage_diff = None;
         balance_updates;
-        ticket_receipt = [];
+        ticket_receipt = Ticket_receipt.Map.empty;
         originated_contracts = [];
         consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
         storage_size = Z.zero;
@@ -402,7 +402,7 @@ let apply_stake ~ctxt ~sender ~amount ~destination ~before_operation =
             storage = None;
             lazy_storage_diff = None;
             balance_updates;
-            ticket_receipt = [];
+            ticket_receipt = Ticket_receipt.Map.empty;
             originated_contracts = [];
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
             storage_size = Z.zero;
@@ -434,7 +434,7 @@ let apply_unstake ~ctxt ~sender ~amount ~destination ~before_operation =
             storage = None;
             lazy_storage_diff = None;
             balance_updates;
-            ticket_receipt = [];
+            ticket_receipt = Ticket_receipt.Map.empty;
             originated_contracts = [];
             consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
             storage_size = Z.zero;
@@ -465,7 +465,7 @@ let apply_finalize_unstake ~ctxt ~sender ~amount ~destination ~before_operation
         storage = None;
         lazy_storage_diff = None;
         balance_updates;
-        ticket_receipt = [];
+        ticket_receipt = Ticket_receipt.Map.empty;
         originated_contracts = [];
         consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
         storage_size = Z.zero;
@@ -501,7 +501,7 @@ let apply_set_delegate_parameters ~ctxt ~sender ~destination
         storage = None;
         lazy_storage_diff = None;
         balance_updates = [];
-        ticket_receipt = [];
+        ticket_receipt = Ticket_receipt.Map.empty;
         originated_contracts = [];
         consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
         storage_size = Z.zero;
@@ -537,8 +537,9 @@ let apply_transaction_to_implicit_with_ticket ~sender ~destination ~ty ~ticket
     transfer_from_any_address ctxt sender destination amount
   in
   let ticket_receipt =
-    Ticket_receipt.
-      [
+    Ticket_receipt.Map.add
+      ticket_token
+      Ticket_receipt.
         {
           ticket_token;
           updates =
@@ -548,8 +549,8 @@ let apply_transaction_to_implicit_with_ticket ~sender ~destination ~ty ~ticket
                 amount = Script_int.(to_zint (ticket_amount :> n num));
               };
             ];
-        };
-      ]
+        }
+      Ticket_receipt.Map.empty
   in
   return
     ( ctxt,
@@ -876,27 +877,10 @@ let apply_internal_operation_contents :
             has_tickets
             parameters
         in
-        (* TODO: https://gitlab.com/tezos/tezos/-/issues/4354
-           Factor out function for constructing a ticket receipt.
-           There are multiple places where we compute the receipt from a
-           ticket-token-map. We should factor out and reuse this logic. *)
         let+ ticket_receipt, ctxt =
-          Ticket_token_map.fold_es
+          Ticket_token_map.to_ticket_receipt
             ctxt
-            (fun ctxt acc ex_token amount ->
-              let* ticket_token, ctxt =
-                Ticket_token_unparser.unparse ctxt ex_token
-              in
-              let item =
-                Ticket_receipt.
-                  {
-                    ticket_token;
-                    updates =
-                      [{account = Destination.Sc_rollup destination; amount}];
-                  }
-              in
-              return (item :: acc, ctxt))
-            []
+            ~owner:(Destination.Sc_rollup destination)
             ticket_token_map
         in
         let consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt in
@@ -1155,8 +1139,9 @@ let apply_manager_operation :
             in
             let amount = Script_int.(to_zint (amount :> n num)) in
             let ticket_receipt =
-              Ticket_receipt.
-                [
+              Ticket_receipt.Map.add
+                ticket_token
+                Ticket_receipt.
                   {
                     ticket_token;
                     updates =
@@ -1167,8 +1152,8 @@ let apply_manager_operation :
                         };
                         {account = Contract destination; amount};
                       ];
-                  };
-                ]
+                  }
+                Ticket_receipt.Map.empty
             in
             return
               ( ctxt,
@@ -1207,8 +1192,9 @@ let apply_manager_operation :
             in
             let amount = Script_int.(to_zint (amount :> n num)) in
             let ticket_receipt =
-              Ticket_receipt.
-                [
+              Ticket_receipt.Map.add
+                ticket_token
+                Ticket_receipt.
                   {
                     ticket_token;
                     updates =
@@ -1219,8 +1205,8 @@ let apply_manager_operation :
                         }
                         (* The transfer of the ticket to [destination] is part of the internal operation [op]. *);
                       ];
-                  };
-                ]
+                  }
+                Ticket_receipt.Map.empty
             in
             return
               ( ctxt,

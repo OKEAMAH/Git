@@ -529,7 +529,7 @@ let pp_ticket_receipt ppf ticket_receipt =
       pp_account_updates
       updates
   in
-  match ticket_receipt with
+  match Ticket_receipt.to_list ticket_receipt with
   | [] -> ()
   | ticket_updates ->
       Format.fprintf

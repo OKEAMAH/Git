@@ -140,12 +140,13 @@ let to_ticket_receipt ctxt ~owner ticket_token_map =
     (fun ctxt acc _ticket_hash (ex_ticket, amount) ->
       if Z.(equal amount zero) then return (acc, ctxt)
       else
-        let* ticket_token, ctxt =
+        let* ticket_token, _ctxt =
           Ticket_token_unparser.unparse ctxt ex_ticket
         in
         let update =
           Ticket_receipt.{ticket_token; updates = [{account = owner; amount}]}
         in
-        return (update :: acc, ctxt))
-    []
+        let _ = Ticket_receipt.Map.add ticket_token update acc in
+        return (acc, ctxt))
+    Ticket_receipt.Map.empty
     ticket_token_map

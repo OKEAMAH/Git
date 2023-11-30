@@ -535,6 +535,7 @@ let execute_outbox_message_transaction ctxt ~transactions ~rollup =
       ctxt
       ticket_token_diffs
   in
+  let ticket_receipt = Ticket_receipt.of_list ticket_receipt in
   return
     ( {
         paid_storage_size_diff;
@@ -598,7 +599,7 @@ let execute_outbox_message_whitelist_update (ctxt : t) ~rollup ~whitelist
         return
           ( {
               paid_storage_size_diff = Z.add paid_storage_size_diff size_diff;
-              ticket_receipt = [];
+              ticket_receipt = Ticket_receipt.Map.empty;
               operations = [];
               whitelist_update = Some (Private whitelist);
             },
@@ -608,7 +609,7 @@ let execute_outbox_message_whitelist_update (ctxt : t) ~rollup ~whitelist
         return
           ( {
               paid_storage_size_diff = Z.zero;
-              ticket_receipt = [];
+              ticket_receipt = Ticket_receipt.Map.empty;
               operations = [];
               whitelist_update = Some Public;
             },

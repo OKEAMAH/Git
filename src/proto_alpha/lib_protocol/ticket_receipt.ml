@@ -29,7 +29,13 @@ type update = {account : Destination.t; amount : Z.t}
 
 type item = {ticket_token : Ticket_token.unparsed_token; updates : update list}
 
-type t = item list
+module Map = Map.Make (struct
+  type t = Ticket_token.unparsed_token
+
+  let compare = Ticket_token.compare
+end)
+
+type t = item Map.t
 
 let update_encoding =
   let open Data_encoding in
@@ -47,4 +53,26 @@ let item_encoding =
        (req "ticket_token" Ticket_token.unparsed_token_encoding)
        (req "updates" (list update_encoding)))
 
-let encoding = Data_encoding.list item_encoding
+let encoding =
+  let open Data_encoding in
+  conv
+    Map.bindings
+    (fun l -> List.fold_left (fun acc (k, v) -> Map.add k v acc) Map.empty l)
+    (list (tup2 Ticket_token.unparsed_token_encoding item_encoding))
+
+(* let encoding = Data_encoding.map item_encoding *)
+
+let of_list l =
+  let map = Map.empty in
+  let _ =
+    List.fold_left
+      (fun acc {ticket_token; updates} -> Map.add ticket_token updates acc)
+      map
+      l
+  in
+  map
+
+let to_list map =
+  List.map
+    (fun (_k, {ticket_token; updates}) -> {ticket_token; updates})
+    (Map.bindings map)

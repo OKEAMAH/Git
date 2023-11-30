@@ -245,7 +245,7 @@ module Internal_operation = struct
                 "balance_updates"
                 Receipt.balance_updates_encoding_with_legacy_attestation_name
                 [])
-             (dft "ticket_receipt" Ticket_receipt.encoding [])
+             (dft "ticket_receipt" Ticket_receipt.encoding Ticket_receipt.Map.empty)
              (dft "originated_contracts" (list Contract.originated_encoding) [])
              (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
              (dft "storage_size" z Z.zero)
