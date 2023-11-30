@@ -54,7 +54,7 @@ fn unify_interpreter_error<'a>(
                     // representation as well.
                     let arena = typed_arena::Arena::new();
                     match (
-                        typed_value_to_value_optimized(&arena, exp_typed_val.clone()),
+                        typed_value_to_value_optimized(&arena, exp_typed_val),
                         typed_value_to_value_optimized(&arena, failed_typed_value.clone()),
                     ) {
                         (Some(exp), Some(actual)) => Ok(exp == actual),
