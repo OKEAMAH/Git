@@ -6,16 +6,13 @@
 type storage = unit
 
 type parameter =
-  | Mint of address
+  | Mint of (tez_ticket contract)
   | Burn of (address * tez_ticket)
 
 type return = operation list * storage
 
 // Mint creates [Tezos.get_amount ()] tickets and transfers them to [address].
-let mint address : return =
-  let contract : tez_ticket contract =
-    Tezos.get_contract_with_error address "Invalid callback"
-  in
+let mint contract : return =
   let amount: nat = Tezos.get_amount () / 1mutez in
   let tickets : tez_ticket =
     match Tezos.create_ticket (0n, None) amount with

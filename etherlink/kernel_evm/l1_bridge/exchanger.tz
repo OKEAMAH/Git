@@ -1,10 +1,10 @@
-{ parameter (or (address %mint) (pair %burn address (ticket (pair nat (option bytes))))) ;
+{ parameter
+    (or (contract %mint (ticket (pair nat (option bytes))))
+        (pair %burn address (ticket (pair nat (option bytes))))) ;
   storage unit ;
   code { CAR ;
          IF_LEFT
-           { CONTRACT (ticket (pair nat (option bytes))) ;
-             IF_NONE { PUSH string "Invalid callback" ; FAILWITH } {} ;
-             PUSH mutez 1 ;
+           { PUSH mutez 1 ;
              AMOUNT ;
              EDIV ;
              IF_NONE { PUSH string "DIV by 0" ; FAILWITH } {} ;
