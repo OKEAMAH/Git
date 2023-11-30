@@ -12,14 +12,26 @@ workflow:
     # with the corresponding 'if'-rules on the pipeline includes
     # below.
 
-    # Allow manual 'Before merging' pipelines on MRs in progress
-    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && ( $CI_MERGE_REQUEST_LABELS !~ /MR_IS_READY/ || $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train" )'
+    # Before merging types
+    ## Allow manual 'Before merging' pipelines on MRs in progress
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "detached"'
       variables:
         PIPELINE_TYPE: 'before_merging-not-ready'
-    # Allow 'phony-always-succeed' pipelines on ready MRs
-    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_LABELS =~ /MR_IS_READY/'
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" && $CI_MERGE_REQUEST_LABELS !~ /MR_IS_READY/'
+      variables:
+        PIPELINE_TYPE: 'before_merging-not-ready'
+    ## Allow automatic 'Before merging' pipelines for Marge-bot and merge trains
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES =~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train"'
+      variables:
+        PIPELINE_TYPE: 'before_merging-merging'
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"'
+      variables:
+        PIPELINE_TYPE: 'before_merging-merging'
+    ## Allow 'phony-always-succeed' pipelines on ready MRs
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" && $CI_MERGE_REQUEST_LABELS =~ /MR_IS_READY/'
       variables:
         PIPELINE_TYPE: 'before_merging-ready'
+
     # Allow 'Latest release' pipelines
     - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "latest-release"'
       variables:
@@ -159,12 +171,13 @@ trigger:
     # corresponds to the value in scripts/version.sh.
     - ./scripts/ci/check_alpine_version.sh
   rules:
-    # Manual pipelines on MRs that are not ready
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_NAMESPACE == "tezos" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train" && $CI_MERGE_REQUEST_LABELS !~ /MR_IS_READY/'
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "detached"'
+      when: manual
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" && $CI_MERGE_REQUEST_LABELS !~ /MR_IS_READY/'
       when: manual
     # We do not want to trigger anything for merged_result pipelines as
     # the phony always succeed job will run instead.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_NAMESPACE == "tezos" && ( $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" || $CI_MERGE_REQUEST_EVENT_TYPE == "detached" )'
+    - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" && $CI_MERGE_REQUEST_LABELS =~ /MR_IS_READY/'
       when: never
     # Automatic trigger in all other pipelines types, that is "detached" and "merge_train"
     - when: always
@@ -176,18 +189,22 @@ include:
   # Common templates
   - local: .gitlab/ci/jobs/shared/templates.yml
 
-  # Before merging
-  # This rule is triggered if the MR is NOT in a ready state (therefore we want a manual pipeline)
+  # Before merging types
+
+  # This rule is triggered if the MR is NOT in a ready state (therefore we want a manual/automatic pipeline)
   - local: .gitlab/ci/pipelines/before_merging.yml
     rules:
-      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && ( $CI_MERGE_REQUEST_LABELS !~ /MR_IS_READY/ || $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train" )'
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "detached"'
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" && $CI_MERGE_REQUEST_LABELS !~ /MR_IS_READY/'
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES =~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train"'
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"'
 
   # This rule is triggered if the MR is in a ready state and it is necessary using the merge train
   # workflow to be able to add the MR to the train
   # without manual trigger.
   - local: .gitlab/ci/pipelines/phony.yml
     rules:
-      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && ( $CI_MERGE_REQUEST_LABELS =~ /MR_IS_READY/ && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train" )'
+      - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/ && $CI_MERGE_REQUEST_EVENT_TYPE == "merged_result" && $CI_MERGE_REQUEST_LABELS =~ /MR_IS_READY/'
 
   # Latest release
   - local: .gitlab/ci/pipelines/latest_release.yml
