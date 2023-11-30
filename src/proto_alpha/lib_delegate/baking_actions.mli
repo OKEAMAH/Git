@@ -53,6 +53,8 @@ type action =
   | Inject_attestations of {
       signed_attestations :
         (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+    }
+  | Inject_dal_attestations of {
       signed_dal_attestations :
         ((consensus_key * public_key_hash)
         * packed_operation

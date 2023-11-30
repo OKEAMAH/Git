@@ -383,16 +383,14 @@ type block_to_bake = {
 type forge_event =
   | Preattestations_ready of
       (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
-  | Attestations_ready of {
-      signed_attestations :
-        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
-      signed_dal_attestations :
-        ((consensus_key * public_key_hash)
-        * packed_operation
-        * Dal.Attestation.t
-        * int32)
-        list;
-    }
+  | Attestations_ready of
+      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
+  | Dal_attestations_ready of
+      ((consensus_key * public_key_hash)
+      * packed_operation
+      * Dal.Attestation.t
+      * int32)
+      list
   | Block_ready of prepared_block
 
 type forge_request =
@@ -400,6 +398,7 @@ type forge_request =
       (state * (consensus_key_and_delegate * consensus_content) list)
   | Forge_and_sign_attestations of
       (state * (consensus_key_and_delegate * consensus_content) list)
+  | Forge_and_sign_dal_attestations of state
   | Forge_and_sign_block of (state * block_to_bake)
 
 and forge_worker_hooks = {
@@ -1054,48 +1053,53 @@ let pp_timeout_kind fmt = function
       Format.fprintf fmt "time to bake next level at round %a" Round.pp at_round
   | Time_to_forge_block -> Format.fprintf fmt "time to forge block"
 
-let pp_forge_event fmt = function
+let pp_forge_event fmt =
+  let open Format in
+  let pp_list fmt l =
+    pp_print_list
+      ~pp_sep:(fun fmt () -> fprintf fmt ",@ ")
+      (fun fmt (delegate, _operation, level, round) ->
+        fprintf
+          fmt
+          "[delegate: %a, level: %ld, round: %a]"
+          pp_consensus_key_and_delegate
+          delegate
+          level
+          Round.pp
+          round)
+      fmt
+      l
+  in
+  function
   | Preattestations_ready signed_preattestations ->
-      List.iter
-        (fun (delegate, _operation, level, round) ->
-          Format.fprintf
-            fmt
-            "Preattestation: delegate: %a, level: %ld, round: %a @."
-            pp_consensus_key_and_delegate
-            delegate
-            level
-            Round.pp
-            round)
+      fprintf
+        fmt
+        "@[<hov 2>Preattestations:@ %a@]"
+        pp_list
         signed_preattestations
-  | Attestations_ready {signed_attestations; signed_dal_attestations} ->
-      let () =
-        List.iter
-          (fun (delegate, _operation, level, round) ->
-            Format.fprintf
-              fmt
-              "Attestation: delegate: %a, level: %ld, round: %a @."
-              pp_consensus_key_and_delegate
-              delegate
-              level
-              Round.pp
-              round)
-          signed_attestations
-      in
-      List.iter
-        (fun (delegate, _operation, _dal_attestation, level) ->
-          Format.fprintf
-            fmt
-            "DAL Attestation: delegate: %a, level: %ld @."
-            pp_consensus_key_and_delegate
-            delegate
-            level)
+  | Attestations_ready signed_attestations ->
+      fprintf fmt "@[<hov 2>Attestations:@ %a@]" pp_list signed_attestations
+  | Dal_attestations_ready signed_dal_attestations ->
+      fprintf
+        fmt
+        "@[<hov 2>Dal attestations:@ %a@]"
+        (pp_print_list
+           ~pp_sep:(fun fmt () -> fprintf fmt ",@ ")
+           (fun fmt (delegate, _operation, _dal_attestation, level) ->
+             fprintf
+               fmt
+               "[delegate: %a, level: %ld]"
+               pp_consensus_key_and_delegate
+               delegate
+               level))
         signed_dal_attestations
-  | Block_ready {round; delegate; _} ->
+  | Block_ready {signed_block_header; round; delegate; _} ->
       Format.fprintf
         fmt
-        "Block: delegate: %a, round: %a @."
+        "Block: delegate: %a, level: %ld, round: %a"
         pp_consensus_key_and_delegate
         delegate
+        signed_block_header.shell.level
         Round.pp
         round
 

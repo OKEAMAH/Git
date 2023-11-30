@@ -99,7 +99,7 @@ let make_preattest_action state proposal =
   in
   match signed_preattestations with
   | Ok signed_preattestations ->
-      return @@ Inject_preattestations {signed_preattestations}
+      return (Inject_preattestations {signed_preattestations})
   | Error _ -> assert false
 
 let update_proposal ~is_proposal_applied state proposal =
@@ -496,7 +496,7 @@ let prepare_block_to_bake ~attestations ~dal_attestations ?last_proposal
   let updated_state = update_current_phase state Idle in
   let* prepared_block = Forge_worker.prepare_block state block_to_bake in
   match prepared_block with
-  | Ok prepared_block -> return @@ Inject_block {prepared_block; updated_state}
+  | Ok prepared_block -> return (Inject_block {prepared_block; updated_state})
   | Error _ -> assert false
 
 let forge_fresh_block_action ~attestations ~dal_attestations ?last_proposal
@@ -643,7 +643,7 @@ let propose_block_action state delegate round ~last_proposal =
       let* prepared_block = Forge_worker.prepare_block state block_to_bake in
       match prepared_block with
       | Ok prepared_block ->
-          return @@ Inject_block {prepared_block; updated_state}
+          return (Inject_block {prepared_block; updated_state})
       | Error _ -> assert false)
 
 let end_of_round state current_round =
@@ -767,9 +767,7 @@ let make_attest_action state proposal =
     Forge_worker.sign_consensus_votes state attestations `Attestation
   in
   match signed_attestations with
-  | Ok signed_attestations ->
-      return
-      @@ Inject_attestations {signed_attestations; signed_dal_attestations = []}
+  | Ok signed_attestations -> return (Inject_attestations {signed_attestations})
   | Error _ -> assert false
 
 let prequorum_reached_when_awaiting_preattestations state candidate
@@ -938,11 +936,10 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       match forge_event with
       | Preattestations_ready signed_preattestations ->
           Lwt.return (state, Inject_preattestations {signed_preattestations})
-      | Attestations_ready {signed_attestations; signed_dal_attestations} ->
-          Lwt.return
-            ( state,
-              Inject_attestations {signed_attestations; signed_dal_attestations}
-            )
+      | Attestations_ready signed_attestations ->
+          Lwt.return (state, Inject_attestations {signed_attestations})
+      | Dal_attestations_ready signed_dal_attestations ->
+          Lwt.return (state, Inject_dal_attestations {signed_dal_attestations})
       | Block_ready prepared_block ->
           Lwt.return
             (state, Inject_block {prepared_block; updated_state = state}))

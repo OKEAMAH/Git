@@ -50,6 +50,8 @@ type action =
   | Inject_attestations of {
       signed_attestations :
         (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+    }
+  | Inject_dal_attestations of {
       signed_dal_attestations :
         ((consensus_key * public_key_hash)
         * packed_operation
@@ -85,6 +87,7 @@ let pp_action fmt = function
   | Inject_preattestations _ -> Format.fprintf fmt "inject preattestations"
   | Prepare_attestations _ -> Format.fprintf fmt "prepare attestations"
   | Inject_attestations _ -> Format.fprintf fmt "inject attestations"
+  | Inject_dal_attestations _ -> Format.fprintf fmt "inject DAL attestations"
   | Update_to_level _ -> Format.fprintf fmt "update to level"
   | Synchronize_round _ -> Format.fprintf fmt "synchronize round"
   | Watch_proposal -> Format.fprintf fmt "watch proposal"
@@ -351,8 +354,10 @@ let rec perform_action ~state_recorder state (action : action) =
   | Prepare_attestations {attestations} ->
       let request = Forge_and_sign_attestations (state, attestations) in
       let () = state.global_state.forge_worker_hooks.push_request request in
+      let request = Forge_and_sign_dal_attestations state in
+      let () = state.global_state.forge_worker_hooks.push_request request in
       return state
-  | Inject_attestations {signed_attestations; signed_dal_attestations} ->
+  | Inject_attestations {signed_attestations} ->
       let* () = state_recorder ~new_state:state in
       let* state =
         inject_consensus_votes state signed_attestations `Attestation
@@ -364,6 +369,8 @@ let rec perform_action ~state_recorder state (action : action) =
          Also inject attestations for the migration block. *)
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/4671
          Don't inject multiple attestations? *)
+      return state
+  | Inject_dal_attestations {signed_dal_attestations} ->
       let* () = inject_dal_attestations state signed_dal_attestations in
       return state
   | Update_to_level level_update ->

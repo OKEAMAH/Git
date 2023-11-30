@@ -633,7 +633,7 @@ let create () =
     in
     let* (forge_event : forge_event) =
       match forge_request_opt with
-      | None -> assert false
+      | None -> failwith "forge worker request stream closed"
       | Some (Forge_and_sign_preattestations (state, v)) ->
           let* signed_preattestations =
             sign_consensus_votes state v `Preattestation
@@ -643,12 +643,13 @@ let create () =
           let* signed_attestations =
             sign_consensus_votes state v `Attestation
           in
+          return @@ Attestations_ready signed_attestations
+      | Some (Forge_and_sign_dal_attestations state) ->
           let* dal_attestations = get_dal_attestations state in
           let* signed_dal_attestations =
             sign_dal_attestations state dal_attestations
           in
-          return
-          @@ Attestations_ready {signed_attestations; signed_dal_attestations}
+          return @@ Dal_attestations_ready signed_dal_attestations
       | Some (Forge_and_sign_block (state, block_to_bake)) ->
           let* prepared_block = prepare_block state block_to_bake in
           return @@ Block_ready prepared_block

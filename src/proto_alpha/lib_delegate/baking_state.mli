@@ -197,16 +197,14 @@ type block_to_bake = {
 type forge_event =
   | Preattestations_ready of
       (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
-  | Attestations_ready of {
-      signed_attestations :
-        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
-      signed_dal_attestations :
-        ((consensus_key * public_key_hash)
-        * packed_operation
-        * Dal.Attestation.t
-        * int32)
-        list;
-    }
+  | Attestations_ready of
+      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
+  | Dal_attestations_ready of
+      ((consensus_key * public_key_hash)
+      * packed_operation
+      * Dal.Attestation.t
+      * int32)
+      list
   | Block_ready of prepared_block
 
 type forge_request =
@@ -214,6 +212,7 @@ type forge_request =
       (state * (consensus_key_and_delegate * consensus_content) list)
   | Forge_and_sign_attestations of
       (state * (consensus_key_and_delegate * consensus_content) list)
+  | Forge_and_sign_dal_attestations of state
   | Forge_and_sign_block of (state * block_to_bake)
 
 and forge_worker_hooks = {
