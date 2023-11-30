@@ -476,8 +476,7 @@ let prepare_block_to_bake ~attestations ~dal_attestations ?last_proposal
        validation-only did not produce a correct round-0 block. *)
   in
   let block_to_bake = {predecessor; round; delegate; kind; force_apply} in
-  let updated_state = update_current_phase state Idle in
-  return (Prepare_block {block_to_bake; updated_state})
+  return (Prepare_block {block_to_bake})
 
 let forge_fresh_block_action ~attestations ~dal_attestations ?last_proposal
     ~(predecessor : block_info) state delegate =
@@ -503,13 +502,7 @@ let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
       let* () =
         Events.(emit found_preemptively_forged_block (delegate, round))
       in
-      let updated_state =
-        {
-          state with
-          level_state = {state.level_state with next_forged_block = None};
-        }
-      in
-      return (Inject_block {prepared_block = signed_block; updated_state})
+      return (Inject_block {prepared_block = signed_block})
   | None ->
       prepare_block_to_bake
         ~attestations
@@ -619,8 +612,7 @@ let propose_block_action state delegate round ~last_proposal =
       let block_to_bake =
         {predecessor = proposal.predecessor; round; delegate; kind; force_apply}
       in
-      let updated_state = update_current_phase state Idle in
-      return (Prepare_block {block_to_bake; updated_state})
+      return (Prepare_block {block_to_bake})
 
 let end_of_round state current_round =
   let open Lwt_syntax in
@@ -912,8 +904,7 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       | Dal_attestations_ready signed_dal_attestations ->
           Lwt.return (state, Inject_dal_attestations {signed_dal_attestations})
       | Block_ready prepared_block ->
-          Lwt.return
-            (state, Inject_block {prepared_block; updated_state = state}))
+          Lwt.return (state, Inject_block {prepared_block}))
   | _, Timeout (Time_to_bake_next_level {at_round}) ->
       (* If it is time to bake the next level, stop everything currently
          going on and propose the next level block *)

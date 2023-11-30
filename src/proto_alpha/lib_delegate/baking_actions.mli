@@ -38,8 +38,8 @@ type inject_block_kind =
 
 type action =
   | Do_nothing
-  | Prepare_block of {block_to_bake : block_to_bake; updated_state : state}
-  | Inject_block of {prepared_block : prepared_block; updated_state : state}
+  | Prepare_block of {block_to_bake : block_to_bake}
+  | Inject_block of {prepared_block : prepared_block}
   | Prepare_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
@@ -82,8 +82,7 @@ and round_update = {
 
 type t = action
 
-val inject_block :
-  state -> updated_state:state -> prepared_block -> state tzresult Lwt.t
+val inject_block : state -> prepared_block -> state tzresult Lwt.t
 
 val inject_consensus_votes :
   state ->

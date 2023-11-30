@@ -35,8 +35,8 @@ type inject_block_kind =
 
 type action =
   | Do_nothing
-  | Prepare_block of {block_to_bake : block_to_bake; updated_state : state}
-  | Inject_block of {prepared_block : prepared_block; updated_state : state}
+  | Prepare_block of {block_to_bake : block_to_bake}
+  | Inject_block of {prepared_block : prepared_block}
   | Prepare_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
@@ -92,7 +92,7 @@ let pp_action fmt = function
   | Synchronize_round _ -> Format.fprintf fmt "synchronize round"
   | Watch_proposal -> Format.fprintf fmt "watch proposal"
 
-let inject_block state ~updated_state prepared_block =
+let inject_block state prepared_block =
   let open Lwt_result_syntax in
   let {
     signed_block_header;
@@ -106,18 +106,18 @@ let inject_block state ~updated_state prepared_block =
     prepared_block
   in
   (* Cache last per-block votes to use in case of vote file errors *)
-  let updated_state =
+  let new_state =
     {
-      updated_state with
+      state with
       global_state =
         {
-          updated_state.global_state with
+          state.global_state with
           config =
             {
-              updated_state.global_state.config with
+              state.global_state.config with
               per_block_votes =
                 {
-                  updated_state.global_state.config.per_block_votes with
+                  state.global_state.config.per_block_votes with
                   liquidity_baking_vote;
                   adaptive_issuance_vote;
                 };
@@ -141,7 +141,7 @@ let inject_block state ~updated_state prepared_block =
     Events.(
       emit block_injected (bh, signed_block_header.shell.level, round, delegate))
   in
-  return updated_state
+  return new_state
 
 let inject_consensus_votes state signed_operations kind =
   let open Lwt_result_syntax in
@@ -428,14 +428,14 @@ let rec perform_action ~state_recorder state (action : action) =
   | Do_nothing ->
       let* () = state_recorder ~new_state:state in
       return state
-  | Prepare_block {block_to_bake; updated_state} ->
+  | Prepare_block {block_to_bake} ->
       let request = Forge_and_sign_block (state, block_to_bake) in
       let () = state.global_state.forge_worker_hooks.push_request request in
-      return updated_state
-  | Inject_block {prepared_block; updated_state} ->
-      let* updated_state = inject_block state ~updated_state prepared_block in
-      let* () = state_recorder ~new_state:updated_state in
-      return updated_state
+      return state
+  | Inject_block {prepared_block} ->
+      let* new_state = inject_block state prepared_block in
+      let* () = state_recorder ~new_state in
+      return new_state
   | Prepare_preattestations {preattestations} ->
       let request = Forge_and_sign_preattestations (state, preattestations) in
       let () = state.global_state.forge_worker_hooks.push_request request in
