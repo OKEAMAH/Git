@@ -295,7 +295,7 @@ let rec wait_next_event ~timeout loop_state =
       loop_state.last_get_qc_event <- None ;
       return_some (Quorum_reached (candidate, attestation_qc))
   | `Ready_to_inject (Some event) ->
-      loop_state.last_get_qc_event <- None ;
+      loop_state.last_get_ready_to_inject_event <- None ;
       return_some (Ready_to_inject event)
   | `Timeout e -> return_some (Timeout e)
 
