@@ -381,10 +381,18 @@ type block_to_bake = {
 }
 
 type forge_event =
-  | Preattestation_ready of
+  | Preattestations_ready of
       (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
-  | Attestation_ready of
-      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
+  | Attestations_ready of {
+      signed_attestations :
+        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+      signed_dal_attestations :
+        ((consensus_key * public_key_hash)
+        * packed_operation
+        * Dal.Attestation.t
+        * int32)
+        list;
+    }
   | Block_ready of prepared_block
 
 type forge_request =
@@ -1047,7 +1055,7 @@ let pp_timeout_kind fmt = function
   | Time_to_forge_block -> Format.fprintf fmt "time to forge block"
 
 let pp_forge_event fmt = function
-  | Preattestation_ready signed_preattestations ->
+  | Preattestations_ready signed_preattestations ->
       List.iter
         (fun (delegate, _operation, level, round) ->
           Format.fprintf
@@ -1059,18 +1067,29 @@ let pp_forge_event fmt = function
             Round.pp
             round)
         signed_preattestations
-  | Attestation_ready signed_attestations ->
+  | Attestations_ready {signed_attestations; signed_dal_attestations} ->
+      let () =
+        List.iter
+          (fun (delegate, _operation, level, round) ->
+            Format.fprintf
+              fmt
+              "Attestation: delegate: %a, level: %ld, round: %a @."
+              pp_consensus_key_and_delegate
+              delegate
+              level
+              Round.pp
+              round)
+          signed_attestations
+      in
       List.iter
-        (fun (delegate, _operation, level, round) ->
+        (fun (delegate, _operation, _dal_attestation, level) ->
           Format.fprintf
             fmt
-            "Attestation: delegate: %a, level: %ld, round: %a @."
+            "DAL Attestation: delegate: %a, level: %ld @."
             pp_consensus_key_and_delegate
             delegate
-            level
-            Round.pp
-            round)
-        signed_attestations
+            level)
+        signed_dal_attestations
   | Block_ready {round; delegate; _} ->
       Format.fprintf
         fmt

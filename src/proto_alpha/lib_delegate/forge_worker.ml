@@ -320,6 +320,146 @@ let prepare_block state block_to_bake =
       adaptive_issuance_vote;
     }
 
+let no_dal_node_warning_counter = ref 0
+
+let only_if_dal_feature_enabled state ~default_value f =
+  let open Lwt_result_syntax in
+  let open Constants in
+  let Parametric.{dal = {feature_enable; _}; _} =
+    state.global_state.constants.parametric
+  in
+  if feature_enable then
+    match state.global_state.dal_node_rpc_ctxt with
+    | None ->
+        incr no_dal_node_warning_counter ;
+        let*! () =
+          if !no_dal_node_warning_counter mod 10 = 1 then
+            Events.(emit no_dal_node ())
+          else Lwt.return_unit
+        in
+        return default_value
+    | Some ctxt -> f ctxt
+  else return default_value
+
+let get_dal_attestations state =
+  let open Lwt_result_syntax in
+  only_if_dal_feature_enabled state ~default_value:[] (fun dal_node_rpc_ctxt ->
+      let attestation_level = state.level_state.current_level in
+      let attested_level = Int32.succ attestation_level in
+      let delegates =
+        List.map
+          (fun delegate_slot ->
+            (delegate_slot.consensus_key_and_delegate, delegate_slot.first_slot))
+          (Delegate_slots.own_delegates state.level_state.delegate_slots)
+      in
+      let signing_key delegate = (fst delegate).public_key_hash in
+      let* attestations =
+        List.fold_left_es
+          (fun acc (delegate, first_slot) ->
+            let*! tz_res =
+              Node_rpc.get_attestable_slots
+                dal_node_rpc_ctxt
+                (signing_key delegate)
+                ~attested_level
+            in
+            match tz_res with
+            | Error errs ->
+                let*! () =
+                  Events.(emit failed_to_get_dal_attestations (delegate, errs))
+                in
+                return acc
+            | Ok res -> (
+                match res with
+                | Tezos_dal_node_services.Types.Not_in_committee -> return acc
+                | Attestable_slots {slots = attestation; published_level} ->
+                    if List.exists Fun.id attestation then
+                      return
+                        ((delegate, attestation, published_level, first_slot)
+                        :: acc)
+                    else
+                      (* No slot is attested, no need to send an attestation, at least
+                         for now. *)
+                      let*! () =
+                        Events.(
+                          emit
+                            dal_attestation_void
+                            (delegate, attestation_level, published_level))
+                      in
+                      return acc))
+          []
+          delegates
+      in
+      let number_of_slots =
+        state.global_state.constants.parametric.dal.number_of_slots
+      in
+      List.map
+        (fun (delegate, attestation_flags, published_level, first_slot) ->
+          let attestation =
+            List.fold_left_i
+              (fun i acc flag ->
+                match Dal.Slot_index.of_int_opt ~number_of_slots i with
+                | Some index when flag -> Dal.Attestation.commit acc index
+                | None | Some _ -> acc)
+              Dal.Attestation.empty
+              attestation_flags
+          in
+          ( delegate,
+            Dal.Attestation.
+              {
+                attestation;
+                level = Raw_level.of_int32_exn attestation_level;
+                slot = first_slot;
+              },
+            published_level ))
+        attestations
+      |> return)
+
+let sign_dal_attestations state attestations =
+  let open Lwt_result_syntax in
+  let cctxt = state.global_state.cctxt in
+  let chain_id = state.global_state.chain_id in
+  (* N.b. signing a lot of operations may take some time *)
+  (* Don't parallelize signatures: the signer might not be able to
+     handle concurrent requests *)
+  let shell =
+    {
+      Tezos_base.Operation.branch =
+        state.level_state.latest_proposal.predecessor.hash;
+    }
+  in
+  List.filter_map_es
+    (fun (((consensus_key, _) as delegate), consensus_content, published_level) ->
+      let watermark = Operation.(to_watermark (Dal_attestation chain_id)) in
+      let contents = Single (Dal_attestation consensus_content) in
+      let unsigned_operation = (shell, Contents_list contents) in
+      let unsigned_operation_bytes =
+        Data_encoding.Binary.to_bytes_exn
+          Operation.unsigned_encoding_with_legacy_attestation_name
+          unsigned_operation
+      in
+      let*! signature =
+        Client_keys.sign
+          cctxt
+          ~watermark
+          consensus_key.secret_key_uri
+          unsigned_operation_bytes
+      in
+      match signature with
+      | Error err ->
+          let*! () = Events.(emit skipping_dal_attestation (delegate, err)) in
+          return_none
+      | Ok signature ->
+          let protocol_data =
+            Operation_data {contents; signature = Some signature}
+          in
+          let operation : Operation.packed = {shell; protocol_data} in
+          return_some
+            ( delegate,
+              operation,
+              consensus_content.Dal.Attestation.attestation,
+              published_level ))
+    attestations
+
 let sign_consensus_votes state operations kind =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
@@ -498,12 +638,17 @@ let create () =
           let* signed_preattestations =
             sign_consensus_votes state v `Preattestation
           in
-          return @@ Preattestation_ready signed_preattestations
+          return @@ Preattestations_ready signed_preattestations
       | Some (Forge_and_sign_attestations (state, v)) ->
           let* signed_attestations =
             sign_consensus_votes state v `Attestation
           in
-          return @@ Attestation_ready signed_attestations
+          let* dal_attestations = get_dal_attestations state in
+          let* signed_dal_attestations =
+            sign_dal_attestations state dal_attestations
+          in
+          return
+          @@ Attestations_ready {signed_attestations; signed_dal_attestations}
       | Some (Forge_and_sign_block (state, block_to_bake)) ->
           let* prepared_block = prepare_block state block_to_bake in
           return @@ Block_ready prepared_block

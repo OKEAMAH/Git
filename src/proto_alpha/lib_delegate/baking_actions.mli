@@ -53,6 +53,12 @@ type action =
   | Inject_attestations of {
       signed_attestations :
         (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+      signed_dal_attestations :
+        ((consensus_key * public_key_hash)
+        * packed_operation
+        * Dal.Attestation.t
+        * int32)
+        list;
     }
   | Update_to_level of level_update
   | Synchronize_round of round_update
@@ -82,22 +88,6 @@ val inject_consensus_votes :
   ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list ->
   [`Preattestation | `Attestation] ->
   state tzresult Lwt.t
-
-val sign_dal_attestations :
-  state ->
-  (consensus_key_and_delegate * Dal.Attestation.operation * int32) list ->
-  (consensus_key_and_delegate
-  * packed_operation
-  * Dal.Attestation.operation
-  * int32)
-  list
-  tzresult
-  Lwt.t
-
-val get_dal_attestations :
-  state ->
-  (consensus_key_and_delegate * Dal.Attestation.operation * int32) list tzresult
-  Lwt.t
 
 val prepare_waiting_for_quorum :
   state -> int * (slot:Slot.t -> int option) * Operation_worker.candidate

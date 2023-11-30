@@ -768,7 +768,8 @@ let make_attest_action state proposal =
   in
   match signed_attestations with
   | Ok signed_attestations ->
-      return @@ Inject_attestations {signed_attestations}
+      return
+      @@ Inject_attestations {signed_attestations; signed_dal_attestations = []}
   | Error _ -> assert false
 
 let prequorum_reached_when_awaiting_preattestations state candidate
@@ -935,10 +936,13 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       end_of_round state ending_round
   | _, Ready_to_inject forge_event -> (
       match forge_event with
-      | Preattestation_ready signed_preattestations ->
+      | Preattestations_ready signed_preattestations ->
           Lwt.return (state, Inject_preattestations {signed_preattestations})
-      | Attestation_ready signed_attestations ->
-          Lwt.return (state, Inject_attestations {signed_attestations})
+      | Attestations_ready {signed_attestations; signed_dal_attestations} ->
+          Lwt.return
+            ( state,
+              Inject_attestations {signed_attestations; signed_dal_attestations}
+            )
       | Block_ready prepared_block ->
           Lwt.return
             (state, Inject_block {prepared_block; updated_state = state}))
