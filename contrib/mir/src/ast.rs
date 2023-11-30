@@ -145,47 +145,47 @@ pub fn typed_value_to_value_optimized<'a>(
     use Micheline as V;
     use TypedValue as TV;
     let go = |x| typed_value_to_value_optimized(arena, x);
-    match tv {
-        TV::Int(i) => Some(V::Int(i)),
-        TV::Nat(u) => Some(V::Int(u.try_into().unwrap())),
-        TV::Mutez(u) => Some(V::Int(u.try_into().unwrap())),
-        TV::Bool(true) => Some(V::prim0(Prim::True)),
-        TV::Bool(false) => Some(V::prim0(Prim::False)),
-        TV::String(s) => Some(V::String(s)),
-        TV::Unit => Some(V::prim0(Prim::Unit)),
+    Some(match tv {
+        TV::Int(i) => V::Int(i),
+        TV::Nat(u) => V::Int(u.try_into().unwrap()),
+        TV::Mutez(u) => V::Int(u.try_into().unwrap()),
+        TV::Bool(true) => V::prim0(Prim::True),
+        TV::Bool(false) => V::prim0(Prim::False),
+        TV::String(s) => V::String(s),
+        TV::Unit => V::prim0(Prim::Unit),
         // This transformation for pairs deviates from the optimized representation of the
         // reference implementation, because reference implementation optimizes the size of combs
         // and uses an untyped representation that is the shortest.
-        TV::Pair(b) => Some(V::prim2(arena, Prim::Pair, go(b.0)?, go(b.1)?)),
-        TV::List(l) => Some(V::Seq(
+        TV::Pair(b) => V::prim2(arena, Prim::Pair, go(b.0)?, go(b.1)?),
+        TV::List(l) => V::Seq(
             arena.alloc_extend(
                 l.into_iter()
                     .map(go)
                     .collect::<Option<Vec<Micheline<'a>>>>()?,
             ),
-        )),
-        TV::Map(m) => Some(V::Seq(
+        ),
+        TV::Map(m) => V::Seq(
             arena.alloc_extend(
                 m.into_iter()
                     .map(|(key, val)| Some(V::prim2(arena, Prim::Elt, go(key)?, go(val)?)))
                     .collect::<Option<Vec<Micheline<'a>>>>()?,
             ),
-        )),
-        TV::Option(None) => Some(V::prim0(Prim::None)),
-        TV::Option(Some(x)) => Some(V::prim1(arena, Prim::Some, go(*x)?)),
-        TV::Or(or) => Some(match *or {
+        ),
+        TV::Option(None) => V::prim0(Prim::None),
+        TV::Option(Some(x)) => V::prim1(arena, Prim::Some, go(*x)?),
+        TV::Or(or) => match *or {
             Or::Left(x) => V::prim1(arena, Prim::Left, go(x)?),
             Or::Right(x) => V::prim1(arena, Prim::Right, go(x)?),
-        }),
-        TV::Address(x) => Some(V::Bytes(x.to_bytes_vec())),
-        TV::ChainId(x) => Some(V::Bytes(x.into())),
-        TV::Contract(x) => go(TV::Address(x)),
-        TV::Bytes(x) => Some(V::Bytes(x)),
-        TV::Key(k) => Some(V::Bytes(k.to_bytes_vec())),
-        TV::Signature(s) => Some(V::Bytes(s.to_bytes_vec())),
-        TV::KeyHash(s) => Some(V::Bytes(s.to_bytes_vec())),
-        TV::Operation(..) => None,
-    }
+        },
+        TV::Address(x) => V::Bytes(x.to_bytes_vec()),
+        TV::ChainId(x) => V::Bytes(x.into()),
+        TV::Bytes(x) => V::Bytes(x),
+        TV::Key(k) => V::Bytes(k.to_bytes_vec()),
+        TV::Signature(s) => V::Bytes(s.to_bytes_vec()),
+        TV::KeyHash(s) => V::Bytes(s.to_bytes_vec()),
+        TV::Contract(x) => return typed_value_to_value_optimized(arena, TV::Address(x)),
+        TV::Operation(..) => return None,
+    })
 }
 
 impl TypedValue {
