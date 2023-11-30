@@ -1137,6 +1137,6 @@ let pp_event fmt = function
         Round.pp
         candidate.round_watched
   | Ready_to_inject forge_event ->
-      Format.printf "ready to inject %a" pp_forge_event forge_event
+      Format.fprintf fmt "ready to inject %a" pp_forge_event forge_event
   | Timeout kind ->
       Format.fprintf fmt "timeout reached: %a" pp_timeout_kind kind
