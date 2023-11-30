@@ -174,6 +174,100 @@ let inject_consensus_votes state signed_operations kind =
   in
   return state
 
+let no_dal_node_warning_counter = ref 0
+
+let only_if_dal_feature_enabled state ~default_value f =
+  let open Lwt_result_syntax in
+  let open Constants in
+  let Parametric.{dal = {feature_enable; _}; _} =
+    state.global_state.constants.parametric
+  in
+  if feature_enable then
+    match state.global_state.dal_node_rpc_ctxt with
+    | None ->
+        incr no_dal_node_warning_counter ;
+        let*! () =
+          if !no_dal_node_warning_counter mod 10 = 1 then
+            Events.(emit no_dal_node ())
+          else Lwt.return_unit
+        in
+        return default_value
+    | Some ctxt -> f ctxt
+  else return default_value
+
+let get_dal_attestations state =
+  let open Lwt_result_syntax in
+  only_if_dal_feature_enabled state ~default_value:[] (fun dal_node_rpc_ctxt ->
+      let attestation_level = state.level_state.current_level in
+      let attested_level = Int32.succ attestation_level in
+      let delegates =
+        List.map
+          (fun delegate_slot ->
+            (delegate_slot.consensus_key_and_delegate, delegate_slot.first_slot))
+          (Delegate_slots.own_delegates state.level_state.delegate_slots)
+      in
+      let signing_key delegate = (fst delegate).public_key_hash in
+      let* attestations =
+        List.fold_left_es
+          (fun acc (delegate, first_slot) ->
+            let*! tz_res =
+              Node_rpc.get_attestable_slots
+                dal_node_rpc_ctxt
+                (signing_key delegate)
+                ~attested_level
+            in
+            match tz_res with
+            | Error errs ->
+                let*! () =
+                  Events.(emit failed_to_get_dal_attestations (delegate, errs))
+                in
+                return acc
+            | Ok res -> (
+                match res with
+                | Tezos_dal_node_services.Types.Not_in_committee -> return acc
+                | Attestable_slots {slots = attestation; published_level} ->
+                    if List.exists Fun.id attestation then
+                      return
+                        ((delegate, attestation, published_level, first_slot)
+                        :: acc)
+                    else
+                      (* No slot is attested, no need to send an attestation, at least
+                         for now. *)
+                      let*! () =
+                        Events.(
+                          emit
+                            dal_attestation_void
+                            (delegate, attestation_level, published_level))
+                      in
+                      return acc))
+          []
+          delegates
+      in
+      let number_of_slots =
+        state.global_state.constants.parametric.dal.number_of_slots
+      in
+      List.map
+        (fun (delegate, attestation_flags, published_level, first_slot) ->
+          let attestation =
+            List.fold_left_i
+              (fun i acc flag ->
+                match Dal.Slot_index.of_int_opt ~number_of_slots i with
+                | Some index when flag -> Dal.Attestation.commit acc index
+                | None | Some _ -> acc)
+              Dal.Attestation.empty
+              attestation_flags
+          in
+          ( delegate,
+            Dal.Attestation.
+              {
+                attestation;
+                level = Raw_level.of_int32_exn attestation_level;
+                slot = first_slot;
+              },
+            published_level ))
+        attestations
+      |> return)
+
 let inject_dal_attestations state signed_dal_attestations =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
@@ -354,7 +448,8 @@ let rec perform_action ~state_recorder state (action : action) =
   | Prepare_attestations {attestations} ->
       let request = Forge_and_sign_attestations (state, attestations) in
       let () = state.global_state.forge_worker_hooks.push_request request in
-      let request = Forge_and_sign_dal_attestations state in
+      let* dal_attestations = get_dal_attestations state in
+      let request = Forge_and_sign_dal_attestations (state, dal_attestations) in
       let () = state.global_state.forge_worker_hooks.push_request request in
       return state
   | Inject_attestations {signed_attestations} ->

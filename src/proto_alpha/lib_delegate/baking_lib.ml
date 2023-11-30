@@ -568,7 +568,7 @@ let rec baking_minimal_timestamp ~count state
       current_mempool
       (List.map (fun (_, x, _, _) -> x) signed_attestations)
   in
-  let* own_dal_attestations = Forge_worker.get_dal_attestations state in
+  let* own_dal_attestations = Baking_actions.get_dal_attestations state in
   let* signed_dal_attestations =
     Forge_worker.sign_dal_attestations state own_dal_attestations
   in

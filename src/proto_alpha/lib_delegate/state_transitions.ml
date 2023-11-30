@@ -89,18 +89,12 @@ let make_consensus_list state proposal =
 
 (* If we do not have any slots, we won't inject any operation but we
    will still participate to determine an elected block *)
-let make_preattest_action state proposal =
+let prepare_preattest_action state proposal =
   let open Lwt_syntax in
   let preattestations : (consensus_key_and_delegate * consensus_content) list =
     make_consensus_list state proposal
   in
-  let* signed_preattestations =
-    Forge_worker.sign_consensus_votes state preattestations `Preattestation
-  in
-  match signed_preattestations with
-  | Ok signed_preattestations ->
-      return (Inject_preattestations {signed_preattestations})
-  | Error _ -> assert false
+  return (Prepare_preattestations {preattestations})
 
 let update_proposal ~is_proposal_applied state proposal =
   let open Lwt_syntax in
@@ -145,7 +139,7 @@ let preattest state proposal =
          We switch to the `Awaiting_preattestations` phase. *)
       update_current_phase state Awaiting_preattestations
     in
-    let* preattest_action = make_preattest_action state proposal in
+    let* preattest_action = prepare_preattest_action state proposal in
     return (new_state, preattest_action)
 
 let extract_pqc state (new_proposal : proposal) =
@@ -494,10 +488,7 @@ let prepare_block_to_bake ~attestations ~dal_attestations ?last_proposal
   in
   let block_to_bake = {predecessor; round; delegate; kind; force_apply} in
   let updated_state = update_current_phase state Idle in
-  let* prepared_block = Forge_worker.prepare_block state block_to_bake in
-  match prepared_block with
-  | Ok prepared_block -> return (Inject_block {prepared_block; updated_state})
-  | Error _ -> assert false
+  return (Prepare_block {block_to_bake; updated_state})
 
 let forge_fresh_block_action ~attestations ~dal_attestations ?last_proposal
     ~(predecessor : block_info) state delegate =
@@ -574,7 +565,7 @@ let propose_block_action state delegate round ~last_proposal =
         ~predecessor:last_proposal.predecessor
         delegate
         round
-  | Some {proposal; prequorum} -> (
+  | Some {proposal; prequorum} ->
       let* () = Events.(emit repropose_block proposal.block.payload_hash) in
       (* For case 2, we re-inject the same block as [attestable_round]
          but we may add some left-overs attestations. Therefore, the
@@ -640,11 +631,7 @@ let propose_block_action state delegate round ~last_proposal =
         {predecessor = proposal.predecessor; round; delegate; kind; force_apply}
       in
       let updated_state = update_current_phase state Idle in
-      let* prepared_block = Forge_worker.prepare_block state block_to_bake in
-      match prepared_block with
-      | Ok prepared_block ->
-          return (Inject_block {prepared_block; updated_state})
-      | Error _ -> assert false)
+      return (Prepare_block {block_to_bake; updated_state})
 
 let end_of_round state current_round =
   let open Lwt_syntax in
@@ -758,17 +745,12 @@ let update_locked_round state round payload_hash =
   let new_level_state = {state.level_state with locked_round} in
   {state with level_state = new_level_state}
 
-let make_attest_action state proposal =
+let prepare_attest_action state proposal =
   let open Lwt_syntax in
   let attestations : (consensus_key_and_delegate * consensus_content) list =
     make_consensus_list state proposal
   in
-  let* signed_attestations =
-    Forge_worker.sign_consensus_votes state attestations `Attestation
-  in
-  match signed_attestations with
-  | Ok signed_attestations -> return (Inject_attestations {signed_attestations})
-  | Error _ -> assert false
+  return (Prepare_attestations {attestations})
 
 let prequorum_reached_when_awaiting_preattestations state candidate
     preattestations =
@@ -819,7 +801,7 @@ let prequorum_reached_when_awaiting_preattestations state candidate
         latest_proposal.block.payload_hash
     in
     let new_state = update_current_phase new_state Awaiting_attestations in
-    let* attest_action = make_attest_action new_state latest_proposal in
+    let* attest_action = prepare_attest_action new_state latest_proposal in
     return (new_state, attest_action)
 
 let quorum_reached_when_waiting_attestations state candidate attestation_qc =
