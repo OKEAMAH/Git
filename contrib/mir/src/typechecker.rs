@@ -945,9 +945,7 @@ pub(crate) fn typecheck_instruction(
 
         (App(TRANSFER_TOKENS, [], _), [.., T::Contract(ct), T::Mutez, arg_t]) => {
             ensure_ty_eq(ctx, ct, arg_t)?;
-            pop!();
-            pop!();
-            pop!();
+            stack.drop_top(3);
             stack.push(T::Operation);
             I::TransferTokens
         }
@@ -955,7 +953,7 @@ pub(crate) fn typecheck_instruction(
         (App(TRANSFER_TOKENS, [], _), [] | [_] | [_, _]) => no_overload!(TRANSFER_TOKENS, len 3),
         (App(TRANSFER_TOKENS, expect_args!(0), _), _) => unexpected_micheline!(),
 
-        (App(SET_DELEGATE, [], _), [.., T::Option(ot)]) if **ot == T::KeyHash => {
+        (App(SET_DELEGATE, [], _), [.., T::Option(ot)]) if matches!(ot.as_ref(), T::KeyHash) => {
             pop!();
             stack.push(T::Operation);
             I::SetDelegate
