@@ -151,8 +151,8 @@ impl<'a> TryFrom<Vec<TztEntity<'a>>> for TztTest<'a> {
             chain_id: m_chain_id
                 .map(|v| {
                     Ok::<_, TcError>(irrefutable_match!(
-                        typecheck_value(&v, &mut Ctx::default(), &Type::ChainId)?;
-                        TypedValue::ChainId
+                    typecheck_value(&v, &mut Ctx::default(), &Type::ChainId)?;
+                    TypedValue::ChainId
                     ))
                 })
                 .transpose()?,
@@ -161,8 +161,8 @@ impl<'a> TryFrom<Vec<TztEntity<'a>>> for TztTest<'a> {
                 .map(|v| {
                     Ok::<_, TcError>(
                         irrefutable_match!(
-                            typecheck_value(&v, &mut Ctx::default(), &Type::Address)?;
-                            TypedValue::Address
+                        typecheck_value(&v, &mut Ctx::default(), &Type::Address)?;
+                        TypedValue::Address
                         )
                         .hash,
                     )
@@ -276,13 +276,11 @@ pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
     // Here we compare the outcome of the interpreting with the
     // expectation from the test, and declare the result of the test
     // accordingly.
-    let mut ctx = Ctx {
-        gas: crate::gas::Gas::default(),
-        amount: test.amount.unwrap_or_default(),
-        chain_id: test.chain_id.unwrap_or(Ctx::default().chain_id),
-        self_address: test.self_addr.unwrap_or(Ctx::default().self_address),
-        _operation_counter: 0,
-    };
+    let mut ctx = Ctx::default();
+    ctx.gas = crate::gas::Gas::default();
+    ctx.amount = test.amount.unwrap_or_default();
+    ctx.chain_id = test.chain_id.unwrap_or(Ctx::default().chain_id);
+    ctx.self_address = test.self_addr.unwrap_or(Ctx::default().self_address);
     let execution_result = execute_tzt_test_code(test.code, &mut ctx, test.parameter, test.input);
     check_expectation(&mut ctx, test.output, execution_result)
 }
