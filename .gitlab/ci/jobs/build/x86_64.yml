@@ -18,6 +18,27 @@ build_x86_64-released:
     - .build_x86_64
   variables:
     EXECUTABLE_FILES: "script-inputs/released-executables"
+  cache:
+    - key: "flake-test-cache-$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+      # the contents of script-inputs/released-executables
+      paths:
+        - "octez-smart-rollup-wasm-debugger"
+        - "octez-smart-rollup-node"
+        - "octez-dac-client"
+        - "octez-dac-node"
+        - "octez-signer"
+        - "octez-proxy-server"
+        - "octez-codec"
+        - "octez-client"
+        - "octez-admin-client"
+        - "octez-node"
+        - "octez-smart-rollup-client-Proxford"
+        - "octez-accuser-Proxford"
+        - "octez-baker-Proxford"
+        - "octez-smart-rollup-client-PtNairob"
+        - "octez-accuser-PtNairob"
+        - "octez-baker-PtNairob"
+
 
 # 'build_x86_64-exp-dev-extra' builds the developer and experimental
 # executables, as well as the tezt test suite used by the subsequent
@@ -32,3 +53,18 @@ build_x86_64-exp-dev-extra:
     # Typically, it will contain test runners (like tezt and octogram) and binaries to test that are
     # not part of any 'script-inputs/*-executables', such as `Unreleased` binaries.
     BUILD_EXTRA: "src/bin_tps_evaluation/main_tps_evaluation.exe src/bin_octogram/octogram_main.exe tezt/tests/main.exe contrib/octez_injector_server/octez_injector_server.exe"
+  cache:
+    - key: "flake-test-cache-$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+      # the contents of script-inputs/experimental-executables, script-inputs/dev-executables and BUILD_EXTRA
+      paths:
+        - "octez-evm-node"
+        - "octez-dal-node"
+        - "octez-smart-rollup-client-alpha"
+        - "octez-accuser-alpha"
+        - "octez-baker-alpha"
+        - "octez-protocol-compiler"
+        - "octez-snoop"
+        - "_default/build/src/bin_tps_evaluation/main_tps_evaluation.exe"
+        - "_default/build/src/bin_octogram/octogram_main.exe"
+        - "_default/build/tezt/tests/main.exe"
+        - "_default/build/contrib/octez_injector_server/octez_injector_server.exe"

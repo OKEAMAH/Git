@@ -5,6 +5,27 @@ set -eu
 if [ -z "${build_deps_image_name}" ]; then echo "build_deps_image_name is unset" && exit 3; fi
 if [ -z "${build_deps_image_version}" ]; then echo "build_deps_image_version is unset" && exit 3; fi
 
+# Check cache
+check_execs() {
+    for f in "$@"; do
+        if ! test -f "$f"; then
+            echo "Couldn't find $f"
+            return 1
+        fi
+    done
+    echo "Found all of $*"
+    return 0
+}
+
+# EXECUTABLE_FILES may contain multiple paths and so must be split.
+# shellcheck disable=SC2086,SC2046
+if check_execs $(for executable in ${BUILD_EXTRA:-}; do echo _build/default/$executable; done) $(cat $EXECUTABLE_FILES); then
+    echo "Relying on cache"
+    exit 0
+else
+    echo "Rebuilding"
+fi
+
 # We remove protocols not needed for tests in order to speed up the CI.
 old_protocol_store=$(mktemp -d)
 ./scripts/remove-old-protocols.sh "$old_protocol_store"
