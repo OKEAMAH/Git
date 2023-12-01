@@ -140,10 +140,8 @@ type prepared_block = {
   signed_block_header : block_header;
   round : Round.t;
   delegate : consensus_key_and_delegate;
-  cctxt : Protocol_client_context.full;
   operations : Tezos_base.Operation.t list list;
-  liquidity_baking_vote : Per_block_votes_repr.per_block_vote;
-  adaptive_issuance_vote : Per_block_votes_repr.per_block_vote;
+  baking_votes : Per_block_votes_repr.per_block_votes;
 }
 
 type level_state = {
@@ -279,6 +277,8 @@ type event =
   | Timeout of timeout_kind
 
 val event_encoding : event Data_encoding.t
+
+val forge_event_encoding : forge_event Data_encoding.t
 
 type state_data = {
   level_data : int32;

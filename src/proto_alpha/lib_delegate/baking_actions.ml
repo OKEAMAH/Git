@@ -94,15 +94,7 @@ let pp_action fmt = function
 
 let inject_block state prepared_block =
   let open Lwt_result_syntax in
-  let {
-    signed_block_header;
-    round;
-    delegate;
-    cctxt;
-    operations;
-    liquidity_baking_vote;
-    adaptive_issuance_vote;
-  } =
+  let {signed_block_header; round; delegate; operations; baking_votes} =
     prepared_block
   in
   (* Cache last per-block votes to use in case of vote file errors *)
@@ -118,8 +110,8 @@ let inject_block state prepared_block =
               per_block_votes =
                 {
                   state.global_state.config.per_block_votes with
-                  liquidity_baking_vote;
-                  adaptive_issuance_vote;
+                  liquidity_baking_vote = baking_votes.liquidity_baking_vote;
+                  adaptive_issuance_vote = baking_votes.adaptive_issuance_vote;
                 };
             };
         };
@@ -131,7 +123,7 @@ let inject_block state prepared_block =
   in
   let* bh =
     Node_rpc.inject_block
-      cctxt
+      state.global_state.cctxt
       ~force:state.global_state.config.force
       ~chain:(`Hash state.global_state.chain_id)
       signed_block_header

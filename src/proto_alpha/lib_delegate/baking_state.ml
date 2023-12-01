@@ -291,10 +291,8 @@ type prepared_block = {
   signed_block_header : block_header;
   round : Round.t;
   delegate : consensus_key_and_delegate;
-  cctxt : Protocol_client_context.full;
   operations : Tezos_base.Operation.t list list;
-  liquidity_baking_vote : Per_block_votes_repr.per_block_vote;
-  adaptive_issuance_vote : Per_block_votes_repr.per_block_vote;
+  baking_votes : Per_block_votes_repr.per_block_votes;
 }
 
 (* The fields {current_level}, {delegate_slots}, {next_level_delegate_slots},
@@ -472,6 +470,95 @@ let timeout_kind_encoding =
         (fun ((), at_round) -> Time_to_bake_next_level {at_round});
     ]
 
+let packed_operation_encoding =
+  let open Data_encoding in
+  conv
+    (fun {shell; protocol_data} -> (shell, protocol_data))
+    (fun (shell, protocol_data) -> {shell; protocol_data})
+    (obj2
+       (req "shell" Tezos_base.Operation.shell_header_encoding)
+       (req "protocol_data" Operation.protocol_data_encoding))
+
+let forge_event_encoding =
+  let open Data_encoding in
+  let consensus_operation_encoding =
+    obj4
+      (req "delegate" consensus_key_and_delegate_encoding)
+      (req "operation" (dynamic_size packed_operation_encoding))
+      (req "level" int32)
+      (req "round" Round.encoding)
+  in
+  let dal_attestation_encoding =
+    obj4
+      (req "delegate" consensus_key_and_delegate_encoding)
+      (req "consensus_operation" (dynamic_size packed_operation_encoding))
+      (req "dal_attestation" Dal.Attestation.encoding)
+      (req "published_level" int32)
+  in
+  let prepared_block_encoding =
+    conv
+      (fun {signed_block_header; round; delegate; operations; baking_votes} ->
+        (signed_block_header, round, delegate, operations, baking_votes))
+      (fun (signed_block_header, round, delegate, operations, baking_votes) ->
+        {signed_block_header; round; delegate; operations; baking_votes})
+      (obj5
+         (req "header" (dynamic_size Block_header.encoding))
+         (req "round" Round.encoding)
+         (req "delegate" consensus_key_and_delegate_encoding)
+         (req
+            "operations"
+            (list (list (dynamic_size Tezos_base.Operation.encoding))))
+         (req "baking_votes" Per_block_votes.per_block_votes_encoding))
+  in
+  union
+    [
+      case
+        (Tag 0)
+        ~title:"Preattestations_ready"
+        (obj2
+           (req "kind" (constant "Preattestations_ready"))
+           (req "signed_preattestations" (list consensus_operation_encoding)))
+        (function
+          | Preattestations_ready signed_preattestations ->
+              Some ((), signed_preattestations)
+          | _ -> None)
+        (fun ((), signed_preattestations) ->
+          Preattestations_ready signed_preattestations);
+      case
+        (Tag 1)
+        ~title:"Attestations_ready"
+        (obj2
+           (req "kind" (constant "Attestations_ready"))
+           (req "signed_attestations" (list consensus_operation_encoding)))
+        (function
+          | Attestations_ready signed_attestations ->
+              Some ((), signed_attestations)
+          | _ -> None)
+        (fun ((), signed_attestations) ->
+          Attestations_ready signed_attestations);
+      case
+        (Tag 2)
+        ~title:"Dal_attestations_ready"
+        (obj2
+           (req "kind" (constant "Dal_attestations_ready"))
+           (req "signed_dal_attestations" (list dal_attestation_encoding)))
+        (function
+          | Dal_attestations_ready signed_dal_attestations ->
+              Some ((), signed_dal_attestations)
+          | _ -> None)
+        (fun ((), signed_dal_attestations) ->
+          Dal_attestations_ready signed_dal_attestations);
+      case
+        (Tag 3)
+        ~title:"Block_ready"
+        (obj2
+           (req "kind" (constant "Block_ready"))
+           (req "signed_block" prepared_block_encoding))
+        (function
+          | Block_ready prepared_block -> Some ((), prepared_block) | _ -> None)
+        (fun ((), prepared_block) -> Block_ready prepared_block);
+    ]
+
 type event =
   | New_valid_proposal of proposal
   | New_head_proposal of proposal
@@ -533,6 +620,13 @@ let event_encoding =
         (tup2 (constant "Timeout") timeout_kind_encoding)
         (function Timeout tk -> Some ((), tk) | _ -> None)
         (fun ((), tk) -> Timeout tk);
+      case
+        (Tag 5)
+        ~title:"Ready_to_inject"
+        (tup2 (constant "Ready_to_inject") forge_event_encoding)
+        (function
+          | Ready_to_inject forge_event -> Some ((), forge_event) | _ -> None)
+        (fun ((), forge_event) -> Ready_to_inject forge_event);
     ]
 
 (* Disk state *)

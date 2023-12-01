@@ -309,16 +309,10 @@ let prepare_block state block_to_bake =
         let block_hash = Block_header.hash signed_block_header in
         Baking_nonces.register_nonce cctxt ~chain_id block_hash nonce
   in
-  return
-    {
-      signed_block_header;
-      round;
-      delegate;
-      cctxt;
-      operations;
-      liquidity_baking_vote;
-      adaptive_issuance_vote;
-    }
+  let baking_votes =
+    {Per_block_votes.liquidity_baking_vote; adaptive_issuance_vote}
+  in
+  return {signed_block_header; round; delegate; operations; baking_votes}
 
 let sign_dal_attestations state attestations =
   let open Lwt_result_syntax in
