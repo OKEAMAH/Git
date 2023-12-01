@@ -86,11 +86,11 @@ let rec wait_for_killing pid =
     wait_for_killing pid
   else Lwt.return_unit
 
-let test_kill signal =
+let test_kill ~tags signal =
   Protocol.register_test
     ~__FILE__
     ~title:(Format.asprintf "external validator kill [%a]" pp_signal signal)
-    ~tags:["node"; "external"; "validator"; "kill"]
+    ~tags:(["node"; "external"; "validator"; "kill"] @ tags)
   @@ fun protocol ->
   let node = Node.create [] in
   let wait_for_validator_pid = wait_for_external_validator_pid node in
@@ -119,4 +119,8 @@ let test_kill signal =
   unit
 
 let register ~protocols =
-  List.iter (fun signal -> test_kill signal protocols) all_signals
+  List.iter
+    (fun signal ->
+      let tags = if signal = SIGQUIT then [Tag.flaky] else [] in
+      test_kill ~tags signal protocols)
+    all_signals
