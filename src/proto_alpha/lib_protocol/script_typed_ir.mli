@@ -1384,11 +1384,12 @@ and ('a, 'S, 'r, 'F) klog =
   ('a, 'S, 'r, 'F) continuation ->
   'a ->
   'S ->
-  ('r
-  * 'F
-  * Local_gas_counter.outdated_context
-  * Local_gas_counter.local_gas_counter)
-  tzresult
+  ( 'r
+    * 'F
+    * Local_gas_counter.outdated_context
+    * Local_gas_counter.local_gas_counter,
+    interpreter_error )
+  result
   Lwt.t
 
 and ('a, 'S, 'b, 'T, 'r, 'F) ilog =
@@ -1404,12 +1405,18 @@ and ('a, 'S, 'b, 'T, 'r, 'F) step_type =
   ('b, 'T, 'r, 'F) continuation ->
   'a ->
   'S ->
-  ('r
-  * 'F
-  * Local_gas_counter.outdated_context
-  * Local_gas_counter.local_gas_counter)
-  tzresult
+  ( 'r
+    * 'F
+    * Local_gas_counter.outdated_context
+    * Local_gas_counter.local_gas_counter,
+    interpreter_error )
+  result
   Lwt.t
+
+and interpreter_error =
+  | Unexpected_error of error trace
+  | Reject of Script.location * Script.expr * execution_trace option
+  | Overflow of Script.location * execution_trace option
 
 and ('a, 'b, 'c, 'd) log_kinstr =
   logger ->
@@ -1887,3 +1894,27 @@ module Typed_contract : sig
       ('a, _) ty -> Destination.t -> Entrypoint.t -> 'a typed_contract
   end
 end
+
+type error += Interpreter_error of interpreter_error
+
+type 'a interpreter_result = ('a, interpreter_error) result
+
+val interpreter_result_to_tzresult : 'a interpreter_result -> 'a tzresult
+
+val tzresult_to_interpreter_result : 'a tzresult -> 'a interpreter_result
+
+val interpreter_result_to_tzresult_lwt :
+  'a interpreter_result Lwt.t -> 'a tzresult Lwt.t
+
+val tzresult_to_interpreter_result_lwt :
+  'a tzresult Lwt.t -> 'a interpreter_result Lwt.t
+
+val ( let*@? ) :
+  'a tzresult ->
+  ('a -> 'b interpreter_result Lwt.t) ->
+  'b interpreter_result Lwt.t
+
+val ( let*@ ) :
+  'a tzresult Lwt.t ->
+  ('a -> 'b interpreter_result Lwt.t) ->
+  'b interpreter_result Lwt.t

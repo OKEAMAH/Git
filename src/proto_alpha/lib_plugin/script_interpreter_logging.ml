@@ -2065,18 +2065,20 @@ module Logger (Base : Logger_base) = struct
       | ILog _, LogEntry -> ()
       | _, LogEntry -> log_entry ctxt old_gas k sty accu stack
       | _, LogExit prev_loc -> log_exit ctxt old_gas prev_loc k sty accu stack) ;
-      let*? k = log_next_kinstr logger sty k in
+      let*@? k = log_next_kinstr logger sty k in
       (* We need to match on instructions that create continuations so
          that we can instrument those continuations with [KLog] (see
          comment above).  For functions that don't do this, we simply call
          [step], as they don't require any special treatment. *)
       match consume_instr old_gas k accu stack with
-      | None -> tzfail Gas.Operation_quota_exceeded
+      | None ->
+          tzresult_to_interpreter_result_lwt
+          @@ tzfail Gas.Operation_quota_exceeded
       | Some gas -> (
           match k with
           | IIf_none {branch_if_none; branch_if_some; k; _} -> (
               let (Item_t (Option_t (ty, _, _), rest)) = sty in
-              let*? sty_opt =
+              let*@? sty_opt =
                 branched_final_stack_type
                   [
                     Ex_init_stack_ty (rest, branch_if_none);
@@ -2101,7 +2103,7 @@ module Logger (Base : Logger_base) = struct
                   let (Item_t (Option_t (ty, _, _), rest)) = sty in
                   let bsty = Item_t (ty, rest) in
                   let kmap_head = KMap_head (Option.some, KCons (k, ks)) in
-                  let*? sty_opt = kinstr_final_stack_type bsty body in
+                  let*@? sty_opt = kinstr_final_stack_type bsty body in
                   let ks' =
                     match sty_opt with
                     | None -> kmap_head
@@ -2110,7 +2112,7 @@ module Logger (Base : Logger_base) = struct
                   (step [@ocaml.tailcall]) g gas body ks' v stack)
           | IIf_left {branch_if_left; branch_if_right; k; _} -> (
               let (Item_t (Or_t (lty, rty, _, _), rest)) = sty in
-              let*? sty_opt =
+              let*@? sty_opt =
                 branched_final_stack_type
                   [
                     Ex_init_stack_ty (Item_t (lty, rest), branch_if_left);
@@ -2128,7 +2130,7 @@ module Logger (Base : Logger_base) = struct
               )
           | IIf_cons {branch_if_cons; branch_if_nil; k; _} -> (
               let (Item_t ((List_t (elty, _) as lty), rest)) = sty in
-              let*? sty' =
+              let*@? sty' =
                 branched_final_stack_type
                   [
                     Ex_init_stack_ty (rest, branch_if_nil);
@@ -2255,7 +2257,7 @@ module Logger (Base : Logger_base) = struct
                 stack
           | IIf {branch_if_true; branch_if_false; k; _} ->
               let (Item_t (Bool_t, rest)) = sty in
-              let*? sty' =
+              let*@? sty' =
                 branched_final_stack_type
                   [
                     Ex_init_stack_ty (rest, branch_if_true);
@@ -2283,7 +2285,7 @@ module Logger (Base : Logger_base) = struct
               (next [@ocaml.tailcall]) g gas ks accu stack
           | IDip (_, b, ty, k) ->
               let (Item_t (_, rest)) = sty in
-              let*? rest' = kinstr_final_stack_type rest b in
+              let*@? rest' = kinstr_final_stack_type rest b in
               let ign = accu in
               let ks =
                 match rest' with
@@ -2335,7 +2337,8 @@ module Logger (Base : Logger_base) = struct
       (a, s, r, f) continuation ->
       a ->
       s ->
-      (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
+      (r * f * outdated_context * local_gas_counter, interpreter_error) result
+      Lwt.t =
     let open Lwt_result_syntax in
     fun logger g old_gas stack_ty k0 ks accu stack ->
       let ty_for_logging_unsafe = function
@@ -2351,9 +2354,11 @@ module Logger (Base : Logger_base) = struct
       in
       (match ks with KLog _ -> () | _ -> log_control ks) ;
       match consume_control old_gas ks with
-      | None -> tzfail Gas.Operation_quota_exceeded
+      | None ->
+          tzresult_to_interpreter_result_lwt
+          @@ tzfail Gas.Operation_quota_exceeded
       | Some gas -> (
-          let*? continuation = log_next_continuation logger stack_ty ks in
+          let*@? continuation = log_next_continuation logger stack_ty ks in
           match continuation with
           | KCons (ki, k) -> (step [@ocaml.tailcall]) g gas ki k accu stack
           | KLoop_in (ki, k) ->

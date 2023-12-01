@@ -1258,11 +1258,12 @@ and ('a, 'S, 'r, 'F) klog =
   ('a, 'S, 'r, 'F) continuation ->
   'a ->
   'S ->
-  ('r
-  * 'F
-  * Local_gas_counter.outdated_context
-  * Local_gas_counter.local_gas_counter)
-  tzresult
+  ( 'r
+    * 'F
+    * Local_gas_counter.outdated_context
+    * Local_gas_counter.local_gas_counter,
+    interpreter_error )
+  result
   Lwt.t
 
 and ('a, 'S, 'b, 'T, 'r, 'F) ilog =
@@ -1278,12 +1279,18 @@ and ('a, 'S, 'b, 'T, 'r, 'F) step_type =
   ('b, 'T, 'r, 'F) continuation ->
   'a ->
   'S ->
-  ('r
-  * 'F
-  * Local_gas_counter.outdated_context
-  * Local_gas_counter.local_gas_counter)
-  tzresult
+  ( 'r
+    * 'F
+    * Local_gas_counter.outdated_context
+    * Local_gas_counter.local_gas_counter,
+    interpreter_error )
+  result
   Lwt.t
+
+and interpreter_error =
+  | Unexpected_error of error trace
+  | Reject of Script.location * Script.expr * execution_trace option
+  | Overflow of Script.location * execution_trace option
 
 and ('a, 'b, 'c, 'd) log_kinstr =
   logger ->
@@ -2466,3 +2473,80 @@ module Typed_contract = struct
           invalid_arg "ZK rollups expect type (pair (ticket _) bytes)"
   end
 end
+
+type error += Interpreter_error of interpreter_error
+
+type 'a interpreter_result = ('a, interpreter_error) result
+
+let interpreter_result_to_tzresult = function
+  | Ok _ as res -> res
+  | Error e -> Result_syntax.tzfail @@ Interpreter_error e
+
+let tzresult_to_interpreter_result = function
+  | Ok _ as res -> res
+  | Error trace -> Error (Unexpected_error trace)
+
+let interpreter_result_to_tzresult_lwt e =
+  Lwt.map interpreter_result_to_tzresult e
+
+let tzresult_to_interpreter_result_lwt e =
+  Lwt.map tzresult_to_interpreter_result e
+
+let ( let*@? ) res f =
+  let open Lwt_result_syntax in
+  let*? x = tzresult_to_interpreter_result res in
+  f x
+
+let ( let*@ ) m f =
+  let open Lwt_result_syntax in
+  let*! res = m in
+  let*@? x = res in
+  f x
+
+let () =
+  let open Data_encoding in
+  let trace_encoding : execution_trace encoding =
+    list
+    @@ obj3
+         (req "location" Script.location_encoding)
+         (req "gas" Gas.Arith.z_fp_encoding)
+         (req "stack" (list Script.expr_encoding))
+  in
+  (* Reject *)
+  register_error_kind
+    `Temporary
+    ~id:"michelson_v1.script_rejected"
+    ~title:"Script failed"
+    ~description:"A FAILWITH instruction was reached"
+    (obj3
+       (req "location" Script.location_encoding)
+       (req "with" Script.expr_encoding)
+       (opt "trace" trace_encoding))
+    (function
+      | Interpreter_error (Reject (loc, v, trace)) -> Some (loc, v, trace)
+      | _ -> None)
+    (fun (loc, v, trace) -> Interpreter_error (Reject (loc, v, trace))) ;
+  (* Overflow *)
+  register_error_kind
+    `Temporary
+    ~id:"michelson_v1.script_overflow"
+    ~title:"Script failed (overflow error)"
+    ~description:
+      "While interpreting a Michelson script, an overflow was detected"
+    (obj2
+       (req "location" Script.location_encoding)
+       (opt "trace" trace_encoding))
+    (function
+      | Interpreter_error (Overflow (loc, trace)) -> Some (loc, trace)
+      | _ -> None)
+    (fun (loc, trace) -> Interpreter_error (Overflow (loc, trace))) ;
+  (* Unexpected interpreter error *)
+  register_error_kind
+    `Temporary
+    ~id:"michelson_v1.unexpected_interpreter_error"
+    ~title:"Unexpected failure of the Michelson interpreter"
+    ~description:"The Michelson interpreter failed with an unexpected error"
+    (obj1 (req "trace" Error_monad.trace_encoding))
+    (function
+      | Interpreter_error (Unexpected_error trace) -> Some trace | _ -> None)
+    (fun trace -> Interpreter_error (Unexpected_error trace))

@@ -1994,25 +1994,27 @@ module Scripts = struct
             let descr = descr impossible_stack_ty in
             let descr = Script_ir_translator.close_descr descr in
             let* absurd =
-              Script_interpreter.Internals.step_descr
-                None
-                ctxt
-                step_constants
-                descr
-                x
-                st
+              Script_typed_ir.interpreter_result_to_tzresult_lwt
+              @@ Script_interpreter.Internals.step_descr
+                   None
+                   ctxt
+                   step_constants
+                   descr
+                   x
+                   st
             in
             match absurd with _ -> .)
         | Typed descr ->
             let descr = Script_ir_translator.close_descr descr in
             let* y, output_st, _ctxt =
-              Script_interpreter.Internals.step_descr
-                None
-                ctxt
-                step_constants
-                descr
-                x
-                st
+              Script_typed_ir.interpreter_result_to_tzresult_lwt
+              @@ Script_interpreter.Internals.step_descr
+                   None
+                   ctxt
+                   step_constants
+                   descr
+                   x
+                   st
             in
             let+ output, ctxt =
               Normalize_stack.unparse_stack

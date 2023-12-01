@@ -36,10 +36,6 @@
 open Alpha_context
 open Script_typed_ir
 
-type error += Reject of Script.location * Script.expr * execution_trace option
-
-type error += Overflow of Script.location * execution_trace option
-
 type error += Runtime_contract_error of Contract_hash.t
 
 type error += Bad_contract_parameter of Contract.t (* `Permanent *)
@@ -152,11 +148,12 @@ module Internals : sig
     ('a, 's, 'r, 'f) continuation ->
     'a ->
     's ->
-    ('r
-    * 'f
-    * Local_gas_counter.outdated_context
-    * Local_gas_counter.local_gas_counter)
-    tzresult
+    ( 'r
+      * 'f
+      * Local_gas_counter.outdated_context
+      * Local_gas_counter.local_gas_counter,
+      interpreter_error )
+    result
     Lwt.t
 
   val step :
@@ -165,11 +162,12 @@ module Internals : sig
     ('a, 's, 'r, 'f) Script_typed_ir.kinstr ->
     'a ->
     's ->
-    ('r
-    * 'f
-    * Local_gas_counter.outdated_context
-    * Local_gas_counter.local_gas_counter)
-    tzresult
+    ( 'r
+      * 'f
+      * Local_gas_counter.outdated_context
+      * Local_gas_counter.local_gas_counter,
+      interpreter_error )
+    result
     Lwt.t
 
   val step_descr :
@@ -179,7 +177,7 @@ module Internals : sig
     ('a, 's, 'r, 'f) Script_typed_ir.kdescr ->
     'a ->
     's ->
-    ('r * 'f * context) tzresult Lwt.t
+    ('r * 'f * context, interpreter_error) result Lwt.t
 
   (** [kstep logger ctxt step_constants kinstr accu stack] interprets the
       script represented by [kinstr] under the context [ctxt]. This will
@@ -196,7 +194,7 @@ module Internals : sig
     ('a, 's, 'r, 'f) Script_typed_ir.kinstr ->
     'a ->
     's ->
-    ('r * 'f * context) tzresult Lwt.t
+    ('r * 'f * context, interpreter_error) result Lwt.t
 
   module Raw : sig
     open Local_gas_counter
@@ -222,7 +220,8 @@ module Internals : sig
       ('a, 's, 'r, 'f) continuation ->
       'a ->
       's ->
-      ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t
+      ('r * 'f * outdated_context * local_gas_counter, interpreter_error) result
+      Lwt.t
 
     val ilist_map : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i) ilist_map_type
 
