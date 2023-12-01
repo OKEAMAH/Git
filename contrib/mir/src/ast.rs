@@ -7,6 +7,7 @@
 
 pub mod annotations;
 pub mod byte_repr_trait;
+pub mod bytes;
 pub mod comparable;
 pub mod micheline;
 pub mod michelson_address;
@@ -269,6 +270,9 @@ pub enum Instruction {
     Seq(Vec<Self>),
     Unpair,
     Cons,
+    And(overloads::And),
+    Or(overloads::Or),
+    Xor(overloads::Xor),
     IfCons(Vec<Self>, Vec<Self>),
     Iter(overloads::Iter, Vec<Self>),
     IfLeft(Vec<Self>, Vec<Self>),

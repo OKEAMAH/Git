@@ -130,28 +130,28 @@ fn interpret_one(i: &Instruction, ctx: &mut Ctx, stack: &mut IStack) -> Result<(
             overloads::Add::IntInt => {
                 let o1 = pop!(V::Int);
                 let o2 = pop!(V::Int);
-                ctx.gas.consume(interpret_cost::add_int(&o1, &o2)?)?;
+                ctx.gas.consume(interpret_cost::add_num(&o1, &o2)?)?;
                 let sum = o1 + o2;
                 stack.push(V::Int(sum));
             }
             overloads::Add::NatNat => {
                 let o1 = pop!(V::Nat);
                 let o2 = pop!(V::Nat);
-                ctx.gas.consume(interpret_cost::add_int(&o1, &o2)?)?;
+                ctx.gas.consume(interpret_cost::add_num(&o1, &o2)?)?;
                 let sum = o1 + o2;
                 stack.push(V::Nat(sum));
             }
             overloads::Add::IntNat => {
                 let o1 = pop!(V::Int);
                 let o2 = pop!(V::Nat);
-                ctx.gas.consume(interpret_cost::add_int(&o1, &o2)?)?;
+                ctx.gas.consume(interpret_cost::add_num(&o1, &o2)?)?;
                 let sum = o1 + BigInt::from(o2);
                 stack.push(V::Int(sum));
             }
             overloads::Add::NatInt => {
                 let o1 = pop!(V::Nat);
                 let o2 = pop!(V::Int);
-                ctx.gas.consume(interpret_cost::add_int(&o1, &o2)?)?;
+                ctx.gas.consume(interpret_cost::add_num(&o1, &o2)?)?;
                 let sum = BigInt::from(o1) + o2;
                 stack.push(V::Int(sum));
             }
@@ -161,6 +161,101 @@ fn interpret_one(i: &Instruction, ctx: &mut Ctx, stack: &mut IStack) -> Result<(
                 ctx.gas.consume(interpret_cost::ADD_TEZ)?;
                 let sum = o1.checked_add(o2).ok_or(InterpretError::MutezOverflow)?;
                 stack.push(V::Mutez(sum));
+            }
+        },
+        I::And(overload) => match overload {
+            overloads::And::Bool => {
+                let o1 = pop!(V::Bool);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Bool);
+                ctx.gas.consume(interpret_cost::AND_BOOL)?;
+                *o2 &= o1;
+            }
+            overloads::And::NatNat => {
+                let o1 = pop!(V::Nat);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Nat);
+                ctx.gas.consume(interpret_cost::and_num(&o1, o2)?)?;
+                *o2 &= o1;
+            }
+            overloads::And::IntNat => {
+                let o1 = pop!(V::Int);
+                let o2 = pop!(V::Nat);
+                ctx.gas.consume(interpret_cost::and_num(&o1, &o2)?)?;
+                let res = BigUint::try_from(o1 & BigInt::from(o2))
+                    // safe, `neg` & `pos` = `pos`
+                    .unwrap();
+                stack.push(V::Nat(res));
+            }
+            overloads::And::Bytes => {
+                let mut o1 = pop!(V::Bytes);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Bytes);
+                ctx.gas.consume(interpret_cost::and_bytes(&o1, o2)?)?;
+
+                // The resulting vector length is the smallest length among the
+                // operands, so to reuse memory we put the smallest vector to
+                // the result (`o2`).
+                if o1.len() < o2.len() {
+                    std::mem::swap(&mut o1, o2)
+                }
+                for (b1, b2) in std::iter::zip(o1.into_iter().rev(), o2.iter_mut().rev()) {
+                    *b2 &= b1;
+                }
+            }
+        },
+        I::Or(overload) => match overload {
+            overloads::Or::Bool => {
+                let o1 = pop!(V::Bool);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Bool);
+                ctx.gas.consume(interpret_cost::OR_BOOL)?;
+                *o2 |= o1;
+            }
+            overloads::Or::Nat => {
+                let o1 = pop!(V::Nat);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Nat);
+                ctx.gas.consume(interpret_cost::or_num(&o1, o2)?)?;
+                *o2 |= o1;
+            }
+            overloads::Or::Bytes => {
+                let mut o1 = pop!(V::Bytes);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Bytes);
+                ctx.gas.consume(interpret_cost::or_bytes(&o1, o2)?)?;
+
+                // The resulting vector length is the largest length among the
+                // operands, so to reuse memory we put the largest vector to
+                // the result (`o2`).
+                if o1.len() > o2.len() {
+                    std::mem::swap(&mut o1, o2)
+                }
+                for (b1, b2) in std::iter::zip(o1.into_iter().rev(), o2.iter_mut().rev()) {
+                    *b2 |= b1;
+                }
+            }
+        },
+        I::Xor(overloads) => match overloads {
+            overloads::Xor::Bool => {
+                let o1 = pop!(V::Bool);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Bool);
+                ctx.gas.consume(interpret_cost::XOR_BOOL)?;
+                *o2 ^= o1;
+            }
+            overloads::Xor::Nat => {
+                let o1 = pop!(V::Nat);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Nat);
+                ctx.gas.consume(interpret_cost::xor_nat(&o1, o2)?)?;
+                *o2 ^= o1;
+            }
+            overloads::Xor::Bytes => {
+                let mut o1 = pop!(V::Bytes);
+                let o2 = irrefutable_match!(&mut stack[0]; V::Bytes);
+
+                // The resulting vector length is the largest length among the
+                // operands, so to reuse memory we put the largest vector to
+                // the result (`o2`).
+                if o1.len() > o2.len() {
+                    std::mem::swap(&mut o1, o2)
+                }
+                for (b1, b2) in std::iter::zip(o1.into_iter().rev(), o2.iter_mut().rev()) {
+                    *b2 ^= b1;
+                }
             }
         },
         I::Dip(opt_height, nested) => {
@@ -540,6 +635,75 @@ mod interpreter_tests {
                 ]
             ),
             Err(InterpretError::MutezOverflow)
+        );
+    }
+
+    #[test]
+    fn test_and_or_xor() {
+        #[track_caller]
+        fn check(
+            instr: Instruction,
+            val1: impl Into<TypedValue>,
+            val2: impl Into<TypedValue>,
+            expected: impl Into<TypedValue>,
+        ) {
+            let mut stack = stk![val2.into(), val1.into()];
+            let mut ctx = Ctx::default();
+            assert!(interpret_one(&instr, &mut ctx, &mut stack).is_ok());
+            assert_eq!(stack, stk![expected.into()]);
+        }
+
+        use crate::ast::bytes::mk_0x;
+        use overloads as o;
+
+        check(And(o::And::Bytes), mk_0x("05"), mk_0x("06"), mk_0x("04"));
+        check(
+            And(o::And::Bytes),
+            mk_0x("f00f"),
+            mk_0x("1234"),
+            mk_0x("1004"),
+        );
+        check(And(o::And::Bytes), mk_0x("f0"), mk_0x("1234"), mk_0x("30"));
+        check(
+            And(o::And::Bytes),
+            mk_0x("f00ff0"),
+            mk_0x("1234"),
+            mk_0x("0230"),
+        );
+
+        check(Or(o::Or::Bytes), mk_0x("05"), mk_0x("06"), mk_0x("07"));
+        check(
+            Or(o::Or::Bytes),
+            mk_0x("f00f"),
+            mk_0x("1234"),
+            mk_0x("f23f"),
+        );
+        check(Or(o::Or::Bytes), mk_0x("f0"), mk_0x("1234"), mk_0x("12f4"));
+        check(
+            Or(o::Or::Bytes),
+            mk_0x("f00ff0"),
+            mk_0x("1234"),
+            mk_0x("f01ff4"),
+        );
+
+        check(Xor(o::Xor::Bytes), mk_0x("05"), mk_0x("06"), mk_0x("03"));
+        check(
+            Xor(o::Xor::Bytes),
+            mk_0x("f00f"),
+            mk_0x("1234"),
+            mk_0x("e23b"),
+        );
+        check(
+            Xor(o::Xor::Bytes),
+            mk_0x("f0"),
+            mk_0x("1234"),
+            mk_0x("12c4"),
+        );
+        check(
+            Xor(o::Xor::Bytes),
+            mk_0x("f00ff0"),
+            mk_0x("1234"),
+            mk_0x("f01dc4"),
         );
     }
 
@@ -1081,7 +1245,7 @@ mod interpreter_tests {
     #[test]
     fn if_left_left() {
         let code = vec![IfLeft(vec![], vec![Drop(None), Push(V::int(0))])];
-        let mut stack = stk![V::new_or(Or::Left(V::int(1)))];
+        let mut stack = stk![V::new_or(or::Or::Left(V::int(1)))];
         let mut ctx = Ctx::default();
         assert_eq!(interpret(&code, &mut ctx, &mut stack), Ok(()));
         assert_eq!(stack, stk![V::int(1)]);
@@ -1094,7 +1258,7 @@ mod interpreter_tests {
     #[test]
     fn if_left_right() {
         let code = vec![IfLeft(vec![], vec![Drop(None), Push(V::int(0))])];
-        let mut stack = stk![V::new_or(Or::Right(V::Unit))];
+        let mut stack = stk![V::new_or(or::Or::Right(V::Unit))];
         let mut ctx = Ctx::default();
         assert_eq!(interpret(&code, &mut ctx, &mut stack), Ok(()));
         assert_eq!(stack, stk![V::int(0)]);
