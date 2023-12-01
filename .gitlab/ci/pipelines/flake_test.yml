@@ -35,4 +35,8 @@ include:
 
   - local: .gitlab/ci/jobs/test/tezt_flake.yml
     rules:
-    - if: '$TZ_FLAKE_TEST == "tezt"'
+    - if: '$TZ_FLAKE_TEST == "tezt" && $INFRA != "gcp"'
+
+  - local: .gitlab/ci/jobs/test/tezt_flake_gcp.yml
+    rules:
+    - if: '$TZ_FLAKE_TEST == "tezt" && $INFRA == "gcp"'
