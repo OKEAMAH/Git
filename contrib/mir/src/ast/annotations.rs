@@ -30,11 +30,17 @@ impl std::fmt::Debug for Annotations<'_> {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FieldAnnotation<'a>(&'a str);
 
-impl FieldAnnotation<'_> {
-    pub fn as_str(&self) -> &str {
+impl<'a> FieldAnnotation<'a> {
+    pub fn as_str(&self) -> &'a str {
         self.0
+    }
+
+    #[cfg(test)]
+    pub fn from_str_unchecked(s: &'a str) -> Self {
+        FieldAnnotation(s)
     }
 }
 

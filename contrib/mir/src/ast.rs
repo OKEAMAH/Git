@@ -30,7 +30,8 @@ use typed_arena::Arena;
 
 use crate::{
     bls,
-    {ast::annotations::NO_ANNS, lexer::Prim},
+    ast::annotations::{FieldAnnotation, NO_ANNS},
+    lexer::{Annotation, Prim},
 };
 
 pub use byte_repr_trait::{ByteReprError, ByteReprTrait};
@@ -384,7 +385,20 @@ impl<'a> IntoMicheline<'a> for TypedValue<'a> {
                     }]),
                     annotations::NO_ANNS,
                 ),
-                Operation::Emit(_) => todo!(),
+                Operation::Emit(em) => Micheline::App(
+                    Prim::Emit,
+                    arena.alloc_extend([
+                        go(em.value),
+                        match em.arg_ty {
+                            Or::Right(mich) => mich,
+                            Or::Left(typ) => typ.into_micheline_optimized_legacy(arena),
+                        },
+                    ]),
+                    match em.tag {
+                        Some(tag) => [Annotation::Field(tag.as_str())].into(),
+                        None => annotations::NO_ANNS,
+                    },
+                ),
             },
             TV::Ticket(t) => go(unwrap_ticket(t.as_ref().clone())),
         }
@@ -553,6 +567,10 @@ pub enum Instruction<'a> {
     /// no explicit entrypoint was specified in the instruction.
     Contract(Type, Entrypoint),
     PairingCheck,
+    Emit {
+        tag: Option<FieldAnnotation<'a>>,
+        arg_ty: Or<Type, Micheline<'a>>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
