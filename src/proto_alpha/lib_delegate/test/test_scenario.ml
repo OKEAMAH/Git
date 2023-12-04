@@ -647,7 +647,7 @@ Scenario F1
 4. Node A (bootstrap1) should propose at level 2 round 0.
 
 *)
-
+(* FIXME: I don't understand how this is right *)
 let test_scenario_f1 () =
   let open Lwt_result_syntax in
   let c_proposed_l1_r0 = ref false in
