@@ -80,6 +80,8 @@ module type S = sig
     ('file, 'key, 'value) t ->
     ('file * 'key) Seq.t ->
     ('file * 'key * 'value tzresult) Seq_s.t
+
+  val remove_file : ('file, 'key, 'value) t -> 'file -> unit Lwt.t
 end
 
 let value_size = 1
@@ -113,6 +115,12 @@ module R : S = struct
     |> Seq_s.S.map (fun (file, key) ->
            let* value = read_value t file key in
            Lwt.return (file, key, value))
+
+  let remove_file t file =
+    Stdlib.Hashtbl.filter_map_inplace
+      (fun (file', _) value -> if file = file' then None else Some value)
+      t
+    |> Lwt.return
 end
 
 module Helpers = struct
@@ -149,6 +157,7 @@ module Helpers = struct
     | Write_value of write_payload
     | Read_value of key
     | Read_values of key Seq.t
+    | Remove_file of string
 
   let seq_gen ~size_seq value_gen =
     let open QCheck2.Gen in
@@ -170,6 +179,10 @@ module Helpers = struct
       key_gen ~number_of_files ~number_of_keys_per_file
       |> map (fun x -> Read_value x)
     in
+    let remove_file =
+      key_gen ~number_of_files ~number_of_keys_per_file
+      |> map (fun (file, _) -> Remove_file file)
+    in
     let read_values =
       key_seq_gen
         ~size_seq:read_values_seq_size
@@ -177,7 +190,7 @@ module Helpers = struct
         ~number_of_keys_per_file
       |> map (fun x -> Read_values x)
     in
-    oneof [write_value; read_value; read_values]
+    oneof [write_value; read_value; read_values; remove_file]
 
   let pp_action fmt = function
     | Write_value payload -> Format.fprintf fmt "W%a" pp_write_payload payload
@@ -191,6 +204,7 @@ module Helpers = struct
             )
         in
         Format.fprintf fmt "R[%s]" str_keys
+    | Remove_file file -> Format.fprintf fmt "REMOVE[file=%s]" file
 
   type bind = Sequential | Parallel
 
@@ -490,6 +504,16 @@ let run_scenario
           let right_promise =
             let seq_s = R.read_values right seq in
             Seq_s.E.iter (fun _ -> Ok ()) seq_s
+          in
+          tzjoin [left_promise; right_promise]
+      | Remove_file file ->
+          let left_promise =
+            let*! () = L.remove_file left file in
+            return_unit
+          in
+          let right_promise =
+            let*! () = R.remove_file right file in
+            return_unit
           in
           tzjoin [left_promise; right_promise]
     in

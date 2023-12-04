@@ -402,7 +402,11 @@ end = struct
         let* () = close_file handle in
         let* () = Lwt_unix.unlink layout.filepath in
         Table.remove files.handles layout.filepath ;
-        LRU.remove files.lru lru_node ;
+        (* While concurrently removing a file, we could write a new
+           key which, as a consequence could remove this node from the
+           cache too. Hence, if such thing happens, we just do
+           nothing, the node was already removed. *)
+        (try LRU.remove files.lru lru_node with _ -> ()) ;
         Lwt.wakeup resolve_close () ;
         Lwt.return_unit
 end
