@@ -87,7 +87,7 @@ let make_argument = function
   | Cors_origin cors_origin -> ["--cors-origin"; cors_origin]
   | Disable_mempool -> ["--disable-mempool"]
   | Version -> ["--version"]
-  | RPC_additional_addr addr -> ["--rpc-addr"; addr]
+  | RPC_additional_addr addr -> ["--local-rpc-addr"; addr]
   | RPC_additional_addr_local addr -> ["--local-rpc-addr"; addr]
 
 let make_arguments arguments = List.flatten (List.map make_argument arguments)
@@ -835,7 +835,7 @@ let runlike_command_arguments node command arguments =
   :: "--metrics-addr"
   :: (metrics_addr ^ string_of_int node.persistent_state.metrics_port)
   :: (if node.persistent_state.rpc_local then "--local-rpc-addr"
-     else "--rpc-addr")
+     else "--local-rpc-addr")
   :: (rpc_addr ^ string_of_int node.persistent_state.rpc_port)
   :: command_args
 
