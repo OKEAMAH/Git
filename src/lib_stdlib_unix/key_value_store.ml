@@ -45,6 +45,23 @@ let () =
       | Missing_stored_kvs_data (path, index) -> Some (path, index) | _ -> None)
     (fun (path, index) -> Missing_stored_kvs_data (path, index))
 
+module Event = struct
+  include Internal_event.Simple
+
+  let unexpected_error =
+    declare_3
+      ~section:["key_valu_store"]
+      ~name:"Unexpected_erorr"
+      ~msg:"Unexpected error while {action} with {arguments}: {reason}"
+      ~level:Error
+      ~pp1:Format.pp_print_string
+      ("action", Data_encoding.string)
+      ~pp2:Format.pp_print_string
+      ("arguments", Data_encoding.string)
+      ~pp3:Error_monad.pp_print_trace
+      ("reason", Error_monad.trace_encoding)
+end
+
 type ('key, 'value) layout = {
   encoding : 'value Data_encoding.t;
   eq : 'value -> 'value -> bool;
@@ -214,8 +231,8 @@ end = struct
        domain of the LRU and the one of the Table is the same. *)
     match Table.find files.handles removed with
     | None -> assert false
-    | Some (Being_evicted _) -> assert false
-    | Some (Being_evicted_and_removed _) -> assert false
+    | Some (Being_evicted p) -> p
+    | Some (Being_evicted_and_removed p) -> p
     | Some
         (Entry
           {handle; accessed = _; cached = _; pending_callbacks; lru_node = _})
@@ -370,9 +387,27 @@ end = struct
 
   let remove files layout =
     let open Lwt_syntax in
-    (* TODO: Check on disk *)
     match Table.find files.handles layout.filepath with
-    | None -> Lwt.return_unit
+    | None ->
+        (* If the file exists but is actually not in the table, we
+           should remove the file from the disk. The file can have
+           already been removed by another concurrent thread. Hence,
+           we do not fail if the file is not present. *)
+        Lwt.catch
+          (fun () -> Lwt_unix.unlink layout.filepath)
+          (fun exn ->
+            match exn with
+            | Unix.Unix_error (Unix.EBADF, _, _) -> Lwt.return_unit
+            | exception ((Stack_overflow | Out_of_memory) as e) -> Lwt.reraise e
+            | exn ->
+                let error =
+                  Error_monad.TzTrace.make (Error_monad.error_of_exn exn)
+                in
+                let* () =
+                  Event.(emit unexpected_error)
+                    ("remove", layout.filepath, error)
+                in
+                Lwt.return_unit)
     | Some (Being_evicted p) ->
         let* () = p in
         Lwt_unix.unlink layout.filepath
@@ -389,7 +424,7 @@ end = struct
         let* () = close_file handle in
         let* () = Lwt_unix.unlink layout.filepath in
         Table.remove files.handles layout.filepath ;
-        LRU.remove files.lru lru_node ;
+        (try LRU.remove files.lru lru_node with _ -> ()) ;
         Lwt.wakeup resolve_close () ;
         Lwt.return_unit
 end
