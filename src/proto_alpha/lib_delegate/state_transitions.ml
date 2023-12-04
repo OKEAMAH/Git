@@ -897,12 +897,12 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
       end_of_round state ending_round
   | _, Ready_to_inject forge_event -> (
       match forge_event with
-      | Preattestations_ready signed_preattestations ->
-          Lwt.return (state, Inject_preattestations {signed_preattestations})
-      | Attestations_ready signed_attestations ->
-          Lwt.return (state, Inject_attestations {signed_attestations})
-      | Dal_attestations_ready signed_dal_attestations ->
-          Lwt.return (state, Inject_dal_attestations {signed_dal_attestations})
+      | Preattestation_ready signed_preattestation ->
+          Lwt.return (state, Inject_preattestation {signed_preattestation})
+      | Attestation_ready signed_attestation ->
+          Lwt.return (state, Inject_attestation {signed_attestation})
+      | Dal_attestation_ready signed_dal_attestation ->
+          Lwt.return (state, Inject_dal_attestation {signed_dal_attestation})
       | Block_ready prepared_block ->
           Lwt.return (state, Inject_block {prepared_block}))
   | _, Timeout (Time_to_bake_next_level {at_round}) ->

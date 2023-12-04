@@ -379,16 +379,15 @@ type block_to_bake = {
 }
 
 type forge_event =
-  | Preattestations_ready of
-      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
-  | Attestations_ready of
-      (consensus_key_and_delegate * packed_operation * int32 * Round.t) list
-  | Dal_attestations_ready of
-      ((consensus_key * public_key_hash)
+  | Preattestation_ready of
+      (consensus_key_and_delegate * packed_operation * int32 * Round.t)
+  | Attestation_ready of
+      (consensus_key_and_delegate * packed_operation * int32 * Round.t)
+  | Dal_attestation_ready of
+      (consensus_key_and_delegate
       * packed_operation
       * Dal.Attestation.t
       * int32)
-      list
   | Block_ready of prepared_block
 
 type forge_request =
@@ -514,40 +513,38 @@ let forge_event_encoding =
     [
       case
         (Tag 0)
-        ~title:"Preattestations_ready"
+        ~title:"Preattestation_ready"
         (obj2
-           (req "kind" (constant "Preattestations_ready"))
-           (req "signed_preattestations" (list consensus_operation_encoding)))
+           (req "kind" (constant "Preattestation_ready"))
+           (req "signed_preattestation" consensus_operation_encoding))
         (function
-          | Preattestations_ready signed_preattestations ->
-              Some ((), signed_preattestations)
+          | Preattestation_ready signed_preattestation ->
+              Some ((), signed_preattestation)
           | _ -> None)
-        (fun ((), signed_preattestations) ->
-          Preattestations_ready signed_preattestations);
+        (fun ((), signed_preattestation) ->
+          Preattestation_ready signed_preattestation);
       case
         (Tag 1)
-        ~title:"Attestations_ready"
+        ~title:"Attestation_ready"
         (obj2
-           (req "kind" (constant "Attestations_ready"))
-           (req "signed_attestations" (list consensus_operation_encoding)))
+           (req "kind" (constant "Attestation_ready"))
+           (req "signed_attestation" consensus_operation_encoding))
         (function
-          | Attestations_ready signed_attestations ->
-              Some ((), signed_attestations)
+          | Attestation_ready signed_attestation -> Some ((), signed_attestation)
           | _ -> None)
-        (fun ((), signed_attestations) ->
-          Attestations_ready signed_attestations);
+        (fun ((), signed_attestation) -> Attestation_ready signed_attestation);
       case
         (Tag 2)
-        ~title:"Dal_attestations_ready"
+        ~title:"Dal_attestation_ready"
         (obj2
-           (req "kind" (constant "Dal_attestations_ready"))
-           (req "signed_dal_attestations" (list dal_attestation_encoding)))
+           (req "kind" (constant "Dal_attestation_ready"))
+           (req "signed_dal_attestation" dal_attestation_encoding))
         (function
-          | Dal_attestations_ready signed_dal_attestations ->
-              Some ((), signed_dal_attestations)
+          | Dal_attestation_ready signed_dal_attestation ->
+              Some ((), signed_dal_attestation)
           | _ -> None)
-        (fun ((), signed_dal_attestations) ->
-          Dal_attestations_ready signed_dal_attestations);
+        (fun ((), signed_dal_attestation) ->
+          Dal_attestation_ready signed_dal_attestation);
       case
         (Tag 3)
         ~title:"Block_ready"
@@ -1151,48 +1148,36 @@ let pp_timeout_kind fmt = function
 
 let pp_forge_event fmt =
   let open Format in
-  let pp_list fmt l =
-    pp_print_list
-      ~pp_sep:(fun fmt () -> fprintf fmt ",@ ")
-      (fun fmt (delegate, _operation, level, round) ->
-        fprintf
-          fmt
-          "[delegate: %a, level: %ld, round: %a]"
-          pp_consensus_key_and_delegate
-          delegate
-          level
-          Round.pp
-          round)
+  let pp_consensus_vote fmt (delegate, _operation, level, round) =
+    fprintf
       fmt
-      l
+      "for delegate %a at level %ld (round %a)"
+      pp_consensus_key_and_delegate
+      delegate
+      level
+      Round.pp
+      round
   in
   function
-  | Preattestations_ready signed_preattestations ->
+  | Preattestation_ready signed_preattestation ->
       fprintf
         fmt
-        "@[<hov 2>Preattestations:@ %a@]"
-        pp_list
-        signed_preattestations
-  | Attestations_ready signed_attestations ->
-      fprintf fmt "@[<hov 2>Attestations:@ %a@]" pp_list signed_attestations
-  | Dal_attestations_ready signed_dal_attestations ->
+        "Preattestation ready %a"
+        pp_consensus_vote
+        signed_preattestation
+  | Attestation_ready signed_attestation ->
+      fprintf fmt "Attestation ready %a" pp_consensus_vote signed_attestation
+  | Dal_attestation_ready (delegate, _operation, _dal_attestation, level) ->
       fprintf
         fmt
-        "@[<hov 2>Dal attestations:@ %a@]"
-        (pp_print_list
-           ~pp_sep:(fun fmt () -> fprintf fmt ",@ ")
-           (fun fmt (delegate, _operation, _dal_attestation, level) ->
-             fprintf
-               fmt
-               "[delegate: %a, level: %ld]"
-               pp_consensus_key_and_delegate
-               delegate
-               level))
-        signed_dal_attestations
+        "Dal attestation ready for delegate %a at level %ld"
+        pp_consensus_key_and_delegate
+        delegate
+        level
   | Block_ready {signed_block_header; round; delegate; _} ->
       Format.fprintf
         fmt
-        "Block: delegate: %a, level: %ld, round: %a"
+        "Block ready for delegate: %a at level %ld (round: %a)"
         pp_consensus_key_and_delegate
         delegate
         signed_block_header.shell.level

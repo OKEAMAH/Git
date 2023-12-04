@@ -531,29 +531,46 @@ let create () =
     let*! (forge_request_opt : forge_request option) =
       Lwt_stream.get task_stream
     in
-    let* (forge_event : forge_event) =
+    let*! (r : unit tzresult) =
       match forge_request_opt with
       | None -> failwith "forge worker request stream closed"
-      | Some (Forge_and_sign_preattestations (state, v)) ->
+      | Some (Forge_and_sign_preattestations (state, preattestations)) ->
           let* signed_preattestations =
-            sign_consensus_votes state v `Preattestation
+            sign_consensus_votes state preattestations `Preattestation
           in
-          return @@ Preattestations_ready signed_preattestations
-      | Some (Forge_and_sign_attestations (state, v)) ->
+          List.iter
+            (fun preattestation ->
+              push_event (Some (Preattestation_ready preattestation)))
+            signed_preattestations ;
+          return_unit
+      | Some (Forge_and_sign_attestations (state, attestations)) ->
           let* signed_attestations =
-            sign_consensus_votes state v `Attestation
+            sign_consensus_votes state attestations `Attestation
           in
-          return @@ Attestations_ready signed_attestations
+          List.iter
+            (fun attestation ->
+              push_event (Some (Attestation_ready attestation)))
+            signed_attestations ;
+          return_unit
       | Some (Forge_and_sign_dal_attestations (state, dal_attestations)) ->
           let* signed_dal_attestations =
             sign_dal_attestations state dal_attestations
           in
-          return @@ Dal_attestations_ready signed_dal_attestations
+          List.iter
+            (fun signed_dal_attestation ->
+              push_event (Some (Dal_attestation_ready signed_dal_attestation)))
+            signed_dal_attestations ;
+          return_unit
       | Some (Forge_and_sign_block (state, block_to_bake)) ->
           let* prepared_block = prepare_block state block_to_bake in
-          return @@ Block_ready prepared_block
+          push_event (Some (Block_ready prepared_block)) ;
+          return_unit
     in
-    let () = push_event (Some forge_event) in
+    let*! () =
+      match r with
+      | Ok () -> Lwt.return_unit
+      | Error _err -> (* TODO: make proper event *) Lwt.return_unit
+    in
     worker_loop ()
   in
   Lwt.dont_wait

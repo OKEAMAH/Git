@@ -40,24 +40,23 @@ type action =
   | Prepare_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
-  | Inject_preattestations of {
-      signed_preattestations :
-        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+  | Inject_preattestation of {
+      signed_preattestation :
+        consensus_key_and_delegate * packed_operation * int32 * Round.t;
     }
   | Prepare_attestations of {
       attestations : (consensus_key_and_delegate * consensus_content) list;
     }
-  | Inject_attestations of {
-      signed_attestations :
-        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+  | Inject_attestation of {
+      signed_attestation :
+        consensus_key_and_delegate * packed_operation * int32 * Round.t;
     }
-  | Inject_dal_attestations of {
-      signed_dal_attestations :
-        ((consensus_key * public_key_hash)
+  | Inject_dal_attestation of {
+      signed_dal_attestation :
+        (consensus_key * public_key_hash)
         * packed_operation
         * Dal.Attestation.t
-        * int32)
-        list;
+        * int32;
     }
   | Update_to_level of level_update
   | Synchronize_round of round_update
@@ -84,10 +83,10 @@ let pp_action fmt = function
   | Prepare_block _ -> Format.fprintf fmt "prepare block"
   | Inject_block _ -> Format.fprintf fmt "inject block"
   | Prepare_preattestations _ -> Format.fprintf fmt "prepare preattestations"
-  | Inject_preattestations _ -> Format.fprintf fmt "inject preattestations"
+  | Inject_preattestation _ -> Format.fprintf fmt "inject preattestation"
   | Prepare_attestations _ -> Format.fprintf fmt "prepare attestations"
-  | Inject_attestations _ -> Format.fprintf fmt "inject attestations"
-  | Inject_dal_attestations _ -> Format.fprintf fmt "inject DAL attestations"
+  | Inject_attestation _ -> Format.fprintf fmt "inject attestation"
+  | Inject_dal_attestation _ -> Format.fprintf fmt "inject DAL attestation"
   | Update_to_level _ -> Format.fprintf fmt "update to level"
   | Synchronize_round _ -> Format.fprintf fmt "synchronize round"
   | Watch_proposal -> Format.fprintf fmt "watch proposal"
@@ -135,7 +134,7 @@ let inject_block state prepared_block =
   in
   return new_state
 
-let inject_consensus_votes state signed_operations kind =
+let inject_consensus_vote state signed_operation kind =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
@@ -147,9 +146,10 @@ let inject_consensus_votes state signed_operations kind =
         (Events.failed_to_inject_attestation, Events.attestation_injected)
   in
   (* TODO: add a RPC to inject multiple operations *)
-  let* () =
-    List.iter_ep
-      (fun (delegate, operation, level, round) ->
+  let delegate, operation, level, round = signed_operation in
+  Lwt.dont_wait
+    (fun () ->
+      let*! (_ign : unit tzresult) =
         protect
           ~on_error:(fun err ->
             let*! () = Events.(emit fail_inject_event (delegate, err)) in
@@ -161,10 +161,11 @@ let inject_consensus_votes state signed_operations kind =
             let*! () =
               Events.(emit injected_event (oph, delegate, level, round))
             in
-            return_unit))
-      signed_operations
-  in
-  return state
+            return_unit)
+      in
+      Lwt.return_unit)
+    (fun _exn -> ()) ;
+  return_unit
 
 let no_dal_node_warning_counter = ref 0
 
@@ -260,39 +261,50 @@ let get_dal_attestations state =
         attestations
       |> return)
 
-let inject_dal_attestations state signed_dal_attestations =
+let inject_dal_attestation state signed_dal_attestation =
   let open Lwt_result_syntax in
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  List.iter_ep
-    (fun (delegate, signed_operation, op_content, published_level) ->
-      let encoded_op =
-        Data_encoding.Binary.to_bytes_exn
-          Operation.encoding_with_legacy_attestation_name
-          signed_operation
+  let ( delegate,
+        signed_operation,
+        (attestation : Dal.Attestation.t),
+        published_level ) =
+    signed_dal_attestation
+  in
+  let encoded_op =
+    Data_encoding.Binary.to_bytes_exn
+      Operation.encoding_with_legacy_attestation_name
+      signed_operation
+  in
+  Lwt.dont_wait
+    (fun () ->
+      let*! (_ign : unit tzresult) =
+        protect
+          ~on_error:(fun err ->
+            let*! () =
+              Events.(emit failed_to_inject_dal_attestation (delegate, err))
+            in
+            return_unit)
+          (fun () ->
+            let* oph =
+              Shell_services.Injection.operation
+                cctxt
+                ~chain:(`Hash chain_id)
+                encoded_op
+            in
+            let bitset_int = Bitset.to_z (attestation :> Bitset.t) in
+            let attestation_level = state.level_state.current_level in
+            let*! () =
+              Events.(
+                emit
+                  dal_attestation_injected
+                  (oph, delegate, bitset_int, published_level, attestation_level))
+            in
+            return_unit)
       in
-      let* oph =
-        Shell_services.Injection.operation
-          cctxt
-          ~chain:(`Hash chain_id)
-          encoded_op
-      in
-      let bitset_int =
-        Bitset.to_z (op_content.Dal.Attestation.attestation :> Bitset.t)
-      in
-      let*! () =
-        Events.(
-          emit
-            dal_attestation_injected
-            ( oph,
-              delegate,
-              bitset_int,
-              published_level,
-              op_content.level,
-              op_content.round ))
-      in
-      return_unit)
-    signed_dal_attestations
+      Lwt.return_unit)
+    (fun _exn -> ()) ;
+  return_unit
 
 let prepare_waiting_for_quorum state =
   let consensus_threshold =
@@ -430,25 +442,23 @@ let rec perform_action ~state_recorder state (action : action) =
       return new_state
   | Prepare_preattestations {preattestations} ->
       let request = Forge_and_sign_preattestations (state, preattestations) in
-      let () = state.global_state.forge_worker_hooks.push_request request in
+      state.global_state.forge_worker_hooks.push_request request ;
       return state
-  | Inject_preattestations {signed_preattestations} ->
-      let* state =
-        inject_consensus_votes state signed_preattestations `Preattestation
+  | Inject_preattestation {signed_preattestation} ->
+      let* () =
+        inject_consensus_vote state signed_preattestation `Preattestation
       in
       perform_action ~state_recorder state Watch_proposal
   | Prepare_attestations {attestations} ->
       let request = Forge_and_sign_attestations (state, attestations) in
-      let () = state.global_state.forge_worker_hooks.push_request request in
+      state.global_state.forge_worker_hooks.push_request request ;
       let* dal_attestations = get_dal_attestations state in
       let request = Forge_and_sign_dal_attestations (state, dal_attestations) in
-      let () = state.global_state.forge_worker_hooks.push_request request in
+      state.global_state.forge_worker_hooks.push_request request ;
       return state
-  | Inject_attestations {signed_attestations} ->
+  | Inject_attestation {signed_attestation} ->
       let* () = state_recorder ~new_state:state in
-      let* state =
-        inject_consensus_votes state signed_attestations `Attestation
-      in
+      let* () = inject_consensus_vote state signed_attestation `Attestation in
       (* We wait for attestations to trigger the [Quorum_reached]
          event *)
       let*! () = start_waiting_for_attestation_quorum state in
@@ -457,8 +467,8 @@ let rec perform_action ~state_recorder state (action : action) =
       (* TODO: https://gitlab.com/tezos/tezos/-/issues/4671
          Don't inject multiple attestations? *)
       return state
-  | Inject_dal_attestations {signed_dal_attestations} ->
-      let* () = inject_dal_attestations state signed_dal_attestations in
+  | Inject_dal_attestation {signed_dal_attestation} ->
+      let* () = inject_dal_attestation state signed_dal_attestation in
       return state
   | Update_to_level level_update ->
       let* new_state, new_action = update_to_level state level_update in

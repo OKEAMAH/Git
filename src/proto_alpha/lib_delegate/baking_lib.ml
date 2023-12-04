@@ -95,11 +95,14 @@ let preattest (cctxt : Protocol_client_context.full) ?(force = false) delegates
   let* signed_preattestations =
     Forge_worker.sign_consensus_votes state consensus_list `Preattestation
   in
-  let* (_ : state) =
-    Baking_actions.inject_consensus_votes
-      state
+  let* () =
+    List.iter_ep
+      (fun signed_preattestation ->
+        Baking_actions.inject_consensus_vote
+          state
+          signed_preattestation
+          `Preattestation)
       signed_preattestations
-      `Preattestation
   in
   return_unit
 
@@ -141,8 +144,14 @@ let attest (cctxt : Protocol_client_context.full) ?(force = false) delegates =
   let* signed_attestations =
     Forge_worker.sign_consensus_votes state consensus_list `Attestation
   in
-  let* (_ : state) =
-    Baking_actions.inject_consensus_votes state signed_attestations `Attestation
+  let* () =
+    List.iter_ep
+      (fun signed_attestation ->
+        Baking_actions.inject_consensus_vote
+          state
+          signed_attestation
+          `Attestation)
+      signed_attestations
   in
   return_unit
 

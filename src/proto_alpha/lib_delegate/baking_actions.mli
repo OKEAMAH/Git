@@ -43,24 +43,23 @@ type action =
   | Prepare_preattestations of {
       preattestations : (consensus_key_and_delegate * consensus_content) list;
     }
-  | Inject_preattestations of {
-      signed_preattestations :
-        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+  | Inject_preattestation of {
+      signed_preattestation :
+        consensus_key_and_delegate * packed_operation * int32 * Round.t;
     }
   | Prepare_attestations of {
       attestations : (consensus_key_and_delegate * consensus_content) list;
     }
-  | Inject_attestations of {
-      signed_attestations :
-        (consensus_key_and_delegate * packed_operation * int32 * Round.t) list;
+  | Inject_attestation of {
+      signed_attestation :
+        consensus_key_and_delegate * packed_operation * int32 * Round.t;
     }
-  | Inject_dal_attestations of {
-      signed_dal_attestations :
-        ((consensus_key * public_key_hash)
+  | Inject_dal_attestation of {
+      signed_dal_attestation :
+        (consensus_key * public_key_hash)
         * packed_operation
         * Dal.Attestation.t
-        * int32)
-        list;
+        * int32;
     }
   | Update_to_level of level_update
   | Synchronize_round of round_update
@@ -84,11 +83,11 @@ type t = action
 
 val inject_block : state -> prepared_block -> state tzresult Lwt.t
 
-val inject_consensus_votes :
+val inject_consensus_vote :
   state ->
-  ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list ->
+  (consensus_key * public_key_hash) * packed_operation * int32 * Round.t ->
   [`Preattestation | `Attestation] ->
-  state tzresult Lwt.t
+  unit tzresult Lwt.t
 
 val get_dal_attestations :
   state ->
