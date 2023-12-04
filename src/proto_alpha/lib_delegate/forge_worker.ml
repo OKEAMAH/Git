@@ -354,10 +354,9 @@ let sign_dal_attestations (cctxt : #Protocol_client_context.full) chain_id
               published_level ))
     attestations
 
-let sign_consensus_votes state operations kind =
+let sign_consensus_votes kind (cctxt : #Protocol_client_context.full)
+    ?(force = false) chain_id ~branch operations =
   let open Lwt_result_syntax in
-  let cctxt = state.global_state.cctxt in
-  let chain_id = state.global_state.chain_id in
   (* N.b. signing a lot of operations may take some time *)
   (* Don't parallelize signatures: the signer might not be able to
      handle concurrent requests *)
@@ -389,8 +388,7 @@ let sign_consensus_votes state operations kind =
                   ~level
                   ~round
               in
-              if may_sign || state.global_state.config.force then
-                Lwt.return_true
+              if may_sign || force then Lwt.return_true
               else
                 let*! () =
                   match kind with
@@ -443,10 +441,7 @@ let sign_consensus_votes state operations kind =
        fun ((consensus_key, _) as delegate) contents ->
         let shell =
           (* The branch is the latest finalized block. *)
-          {
-            Tezos_base.Operation.branch =
-              state.level_state.latest_proposal.predecessor.shell.predecessor;
-          }
+          {Tezos_base.Operation.branch}
         in
         let watermark =
           match kind with
@@ -502,6 +497,12 @@ let sign_consensus_votes state operations kind =
                 (Single (Preattestation consensus_content)))
         authorized_consensus_votes
 
+let sign_preattestations (cctxt : #Protocol_client_context.full) =
+  sign_consensus_votes `Preattestation cctxt
+
+let sign_attestations (cctxt : #Protocol_client_context.full) =
+  sign_consensus_votes `Attestation cctxt
+
 type worker = {
   push_task : forge_request option -> unit;
   push_event : forge_event option -> unit;
@@ -516,7 +517,7 @@ let get_event_stream state = state.event_stream
 
 let shutdown state = state.push_task None
 
-let start cctxt chain_id =
+let start (cctxt : #Protocol_client_context.full) chain_id =
   let open Lwt_result_syntax in
   let task_stream, push_task = Lwt_stream.create () in
   let event_stream, push_event = Lwt_stream.create () in
@@ -528,18 +529,23 @@ let start cctxt chain_id =
     let*! (r : unit tzresult) =
       match forge_request_opt with
       | None -> failwith "forge worker request stream closed"
-      | Some (Forge_and_sign_preattestations (state, preattestations)) ->
+      | Some (Forge_and_sign_preattestations (branch, preattestations)) ->
           let* signed_preattestations =
-            sign_consensus_votes state preattestations `Preattestation
+            sign_preattestations
+              cctxt
+              ~force:false
+              chain_id
+              ~branch
+              preattestations
           in
           List.iter
             (fun preattestation ->
               push_event (Some (Preattestation_ready preattestation)))
             signed_preattestations ;
           return_unit
-      | Some (Forge_and_sign_attestations (state, attestations)) ->
+      | Some (Forge_and_sign_attestations (branch, attestations)) ->
           let* signed_attestations =
-            sign_consensus_votes state attestations `Attestation
+            sign_attestations cctxt ~force:false chain_id ~branch attestations
           in
           List.iter
             (fun attestation ->

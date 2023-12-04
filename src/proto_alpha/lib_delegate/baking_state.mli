@@ -206,9 +206,9 @@ type forge_event =
 
 type forge_request =
   | Forge_and_sign_preattestations of
-      (state * (consensus_key_and_delegate * consensus_content) list)
+      (Block_hash.t * (consensus_key_and_delegate * consensus_content) list)
   | Forge_and_sign_attestations of
-      (state * (consensus_key_and_delegate * consensus_content) list)
+      (Block_hash.t * (consensus_key_and_delegate * consensus_content) list)
   | Forge_and_sign_dal_attestations of
       (Block_hash.t
       * (consensus_key_and_delegate * Dal.Attestation.operation * int32) list)

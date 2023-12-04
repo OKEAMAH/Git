@@ -35,10 +35,22 @@ val sign_dal_attestations :
   tzresult
   Lwt.t
 
-val sign_consensus_votes :
-  state ->
+val sign_attestations :
+  #Protocol_client_context.full ->
+  ?force:bool ->
+  Chain_id.t ->
+  branch:Block_hash.t ->
   (consensus_key_and_delegate * consensus_content) list ->
-  [`Preattestation | `Attestation] ->
+  ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list
+  tzresult
+  Lwt.t
+
+val sign_preattestations :
+  #Protocol_client_context.full ->
+  ?force:bool ->
+  Chain_id.t ->
+  branch:Block_hash.t ->
+  (consensus_key_and_delegate * consensus_content) list ->
   ((consensus_key * public_key_hash) * packed_operation * int32 * Round.t) list
   tzresult
   Lwt.t

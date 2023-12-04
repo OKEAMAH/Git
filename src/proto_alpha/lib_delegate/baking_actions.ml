@@ -441,7 +441,8 @@ let rec perform_action ~state_recorder state (action : action) =
       let* () = state_recorder ~new_state in
       return new_state
   | Prepare_preattestations {preattestations} ->
-      let request = Forge_and_sign_preattestations (state, preattestations) in
+      let branch = state.level_state.latest_proposal.predecessor.hash in
+      let request = Forge_and_sign_preattestations (branch, preattestations) in
       state.global_state.forge_worker_hooks.push_request request ;
       return state
   | Inject_preattestation {signed_preattestation} ->
@@ -450,7 +451,8 @@ let rec perform_action ~state_recorder state (action : action) =
       in
       perform_action ~state_recorder state Watch_proposal
   | Prepare_attestations {attestations} ->
-      let request = Forge_and_sign_attestations (state, attestations) in
+      let branch = state.level_state.latest_proposal.predecessor.hash in
+      let request = Forge_and_sign_attestations (branch, attestations) in
       state.global_state.forge_worker_hooks.push_request request ;
       let* dal_attestations = get_dal_attestations state in
       let branch = state.level_state.latest_proposal.predecessor.hash in

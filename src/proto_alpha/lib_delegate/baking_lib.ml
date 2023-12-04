@@ -93,8 +93,14 @@ let preattest (cctxt : Protocol_client_context.full) ?(force = false) delegates
           Baking_state.pp_consensus_key_and_delegate)
       (List.map fst consensus_list)
   in
+  let branch = state.level_state.latest_proposal.predecessor.hash in
   let* signed_preattestations =
-    Forge_worker.sign_consensus_votes state consensus_list `Preattestation
+    Forge_worker.sign_preattestations
+      cctxt
+      ~force
+      state.global_state.chain_id
+      ~branch
+      consensus_list
   in
   let* () =
     List.iter_ep
@@ -142,8 +148,14 @@ let attest (cctxt : Protocol_client_context.full) ?(force = false) delegates =
   let* () =
     Baking_state.may_record_new_state ~previous_state:state ~new_state:state
   in
+  let branch = state.level_state.latest_proposal.predecessor.hash in
   let* signed_attestations =
-    Forge_worker.sign_consensus_votes state consensus_list `Attestation
+    Forge_worker.sign_attestations
+      cctxt
+      ~force
+      state.global_state.chain_id
+      ~branch
+      consensus_list
   in
   let* () =
     List.iter_ep
@@ -570,8 +582,14 @@ let rec baking_minimal_timestamp ~count state
     | None -> cctxt#error "No potential baking slot for the given delegates."
     | Some first_potential_round -> return first_potential_round
   in
+  let branch = state.level_state.latest_proposal.predecessor.hash in
   let* signed_attestations =
-    Forge_worker.sign_consensus_votes state own_attestations `Attestation
+    Forge_worker.sign_preattestations
+      cctxt
+      ~force:state.global_state.config.force
+      state.global_state.chain_id
+      ~branch
+      own_attestations
   in
   let pool =
     Operation_pool.add_operations
