@@ -88,7 +88,9 @@ let value_size = 1
 
 module L : S = Key_value_store
 
-module R : S = struct
+module R :
+  S with type ('file, 'key, 'value) t = ('file * 'key, 'value) Stdlib.Hashtbl.t =
+struct
   type ('file, 'key, 'value) t = ('file * 'key, 'value) Stdlib.Hashtbl.t
 
   let init ~lru_size:_ _file = Stdlib.Hashtbl.create 100
@@ -375,6 +377,7 @@ module Helpers = struct
     Format.fprintf fmt "%a" (pp false action) next_actions
 end
 
+module StringSet = Set.Make (String)
 include Helpers
 
 (* Because a scenario creates files onto the disk, we need a way to
@@ -514,6 +517,30 @@ let run_scenario
           in
           tzjoin [left_promise; right_promise]
     in
+    let check_remenent_files () =
+      let all_files =
+        keys number_of_files number_of_keys_per_file
+        |> Array.to_seq |> Seq.map fst |> StringSet.of_seq
+      in
+      let non_empty_files =
+        Stdlib.Hashtbl.to_seq right
+        |> Seq.map fst |> Seq.map fst |> StringSet.of_seq
+      in
+      let empty_files = StringSet.diff all_files non_empty_files in
+      Log.info
+        "DEBUG DEBUG DEBUG %d %d"
+        (StringSet.cardinal all_files)
+        (StringSet.cardinal non_empty_files) ;
+      let exist_remenent_files =
+        StringSet.exists
+          (fun file ->
+            let filepath = Filename.concat dir_path file in
+            Sys.file_exists filepath)
+          empty_files
+      in
+      if exist_remenent_files then Stdlib.failwith "Remenent file found"
+      else return_unit
+    in
     let finalize () =
       let left = L.init ~lru_size:number_of_files layout_of in
       let* () =
@@ -528,6 +555,7 @@ let run_scenario
               right_result)
           (keys number_of_files number_of_keys_per_file |> Array.to_seq)
       in
+      let* () = check_remenent_files () in
       L.close left |> Lwt.map Result.ok
     in
     match next_actions with
