@@ -446,19 +446,6 @@ let layout ?encoded_value_size ~encoding ~filepath ~eq ~index_of () =
           invalid_arg
             "Key_value_store.layout: encoding does not have fixed size")
 
-(* FIXME https://gitlab.com/tezos/tezos/-/issues/4643
-
-   The reason why there are two LRUs and not one, is that in the case
-   of concurrent reads and writes, the LRU cannot prevent the absence
-   of race. To prevent that we use two LRUs to be able to discriminate
-   between the various concurrent accesses. In particular, while
-   reading a value, we want to wait if there is a write in
-   progress. Vice versa, if a read fails, we don't want to make the
-   next write to fail.
-
-   In practice, there should not be a duplication in memory of the
-   values read since values are shared. *)
-
 let init ~lru_size layout_of =
   let files = Files.init ~lru_size in
   E {layout_of; files}
