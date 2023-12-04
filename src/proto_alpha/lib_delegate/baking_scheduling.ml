@@ -728,14 +728,13 @@ let create_dal_node_rpc_ctxt endpoint =
   in
   new RPC_client_unix.http_ctxt rpc_config media_types
 
-let create_initial_state cctxt ?(synchronize = true) ~chain config
+let create_initial_state cctxt ?(synchronize = true) chain_id config
     operation_worker forge_worker ~(current_proposal : Baking_state.proposal)
     ?constants delegates =
   let open Lwt_result_syntax in
   (* FIXME? consider saved attestable value *)
   let open Protocol in
   let open Baking_state in
-  let* chain_id = Shell_services.Chain.chain_id cctxt ~chain () in
   let* constants =
     match constants with
     | Some c -> return c
@@ -993,11 +992,11 @@ let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
           let*! _ = Operation_worker.shutdown_worker operation_worker in
           Lwt.return_unit))
     canceler ;
-  let* forge_worker = Forge_worker.create () in
+  let* forge_worker = Forge_worker.start cctxt chain_id in
   let* initial_state =
     create_initial_state
       cctxt
-      ~chain
+      chain_id
       config
       operation_worker
       forge_worker

@@ -210,7 +210,7 @@ type forge_request =
   | Forge_and_sign_attestations of
       (state * (consensus_key_and_delegate * consensus_content) list)
   | Forge_and_sign_dal_attestations of
-      (state
+      (Block_hash.t
       * (consensus_key_and_delegate * Dal.Attestation.operation * int32) list)
   | Forge_and_sign_block of (state * block_to_bake)
 

@@ -453,7 +453,10 @@ let rec perform_action ~state_recorder state (action : action) =
       let request = Forge_and_sign_attestations (state, attestations) in
       state.global_state.forge_worker_hooks.push_request request ;
       let* dal_attestations = get_dal_attestations state in
-      let request = Forge_and_sign_dal_attestations (state, dal_attestations) in
+      let branch = state.level_state.latest_proposal.predecessor.hash in
+      let request =
+        Forge_and_sign_dal_attestations (branch, dal_attestations)
+      in
       state.global_state.forge_worker_hooks.push_request request ;
       return state
   | Inject_attestation {signed_attestation} ->

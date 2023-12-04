@@ -26,7 +26,9 @@ val generate_seed_nonce_hash :
 val prepare_block : state -> block_to_bake -> prepared_block tzresult Lwt.t
 
 val sign_dal_attestations :
-  state ->
+  #Protocol_client_context.full ->
+  Chain_id.t ->
+  branch:Block_hash.t ->
   (consensus_key_and_delegate * Dal.Attestation.operation * int32) list ->
   (consensus_key_and_delegate * packed_operation * Dal.Attestation.t * int32)
   list
@@ -49,6 +51,6 @@ val push_request : worker -> forge_request -> unit
 
 val get_event_stream : worker -> forge_event Lwt_stream.t
 
-val shutdown_worker : worker -> unit
+val shutdown : worker -> unit
 
-val create : unit -> worker tzresult Lwt.t
+val start : #Protocol_client_context.full -> Chain_id.t -> worker tzresult Lwt.t

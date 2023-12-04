@@ -82,7 +82,7 @@ val compute_next_timeout : state -> timeout_kind Lwt.t tzresult Lwt.t
 val create_initial_state :
   Protocol_client_context.full ->
   ?synchronize:bool ->
-  chain:Chain_services.chain ->
+  Chain_id.t ->
   Baking_configuration.t ->
   Operation_worker.t ->
   Forge_worker.t ->

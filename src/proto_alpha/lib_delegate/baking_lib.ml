@@ -35,11 +35,12 @@ let create_state cctxt ?synchronize ?monitor_node_mempool ~config
   let*! operation_worker =
     Operation_worker.create ?monitor_node_operations cctxt
   in
-  let* forge_worker = Forge_worker.create () in
+  let* chain_id = Shell_services.Chain.chain_id cctxt ~chain () in
+  let* forge_worker = Forge_worker.start cctxt chain_id in
   Baking_scheduling.create_initial_state
     cctxt
     ?synchronize
-    ~chain
+    chain_id
     config
     operation_worker
     forge_worker
@@ -578,8 +579,13 @@ let rec baking_minimal_timestamp ~count state
       (List.map (fun (_, x, _, _) -> x) signed_attestations)
   in
   let* own_dal_attestations = Baking_actions.get_dal_attestations state in
+  let branch = state.level_state.latest_proposal.predecessor.hash in
   let* signed_dal_attestations =
-    Forge_worker.sign_dal_attestations state own_dal_attestations
+    Forge_worker.sign_dal_attestations
+      cctxt
+      state.global_state.chain_id
+      ~branch
+      own_dal_attestations
   in
   let pool =
     Operation_pool.add_operations

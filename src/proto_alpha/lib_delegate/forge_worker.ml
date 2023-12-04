@@ -314,19 +314,13 @@ let prepare_block state block_to_bake =
   in
   return {signed_block_header; round; delegate; operations; baking_votes}
 
-let sign_dal_attestations state attestations =
+let sign_dal_attestations (cctxt : #Protocol_client_context.full) chain_id
+    ~branch attestations =
   let open Lwt_result_syntax in
-  let cctxt = state.global_state.cctxt in
-  let chain_id = state.global_state.chain_id in
   (* N.b. signing a lot of operations may take some time *)
   (* Don't parallelize signatures: the signer might not be able to
      handle concurrent requests *)
-  let shell =
-    {
-      Tezos_base.Operation.branch =
-        state.level_state.latest_proposal.predecessor.hash;
-    }
-  in
+  let shell = {Tezos_base.Operation.branch} in
   List.filter_map_es
     (fun (((consensus_key, _) as delegate), consensus_content, published_level) ->
       let watermark = Operation.(to_watermark (Dal_attestation chain_id)) in
@@ -520,9 +514,9 @@ let push_request state request = state.push_task (Some request)
 
 let get_event_stream state = state.event_stream
 
-let shutdown_worker state = state.push_task None
+let shutdown state = state.push_task None
 
-let create () =
+let start cctxt chain_id =
   let open Lwt_result_syntax in
   let task_stream, push_task = Lwt_stream.create () in
   let event_stream, push_event = Lwt_stream.create () in
@@ -552,9 +546,9 @@ let create () =
               push_event (Some (Attestation_ready attestation)))
             signed_attestations ;
           return_unit
-      | Some (Forge_and_sign_dal_attestations (state, dal_attestations)) ->
+      | Some (Forge_and_sign_dal_attestations (branch, dal_attestations)) ->
           let* signed_dal_attestations =
-            sign_dal_attestations state dal_attestations
+            sign_dal_attestations cctxt chain_id ~branch dal_attestations
           in
           List.iter
             (fun signed_dal_attestation ->
@@ -580,7 +574,7 @@ let create () =
           let*! _ = worker_loop () in
           Lwt.return_unit)
         (fun () ->
-          let _ = shutdown_worker state in
+          let _ = shutdown state in
           Lwt.return_unit))
     (fun _ -> assert false) ;
   return state
