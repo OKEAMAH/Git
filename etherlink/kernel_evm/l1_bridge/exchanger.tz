@@ -1,6 +1,6 @@
 { parameter
     (or (contract %mint (ticket (pair nat (option bytes))))
-        (pair %burn address (ticket (pair nat (option bytes))))) ;
+        (pair %burn (contract unit) (ticket (pair nat (option bytes))))) ;
   storage unit ;
   code { CAR ;
          IF_LEFT
@@ -40,11 +40,7 @@
                   COMPARE ;
                   NEQ ;
                   IF { DROP 2 ; PUSH string "Burn only accepts tez tickets." ; FAILWITH }
-                     { SWAP ;
-                       CONTRACT unit ;
-                       IF_NONE { PUSH string "Invalid callback" ; FAILWITH } {} ;
-                       PUSH mutez 1 ;
-                       DIG 2 ;
+                     { PUSH mutez 1 ;
                        MUL ;
                        UNIT ;
                        NIL operation ;

@@ -7,7 +7,7 @@ type storage = unit
 
 type parameter =
   | Mint of (tez_ticket contract)
-  | Burn of (address * tez_ticket)
+  | Burn of (unit contract * tez_ticket)
 
 type return = operation list * storage
 
@@ -22,7 +22,7 @@ let mint contract : return =
   ([Tezos.transaction tickets 0mutez contract], ())
 
 // Burn destructs the [ticket] and sends back the tez to [address].
-let burn address (ticket: tez_ticket) : return =
+let burn contract (ticket: tez_ticket) : return =
   if Tezos.get_amount () > 0tez then
     failwith "Burn does not accept tez."
   else
@@ -30,8 +30,7 @@ let burn address (ticket: tez_ticket) : return =
     if addr <> (Tezos.get_self_address ()) then
       failwith "Burn only accepts tez tickets."
     else
-      let contract = Tezos.get_contract_with_error address "Invalid callback" in
-      let amount: tez = amt * 1mutez in
+      let amount: tez = 1mutez * amt  in
       ([Tezos.transaction () amount contract], ())
 
 (* Main access point that dispatches to the entrypoints according to
