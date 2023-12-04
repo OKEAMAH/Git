@@ -23,7 +23,8 @@ val generate_seed_nonce_hash :
   Level.t ->
   (Nonce_hash.t * Nonce.t) option tzresult Lwt.t
 
-val prepare_block : state -> block_to_bake -> prepared_block tzresult Lwt.t
+val prepare_block :
+  global_state -> block_to_bake -> prepared_block tzresult Lwt.t
 
 val sign_dal_attestations :
   #Protocol_client_context.full ->
@@ -65,4 +66,4 @@ val get_event_stream : worker -> forge_event Lwt_stream.t
 
 val shutdown : worker -> unit
 
-val start : #Protocol_client_context.full -> Chain_id.t -> worker tzresult Lwt.t
+val start : global_state -> worker tzresult Lwt.t

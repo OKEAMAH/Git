@@ -36,14 +36,12 @@ let create_state cctxt ?synchronize ?monitor_node_mempool ~config
     Operation_worker.create ?monitor_node_operations cctxt
   in
   let* chain_id = Shell_services.Chain.chain_id cctxt ~chain () in
-  let* forge_worker = Forge_worker.start cctxt chain_id in
   Baking_scheduling.create_initial_state
     cctxt
     ?synchronize
     chain_id
     config
     operation_worker
-    forge_worker
     ~current_proposal
     delegates
 
@@ -285,12 +283,15 @@ let propose_at_next_level ~minimal_timestamp state =
         delegate;
         kind;
         force_apply = state.global_state.config.force_apply;
+        per_block_votes = state.global_state.config.per_block_votes;
       }
     in
     let state_recorder ~new_state =
       Baking_state.may_record_new_state ~previous_state:state ~new_state
     in
-    let* prepared_block = Forge_worker.prepare_block state block_to_bake in
+    let* prepared_block =
+      Forge_worker.prepare_block state.global_state block_to_bake
+    in
     let* state =
       Baking_actions.perform_action
         ~state_recorder
@@ -620,12 +621,15 @@ let rec baking_minimal_timestamp ~count state
       delegate;
       kind;
       force_apply = state.global_state.config.force_apply;
+      per_block_votes = state.global_state.config.per_block_votes;
     }
   in
   let state_recorder ~new_state =
     Baking_state.may_record_new_state ~previous_state:state ~new_state
   in
-  let* prepared_block = Forge_worker.prepare_block state block_to_bake in
+  let* prepared_block =
+    Forge_worker.prepare_block state.global_state block_to_bake
+  in
   let* new_state =
     Baking_actions.perform_action
       ~state_recorder

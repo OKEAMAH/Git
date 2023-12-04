@@ -111,11 +111,11 @@ let generate_seed_nonce_hash config delegate level =
     return_some seed_nonce
   else return_none
 
-let sign_block_header state proposer unsigned_block_header =
+let sign_block_header global_state proposer unsigned_block_header =
   let open Lwt_result_syntax in
-  let cctxt = state.global_state.cctxt in
-  let chain_id = state.global_state.chain_id in
-  let force = state.global_state.config.force in
+  let cctxt = global_state.cctxt in
+  let chain_id = global_state.chain_id in
+  let force = global_state.config.force in
   let {Block_header.shell; protocol_data = {contents; _}} =
     unsigned_block_header
   in
@@ -167,7 +167,7 @@ let sign_block_header state proposer unsigned_block_header =
       in
       return {Block_header.shell; protocol_data = {contents; signature}}
 
-let prepare_block state block_to_bake =
+let prepare_block (global_state : global_state) block_to_bake =
   let open Lwt_result_syntax in
   let {
     predecessor;
@@ -175,6 +175,7 @@ let prepare_block state block_to_bake =
     delegate = (consensus_key, _) as delegate;
     kind;
     force_apply;
+    per_block_votes;
   } =
     block_to_bake
   in
@@ -184,10 +185,10 @@ let prepare_block state block_to_bake =
         prepare_forging_block
         (Int32.succ predecessor.shell.level, round, delegate))
   in
-  let cctxt = state.global_state.cctxt in
-  let chain_id = state.global_state.chain_id in
-  let simulation_mode = state.global_state.validation_mode in
-  let round_durations = state.global_state.round_durations in
+  let cctxt = global_state.cctxt in
+  let chain_id = global_state.chain_id in
+  let simulation_mode = global_state.validation_mode in
+  let round_durations = global_state.round_durations in
   let*? timestamp =
     Environment.wrap_tzresult
       (Round.timestamp_of_round
@@ -196,7 +197,7 @@ let prepare_block state block_to_bake =
          ~predecessor_round:predecessor.round
          ~round)
   in
-  let external_operation_source = state.global_state.config.extra_operations in
+  let external_operation_source = global_state.config.extra_operations in
   let*! extern_ops = Operations_source.retrieve external_operation_source in
   let simulation_kind, payload_round =
     match kind with
@@ -228,25 +229,23 @@ let prepare_block state block_to_bake =
     Plugin.RPC.current_level
       cctxt
       ~offset:1l
-      (`Hash state.global_state.chain_id, `Hash (predecessor.hash, 0))
+      (`Hash global_state.chain_id, `Hash (predecessor.hash, 0))
   in
   let* seed_nonce_opt =
     generate_seed_nonce_hash
-      state.global_state.config.Baking_configuration.nonce
+      global_state.config.Baking_configuration.nonce
       consensus_key
       injection_level
   in
   let seed_nonce_hash = Option.map fst seed_nonce_opt in
-  let user_activated_upgrades =
-    state.global_state.config.user_activated_upgrades
-  in
+  let user_activated_upgrades = global_state.config.user_activated_upgrades in
   (* Set liquidity_baking_toggle_vote for this block *)
   let {
     Baking_configuration.vote_file;
     liquidity_baking_vote;
     adaptive_issuance_vote;
   } =
-    state.global_state.config.per_block_votes
+    per_block_votes
   in
   (* Prioritize reading from the [vote_file] if it exists. *)
   let*! {liquidity_baking_vote; adaptive_issuance_vote} =
@@ -265,7 +264,7 @@ let prepare_block state block_to_bake =
     Events.(emit vote_for_liquidity_baking_toggle) liquidity_baking_vote
   in
   let*! () = Events.(emit vote_for_adaptive_issuance) adaptive_issuance_vote in
-  let chain = `Hash state.global_state.chain_id in
+  let chain = `Hash global_state.chain_id in
   let pred_block = `Hash (predecessor.hash, 0) in
   let* pred_resulting_context_hash =
     Shell_services.Blocks.resulting_context_hash
@@ -292,13 +291,13 @@ let prepare_block state block_to_bake =
       ~adaptive_issuance_vote
       ~user_activated_upgrades
       ~force_apply
-      state.global_state.config.fees
+      global_state.config.fees
       simulation_mode
       simulation_kind
-      state.global_state.constants.parametric
+      global_state.constants.parametric
   in
   let* signed_block_header =
-    sign_block_header state consensus_key unsigned_block_header
+    sign_block_header global_state consensus_key unsigned_block_header
   in
   let* () =
     match seed_nonce_opt with
@@ -517,11 +516,14 @@ let get_event_stream state = state.event_stream
 
 let shutdown state = state.push_task None
 
-let start (cctxt : #Protocol_client_context.full) chain_id =
+let start (baking_state : Baking_state.global_state) =
   let open Lwt_result_syntax in
   let task_stream, push_task = Lwt_stream.create () in
   let event_stream, push_event = Lwt_stream.create () in
   let state : worker = {push_task; push_event; event_stream} in
+  let cctxt = baking_state.cctxt in
+  let chain_id = baking_state.chain_id in
+  let config = baking_state.config in
   let rec worker_loop () =
     let*! (forge_request_opt : forge_request option) =
       Lwt_stream.get task_stream
@@ -533,7 +535,7 @@ let start (cctxt : #Protocol_client_context.full) chain_id =
           let* signed_preattestations =
             sign_preattestations
               cctxt
-              ~force:false
+              ~force:config.force
               chain_id
               ~branch
               preattestations
@@ -561,8 +563,8 @@ let start (cctxt : #Protocol_client_context.full) chain_id =
               push_event (Some (Dal_attestation_ready signed_dal_attestation)))
             signed_dal_attestations ;
           return_unit
-      | Some (Forge_and_sign_block (state, block_to_bake)) ->
-          let* prepared_block = prepare_block state block_to_bake in
+      | Some (Forge_and_sign_block block_to_bake) ->
+          let* prepared_block = prepare_block baking_state block_to_bake in
           push_event (Some (Block_ready prepared_block)) ;
           return_unit
     in

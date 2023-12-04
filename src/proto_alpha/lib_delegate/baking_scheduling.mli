@@ -85,7 +85,6 @@ val create_initial_state :
   Chain_id.t ->
   Baking_configuration.t ->
   Operation_worker.t ->
-  Forge_worker.t ->
   current_proposal:proposal ->
   ?constants:Constants.t ->
   consensus_key list ->

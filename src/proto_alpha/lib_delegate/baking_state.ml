@@ -376,6 +376,7 @@ type block_to_bake = {
   delegate : consensus_key_and_delegate;
   kind : block_kind;
   force_apply : bool;
+  per_block_votes : Baking_configuration.per_block_votes_config;
 }
 
 type forge_event =
@@ -398,7 +399,7 @@ type forge_request =
   | Forge_and_sign_dal_attestations of
       (Block_hash.t
       * (consensus_key_and_delegate * Dal.Attestation.operation * int32) list)
-  | Forge_and_sign_block of (state * block_to_bake)
+  | Forge_and_sign_block of block_to_bake
 
 and forge_worker_hooks = {
   push_request : forge_request -> unit;

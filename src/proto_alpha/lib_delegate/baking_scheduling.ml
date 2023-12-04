@@ -729,8 +729,8 @@ let create_dal_node_rpc_ctxt endpoint =
   new RPC_client_unix.http_ctxt rpc_config media_types
 
 let create_initial_state cctxt ?(synchronize = true) chain_id config
-    operation_worker forge_worker ~(current_proposal : Baking_state.proposal)
-    ?constants delegates =
+    operation_worker ~(current_proposal : Baking_state.proposal) ?constants
+    delegates =
   let open Lwt_result_syntax in
   (* FIXME? consider saved attestable value *)
   let open Protocol in
@@ -751,14 +751,14 @@ let create_initial_state cctxt ?(synchronize = true) chain_id config
       | ContextIndex index -> return (Local index))
   in
   let cache = Baking_state.create_cache () in
-  let forge_worker_hooks =
+  let dummy_forge_worker_hooks =
     {
-      push_request = Forge_worker.push_request forge_worker;
+      push_request = (fun _ -> Stdlib.failwith "uninitialized forge worker");
       get_forge_event_stream =
-        (fun () -> Forge_worker.get_event_stream forge_worker);
+        (fun _ -> Stdlib.failwith "uninitialized forge worker");
     }
   in
-  let global_state =
+  let temp_global_state =
     {
       cctxt;
       chain_id;
@@ -766,7 +766,7 @@ let create_initial_state cctxt ?(synchronize = true) chain_id config
       constants;
       round_durations;
       operation_worker;
-      forge_worker_hooks;
+      forge_worker_hooks = dummy_forge_worker_hooks;
       validation_mode;
       delegates;
       cache;
@@ -774,6 +774,18 @@ let create_initial_state cctxt ?(synchronize = true) chain_id config
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/4674
            Treat case when no endpoint was given and DAL is enabled *)
         Option.map create_dal_node_rpc_ctxt config.dal_node_endpoint;
+    }
+  in
+  let* forge_worker = Forge_worker.start temp_global_state in
+  let global_state =
+    {
+      temp_global_state with
+      forge_worker_hooks =
+        {
+          push_request = Forge_worker.push_request forge_worker;
+          get_forge_event_stream =
+            (fun () -> Forge_worker.get_event_stream forge_worker);
+        };
     }
   in
   let chain = `Hash chain_id in
@@ -992,14 +1004,12 @@ let run cctxt ?canceler ?(stop_on_event = fun _ -> false)
           let*! _ = Operation_worker.shutdown_worker operation_worker in
           Lwt.return_unit))
     canceler ;
-  let* forge_worker = Forge_worker.start cctxt chain_id in
   let* initial_state =
     create_initial_state
       cctxt
       chain_id
       config
       operation_worker
-      forge_worker
       ~current_proposal
       ?constants
       delegates

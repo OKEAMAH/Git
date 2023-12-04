@@ -475,7 +475,10 @@ let prepare_block_to_bake ~attestations ~dal_attestations ?last_proposal
     (* This is used as a safety net by applying blocks on round > 0, in case
        validation-only did not produce a correct round-0 block. *)
   in
-  let block_to_bake = {predecessor; round; delegate; kind; force_apply} in
+  let per_block_votes = state.global_state.config.per_block_votes in
+  let block_to_bake =
+    {predecessor; round; delegate; kind; force_apply; per_block_votes}
+  in
   return (Prepare_block {block_to_bake})
 
 let forge_fresh_block_action ~attestations ~dal_attestations ?last_proposal
@@ -609,8 +612,16 @@ let propose_block_action state delegate round ~last_proposal =
         (* This is used as a safety net by applying blocks on round > 0, in case
            validation-only did not produce a correct round-0 block. *)
       in
+      let per_block_votes = state.global_state.config.per_block_votes in
       let block_to_bake =
-        {predecessor = proposal.predecessor; round; delegate; kind; force_apply}
+        {
+          predecessor = proposal.predecessor;
+          round;
+          delegate;
+          kind;
+          force_apply;
+          per_block_votes;
+        }
       in
       return (Prepare_block {block_to_bake})
 

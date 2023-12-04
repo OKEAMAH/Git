@@ -433,7 +433,7 @@ let rec perform_action ~state_recorder state (action : action) =
       let* () = state_recorder ~new_state:state in
       return state
   | Prepare_block {block_to_bake} ->
-      let request = Forge_and_sign_block (state, block_to_bake) in
+      let request = Forge_and_sign_block block_to_bake in
       let () = state.global_state.forge_worker_hooks.push_request request in
       return state
   | Inject_block {prepared_block} ->
