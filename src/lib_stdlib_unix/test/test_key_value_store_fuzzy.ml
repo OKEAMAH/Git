@@ -413,13 +413,8 @@ let run_scenario
       ~index_of:Fun.id
       ()
   in
-  (* If the [lru_size] is strictly smaller than the number of files,
-     then the property tested is not true in general. For example,
-     with an [lru_size=1], if the operations are [W(1);R(0);R(1)] then
-     we could start to read the value for key [1] before having
-     written it since it was removed from the [lru]. *)
-  let left = L.init ~lru_size:number_of_files layout_of in
-  let right = R.init ~lru_size:number_of_files layout_of in
+  let left = L.init ~lru_size:(max 0 @@ (number_of_files - 1)) layout_of in
+  let right = R.init ~lru_size:(max 0 @@ (number_of_files - 1)) layout_of in
   let action, next_actions = scenario in
   let n = ref 0 in
   let compare_result ~finalization (file, key) left_result right_result =
