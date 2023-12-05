@@ -7,12 +7,15 @@ documentation:build_all:
     - .default_settings_template
     - .image_template__runtime_build_test_dependencies
     - .tags_template__build
+  dependencies:
+    - "build:static-x86_64-linux-binaries"
   stage: build
-  needs: [trigger]
+  needs: ["build:static-x86_64-linux-binaries"]
   before_script:
     - . $HOME/.venv/bin/activate
   script:
-    - ./.gitlab/ci/jobs/doc/documentation:build_all.sh
+    - ln -s /builds/tezos/tezos/octez-binaries/x86_64/* ./
+    - make -C docs -j all
   artifacts:
     expose_as: 'Documentation - excluding old protocols'
     paths:
