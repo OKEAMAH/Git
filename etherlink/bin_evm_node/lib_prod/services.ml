@@ -52,6 +52,38 @@ let version dir =
 let describe dir =
   Directory.register_describe_directory_service dir Service.description_service
 
+let openapi_service =
+  Service.get_service
+    ~description:"OpenAPI specification of RPCs for Etherlink EVM node"
+    ~query:Query.empty
+    ~output:Data_encoding.json
+    Path.(root / "openapi")
+
+let generate_openapi dir =
+  let open Lwt_result_syntax in
+  let*! descr = Directory.describe_directory ~recurse:true ~arg:() dir in
+  let json_api =
+    Data_encoding.Json.construct Encoding.description_answer_encoding descr
+  in
+  let open Tezos_openapi in
+  json_api
+  |> Json.annotate ~origin:"description"
+  |> Api.parse_tree |> Api.parse_services |> Api.flatten
+  |> Convert.convert_api
+       ~title:"Etherlink EVM node RPCs"
+       ~description:"Etherlink EVM node RPC API"
+       client_version
+  |> Openapi.to_json |> return
+
+let openapi dir =
+  let final_dir = ref dir in
+  let dir =
+    Directory.register0 dir openapi_service (fun () () ->
+        generate_openapi !final_dir)
+  in
+  final_dir := dir ;
+  dir
+
 (* The node can either take a single request or multiple requests at
    once. *)
 type 'a request = Singleton of 'a | Batch of 'a list
@@ -291,4 +323,4 @@ let directory config
   |> dispatch
        config
        ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
-  |> describe
+  |> describe |> openapi
