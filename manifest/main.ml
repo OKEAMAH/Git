@@ -8374,6 +8374,7 @@ let evm_node_lib_prod =
         octez_rpc_http_client_unix;
         octez_version_value;
         octez_stdlib_unix |> open_;
+        octez_openapi;
         evm_node_lib_prod_encoding |> open_;
         lwt_exit;
         evm_node_config |> open_;
@@ -8404,6 +8405,7 @@ let evm_node_lib_dev =
         octez_rpc_http_client_unix;
         octez_version_value;
         octez_stdlib_unix |> open_;
+        octez_openapi;
         evm_node_lib_dev_encoding |> open_;
         lwt_exit;
         evm_node_config |> open_;

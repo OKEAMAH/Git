@@ -13,6 +13,7 @@ depends: [
   "octez-libs"
   "octez-smart-rollup-wasm-debugger-plugin"
   "octez-version"
+  "tezos-openapi"
   "lwt-exit"
   "octez-l2-libs"
   "octez-smart-rollup-wasm-debugger-lib"

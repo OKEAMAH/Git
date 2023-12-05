@@ -12,6 +12,7 @@
   octez-libs.rpc-http-client-unix
   octez-version.value
   octez-libs.stdlib-unix
+  tezos-openapi
   octez-evm-node-libs.evm_node_lib_dev_encoding
   lwt-exit
   octez-evm-node-libs.evm_node_config
