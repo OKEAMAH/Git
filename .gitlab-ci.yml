@@ -16,9 +16,6 @@ workflow:
     - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event"'
       variables:
         PIPELINE_TYPE: 'before_merging'
-    - if: '$CI_PIPELINE_SOURCE == "push"'
-      variables:
-        PIPELINE_TYPE: 'before_merging'
     # Allow 'Latest release' pipelines
     - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "latest-release"'
       variables:
@@ -173,7 +170,6 @@ include:
   - local: .gitlab/ci/pipelines/before_merging.yml
     rules:
       - if: '$CI_PROJECT_NAMESPACE == "tezos" && $CI_PIPELINE_SOURCE == "merge_request_event"'
-      - if: '$CI_PIPELINE_SOURCE == "push"'
 
   # Latest release
   - local: .gitlab/ci/pipelines/latest_release.yml
@@ -219,5 +215,3 @@ include:
   - local: .gitlab/ci/pipelines/schedule_extended_test.yml
     rules:
       - if: '$CI_PIPELINE_SOURCE == "schedule" && $TZ_SCHEDULE_KIND == "EXTENDED_TESTS"'
-      # This workflow entry allows pipelines for push events (including force-push, push of fixup commits, rebase, etc.)
-      - if: '$CI_PIPELINE_SOURCE == "push"'
