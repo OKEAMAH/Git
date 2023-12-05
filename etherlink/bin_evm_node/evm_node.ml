@@ -460,8 +460,51 @@ let chunker_command =
       in
       print_chunks rollup_address data)
 
+let openapi_command =
+  let open Tezos_clic in
+  let open Lwt_result_syntax in
+  command
+    ~desc:"Generate OpenAPI specification."
+    (args2 data_dir_arg devmode_arg)
+    (prefixes ["generate"; "openapi"] @@ stop)
+    (fun (data_dir, devmode) () ->
+      let rollup_node_endpoint = Uri.of_string "localhost" in
+      let* config =
+        Cli.create_or_read_proxy_config
+          ~data_dir
+          ~devmode
+          ~rollup_node_endpoint
+          ~verbose:false
+          ()
+      in
+      let* openapi_json =
+        if devmode then
+          let open Evm_node_lib_dev in
+          let dummy_rollup_config =
+            let module Rollup_node_rpc = Rollup_node.Make (struct
+              let base = rollup_node_endpoint
+            end) in
+            ((module Rollup_node_rpc : Services_backend_sig.S), Bytes.empty)
+          in
+          Services.directory config dummy_rollup_config
+          |> Services.generate_openapi
+        else
+          let open Evm_node_lib_prod in
+          let dummy_rollup_config =
+            let module Rollup_node_rpc = Rollup_node.Make (struct
+              let base = rollup_node_endpoint
+            end) in
+            ((module Rollup_node_rpc : Rollup_node.S), Bytes.empty)
+          in
+          Services.directory config dummy_rollup_config
+          |> Services.generate_openapi
+      in
+      Format.printf "%a@." Data_encoding.Json.pp openapi_json ;
+      return_unit)
+
 (* List of program commands *)
-let commands = [proxy_command; sequencer_command; chunker_command]
+let commands =
+  [proxy_command; sequencer_command; chunker_command; openapi_command]
 
 let global_options = Tezos_clic.no_options
 
