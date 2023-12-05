@@ -14,20 +14,23 @@
 // Each row of the output file represents the processing of one message in the kernel
 // Each value represents a cost. "gas_cost" is the cost in gas in the EVM, and the other values are costs in ticks in the PVM
 
-var fs = require('fs');
-var readline = require('readline');
-const { spawn } = require('child_process');
-const { execSync } = require('child_process');
-const external = require("./lib/external")
-const path = require('node:path')
-const { timestamp } = require("./lib/timestamp")
-const csv = require('csv-stringify/sync');
+var fs = require("fs");
+var readline = require("readline");
+const { spawn } = require("child_process");
+const { execSync } = require("child_process");
+const external = require("./lib/external");
+const path = require("node:path");
+const { timestamp } = require("./lib/timestamp");
+const csv = require("csv-stringify/sync");
 
-const RUN_DEBUGGER_COMMAND = external.bin('./octez-smart-rollup-wasm-debugger');
-const EVM_INSTALLER_KERNEL_PATH = external.resource('evm_benchmark_installer.wasm');
-const PREIMAGE_DIR = external.ressource_dir('_evm_unstripped_installer_preimages');
-const OUTPUT_DIRECTORY = external.output()
-
+const RUN_DEBUGGER_COMMAND = external.bin("./octez-smart-rollup-wasm-debugger");
+const EVM_INSTALLER_KERNEL_PATH = external.resource(
+    "evm_benchmark_installer.wasm"
+);
+const PREIMAGE_DIR = external.ressource_dir(
+    "_evm_unstripped_installer_preimages"
+);
+const OUTPUT_DIRECTORY = external.output();
 
 function sumArray(arr) {
     return arr.reduce((acc, curr) => acc + curr, 0);
@@ -43,18 +46,21 @@ function push_match(output, array, regexp) {
 /// Parses the data from the `Section` output. See
 /// `evm_execution/src/handler.rs` for the format.
 function parse_data(opcode, gas_and_result) {
-    if (gas_and_result.length != 18) { return undefined };
+    if (gas_and_result.length != 18) {
+        return undefined;
+    }
 
     let gas_data = gas_and_result.substring(0, 16);
-    let step_result = parseInt('0x' + gas_and_result.substring(16));
+    let step_result = parseInt("0x" + gas_and_result.substring(16));
     // parse little endian integers
-    let gas = parseInt('0x' + gas_data.match(/../g).reverse().join(''));
-    return { opcode, gas, step_result }
+    let gas = parseInt("0x" + gas_data.match(/../g).reverse().join(""));
+    return { opcode, gas, step_result };
 }
 
 /// Parses the section and push the sample into the set of opcodes.
 function push_profiler_sections(output, opcodes, precompiles) {
-    const section_regex = /\__wasm_debugger__::Section{ticks:(\d+);data:\((0x[0-9a-fA-F]*),0x([0-9a-fA-F]*)\)}/g;
+    const section_regex =
+        /\__wasm_debugger__::Section{ticks:(\d+);data:\((0x[0-9a-fA-F]*),0x([0-9a-fA-F]*)\)}/g;
     let precompiled_address_set = new Set([1, 2, 3, 4, 32]);
 
     for (const match of output.matchAll(section_regex)) {
@@ -64,16 +70,20 @@ function push_profiler_sections(output, opcodes, precompiles) {
             let ticks = parseInt(match[1]);
             let result = { ticks, gas, step_result };
             if (opcodes[opcode] == undefined) {
-                opcodes[opcode] = [result]
+                opcodes[opcode] = [result];
             } else {
-                opcodes[opcode].push(result)
+                opcodes[opcode].push(result);
             }
         } else {
             let ticks = parseInt(match[1]);
             let address = parseInt(match[2].substring(0, 42));
             let data_size = parseInt("0x" + match[2].substring(42));
             if (precompiled_address_set.has(address)) {
-                precompiles.push({ "address": address, "data_size": data_size, "ticks": ticks })
+                precompiles.push({
+                    address: address,
+                    data_size: data_size,
+                    ticks: ticks,
+                });
             }
         }
     }
@@ -81,9 +91,7 @@ function push_profiler_sections(output, opcodes, precompiles) {
 }
 
 function run_profiler(path) {
-
     profiler_result = new Promise((resolve, _) => {
-
         var gas_used = [];
 
         var tx_status = [];
@@ -98,7 +106,14 @@ function run_profiler(path) {
 
         var profiler_output_path = "";
 
-        const args = ["--kernel", EVM_INSTALLER_KERNEL_PATH, "--inputs", path, "--preimage-dir", PREIMAGE_DIR];
+        const args = [
+            "--kernel",
+            EVM_INSTALLER_KERNEL_PATH,
+            "--inputs",
+            path,
+            "--preimage-dir",
+            PREIMAGE_DIR,
+        ];
 
         const childProcess = spawn(RUN_DEBUGGER_COMMAND, args, {});
 
@@ -114,30 +129,53 @@ function run_profiler(path) {
 
         childProcess.stdin.end();
 
-        childProcess.stdout.on('data', (data) => {
+        childProcess.stdout.on("data", (data) => {
             const output = data.toString();
-            const profiler_output_path_regex = /Profiling result can be found in (.+)/;
-            const profiler_output_path_match = output.match(profiler_output_path_regex);
+            const profiler_output_path_regex =
+                /Profiling result can be found in (.+)/;
+            const profiler_output_path_match = output.match(
+                profiler_output_path_regex
+            );
             const profiler_output_path_result = profiler_output_path_match
                 ? profiler_output_path_match[1]
                 : null;
             if (profiler_output_path_result !== null) {
                 profiler_output_path = profiler_output_path_result;
-                console.log(`Flamechart: ${profiler_output_path}`)
+                console.log(`Flamechart: ${profiler_output_path}`);
             }
-            push_match(output, gas_used, /\bgas_used:\s*(\d+)/g)
-            push_match(output, tx_status, /Transaction status: (OK_[a-zA-Z09]+|ERROR_[A-Z_]+)\b/g)
-            push_match(output, estimated_ticks, /\bEstimated ticks:\s*(\d+)/g)
-            push_match(output, estimated_ticks_per_tx, /\bEstimated ticks after tx:\s*(\d+)/g)
-            push_match(output, tx_size, /\bStoring transaction object of size\s*(\d+)/g)
-            push_match(output, queue_store, /\bStoring Queue of size\s*(\d+)/g)
-            push_match(output, queue_read, /\bReading Queue of size\s*(\d+)/g)
-            push_match(output, receipt_size, /\bStoring receipt of size \s*(\d+)/g)
-            push_match(output, bloom_size, /\[Benchmarking\] bloom size:\s*(\d+)/g)
+            push_match(output, gas_used, /\bgas_used:\s*(\d+)/g);
+            push_match(
+                output,
+                tx_status,
+                /Transaction status: (OK_[a-zA-Z09]+|ERROR_[A-Z_]+)\b/g
+            );
+            push_match(output, estimated_ticks, /\bEstimated ticks:\s*(\d+)/g);
+            push_match(
+                output,
+                estimated_ticks_per_tx,
+                /\bEstimated ticks after tx:\s*(\d+)/g
+            );
+            push_match(
+                output,
+                tx_size,
+                /\bStoring transaction object of size\s*(\d+)/g
+            );
+            push_match(output, queue_store, /\bStoring Queue of size\s*(\d+)/g);
+            push_match(output, queue_read, /\bReading Queue of size\s*(\d+)/g);
+            push_match(
+                output,
+                receipt_size,
+                /\bStoring receipt of size \s*(\d+)/g
+            );
+            push_match(
+                output,
+                bloom_size,
+                /\[Benchmarking\] bloom size:\s*(\d+)/g
+            );
             push_profiler_sections(output, opcodes, precompiles);
             if (output.includes("Kernel was rebooted.")) nb_reboots++;
         });
-        childProcess.on('close', _ => {
+        childProcess.on("close", (_) => {
             if (profiler_output_path == "") {
                 console.log(new Error("Profiler output path not found"));
             }
@@ -148,22 +186,70 @@ function run_profiler(path) {
                 console.log(new Error("Status data not found"));
             }
             if (tx_status.length != estimated_ticks_per_tx.length) {
-                console.log(new Error("Tx status array length (" + tx_status.length + ") != estimated ticks per tx array length (" + estimated_ticks_per_tx.length + ")"));
+                console.log(
+                    new Error(
+                        "Tx status array length (" +
+                            tx_status.length +
+                            ") != estimated ticks per tx array length (" +
+                            estimated_ticks_per_tx.length +
+                            ")"
+                    )
+                );
             }
             if (tx_status.length != tx_size.length) {
-                console.log(new Error("Missing transaction size data (expected: " + tx_status.length + ", actual: " + tx_size.length + ")"));
+                console.log(
+                    new Error(
+                        "Missing transaction size data (expected: " +
+                            tx_status.length +
+                            ", actual: " +
+                            tx_size.length +
+                            ")"
+                    )
+                );
             }
             if (tx_status.length != receipt_size.length) {
-                console.log(new Error("Missing receipt size value (expected: " + tx_status.length + ", actual: " + receipt_size.length + ")"));
+                console.log(
+                    new Error(
+                        "Missing receipt size value (expected: " +
+                            tx_status.length +
+                            ", actual: " +
+                            receipt_size.length +
+                            ")"
+                    )
+                );
             }
             if (tx_status.length != bloom_size.length) {
-                console.log(new Error("Missing bloom size value (expected: " + tx_status.length + ", actual: " + bloom_size.length + ")"));
+                console.log(
+                    new Error(
+                        "Missing bloom size value (expected: " +
+                            tx_status.length +
+                            ", actual: " +
+                            bloom_size.length +
+                            ")"
+                    )
+                );
             }
             if (queue_store.length != nb_reboots) {
-                console.log(new Error("Missing stored queue size value (expected: " + nb_reboots + ", actual: " + queue_store.length + ")"));
+                console.log(
+                    new Error(
+                        "Missing stored queue size value (expected: " +
+                            nb_reboots +
+                            ", actual: " +
+                            queue_store.length +
+                            ")"
+                    )
+                );
             }
             if (queue_read.length != nb_reboots) {
-                console.log(new Error("Missing read queue size value (expected: " + nb_reboots + ", actual: " + queue_read.length + ")"));
+                console.log(
+                    new Error(
+                        "Missing read queue size value (expected: " +
+                            nb_reboots +
+                            ", actual: " +
+                            queue_read.length +
+                            ")"
+                    )
+                );
             }
             resolve({
                 profiler_output_path,
@@ -180,7 +266,7 @@ function run_profiler(path) {
                 precompiles,
             });
         });
-    })
+    });
     return profiler_result;
 }
 
@@ -192,7 +278,7 @@ async function get_ticks(path, function_call_keyword) {
 
     const rl = readline.createInterface({
         input: fileStream,
-        crlfDelay: Infinity
+        crlfDelay: Infinity,
     });
 
     for await (const l of rl) {
@@ -202,10 +288,12 @@ async function get_ticks(path, function_call_keyword) {
             ticks = tokens[1];
             if (calls.includes(function_call_keyword)) {
                 if (previous_row_is_given_function_call) {
-                    ticks_count_for_transactions[ticks_count_for_transactions.length - 1] += parseInt(ticks);
+                    ticks_count_for_transactions[
+                        ticks_count_for_transactions.length - 1
+                    ] += parseInt(ticks);
                 } else {
                     ticks_count_for_transactions.push(parseInt(ticks));
-                    previous_row_is_given_function_call = true
+                    previous_row_is_given_function_call = true;
                 }
             } else {
                 previous_row_is_given_function_call = false;
@@ -218,12 +306,20 @@ async function get_ticks(path, function_call_keyword) {
 
 // Parse the profiler output file and get the tick counts of the differerent function calls
 async function analyze_profiler_output(path) {
-
     kernel_run_ticks = await get_ticks(path, "kernel_run");
     run_transaction_ticks = await get_ticks(path, "run_transaction");
-    signature_verification_ticks = await get_ticks(path, "25EthereumTransactionCommon6caller");
-    sputnik_runtime_ticks = await get_ticks(path, "EvmHandler$LT$Host$GT$7execute");
-    store_transaction_object_ticks = await get_ticks(path, "storage24store_transaction_object");
+    signature_verification_ticks = await get_ticks(
+        path,
+        "25EthereumTransactionCommon6caller"
+    );
+    sputnik_runtime_ticks = await get_ticks(
+        path,
+        "EvmHandler$LT$Host$GT$7execute"
+    );
+    store_transaction_object_ticks = await get_ticks(
+        path,
+        "storage24store_transaction_object"
+    );
     store_receipt_ticks = await get_ticks(path, "store_transaction_receipt");
     interpreter_init_ticks = await get_ticks(path, "interpreter(init)");
     interpreter_decode_ticks = await get_ticks(path, "interpreter(decode)");
@@ -245,28 +341,35 @@ async function analyze_profiler_output(path) {
         block_finalize,
         logs_to_bloom,
         queue_store_ticks,
-        queue_read_ticks
+        queue_read_ticks,
     };
 }
 
 // Run given benchmark
 async function run_benchmark(path) {
-    var inbox_size = fs.statSync(path).size
+    var inbox_size = fs.statSync(path).size;
     run_profiler_result = await run_profiler(path);
-    profiler_output_analysis_result = await analyze_profiler_output(run_profiler_result.profiler_output_path);
+    profiler_output_analysis_result = await analyze_profiler_output(
+        run_profiler_result.profiler_output_path
+    );
     return {
         inbox_size,
         ...profiler_output_analysis_result,
-        ...run_profiler_result
-    }
+        ...run_profiler_result,
+    };
 }
 
 function build_benchmark_scenario(benchmark_script) {
     try {
-        let bench_path = path.format({ dir: __dirname, base: benchmark_script })
+        let bench_path = path.format({
+            dir: __dirname,
+            base: benchmark_script,
+        });
         execSync(`node ${bench_path} > transactions.json`);
     } catch (error) {
-        console.log(`Error running script ${benchmark_script}. Please fixed the error in the script before running this benchmark script`)
+        console.log(
+            `Error running script ${benchmark_script}. Please fixed the error in the script before running this benchmark script`
+        );
         console.error(error);
     }
 }
@@ -276,9 +379,11 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     gas_costs = run_benchmark_result.gas_costs;
     kernel_run_ticks = run_benchmark_result.kernel_run_ticks;
     run_transaction_ticks = run_benchmark_result.run_transaction_ticks;
-    sputnik_runtime_ticks = run_benchmark_result.sputnik_runtime_ticks
-    signature_verification_ticks = run_benchmark_result.signature_verification_ticks;
-    store_transaction_object_ticks = run_benchmark_result.store_transaction_object_ticks;
+    sputnik_runtime_ticks = run_benchmark_result.sputnik_runtime_ticks;
+    signature_verification_ticks =
+        run_benchmark_result.signature_verification_ticks;
+    store_transaction_object_ticks =
+        run_benchmark_result.store_transaction_object_ticks;
     interpreter_init_ticks = run_benchmark_result.interpreter_init_ticks;
     interpreter_decode_ticks = run_benchmark_result.interpreter_decode_ticks;
     fetch_blueprint_ticks = run_benchmark_result.fetch_blueprint_ticks;
@@ -291,7 +396,7 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
     queue_store_ticks = run_benchmark_result.queue_store_ticks;
     queue_read_ticks = run_benchmark_result.queue_read_ticks;
 
-    console.log(`Number of transactions: ${tx_status.length}`)
+    console.log(`Number of transactions: ${tx_status.length}`);
     run_time_index = 0;
     gas_cost_index = 0;
     for (var j = 0; j < tx_status.length; j++) {
@@ -300,52 +405,56 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
             signature_verification_ticks: signature_verification_ticks[j],
             status: tx_status[j],
             estimated_ticks: estimated_ticks_per_tx[j],
-        }
+        };
         if (tx_status[j].includes("OK_UNKNOWN")) {
             // no outcome should mean never invoking sputnik
-            rows.push(
-                {
-                    gas_cost: 21000,
-                    run_transaction_ticks: run_transaction_ticks[j],
-                    sputnik_runtime_ticks: 0,
-                    store_transaction_object_ticks: store_transaction_object_ticks[j],
-                    ...basic_info_row
-                });
-
-        }
-        else if (tx_status[j].includes("OK")) {
+            rows.push({
+                gas_cost: 21000,
+                run_transaction_ticks: run_transaction_ticks[j],
+                sputnik_runtime_ticks: 0,
+                store_transaction_object_ticks:
+                    store_transaction_object_ticks[j],
+                ...basic_info_row,
+            });
+        } else if (tx_status[j].includes("OK")) {
             // sputnik runtime called only if not a transfer
-            sputnik_runtime_tick = (gas_costs[gas_cost_index] > 21000) ? sputnik_runtime_ticks[run_time_index++] : 0
+            sputnik_runtime_tick =
+                gas_costs[gas_cost_index] > 21000
+                    ? sputnik_runtime_ticks[run_time_index++]
+                    : 0;
 
-            rows.push(
-                {
-                    gas_cost: gas_costs[gas_cost_index],
-                    run_transaction_ticks: run_transaction_ticks[j],
-                    sputnik_runtime_ticks: sputnik_runtime_tick,
-                    store_transaction_object_ticks: store_transaction_object_ticks[j],
-                    store_receipt_ticks: run_benchmark_result.store_receipt_ticks[j],
-                    receipt_size: run_benchmark_result.receipt_size[j],
-                    tx_size: tx_size[j],
-                    logs_to_bloom: run_benchmark_result.logs_to_bloom[j],
-                    bloom_size: run_benchmark_result.bloom_size[j],
-                    ...basic_info_row
-                });
+            rows.push({
+                gas_cost: gas_costs[gas_cost_index],
+                run_transaction_ticks: run_transaction_ticks[j],
+                sputnik_runtime_ticks: sputnik_runtime_tick,
+                store_transaction_object_ticks:
+                    store_transaction_object_ticks[j],
+                store_receipt_ticks:
+                    run_benchmark_result.store_receipt_ticks[j],
+                receipt_size: run_benchmark_result.receipt_size[j],
+                tx_size: tx_size[j],
+                logs_to_bloom: run_benchmark_result.logs_to_bloom[j],
+                bloom_size: run_benchmark_result.bloom_size[j],
+                ...basic_info_row,
+            });
             gas_cost_index += 1;
         } else {
             // we can expect no gas cost, no storage of the tx object, and no run transaction, but there will be signature verification
             // invalide transaction detected: ERROR_NONCE, ERROR_PRE_PAY and ERROR_SIGNATURE, in all cases `caller` is called.
             rows.push(basic_info_row);
-
         }
     }
 
     if (run_time_index !== sputnik_runtime_ticks.length) {
-        console.log("Warning: runtime not matched with a transaction in: " + benchmark_name);
+        console.log(
+            "Warning: runtime not matched with a transaction in: " +
+                benchmark_name
+        );
     }
 
     // first kernel run
     // the nb of tx correspond to the full inbox, not just those done in first run
-    let bip_idx = 0
+    let bip_idx = 0;
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         interpreter_init_ticks: interpreter_init_ticks[0],
@@ -355,8 +464,8 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
         estimated_ticks: estimated_ticks[0],
         inbox_size: run_benchmark_result.inbox_size,
         nb_tx: tx_status.length,
-        queue_store: queue_store[0] ? queue_store[0] : '',
-        queue_store_ticks: queue_store[0] ? queue_store_ticks[bip_idx++] : ''
+        queue_store: queue_store[0] ? queue_store[0] : "",
+        queue_store_ticks: queue_store[0] ? queue_store_ticks[bip_idx++] : "",
     });
 
     //reboots
@@ -368,45 +477,55 @@ function log_benchmark_result(benchmark_name, run_benchmark_result) {
             fetch_blueprint_ticks: fetch_blueprint_ticks[j],
             kernel_run_ticks: kernel_run_ticks[j],
             estimated_ticks: estimated_ticks[j],
-            queue_store: queue_store[j] ? queue_store[j] : '',
-            queue_store_ticks: queue_store[j] ? queue_store_ticks[bip_idx] : '',
+            queue_store: queue_store[j] ? queue_store[j] : "",
+            queue_store_ticks: queue_store[j] ? queue_store_ticks[bip_idx] : "",
             queue_read: queue_read[j - 1], // the first read correspond to second run
-            queue_read_ticks: queue_read[j - 1] ? queue_read_ticks[bip_idx - 1] : ''
+            queue_read_ticks: queue_read[j - 1]
+                ? queue_read_ticks[bip_idx - 1]
+                : "",
         });
-        if (queue_read[j - 1]) bip_idx++
+        if (queue_read[j - 1]) bip_idx++;
     }
 
     // ticks that are not covered by identified area of interest
-    finalize_ticks = sumArray(run_benchmark_result.block_finalize)
+    finalize_ticks = sumArray(run_benchmark_result.block_finalize);
     unaccounted_ticks =
-        sumArray(kernel_run_ticks)
-        - sumArray(fetch_blueprint_ticks)
-        - sumArray(run_transaction_ticks)
-        - sumArray(signature_verification_ticks)
-        - sumArray(store_transaction_object_ticks)
-        - sumArray(run_benchmark_result.store_receipt_ticks)
-        - finalize_ticks
+        sumArray(kernel_run_ticks) -
+        sumArray(fetch_blueprint_ticks) -
+        sumArray(run_transaction_ticks) -
+        sumArray(signature_verification_ticks) -
+        sumArray(store_transaction_object_ticks) -
+        sumArray(run_benchmark_result.store_receipt_ticks) -
+        finalize_ticks;
 
     // row concerning all runs
     rows.push({
         benchmark_name: benchmark_name + "(all)",
         unaccounted_ticks,
-        block_finalize: finalize_ticks
+        block_finalize: finalize_ticks,
     });
     return rows;
 }
 
-
 function output_filename(time) {
-    return path.format({ dir: OUTPUT_DIRECTORY, base: `benchmark_result_${time}.csv` })
+    return path.format({
+        dir: OUTPUT_DIRECTORY,
+        base: `benchmark_result_${time}.csv`,
+    });
 }
 
 function opcodes_dump_filename(time) {
-    return path.format({ dir: OUTPUT_DIRECTORY, base: `dump_opcodes_${time}.json` })
+    return path.format({
+        dir: OUTPUT_DIRECTORY,
+        base: `dump_opcodes_${time}.json`,
+    });
 }
 
 function precompiles_filename(time) {
-    return path.format({ dir: OUTPUT_DIRECTORY, base: `precompiles_${time}.csv` })
+    return path.format({
+        dir: OUTPUT_DIRECTORY,
+        base: `precompiles_${time}.csv`,
+    });
 }
 
 function dump_opcodes(filename, opcodes) {
@@ -414,9 +533,12 @@ function dump_opcodes(filename, opcodes) {
     let opcodes_entries = Object.entries(opcodes);
     opcodes_entries.forEach((benchmarks, index) => {
         let [benchmark_name, benchmark_opcodes] = benchmarks;
-        fs.appendFileSync(filename, `"${benchmark_name}":${JSON.stringify(benchmark_opcodes)}`);
+        fs.appendFileSync(
+            filename,
+            `"${benchmark_name}":${JSON.stringify(benchmark_opcodes)}`
+        );
         if (index < opcodes_entries.length - 1) {
-            fs.appendFileSync(filename, ",")
+            fs.appendFileSync(filename, ",");
         }
     });
     fs.appendFileSync(filename, "}");
@@ -424,7 +546,7 @@ function dump_opcodes(filename, opcodes) {
 
 // Run the benchmark suite and write the result to benchmark_result_${TIMESTAMP}.csv
 async function run_all_benchmarks(benchmark_scripts) {
-    console.log(`Running benchmarks on: [${benchmark_scripts.join('\n  ')}]`);
+    console.log(`Running benchmarks on: [${benchmark_scripts.join("\n  ")}]`);
     var benchmark_fields = [
         "benchmark_name",
         "status",
@@ -452,11 +574,7 @@ async function run_all_benchmarks(benchmark_scripts) {
         "kernel_run_ticks",
         "unaccounted_ticks",
     ];
-    var precompiles_field = [
-        "address",
-        "data_size",
-        "ticks",
-    ]
+    var precompiles_field = ["address", "data_size", "ticks"];
     let time = timestamp();
     let output = output_filename(time);
     let opcodes_dump = opcodes_dump_filename(time);
@@ -466,8 +584,14 @@ async function run_all_benchmarks(benchmark_scripts) {
     console.log(`Precompiles in ${precompiles_output}`);
     const benchmark_csv_config = { columns: benchmark_fields };
     const precompile_csv_config = { columns: precompiles_field };
-    fs.writeFileSync(output, csv.stringify([], { header: true, ...benchmark_csv_config }));
-    fs.writeFileSync(precompiles_output, csv.stringify([], { header: true, ...precompile_csv_config }));
+    fs.writeFileSync(
+        output,
+        csv.stringify([], { header: true, ...benchmark_csv_config })
+    );
+    fs.writeFileSync(
+        precompiles_output,
+        csv.stringify([], { header: true, ...precompile_csv_config })
+    );
     let opcodes = {};
     for (var i = 0; i < benchmark_scripts.length; i++) {
         var benchmark_script = benchmark_scripts[i];
@@ -476,15 +600,27 @@ async function run_all_benchmarks(benchmark_scripts) {
         console.log(`Benchmarking ${benchmark_script}`);
         build_benchmark_scenario(benchmark_script);
         run_benchmark_result = await run_benchmark("transactions.json");
-        benchmark_log = log_benchmark_result(benchmark_name, run_benchmark_result);
+        benchmark_log = log_benchmark_result(
+            benchmark_name,
+            run_benchmark_result
+        );
         opcodes[benchmark_name] = run_benchmark_result.opcodes;
-        fs.appendFileSync(output, csv.stringify(benchmark_log, benchmark_csv_config));
-        fs.appendFileSync(precompiles_output, csv.stringify(run_benchmark_result.precompiles, precompile_csv_config))
+        fs.appendFileSync(
+            output,
+            csv.stringify(benchmark_log, benchmark_csv_config)
+        );
+        fs.appendFileSync(
+            precompiles_output,
+            csv.stringify(
+                run_benchmark_result.precompiles,
+                precompile_csv_config
+            )
+        );
     }
     dump_opcodes(opcodes_dump, opcodes);
     console.log("Benchmarking complete");
     execSync("rm transactions.json");
 }
 
-benchmark_scripts = require("./benchmarks_list.json")
+benchmark_scripts = require("./benchmarks_list.json");
 run_all_benchmarks(benchmark_scripts);
