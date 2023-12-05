@@ -49,6 +49,9 @@ let version dir =
   Directory.register0 dir version_service (fun () () ->
       Lwt.return_ok client_version)
 
+let describe dir =
+  Directory.register_describe_directory_service dir Service.description_service
+
 (* The node can either take a single request or multiple requests at
    once. *)
 type 'a request = Singleton of 'a | Batch of 'a list
@@ -288,3 +291,4 @@ let directory config
   |> dispatch
        config
        ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
+  |> describe
