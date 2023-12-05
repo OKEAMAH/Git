@@ -50,6 +50,10 @@ type prim =
   | D_True
   | D_Unit
   | D_Lambda_rec
+  | D_Transfer_tokens
+  | D_Set_delegate
+  | D_Create_contract
+  | D_Emit
   | I_PACK
   | I_UNPACK
   | I_BLAKE2B
@@ -206,7 +210,8 @@ type namespace =
 let namespace = function
   | K_code | K_view | K_parameter | K_storage -> Keyword_namespace
   | D_Elt | D_False | D_Left | D_None | D_Pair | D_Right | D_Some | D_True
-  | D_Unit | D_Lambda_rec ->
+  | D_Unit | D_Lambda_rec | D_Transfer_tokens | D_Set_delegate
+  | D_Create_contract | D_Emit ->
       Constant_namespace
   | I_ABS | I_ADD | I_ADDRESS | I_AMOUNT | I_AND | I_APPLY | I_BALANCE
   | I_BLAKE2B | I_CAR | I_CAST | I_CDR | I_CHAIN_ID | I_CHECK_SIGNATURE
@@ -263,6 +268,10 @@ let string_of_prim = function
   | D_True -> "True"
   | D_Unit -> "Unit"
   | D_Lambda_rec -> "Lambda_rec"
+  | D_Transfer_tokens -> "Transfer_tokens"
+  | D_Set_delegate -> "Set_delegate"
+  | D_Create_contract -> "Create_contract"
+  | D_Emit -> "Emit"
   | I_PACK -> "PACK"
   | I_UNPACK -> "UNPACK"
   | I_BLAKE2B -> "BLAKE2B"
@@ -424,6 +433,10 @@ let prim_of_string =
   | "True" -> return D_True
   | "Unit" -> return D_Unit
   | "Lambda_rec" -> return D_Lambda_rec
+  | "Transfer_tokens" -> return D_Transfer_tokens
+  | "Set_delegate" -> return D_Set_delegate
+  | "Create_contract" -> return D_Create_contract
+  | "Emit" -> return D_Emit
   | "PACK" -> return I_PACK
   | "UNPACK" -> return I_UNPACK
   | "BLAKE2B" -> return I_BLAKE2B
@@ -792,7 +805,13 @@ let prim_encoding =
          ("LAMBDA_REC", I_LAMBDA_REC);
          ("TICKET", I_TICKET);
          ("BYTES", I_BYTES);
-         ("NAT", I_NAT)
+         ("NAT", I_NAT);
+         (* /!\ NEW INSTRUCTIONS MUST BE ADDED AT THE END OF THE STRING_ENUM, FOR BACKWARD COMPATIBILITY OF THE ENCODING. *)
+         (* Alpha_019 addtitions *)
+         ("Transfer_tokens", D_Transfer_tokens);
+         ("Set_delegate", D_Set_delegate);
+         ("Create_contract", D_Create_contract);
+         ("Emit", D_Emit)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *);
        ]

@@ -557,6 +557,10 @@ module Script : sig
     | D_True
     | D_Unit
     | D_Lambda_rec
+    | D_Transfer_tokens
+    | D_Set_delegate
+    | D_Create_contract
+    | D_Emit
     | I_PACK
     | I_UNPACK
     | I_BLAKE2B
