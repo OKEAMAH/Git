@@ -9,7 +9,10 @@
 
 use std::mem::size_of;
 
-use crate::ast::Micheline;
+use crate::{
+    ast::{annotations::Annotations, Micheline},
+    lexer::{Annotation, Prim},
+};
 
 /// Prefix denoting an encoded string.
 const STRING_TAG: u8 = 0x01;
@@ -18,13 +21,96 @@ const SEQ_TAG: u8 = 0x02;
 /// Prefix denoting an encoded bytes sequence.
 const BYTES_TAG: u8 = 0x0a;
 
-// Tags for [Michelson::App].
-const APP_NO_ARGS_NO_ANNOTS_TAG: u8 = 0x03;
-const APP_NO_ARGS_WITH_ANNOTS_TAG: u8 = 0x04;
-const APP_ONE_ARG_NO_ANNOTS_TAG: u8 = 0x05;
-const APP_ONE_ARG_WITH_ANNOTS_TAG: u8 = 0x06;
-const APP_TWO_ARGS_NO_ANNOTS_TAG: u8 = 0x07;
-const APP_TWO_ARGS_WITH_ANNOTS_TAG: u8 = 0x08;
+trait AppEncoder<'a>: IntoIterator<Item = &'a Micheline<'a>> + Sized {
+    const NO_ANNOTS_TAG: u8;
+    const WITH_ANNOTS_TAG: u8;
+    fn encode(prim: &Prim, args: Self, annots: &Annotations, out: &mut Vec<u8>) {
+        if annots.is_empty() {
+            out.push(Self::NO_ANNOTS_TAG);
+        } else {
+            out.push(Self::WITH_ANNOTS_TAG);
+        }
+        prim.encode(out);
+        for arg in args {
+            encode_micheline(arg, out)
+        }
+        if !annots.is_empty() {
+            with_patchback_len(out, |out| {
+                for ann in annots.iter() {
+                    ann.encode_bytes(out);
+                }
+            })
+        }
+    }
+}
+
+impl<'a> AppEncoder<'a> for [&'a Micheline<'a>; 0] {
+    const NO_ANNOTS_TAG: u8 = 0x03;
+    const WITH_ANNOTS_TAG: u8 = 0x04;
+}
+
+impl<'a> AppEncoder<'a> for [&'a Micheline<'a>; 1] {
+    const NO_ANNOTS_TAG: u8 = 0x05;
+    const WITH_ANNOTS_TAG: u8 = 0x06;
+}
+
+impl<'a> AppEncoder<'a> for [&'a Micheline<'a>; 2] {
+    const NO_ANNOTS_TAG: u8 = 0x07;
+    const WITH_ANNOTS_TAG: u8 = 0x08;
+}
+
+impl<'a> AppEncoder<'a> for &'a [Micheline<'a>] {
+    const NO_ANNOTS_TAG: u8 = 0x09;
+    const WITH_ANNOTS_TAG: u8 = 0x09;
+    fn encode(prim: &Prim, args: Self, annots: &Annotations, out: &mut Vec<u8>) {
+        match args {
+            [] => AppEncoder::encode(prim, [], annots, out),
+            [arg] => AppEncoder::encode(prim, [arg], annots, out),
+            [arg1, arg2] => AppEncoder::encode(prim, [arg1, arg2], annots, out),
+            _ => {
+                out.push(0x9);
+                prim.encode(out);
+                with_patchback_len(out, |out| {
+                    for arg in args {
+                        encode_micheline(arg, out)
+                    }
+                });
+                with_patchback_len(out, |out| {
+                    for ann in annots.iter() {
+                        ann.encode_bytes(out);
+                    }
+                });
+            }
+        }
+    }
+}
+
+impl Annotation<'_> {
+    pub fn encode_bytes(&self, out: &mut Vec<u8>) {
+        out.push(BYTES_TAG);
+        match self {
+            Annotation::Special(s) => {
+                put_len(s.len() as Len, out);
+                out.extend_from_slice(s.as_bytes())
+            }
+            Annotation::Field(s) => {
+                put_len((s.len() + 1) as Len, out);
+                out.push(b'%');
+                out.extend_from_slice(s.as_bytes());
+            }
+            Annotation::Variable(s) => {
+                put_len((s.len() + 1) as Len, out);
+                out.push(b'@');
+                out.extend_from_slice(s.as_bytes());
+            }
+            Annotation::Type(s) => {
+                put_len((s.len() + 1) as Len, out);
+                out.push(b':');
+                out.extend_from_slice(s.as_bytes());
+            }
+        }
+    }
+}
 
 /// Length of some container, usually stored as fixed-length number.
 type Len = u32;
@@ -48,45 +134,34 @@ fn put_string(s: &str, out: &mut Vec<u8>) {
     out.extend_from_slice(s.as_bytes())
 }
 
-/// Put a container.
-fn put_seq<V>(list: &[V], out: &mut Vec<u8>, encoder: fn(&V, &mut Vec<u8>)) {
-    out.push(SEQ_TAG);
+fn with_patchback_len(out: &mut Vec<u8>, f: impl FnOnce(&mut Vec<u8>)) {
     put_len(0, out); // don't know the right length in advance
     let i = out.len();
     let len_place = (i - size_of::<Len>())..i; // to fill length later
-    for val in list {
-        encoder(val, out)
-    }
+    f(out);
     let len_of_written = (out.len() - i) as Len;
     out[len_place].copy_from_slice(&len_of_written.to_be_bytes())
 }
 
+/// Put a container.
+fn put_seq<V>(list: &[V], out: &mut Vec<u8>, encoder: fn(&V, &mut Vec<u8>)) {
+    out.push(SEQ_TAG);
+    with_patchback_len(out, |out| {
+        for val in list {
+            encoder(val, out)
+        }
+    });
+}
+
 /// Recursive encoding function for [Value].
-fn encode_micheline<'a>(mich: &'a Micheline<'a>, out: &mut Vec<u8>) {
+fn encode_micheline(mich: &Micheline, out: &mut Vec<u8>) {
     use Micheline::*;
     match mich {
         Int(_) => todo!(), // for a later MR
         String(s) => put_string(s, out),
         Bytes(b) => put_bytes(b, out),
-        #[allow(clippy::redundant_closure)]
-        Seq(s) => put_seq(s, out, |out, mich| encode_micheline(out, mich)),
-        App(prim, args, anns) => {
-            match (args.len(), anns.is_empty()) {
-                (0, true) => out.push(APP_NO_ARGS_NO_ANNOTS_TAG),
-                (0, false) => out.push(APP_NO_ARGS_WITH_ANNOTS_TAG),
-                (1, true) => out.push(APP_ONE_ARG_NO_ANNOTS_TAG),
-                (1, false) => out.push(APP_ONE_ARG_WITH_ANNOTS_TAG),
-                (2, true) => out.push(APP_TWO_ARGS_NO_ANNOTS_TAG),
-                (2, false) => out.push(APP_TWO_ARGS_WITH_ANNOTS_TAG),
-                // TODO: https://gitlab.com/tezos/tezos/-/issues/6646
-                _ => todo!("More than 2 arguments in Micheline is not supported at the moment"),
-            }
-            prim.encode(out);
-
-            for arg in *args {
-                encode_micheline(arg, out)
-            }
-        }
+        Seq(s) => put_seq(s, out, encode_micheline),
+        App(prim, args, anns) => AppEncoder::encode(prim, *args, anns, out),
     }
 }
 
@@ -127,7 +202,10 @@ mod test_encoding {
         // To figure out the expected bytes, use
         // octez-client convert data 'VALUE' from michelson to binary
 
-        use crate::ast::{annotations::NO_ANNS, micheline::test_helpers::seq};
+        use crate::ast::{
+            annotations::NO_ANNS,
+            micheline::test_helpers::{app, seq},
+        };
 
         use super::*;
 
@@ -152,6 +230,10 @@ mod test_encoding {
             check(
                 Micheline::App(Prim::Elt, &[true.into(), ().into()], NO_ANNS),
                 "0x0704030a030b",
+            );
+            check(
+                seq! { app!(DROP); app!(LAMBDA[app!(unit), app!(unit), seq!{}]) },
+                "0x02000000150320093100000009036c036c020000000000000000",
             );
         }
 
