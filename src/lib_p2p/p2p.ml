@@ -42,6 +42,25 @@ type config = {
   disable_peer_discovery : bool;
 }
 
+let artificial_network_delay_opt =
+  let v = Sys.getenv_opt "NETWORK_DELAY" in
+  Option.bind v (fun s ->
+      match float_of_string_opt s with
+      | None ->
+          Format.eprintf
+            "Error while parsing artifical network delay '%s': ignoring.@."
+            s ;
+          None
+      | Some d -> Some d)
+
+let apply_network_delay () =
+  match artificial_network_delay_opt with
+  | Some d -> Lwt_unix.sleep d
+  | None -> Lwt.return_unit
+
+let apply_network_delay_blocking () =
+  match artificial_network_delay_opt with Some d -> Unix.sleepf d | None -> ()
+
 let create_scheduler limits =
   let open P2p_limits in
   let max_upload_speed = Option.map (( * ) 1024) limits.max_upload_speed in
@@ -374,6 +393,7 @@ module Real = struct
 
   let send net conn m =
     let open Lwt_result_syntax in
+    let*! () = apply_network_delay () in
     let*! r = P2p_conn.write conn m in
     let*! () =
       match r with
@@ -389,6 +409,7 @@ module Real = struct
     Lwt.return r
 
   let try_send net conn m =
+    apply_network_delay_blocking () ;
     match P2p_conn.write_now conn m with
     | Ok v ->
         Events.(emit__dont_wait__use_with_care message_trysent)
@@ -459,6 +480,7 @@ module Real = struct
     Events.(emit__dont_wait__use_with_care broadcast) ()
 
   let broadcast net connections ?except ?alt msg =
+    apply_network_delay_blocking () ;
     raw_broadcast connections ?except ?alt msg ;
     net.broadcasted_msg_hook connections ?except ?alt msg
 
