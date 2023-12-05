@@ -27,7 +27,6 @@ open Protocol
 open Alpha_context
 open Baking_state
 module Events = Baking_events.Actions
-open Forge_worker
 
 type inject_block_kind =
   | Forge_and_inject of block_to_bake

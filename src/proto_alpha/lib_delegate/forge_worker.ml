@@ -8,7 +8,12 @@
 
 open Protocol
 open Alpha_context
-module Events = Baking_events.Actions
+
+module Events = struct
+  include Baking_events.Actions
+  include Baking_events.Forge_worker
+end
+
 open Baking_state
 
 module Operations_source = struct
@@ -521,6 +526,7 @@ let start (baking_state : Baking_state.global_state) =
   let task_stream, push_task = Lwt_stream.create () in
   let event_stream, push_event = Lwt_stream.create () in
   let state : worker = {push_task; push_event; event_stream} in
+  let push_event x = push_event (Some x) in
   let cctxt = baking_state.cctxt in
   let chain_id = baking_state.chain_id in
   let config = baking_state.config in
@@ -528,10 +534,8 @@ let start (baking_state : Baking_state.global_state) =
     let*! (forge_request_opt : forge_request option) =
       Lwt_stream.get task_stream
     in
-    let*! (r : unit tzresult) =
-      match forge_request_opt with
-      | None -> failwith "forge worker request stream closed"
-      | Some (Forge_and_sign_preattestations (branch, preattestations)) ->
+    let process_request = function
+      | Forge_and_sign_preattestations (branch, preattestations) ->
           let* signed_preattestations =
             sign_preattestations
               cctxt
@@ -542,47 +546,54 @@ let start (baking_state : Baking_state.global_state) =
           in
           List.iter
             (fun preattestation ->
-              push_event (Some (Preattestation_ready preattestation)))
+              push_event (Preattestation_ready preattestation))
             signed_preattestations ;
           return_unit
-      | Some (Forge_and_sign_attestations (branch, attestations)) ->
+      | Forge_and_sign_attestations (branch, attestations) ->
           let* signed_attestations =
             sign_attestations cctxt ~force:false chain_id ~branch attestations
           in
           List.iter
-            (fun attestation ->
-              push_event (Some (Attestation_ready attestation)))
+            (fun attestation -> push_event (Attestation_ready attestation))
             signed_attestations ;
           return_unit
-      | Some (Forge_and_sign_dal_attestations (branch, dal_attestations)) ->
+      | Forge_and_sign_dal_attestations (branch, dal_attestations) ->
           let* signed_dal_attestations =
             sign_dal_attestations cctxt chain_id ~branch dal_attestations
           in
           List.iter
             (fun signed_dal_attestation ->
-              push_event (Some (Dal_attestation_ready signed_dal_attestation)))
+              push_event (Dal_attestation_ready signed_dal_attestation))
             signed_dal_attestations ;
           return_unit
-      | Some (Forge_and_sign_block block_to_bake) ->
+      | Forge_and_sign_block block_to_bake ->
           let* prepared_block = prepare_block baking_state block_to_bake in
-          push_event (Some (Block_ready prepared_block)) ;
+          push_event (Block_ready prepared_block) ;
           return_unit
     in
-    let*! () =
-      match r with
-      | Ok () -> Lwt.return_unit
-      | Error _err -> (* TODO: make proper event *) Lwt.return_unit
-    in
-    worker_loop ()
+    match forge_request_opt with
+    | None -> (* Shutdown called *) return_unit
+    | Some request ->
+        let*! result = process_request request in
+        let*! () =
+          match result with
+          | Ok () -> Lwt.return_unit
+          | Error errs ->
+              let*! () =
+                Events.(emit error_while_processing_forge_request errs)
+              in
+              Lwt.return_unit
+        in
+        worker_loop ()
   in
   Lwt.dont_wait
     (fun () ->
       Lwt.finalize
         (fun () ->
-          let*! _ = worker_loop () in
+          let*! _r = worker_loop () in
           Lwt.return_unit)
         (fun () ->
-          let _ = shutdown state in
+          let () = shutdown state in
           Lwt.return_unit))
-    (fun _ -> assert false) ;
+    (fun _exn -> ()) ;
   return state

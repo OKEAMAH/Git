@@ -8,7 +8,6 @@
 
 open Protocol
 open Alpha_context
-module Events = Baking_events.Actions
 open Baking_state
 
 module Operations_source : sig
