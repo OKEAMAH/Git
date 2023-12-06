@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic-Labs. <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission  is hereby granted, free of charge, to any person obtaining a  *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -87,7 +88,7 @@ let ensure_kind infos kind =
           | Sc_rollup_add_messages _ | Sc_rollup_refute _ | Sc_rollup_timeout _
           | Sc_rollup_execute_outbox_message _ | Sc_rollup_recover_bond _
           | Dal_publish_slot_header _ | Zk_rollup_origination _
-          | Zk_rollup_publish _ | Zk_rollup_update _ ),
+          | Zk_rollup_publish _ | Zk_rollup_update _ | Host _ ),
           _ ) ->
           assert false)
   | Single _ -> assert false
