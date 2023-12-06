@@ -162,5 +162,9 @@ val value_of_key :
   context -> Context.Cache.key -> Context.Cache.value tzresult Lwt.t
 
 module Internal_for_benchmark : sig
-  val take_fees : context -> 'a Kind.manager contents_list -> unit
+  val take_fees :
+    context ->
+    fee_payer:public_key_hash ->
+    'a Kind.manager contents_list ->
+    unit
 end
