@@ -214,8 +214,7 @@ let register_protocol_tests_that_use_supports_correctly () =
   Zk_rollup.register ~protocols ;
   Tx_sc_rollup.register ~protocols ;
   Dac.register ~protocols ;
-  Timelock.register ~protocols ;
-  Restart.register ~protocols
+  Timelock.register ~protocols
 
 (* Regression tests are not easy to maintain for multiple protocols because one needs
    to update and maintain all the expected output files. Some of them, such as
@@ -235,5 +234,6 @@ let () =
   register_protocol_tests_that_use_supports_correctly () ;
   register_protocol_specific_because_regression_tests () ;
   Tezos_scoru_wasm_regressions.register () ;
+  Restart.register () ;
   (* Test.run () should be the last statement, don't register afterwards! *)
   Test.run ()

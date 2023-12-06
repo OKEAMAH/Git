@@ -31,17 +31,17 @@
                  failures
 *)
 
-let test_restart =
-  Protocol.register_test ~__FILE__ ~title:"restart" ~tags:["restart"]
-  @@ fun _protocol ->
+let test_restart () =
+  Test.register ~__FILE__ ~title:"restart" ~tags:["restart"] @@ fun () ->
   let loop n f =
-    let rec loop n =
-      if n = 0 then Lwt.return_unit
+    let rec loop cpt =
+      if cpt = n then Lwt.return_unit
       else
+        let () = Log.info "Run %d@." cpt in
         let* () = f () in
-        loop (n - 1)
+        loop (cpt + 1)
     in
-    loop n
+    loop 0
   in
   let* node = Node.init [] in
   let f () =
@@ -50,7 +50,7 @@ let test_restart =
     let* () = Node.run node [] in
     Lwt.return_unit
   in
-  let* () = loop 100 f in
+  let* () = loop 1_000 f in
   unit
 
-let register ~protocols = test_restart protocols
+let register () = test_restart ()
