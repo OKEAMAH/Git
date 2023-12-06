@@ -562,7 +562,7 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
     ?cycles_per_voting_period ?sc_rollup_arith_pvm_enable
     ?sc_rollup_private_enable ?sc_rollup_riscv_pvm_enable ?dal_enable
     ?zk_rollup_enable ?hard_gas_limit_per_block ?nonce_revelation_threshold ?dal
-    ?adaptive_issuance () =
+    ?adaptive_issuance ?sponsored_operations_enable () =
   let open Lwt_result_syntax in
   let open Tezos_protocol_alpha_parameters in
   let constants = Default_parameters.constants_test in
@@ -624,7 +624,11 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
   let adaptive_issuance =
     Option.value ~default:constants.adaptive_issuance adaptive_issuance
   in
-
+  let sponsored_operations_enable =
+    Option.value
+      sponsored_operations_enable
+      ~default:constants.sponsored_operations_enable
+  in
   let constants =
     {
       constants with
@@ -647,6 +651,7 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
       adaptive_issuance;
       hard_gas_limit_per_block;
       nonce_revelation_threshold;
+      sponsored_operations_enable;
     }
   in
   let* () = check_constants_consistency constants in
@@ -680,8 +685,8 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
     ?sc_rollup_arith_pvm_enable ?sc_rollup_private_enable
     ?sc_rollup_riscv_pvm_enable ?dal_enable ?zk_rollup_enable
     ?hard_gas_limit_per_block ?nonce_revelation_threshold ?dal
-    ?adaptive_issuance (bootstrap_accounts : Parameters.bootstrap_account list)
-    =
+    ?adaptive_issuance ?sponsored_operations_enable
+    (bootstrap_accounts : Parameters.bootstrap_account list) =
   let open Lwt_result_syntax in
   let* constants, shell, hash =
     prepare_initial_context_params
@@ -702,6 +707,7 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
       ?nonce_revelation_threshold
       ?dal
       ?adaptive_issuance
+      ?sponsored_operations_enable
       ()
   in
   let* () =

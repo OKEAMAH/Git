@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -378,6 +379,210 @@ let test_remove_operation () =
   let empty_mempool = Mempool.remove_operation mempool (fst op1) in
   assert_empty_mempool ~__LOC__ empty_mempool
 
+let test_add_already_hosted_fails () =
+  let open Lwt_result_syntax in
+  let* block, (c1, c2, c3) =
+    Context.init3 ~sponsored_operations_enable:true ()
+  in
+  let* ctxt =
+    let+ incr = Incremental.begin_construction block in
+    Incremental.alpha_ctxt incr
+  in
+  let predecessor_level, predecessor_round, predecessor_hash =
+    extract_values ctxt block
+  in
+  let vs, mempool_i =
+    Mempool.init
+      ctxt
+      Chain_id.zero
+      ~predecessor_level
+      ~predecessor_round
+      ~predecessor_hash
+  in
+  let* op1 = Op.transaction (B block) c1 c3 Tez.one_cent in
+  let* op2 =
+    match op1 with
+    | {
+     protocol_data =
+       Operation_data {contents = Single (Manager_operation _) as contents; _};
+     _;
+    } ->
+        let* hosted =
+          Op.host (B block) c2 ~guest:(Context.Contract.pkh c1) ~ops:contents
+        in
+        Op.sponsor (B block) c2 ~ops:hosted
+    | _ -> assert false
+  in
+  let op1 = op_with_hash op1 in
+  let op2 = op_with_hash op2 in
+  let*! res = Mempool.add_operation vs mempool_i op2 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let* () = assert_operation_present_in_mempool ~__LOC__ mempool [fst op2] in
+  let*! res = Mempool.add_operation vs mempool op1 in
+  let () = expect_conflict ~__LOC__ res in
+  let res = Mempool.remove_operation mempool (fst op2) in
+  let* () = assert_empty_mempool ~__LOC__ res in
+  return_unit
+
+let test_add_already_hosted_replaces_original () =
+  let open Lwt_result_syntax in
+  let* block, (c1, c2, c3) =
+    Context.init3 ~sponsored_operations_enable:true ()
+  in
+  let* ctxt =
+    let+ incr = Incremental.begin_construction block in
+    Incremental.alpha_ctxt incr
+  in
+  let predecessor_level, predecessor_round, predecessor_hash =
+    extract_values ctxt block
+  in
+  let vs, mempool_i =
+    Mempool.init
+      ctxt
+      Chain_id.zero
+      ~predecessor_level
+      ~predecessor_round
+      ~predecessor_hash
+  in
+  let* op1 = Op.transaction (B block) c1 c3 Tez.one_cent in
+  let* op2 =
+    match op1 with
+    | {
+     protocol_data =
+       Operation_data {contents = Single (Manager_operation _) as contents; _};
+     _;
+    } ->
+        let* hosted =
+          Op.host (B block) c2 ~guest:(Context.Contract.pkh c1) ~ops:contents
+        in
+        Op.sponsor (B block) c2 ~ops:hosted
+    | _ -> assert false
+  in
+  let op1 = op_with_hash op1 in
+  let op2 = op_with_hash op2 in
+  let*! res = Mempool.add_operation vs mempool_i op1 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let* () = assert_operation_present_in_mempool ~__LOC__ mempool [fst op1] in
+  let*! res = Mempool.add_operation vs mempool op2 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let res = Mempool.remove_operation mempool (fst op2) in
+  let* () = assert_empty_mempool ~__LOC__ res in
+  return_unit
+
+let test_sponsored_multiple_no_conflict () =
+  let open Lwt_result_syntax in
+  let* block, (c1, c2, c3) =
+    Context.init3 ~sponsored_operations_enable:true ()
+  in
+  let* ctxt =
+    let+ incr = Incremental.begin_construction block in
+    Incremental.alpha_ctxt incr
+  in
+  let predecessor_level, predecessor_round, predecessor_hash =
+    extract_values ctxt block
+  in
+  let vs, mempool_i =
+    Mempool.init
+      ctxt
+      Chain_id.zero
+      ~predecessor_level
+      ~predecessor_round
+      ~predecessor_hash
+  in
+  let* op1 = Op.transaction (B block) c1 c3 Tez.one_cent in
+  let* op2, op3 =
+    match op1 with
+    | {
+     protocol_data =
+       Operation_data {contents = Single (Manager_operation _) as contents; _};
+     _;
+    } ->
+        let* hosted =
+          Op.host (B block) c2 ~guest:(Context.Contract.pkh c1) ~ops:contents
+        in
+        let* hosted2 =
+          Op.host (B block) c3 ~guest:(Context.Contract.pkh c1) ~ops:contents
+        in
+        let* hosted = Op.sponsor (B block) c2 ~ops:hosted in
+        let+ hosted2 = Op.sponsor (B block) c3 ~ops:hosted2 in
+        (hosted, hosted2)
+    | _ -> assert false
+  in
+  let op2 = op_with_hash op2 in
+  let op3 = op_with_hash op3 in
+  let*! res = Mempool.add_operation vs mempool_i op2 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let* () = assert_operation_present_in_mempool ~__LOC__ mempool [fst op2] in
+  let*! res = Mempool.add_operation vs mempool_i op3 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let* () = assert_operation_present_in_mempool ~__LOC__ mempool [fst op3] in
+  let*! res = Mempool.add_operation vs mempool op2 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let mempool = Mempool.remove_operation mempool (fst op2) in
+  let res = Mempool.remove_operation mempool (fst op3) in
+  let* () = assert_empty_mempool ~__LOC__ res in
+  return_unit
+
+let test_sponsored_merge_conflict () =
+  let open Lwt_result_syntax in
+  let* block, (c1, c2, c3) =
+    Context.init3 ~sponsored_operations_enable:true ()
+  in
+  let* ctxt =
+    let+ incr = Incremental.begin_construction block in
+    Incremental.alpha_ctxt incr
+  in
+  let predecessor_level, predecessor_round, predecessor_hash =
+    extract_values ctxt block
+  in
+  let vs, mempool_i =
+    Mempool.init
+      ctxt
+      Chain_id.zero
+      ~predecessor_level
+      ~predecessor_round
+      ~predecessor_hash
+  in
+  let* op1 = Op.transaction (B block) c1 c3 Tez.one_cent in
+  let* op2 =
+    match op1 with
+    | {
+     protocol_data =
+       Operation_data {contents = Single (Manager_operation _) as contents; _};
+     _;
+    } ->
+        let* hosted =
+          Op.host (B block) c2 ~guest:(Context.Contract.pkh c1) ~ops:contents
+        in
+        Op.sponsor (B block) c2 ~ops:hosted
+    | _ -> assert false
+  in
+  let op1 = op_with_hash op1 in
+  let op2 = op_with_hash op2 in
+  let*! res = Mempool.add_operation vs mempool_i op1 in
+  let mempool = expect_ok_added ~__LOC__ res in
+  let* () = assert_operation_present_in_mempool ~__LOC__ mempool [fst op1] in
+  let*! res = Mempool.add_operation vs mempool_i op2 in
+  let mempool' = expect_ok_added ~__LOC__ res in
+  let* () = assert_operation_present_in_mempool ~__LOC__ mempool' [fst op2] in
+  let merged_mempool_replace =
+    match
+      Mempool.merge ~conflict_handler:handler_always_replace mempool mempool'
+    with
+    | Ok mempool -> mempool
+    | _ ->
+        Format.kasprintf Stdlib.failwith "%s: expected succesful merge" __LOC__
+  in
+  let* () =
+    assert_operation_present_in_mempool
+      ~__LOC__
+      merged_mempool_replace
+      [fst op2]
+  in
+  let res = Mempool.remove_operation merged_mempool_replace (fst op2) in
+  let* () = assert_empty_mempool ~__LOC__ res in
+  return_unit
+
 let tests =
   [
     Tztest.tztest "simple" `Quick test_simple;
@@ -389,6 +594,22 @@ let tests =
       `Quick
       test_add_and_replace;
     Tztest.tztest "remove operations" `Quick test_remove_operation;
+    Tztest.tztest
+      "adding operation for already hosted source fails"
+      `Quick
+      test_add_already_hosted_fails;
+    Tztest.tztest
+      "Sponsored ops replace sponsees original op"
+      `Quick
+      test_add_already_hosted_replaces_original;
+    Tztest.tztest
+      "Sponsored ops with conflicting guests can coexist"
+      `Quick
+      test_sponsored_multiple_no_conflict;
+    Tztest.tztest
+      "Sponsored ops replace original on merge"
+      `Quick
+      test_sponsored_merge_conflict;
   ]
 
 let () =

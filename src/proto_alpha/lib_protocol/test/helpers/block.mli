@@ -4,6 +4,7 @@
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
 (* Copyright (c) 2020 Metastate AG <hello@metastate.dev>                     *)
 (* Copyright (c) 2022 Trili Tech  <contact@trili.tech>                       *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -144,6 +145,7 @@ val genesis :
   ?nonce_revelation_threshold:int32 ->
   ?dal:Constants.Parametric.dal ->
   ?adaptive_issuance:Constants.Parametric.adaptive_issuance ->
+  ?sponsored_operations_enable:bool ->
   Parameters.bootstrap_account list ->
   block tzresult Lwt.t
 
@@ -398,6 +400,7 @@ val prepare_initial_context_params :
   ?nonce_revelation_threshold:int32 ->
   ?dal:Constants.Parametric.dal ->
   ?adaptive_issuance:Constants.Parametric.adaptive_issuance ->
+  ?sponsored_operations_enable:bool ->
   unit ->
   ( Constants.Parametric.t * Block_header.shell_header * Block_hash.t,
     tztrace )
