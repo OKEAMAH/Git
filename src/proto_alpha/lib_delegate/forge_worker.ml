@@ -358,130 +358,143 @@ let sign_dal_attestations (cctxt : #Protocol_client_context.full) chain_id
               published_level ))
     attestations
 
+let authorize_consensus_votes kind (cctxt : #Protocol_client_context.full)
+    ?(force = false) chain_id operations (consensus_content : consensus_content)
+    =
+  let open Lwt_result_syntax in
+  let block_location =
+    Baking_files.resolve_location ~chain_id `Highwatermarks
+  in
+  let level = Raw_level.to_int32 consensus_content.level in
+  let round = consensus_content.round in
+  (* Filter all operations that don't satisfy the highwatermark *)
+  cctxt#with_lock @@ fun () ->
+  let* highwatermarks = Baking_highwatermarks.load cctxt block_location in
+  let may_sign_consensus_vote =
+    match kind with
+    | `Preattestation -> Baking_highwatermarks.may_sign_preattestation
+    | `Attestation -> Baking_highwatermarks.may_sign_attestation
+  in
+  let*! authorized_operations =
+    List.filter_s
+      (fun (((consensus_key, _delegate_pkh) as delegate), _) ->
+        let may_sign =
+          may_sign_consensus_vote
+            highwatermarks
+            ~delegate:consensus_key.public_key_hash
+            ~level
+            ~round
+        in
+        if may_sign || force then Lwt.return_true
+        else
+          let*! () =
+            match kind with
+            | `Preattestation ->
+                Events.(
+                  emit
+                    skipping_preattestation
+                    ( delegate,
+                      [
+                        Baking_highwatermarks.Block_previously_preattested
+                          {round; level};
+                      ] ))
+            | `Attestation ->
+                Events.(
+                  emit
+                    skipping_attestation
+                    ( delegate,
+                      [
+                        Baking_highwatermarks.Block_previously_attested
+                          {round; level};
+                      ] ))
+          in
+          Lwt.return_false)
+      operations
+  in
+  (* Record all consensus votes new highwatermarks as one batch *)
+  let* () =
+    let delegates =
+      List.map (fun ((ck, _), _) -> ck.public_key_hash) authorized_operations
+    in
+    let record_all_consensus_vote =
+      match kind with
+      | `Preattestation -> Baking_highwatermarks.record_all_preattestations
+      | `Attestation -> Baking_highwatermarks.record_all_attestations
+    in
+    record_all_consensus_vote
+      highwatermarks
+      cctxt
+      block_location
+      ~delegates
+      ~level
+      ~round
+  in
+  return authorized_operations
+
+let forge_and_sign_consensus_vote kind cctxt chain_id ~branch
+    ((consensus_key, _) as delegate) (consensus_content : consensus_content)
+    (contents : _ contents_list) =
+  let open Lwt_result_syntax in
+  let shell =
+    (* The branch is the latest finalized block. *)
+    {Tezos_base.Operation.branch}
+  in
+  let watermark =
+    match kind with
+    | `Preattestation -> Operation.(to_watermark (Preattestation chain_id))
+    | `Attestation -> Operation.(to_watermark (Attestation chain_id))
+  in
+  let unsigned_operation = (shell, Contents_list contents) in
+  let unsigned_operation_bytes =
+    Data_encoding.Binary.to_bytes_exn
+      Operation.unsigned_encoding
+      unsigned_operation
+  in
+  let level = Raw_level.to_int32 consensus_content.level in
+  let round = consensus_content.round in
+  let sk_uri = consensus_key.secret_key_uri in
+  let*! signature =
+    Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
+  in
+  match signature with
+  | Error err ->
+      let*! () =
+        match kind with
+        | `Preattestation ->
+            Events.(emit skipping_preattestation (delegate, err))
+        | `Attestation -> Events.(emit skipping_attestation (delegate, err))
+      in
+      return_none
+  | Ok signature ->
+      let protocol_data =
+        Operation_data {contents; signature = Some signature}
+      in
+      let operation : Operation.packed = {shell; protocol_data} in
+      return_some (delegate, operation, level, round)
+
 let sign_consensus_votes kind (cctxt : #Protocol_client_context.full)
     ?(force = false) chain_id ~branch operations =
   let open Lwt_result_syntax in
   (* N.b. signing a lot of operations may take some time *)
   (* Don't parallelize signatures: the signer might not be able to
      handle concurrent requests *)
-  let block_location =
-    Baking_files.resolve_location ~chain_id `Highwatermarks
-  in
   (* Hypothesis: all consensus votes have the same round and level *)
-  match operations with
-  | [] -> return_nil
-  | (_, (consensus_content : consensus_content)) :: _ ->
-      let level = Raw_level.to_int32 consensus_content.level in
-      let round = consensus_content.round in
-      (* Filter all operations that don't satisfy the highwatermark *)
+  let consensus_content_opt = List.hd operations |> Option.map snd in
+  match consensus_content_opt with
+  | None -> return_nil
+  | Some consensus_content ->
       let* authorized_consensus_votes =
-        cctxt#with_lock @@ fun () ->
-        let* highwatermarks = Baking_highwatermarks.load cctxt block_location in
-        let may_sign_consensus_vote =
-          match kind with
-          | `Preattestation -> Baking_highwatermarks.may_sign_preattestation
-          | `Attestation -> Baking_highwatermarks.may_sign_attestation
-        in
-        let*! authorized_operations =
-          List.filter_s
-            (fun (((consensus_key, _delegate_pkh) as delegate), _) ->
-              let may_sign =
-                may_sign_consensus_vote
-                  highwatermarks
-                  ~delegate:consensus_key.public_key_hash
-                  ~level
-                  ~round
-              in
-              if may_sign || force then Lwt.return_true
-              else
-                let*! () =
-                  match kind with
-                  | `Preattestation ->
-                      Events.(
-                        emit
-                          skipping_preattestation
-                          ( delegate,
-                            [
-                              Baking_highwatermarks.Block_previously_preattested
-                                {round; level};
-                            ] ))
-                  | `Attestation ->
-                      Events.(
-                        emit
-                          skipping_attestation
-                          ( delegate,
-                            [
-                              Baking_highwatermarks.Block_previously_attested
-                                {round; level};
-                            ] ))
-                in
-                Lwt.return_false)
-            operations
-        in
-        (* Record all consensus votes new highwatermarks as one batch *)
-        let* () =
-          let delegates =
-            List.map
-              (fun ((ck, _), _) -> ck.public_key_hash)
-              authorized_operations
-          in
-          let record_all_consensus_vote =
-            match kind with
-            | `Preattestation ->
-                Baking_highwatermarks.record_all_preattestations
-            | `Attestation -> Baking_highwatermarks.record_all_attestations
-          in
-          record_all_consensus_vote
-            highwatermarks
-            cctxt
-            block_location
-            ~delegates
-            ~level
-            ~round
-        in
-        return authorized_operations
+        authorize_consensus_votes
+          kind
+          cctxt
+          ~force
+          chain_id
+          operations
+          consensus_content
       in
-      let forge_and_sign_consensus_vote : type a. _ -> a contents_list -> _ =
-       fun ((consensus_key, _) as delegate) contents ->
-        let shell =
-          (* The branch is the latest finalized block. *)
-          {Tezos_base.Operation.branch}
-        in
-        let watermark =
-          match kind with
-          | `Preattestation ->
-              Operation.(to_watermark (Preattestation chain_id))
-          | `Attestation -> Operation.(to_watermark (Attestation chain_id))
-        in
-        let unsigned_operation = (shell, Contents_list contents) in
-        let unsigned_operation_bytes =
-          Data_encoding.Binary.to_bytes_exn
-            Operation.unsigned_encoding
-            unsigned_operation
-        in
-        let level = Raw_level.to_int32 consensus_content.level in
-        let round = consensus_content.round in
-        let sk_uri = consensus_key.secret_key_uri in
-        let*! signature =
-          Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
-        in
-        match signature with
-        | Error err ->
-            let*! () =
-              match kind with
-              | `Preattestation ->
-                  Events.(emit skipping_preattestation (delegate, err))
-              | `Attestation ->
-                  Events.(emit skipping_attestation (delegate, err))
-            in
-            return_none
-        | Ok signature ->
-            let protocol_data =
-              Operation_data {contents; signature = Some signature}
-            in
-            let operation : Operation.packed = {shell; protocol_data} in
-            return_some (delegate, operation, level, round)
-      in
+      (* N.b. signing a lot of operations may take some time *)
+      (* Don't parallelize signatures: the signer might not be able to
+         handle concurrent requests *)
       List.filter_map_es
         (fun (delegate, consensus_content) ->
           let event =
@@ -493,11 +506,21 @@ let sign_consensus_votes kind (cctxt : #Protocol_client_context.full)
           match kind with
           | `Attestation ->
               forge_and_sign_consensus_vote
+                kind
+                cctxt
+                chain_id
+                ~branch
                 delegate
+                consensus_content
                 (Single (Attestation consensus_content))
           | `Preattestation ->
               forge_and_sign_consensus_vote
+                kind
+                cctxt
+                chain_id
+                ~branch
                 delegate
+                consensus_content
                 (Single (Preattestation consensus_content)))
         authorized_consensus_votes
 
