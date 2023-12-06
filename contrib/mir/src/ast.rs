@@ -272,6 +272,7 @@ pub enum Instruction {
     And(overloads::And),
     Or(overloads::Or),
     Xor(overloads::Xor),
+    Not(overloads::Not),
     IfCons(Vec<Self>, Vec<Self>),
     Iter(overloads::Iter, Vec<Self>),
     IfLeft(Vec<Self>, Vec<Self>),
