@@ -183,7 +183,7 @@ let rec commands_docs =
         "dump function symbols: Pretty-prints the parsed functions custom \
          section. The result will be empty if the kernel is in `wast` format \
          or has been stripped of its custom sections.";
-      completions = ["dump functions symbols"];
+      completions = ["dump function symbols"];
     };
     {
       parse =
@@ -328,36 +328,141 @@ let make_prompt () =
   let open LTerm_text in
   eval [S "> "]
 
-class read_line ~term ~history ~keys =
+(* Undirected graph representing the keys of the durable storage. Mutability is
+   used only during construction to implement the two directions of the
+   edges. *)
+type path =
+  | Root of {mutable subkeys : path list}
+  | Dir of {key : string; mutable subkeys : path list; parent : path}
+
+(* Pretty printing functions, only used for debug. *)
+let pp_parent ppf = function
+  | Root _ -> Format.fprintf ppf "/"
+  | Dir {key; _} -> Format.fprintf ppf "%s" key
+
+let pp_indent ppf depth = Format.fprintf ppf "%s" (String.make (depth * 2) ' ')
+
+let rec pp_subkeys depth ppf subkeys =
+  Format.fprintf
+    ppf
+    "\n%a"
+    (Format.pp_print_list
+       ~pp_sep:(fun ppf () -> Format.fprintf ppf "\n")
+       (pp_path (succ depth)))
+    subkeys
+
+and pp_path depth ppf = function
+  | Root {subkeys} ->
+      Format.fprintf ppf "%a/%a" pp_indent depth (pp_subkeys depth) subkeys
+  | Dir {key; subkeys; parent} ->
+      Format.fprintf
+        ppf
+        "%a- %s (parent: %a)%a"
+        pp_indent
+        depth
+        key
+        pp_parent
+        parent
+        (pp_subkeys depth)
+        subkeys
+
+let path_as_key path =
+  let rec fold acc = function
+    | Root _ -> acc
+    | Dir {key; parent; _} -> fold (key :: acc) parent
+  in
+  fold [] path
+
+let full_path path = "/" ^ String.concat "/" (path_as_key path)
+
+let check_subpath_name check name = function
+  | Root _ -> false
+  | Dir {key; _} -> check key name
+
+(* [get_path path key]: given a [path] and a key in reversed order, returns the
+   corresponding path. If no path corresponds, returns the root of the path. *)
+let get_path current_path rev_input =
+  (* Checks the current path correspond to the given key. If that so, we can
+     directly return it instead of looking for the correct path in the tree. *)
+  let rec check_current_path rev_input path =
+    match (rev_input, path) with
+    | [], Root _ -> true
+    | subkey :: ancestors, Dir {key; parent; _} ->
+        if subkey == key then check_current_path ancestors parent else false
+    | _ -> false
+  in
+  let rec get_root = function
+    | Root _ as root -> root
+    | Dir {parent; _} -> get_root parent
+  in
+  (* From a given key goes to the given node in the tree. *)
+  let rec goto_path input path =
+    match (input, path) with
+    | key :: rem, (Root {subkeys} | Dir {subkeys; _}) ->
+        let subpath = List.find (check_subpath_name String.equal key) subkeys in
+        Option.bind subpath (goto_path rem)
+    | [], _ -> Some path
+  in
+  if check_current_path rev_input current_path then current_path
+  else
+    let root = get_root current_path in
+    Option.value ~default:root (goto_path (List.rev rev_input) root)
+
+(* [filter_path partial_input path] returns the subkeys from [path] that match
+   [partial]. *)
+let filter_path prefix = function
+  | Root {subkeys} | Dir {subkeys; _} ->
+      List.filter
+        (check_subpath_name
+           (fun key prefix -> String.has_prefix ~prefix key)
+           prefix)
+        subkeys
+
+(* [find_candidates path partial_input] returns the potential candidates for a
+   given input. *)
+let find_candidates path partial_input =
+  let parsed_key =
+    match String.split_on_char '/' partial_input with
+    | "" :: key -> (
+        match List.rev key with
+        (* Case where the input is "/" *)
+        | [] -> Some ("", [])
+        | partial :: rev_complete -> Some (partial, rev_complete))
+    | _ -> None
+  in
+  match parsed_key with
+  | None -> ([], path)
+  | Some (partial, rev_complete) ->
+      let path = get_path path rev_complete in
+      (filter_path partial path, path)
+
+(* [prepare_command_of_candidates] returns the autocompleted command for each
+   candidate. *)
+let prepare_command_of_candidates path_command candidates =
+  List.rev_map
+    (fun candidate ->
+      Zed_string.(append path_command (of_utf8 @@ full_path candidate)))
+    candidates
+
+class read_line ~term ~history ~path =
   let open React in
   object (self)
     inherit LTerm_read_line.read_line ~history ()
 
     inherit [Zed_string.t] LTerm_read_line.term term
 
-    method! completion =
-      (* Given a [partial] path and a [key], this function
-          completes [partial] with the next step in the key
-         if [partial] is a prefix of key.
+    (* This allows caching the current path during completion, to avoid going
+       back to the root during typing. *)
+    val mutable current_path = path
 
-         Example: if key = ["evm";"blocks";"abcd"], partial = ["evm";"b"]
-         this function returns "/evm/blocks"
-      *)
-      let match_paths partial key =
-        match partial with
-        | "" :: partial ->
-            let rec go partial key acc =
-              match (partial, key) with
-              | [], k :: _ks -> Some (acc ^ "/" ^ k)
-              | p :: ps, k :: ks ->
-                  if p = k then go ps ks (acc ^ "/" ^ k)
-                  else if String.has_prefix ~prefix:p k then Some (acc ^ "/" ^ k)
-                  else None
-              | _ -> None
-            in
-            go partial key ""
-        | _ -> None
-      in
+    (* Given a [partial] path and a [key], this function
+        completes [partial] with the next step in the key
+       if [partial] is a prefix of key.
+
+       Example: if key = ["evm";"blocks";"abcd"], partial = ["evm";"b"]
+       this function returns "/evm/blocks"
+    *)
+    method! completion =
       let prefix = Zed_rope.to_string self#input_prev in
       let commands =
         List.filter
@@ -385,15 +490,12 @@ class read_line ~term ~history ~keys =
                 prefix
               |> Zed_string.to_utf8 |> String.split_no_empty ' '
               |> function
-              | [] -> []
-              | hd :: _ -> String.split_on_char '/' hd
+              | [] -> ""
+              | hd :: _ -> hd
             in
-            List.filter_map
-              (fun (key : string list) ->
-                match match_paths partial_path key with
-                | Some k -> Some Zed_string.(append path_command (of_utf8 k))
-                | None -> None)
-              keys
+            let candidates, path = find_candidates current_path partial_path in
+            current_path <- path ;
+            prepare_command_of_candidates path_command candidates
         | None -> []
       in
       let commands =
@@ -416,7 +518,9 @@ let read_data_from_stdin retries =
     else
       let* input =
         Option.catch_s (fun () ->
-            let rl = new read_line ~term ~history:[] ~keys:[] in
+            let rl =
+              new read_line ~term ~history:[] ~path:(Root {subkeys = []})
+            in
             let* i = rl#run in
             return (Zed_string.to_utf8 i))
       in
@@ -930,6 +1034,33 @@ module Make (Wasm_utils : Wasm_utils_intf.S) = struct
             return (String.split_no_empty '/' full_key :: acc)
           else return acc)
     else return []
+
+  let build_path tree =
+    let open Lwt_syntax in
+    let durable_path = ["durable"] in
+    let* tree = Wasm_utils.Ctx.Tree.find_tree tree durable_path in
+    let patch subkeys = function
+      | Root r -> r.subkeys <- subkeys
+      | Dir d -> d.subkeys <- subkeys
+    in
+    let rec fold tree parent =
+      let* subkeys = Wasm_utils.Ctx.Tree.list tree [] in
+      List.rev_map_s
+        (fun (key, tree) ->
+          let dir = Dir {key; subkeys = []; parent} in
+          if key == "@" then return dir
+          else
+            let+ subpaths = fold tree dir in
+            patch subpaths dir ;
+            dir)
+        subkeys
+    in
+    let root = Root {subkeys = []} in
+    let+ paths =
+      match tree with Some tree -> fold tree root | None -> return []
+    in
+    patch paths root ;
+    root
 
   (* [show_durable] prints the durable storage from the tree. *)
   let show_durable tree = print_durable ~depth:10 tree

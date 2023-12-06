@@ -133,9 +133,11 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
   let repl tree inboxes level config history =
     let open Lwt_result_syntax in
     let rec loop term tree inboxes level =
-      let*! keys =
-        if config.Config.storage_completions then Cmds.get_keys tree
-        else Lwt.return []
+      let*! path =
+        if config.Config.storage_completions then
+          let*! path = Cmds.build_path tree in
+          Lwt.return path
+        else Lwt.return (Commands.Root {subkeys = []})
       in
       let*! input =
         Option.catch_s (fun () ->
@@ -143,7 +145,7 @@ module Make (Wasm : Wasm_utils_intf.S) = struct
               new Commands.read_line
                 ~term
                 ~history:(LTerm_history.contents history)
-                ~keys
+                ~path
             in
             rl#run)
       in
