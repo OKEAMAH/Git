@@ -44,9 +44,9 @@ mod tests {
         let ast = ast
             .typecheck_instruction(&mut Ctx::default(), None, &[app!(nat)])
             .unwrap();
-        let mut istack = stk![TypedValue::Nat(10)];
+        let mut istack = stk![TypedValue::nat(10)];
         assert!(ast.interpret(&mut Ctx::default(), &mut istack).is_ok());
-        assert!(istack.len() == 1 && istack[0] == TypedValue::Int(55));
+        assert!(istack.len() == 1 && istack[0] == TypedValue::int(55));
     }
 
     #[test]
@@ -65,12 +65,12 @@ mod tests {
         let ast = ast
             .typecheck_instruction(&mut Ctx::default(), None, &[app!(nat)])
             .unwrap();
-        let mut istack = stk![TypedValue::Nat(5)];
+        let mut istack = stk![TypedValue::nat(5)];
         let mut ctx = Ctx::default();
         report_gas(&mut ctx, |ctx| {
             assert!(ast.interpret(ctx, &mut istack).is_ok());
         });
-        assert_eq!(Gas::default().milligas() - ctx.gas.milligas(), 1359);
+        assert_eq!(Gas::default().milligas() - ctx.gas.milligas(), 1287);
     }
 
     #[test]
@@ -79,7 +79,7 @@ mod tests {
         let ast = ast
             .typecheck_instruction(&mut Ctx::default(), None, &[app!(nat)])
             .unwrap();
-        let mut istack = stk![TypedValue::Nat(5)];
+        let mut istack = stk![TypedValue::nat(5)];
         let mut ctx = &mut Ctx::default();
         ctx.gas = Gas::new(1);
         assert_eq!(
@@ -94,9 +94,9 @@ mod tests {
         let ast = ast
             .typecheck_instruction(&mut Ctx::default(), None, &[app!(option[app!(nat)])])
             .unwrap();
-        let mut istack = stk![TypedValue::new_option(Some(TypedValue::Nat(5)))];
+        let mut istack = stk![TypedValue::new_option(Some(TypedValue::nat(5)))];
         assert!(ast.interpret(&mut Ctx::default(), &mut istack).is_ok());
-        assert_eq!(istack, stk![TypedValue::Nat(6)]);
+        assert_eq!(istack, stk![TypedValue::nat(6)]);
     }
 
     #[test]
@@ -230,7 +230,7 @@ mod tests {
         use TypedValue as TV;
         match interp_res.unwrap() {
             (_, TV::Map(m)) => {
-                assert_eq!(m.get(&TV::String("foo".to_owned())).unwrap(), &TV::Int(1))
+                assert_eq!(m.get(&TV::String("foo".to_owned())).unwrap(), &TV::int(1))
             }
             _ => panic!("unexpected contract output"),
         }
@@ -379,9 +379,9 @@ mod multisig_tests {
                     counter: 1
                 }],
                 TV::new_pair(
-                    TV::Nat(ANTI_REPLAY_COUNTER as u128 + 1),
+                    TV::Nat((ANTI_REPLAY_COUNTER as u128 + 1).into()),
                     TV::new_pair(
-                        TV::Nat(threshold as u128),
+                        TV::Nat((threshold as u128).into()),
                         TV::List(MichelsonList::from(vec![TV::Key(
                             PUBLIC_KEY.try_into().unwrap()
                         )]))
@@ -443,9 +443,9 @@ mod multisig_tests {
                     counter: 1
                 }],
                 TV::new_pair(
-                    TV::Nat(ANTI_REPLAY_COUNTER as u128 + 1),
+                    TV::Nat((ANTI_REPLAY_COUNTER as u128 + 1).into()),
                     TV::new_pair(
-                        TV::Nat(threshold as u128),
+                        TV::Nat((threshold as u128).into()),
                         TV::List(MichelsonList::from(vec![TV::Key(
                             PUBLIC_KEY.try_into().unwrap()
                         )]))

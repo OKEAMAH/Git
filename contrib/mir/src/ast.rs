@@ -18,6 +18,7 @@ pub mod or;
 pub mod overloads;
 
 pub use micheline::Micheline;
+use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 pub use tezos_crypto_rs::hash::ChainId;
 use typed_arena::Arena;
@@ -117,8 +118,8 @@ impl Type {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypedValue {
-    Int(i128),
-    Nat(u128),
+    Int(BigInt),
+    Nat(BigUint),
     Mutez(i64),
     Bool(bool),
     String(String),
@@ -222,6 +223,18 @@ impl TypedValue {
             operation: o,
             counter: c,
         }))
+    }
+
+    /// Helper for more easily constructing `Int` variant with literals. Mostly
+    /// usefun in tests.
+    pub fn int(n: impl Into<BigInt>) -> Self {
+        Self::Int(n.into())
+    }
+
+    /// Helper for more easily constructing `Nat` variant with literals. Mostly
+    /// usefun in tests.
+    pub fn nat(n: u32) -> Self {
+        Self::Nat(n.into())
     }
 }
 

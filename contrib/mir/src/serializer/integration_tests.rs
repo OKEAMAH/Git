@@ -62,8 +62,8 @@ mod test_typed_encode {
         // Should be encoded as a tree
         check(
             TypedValue::new_pair(
-                TypedValue::Nat(1),
-                TypedValue::new_pair(TypedValue::Nat(2), TypedValue::Nat(3)),
+                TypedValue::Nat(1u32.into()),
+                TypedValue::new_pair(TypedValue::Nat(2u32.into()), TypedValue::Nat(3u32.into())),
             ),
             "0x0507070001070700020003",
         )
