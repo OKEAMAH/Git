@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
 (* Copyright (c) 2021-2022 Trili Tech, <contact@trili.tech>                  *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -260,3 +261,6 @@ let adaptive_issuance_autostaking_enable c =
 
 let direct_ticket_spending_enable c =
   (Raw_context.constants c).direct_ticket_spending_enable
+
+let sponsored_operations_enable c =
+  (Raw_context.constants c).sponsored_operations_enable

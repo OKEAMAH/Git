@@ -5,6 +5,7 @@
 (* Copyright (c) 2019-2022 Nomadic Labs <contact@nomadic-labs.com>           *)
 (* Copyright (c) 2022 TriliTech <contact@trili.tech>                         *)
 (* Copyright (c) 2022 DaiLambda, Inc. <contact@dailambda,jp>                 *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -926,6 +927,7 @@ module Constants : sig
       zk_rollup : zk_rollup;
       adaptive_issuance : adaptive_issuance;
       direct_ticket_spending_enable : bool;
+      sponsored_operations_enable : bool;
     }
 
     val encoding : t Data_encoding.t
@@ -1047,6 +1049,8 @@ module Constants : sig
   val zk_rollup_max_ticket_payload_size : context -> int
 
   val direct_ticket_spending_enable : context -> bool
+
+  val sponsored_operations_enable: context -> bool
 
   (** All constants: fixed and parametric *)
   type t = private {fixed : fixed; parametric : Parametric.t}
