@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -58,7 +59,7 @@ let encoding : t Data_encoding.t =
          {predecessor_hash; operation_state; operations})
   @@ obj3
        (req "predecessor_hash" Block_hash.encoding)
-       (req "operation_state" operation_conflict_state_encoding)
+       (req "operation_state" @@ dynamic_size operation_conflict_state_encoding)
        (req
           "operations"
           (Operation_hash.Map.encoding
@@ -106,7 +107,19 @@ let add_operation ?(check_signature = true)
   | Error err -> Lwt.return_error (Validation_error err)
   | Ok () -> (
       match check_operation_conflict mempool.operation_state oph operation with
-      | Ok () ->
+      | Ok [] ->
+          let operation_state =
+            add_valid_operation mempool.operation_state oph operation
+          in
+          let operations =
+            Operation_hash.Map.add oph packed_op mempool.operations
+          in
+          let result = Added in
+          Lwt.return_ok ({mempool with operation_state; operations}, result)
+      | Ok lst ->
+          let mempool =
+            List.fold_left (fun acc x -> remove_operation acc x) mempool lst
+          in
           let operation_state =
             add_valid_operation mempool.operation_state oph operation
           in
@@ -169,7 +182,8 @@ let merge ?conflict_handler existing_mempool new_mempool =
     let unopt_assert = function None -> assert false | Some o -> o in
     let handle_conflict new_operation_content conflict =
       match (conflict, conflict_handler) with
-      | Ok (), _ -> Ok `Add_new
+      | Ok [], _ -> Ok `Add_new
+      | Ok lst, _ -> Ok (`Remove_multiple lst)
       | Error conflict, None -> Error (Merge_conflict conflict)
       | ( Error (Operation_conflict {existing; new_operation}),
           Some (f : conflict_handler) ) -> (
@@ -199,6 +213,20 @@ let merge ?conflict_handler existing_mempool new_mempool =
         in
         match conflict with
         | `Do_nothing -> return mempool_acc
+        | `Remove_multiple lst ->
+            let mempool_acc =
+              List.fold_left
+                (fun acc x -> remove_operation acc x)
+                mempool_acc
+                lst
+            in
+            let operation_state =
+              add_valid_operation mempool_acc.operation_state roph right_op
+            in
+            let operations =
+              Operation_hash.Map.add roph packed_right_op mempool_acc.operations
+            in
+            return {mempool_acc with operation_state; operations}
         | `Add_new ->
             let operation_state =
               add_valid_operation mempool_acc.operation_state roph right_op

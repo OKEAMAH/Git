@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -310,7 +311,7 @@ val check_operation_conflict :
   operation_conflict_state ->
   Operation_hash.t ->
   'kind operation ->
-  (unit, operation_conflict) result
+  (Operation_hash.t list, operation_conflict) result
 
 (** Add a valid operation to the {!operation_conflict_state}.
 

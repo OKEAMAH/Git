@@ -295,20 +295,33 @@ type manager_state = {
             map is the responsability of the mempool. (E.g. the plugin used
             by Octez has a [max_prechecked_manager_operations] parameter to
             ensure this.) *)
+  guests_seen : Signature.Public_key_hash.Set.t Signature.Public_key_hash.Map.t;
 }
 
 let manager_state_encoding =
   let open Data_encoding in
   def "manager_state"
   @@ conv
-       (fun {managers_seen} -> managers_seen)
-       (fun managers_seen -> {managers_seen})
-       (obj1
+       (fun {managers_seen; guests_seen} -> (managers_seen, Some guests_seen))
+       (fun (managers_seen, guests_seen) ->
+         match guests_seen with
+         | None ->
+             {managers_seen; guests_seen = Signature.Public_key_hash.Map.empty}
+         | Some x -> {managers_seen; guests_seen = x})
+       (obj2
           (req
              "managers_seen"
-             (Signature.Public_key_hash.Map.encoding Operation_hash.encoding)))
+             (Signature.Public_key_hash.Map.encoding Operation_hash.encoding))
+          (varopt
+             "guests_seen"
+             (Signature.Public_key_hash.Map.encoding
+                Signature.Public_key_hash.Set.encoding)))
 
-let empty_manager_state = {managers_seen = Signature.Public_key_hash.Map.empty}
+let empty_manager_state =
+  {
+    managers_seen = Signature.Public_key_hash.Map.empty;
+    guests_seen = Signature.Public_key_hash.Map.empty;
+  }
 
 (** Information needed to validate consensus operations and/or to
     finalize the block in both modes that handle a preexisting block:
@@ -1801,7 +1814,7 @@ module Anonymous = struct
         oph
         state.manager_state.managers_seen
     in
-    {state with manager_state = {managers_seen}}
+    {state with manager_state = {state.manager_state with managers_seen}}
 
   let remove_drain_delegate state (operation : Kind.drain_delegate Operation.t)
       =
@@ -1813,7 +1826,7 @@ module Anonymous = struct
         delegate
         state.manager_state.managers_seen
     in
-    {state with manager_state = {managers_seen}}
+    {state with manager_state = {state.manager_state with managers_seen}}
 
   let check_seed_nonce_revelation vi
       (operation : Kind.seed_nonce_revelation operation) =
@@ -2109,7 +2122,13 @@ module Manager = struct
             in
             error_unless exists Sponsored_transaction_invalid_transaction
           in
-          let state = {state with seen_batches = batch :: state.seen_batches} in
+          let state =
+            {
+              state with
+              seen_batches = batch :: state.seen_batches;
+              seen_addr = Set.add host_op.guest state.seen_addr;
+            }
+          in
           let batch =
             Hosted.Batch.
               {
@@ -2196,6 +2215,13 @@ module Manager = struct
                 guest_counter = None;
                 txs = [initial_host];
               }
+          in
+          let state =
+            {
+              state with
+              seen_addr =
+                Signature.Public_key_hash.Set.add host.guest state.seen_addr;
+            }
           in
           let* new_state =
             check_hosted_batch_tail_sanity
@@ -2643,17 +2669,16 @@ module Manager = struct
           return gas_used
     in
 
-    let*? () =
+    let* () =
       if check_signature then
-        let open Result_syntax in
-        let* () = Operation.check_signature source_pk vi.chain_id operation in
+        let*? () = Operation.check_signature source_pk vi.chain_id operation in
         match batch_state.hosted with
-        | No_hosted_operations -> Ok ()
+        | No_hosted_operations -> return_unit
         | Hosted {seen_batches; _} ->
-            List.iter_e
-              (fun Hosted.Batch.{guest_signature; pk = key; txs; _} ->
+            List.iter_es
+              (fun Hosted.Batch.{guest_signature; pk = key; txs; guest_pkh; _} ->
                 let txs = List.rev txs in
-                let* (Contents_list txs) = Operation.of_list txs in
+                let*? (Contents_list txs) = Operation.of_list txs in
                 let operation : _ operation =
                   {
                     protocol_data =
@@ -2664,31 +2689,59 @@ module Manager = struct
                 let* key =
                   match key with
                   | Some key -> return key
-                  | None -> tzfail Sponsored_transaction_invalid_transaction
+                  | None -> Contract.get_manager_key vi.ctxt guest_pkh
                 in
-                Operation.check_signature key vi.chain_id operation)
+                Lwt.return
+                @@ Operation.check_signature key vi.chain_id operation)
               seen_batches
-      else ok_unit
+      else return_unit
     in
     return gas_used
 
+  let rec scan_all_sources :
+      type kind.
+      Signature.Public_key_hash.Set.t ->
+      kind Kind.manager contents_list ->
+      Signature.Public_key_hash.Set.t =
+   fun acc contents_list ->
+    let module Set = Signature.Public_key_hash.Set in
+    match contents_list with
+    | Single (Manager_operation {source; _}) -> Set.add source acc
+    | Cons (Manager_operation {source; _}, rest) ->
+        scan_all_sources (Set.add source acc) rest
+
   let check_manager_operation_conflict (type kind) vs oph
       (operation : kind Kind.manager operation) =
+    let module Map = Signature.Public_key_hash.Map in
+    let module Set = Signature.Public_key_hash.Set in
     let source =
       match operation.protocol_data.contents with
       | Single (Manager_operation {source; _})
       | Cons (Manager_operation {source; _}, _) ->
           source
     in
+    let all_sources =
+      scan_all_sources Set.empty operation.protocol_data.contents
+      |> Set.remove source
+    in
     (* One-operation-per-manager-per-block restriction (1M) *)
     match
-      Signature.Public_key_hash.Map.find_opt
-        source
-        vs.manager_state.managers_seen
+      Option.either
+        (Map.find_opt source vs.manager_state.managers_seen)
+        (let open Option_syntax in
+        let* seen = Map.find_opt source vs.manager_state.guests_seen in
+        let* seen = Set.choose_opt seen in
+        Map.find_opt seen vs.manager_state.managers_seen)
     with
-    | None -> ok_unit
     | Some existing ->
         Error (Operation_conflict {existing; new_operation = oph})
+    | None ->
+        let for_removal source acc =
+          match Map.find_opt source vs.manager_state.managers_seen with
+          | None -> acc
+          | Some x -> x :: acc
+        in
+        ok @@ Set.fold for_removal all_sources []
 
   let wrap_check_manager_operation_conflict (type kind)
       (operation : kind Kind.manager operation) =
@@ -2699,16 +2752,22 @@ module Manager = struct
           source
     in
     function
-    | Ok () -> ok_unit
+    | Ok to_remove -> Ok to_remove
     | Error conflict -> result_error (Manager_restriction {source; conflict})
 
   let add_manager_operation (type kind) vs oph
       (operation : kind Kind.manager operation) =
+    let module Map = Signature.Public_key_hash.Map in
+    let module Set = Signature.Public_key_hash.Set in
     let source =
       match operation.protocol_data.contents with
       | Single (Manager_operation {source; _})
       | Cons (Manager_operation {source; _}, _) ->
           source
+    in
+    let all_sources =
+      scan_all_sources Set.empty operation.protocol_data.contents
+      |> Set.remove source
     in
     let managers_seen =
       Signature.Public_key_hash.Map.add
@@ -2716,7 +2775,20 @@ module Manager = struct
         oph
         vs.manager_state.managers_seen
     in
-    {vs with manager_state = {managers_seen}}
+    let guests_seen =
+      Signature.Public_key_hash.Set.(
+        fold
+          (fun guest_source acc ->
+            Signature.Public_key_hash.Map.update
+              guest_source
+              (function
+                | None -> Some (singleton source)
+                | Some hosts -> Some (add source hosts))
+              acc)
+          all_sources)
+        vs.manager_state.guests_seen
+    in
+    {vs with manager_state = {managers_seen; guests_seen}}
 
   (* Return the new [block_state] with the updated remaining gas used:
      - In non-mempool modes, this value is
@@ -2739,16 +2811,34 @@ module Manager = struct
 
   let remove_manager_operation (type kind) vs
       (operation : kind Kind.manager operation) =
+    let module Map = Signature.Public_key_hash.Map in
+    let module Set = Signature.Public_key_hash.Set in
     let source =
       match operation.protocol_data.contents with
       | Single (Manager_operation {source; _})
       | Cons (Manager_operation {source; _}, _) ->
           source
     in
-    let managers_seen =
-      Signature.Public_key_hash.Map.remove source vs.manager_state.managers_seen
+    let managers_seen = Map.remove source vs.manager_state.managers_seen in
+    let all_sources =
+      scan_all_sources Set.empty operation.protocol_data.contents
+      |> Set.remove source
     in
-    {vs with manager_state = {managers_seen}}
+    let guests_seen =
+      Set.fold
+        (fun x acc ->
+          Map.update
+            x
+            (function
+              | Some set ->
+                  let set = Set.remove source set in
+                  if Set.is_empty set then None else Some set
+              | None -> assert false (* impossible case *))
+            acc)
+        all_sources
+        vs.manager_state.guests_seen
+    in
+    {vs with manager_state = {managers_seen; guests_seen}}
 
   let validate_manager_operation ~check_signature info operation_state
       block_state oph operation =
@@ -2760,7 +2850,7 @@ module Manager = struct
         operation
         block_state.remaining_block_gas
     in
-    let*? () =
+    let*? _ =
       check_manager_operation_conflict operation_state oph operation
       |> wrap_check_manager_operation_conflict operation
     in
@@ -2981,52 +3071,64 @@ let check_operation_conflict (type kind) operation_conflict_state oph
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Attestation _) ->
       Consensus.check_attestation_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Dal_attestation _) ->
       Consensus.check_dal_attestation_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Proposals _) ->
       Voting.check_proposals_conflict operation_conflict_state oph operation
+      |> Result.map (fun () -> [])
   | Single (Ballot _) ->
       Voting.check_ballot_conflict operation_conflict_state oph operation
+      |> Result.map (fun () -> [])
   | Single (Activate_account _) ->
       Anonymous.check_activate_account_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Double_preattestation_evidence _) ->
       Anonymous.check_double_preattestation_evidence_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Double_attestation_evidence _) ->
       Anonymous.check_double_attestation_evidence_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Double_baking_evidence _) ->
       Anonymous.check_double_baking_evidence_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Drain_delegate _) ->
       Anonymous.check_drain_delegate_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Seed_nonce_revelation _) ->
       Anonymous.check_seed_nonce_revelation_conflict
         operation_conflict_state
         oph
         operation
+      |> Result.map (fun () -> [])
   | Single (Vdf_revelation _) ->
       Anonymous.check_vdf_revelation_conflict operation_conflict_state oph
+      |> Result.map (fun () -> [])
   | Single (Manager_operation _) ->
       Manager.check_manager_operation_conflict
         operation_conflict_state
@@ -3037,7 +3139,7 @@ let check_operation_conflict (type kind) operation_conflict_state oph
         operation_conflict_state
         oph
         operation
-  | Single (Failing_noop _) -> (* Nothing to do *) ok_unit
+  | Single (Failing_noop _) -> (* Nothing to do *) ok []
 
 let add_valid_operation operation_conflict_state oph (type kind)
     (operation : kind operation) =
