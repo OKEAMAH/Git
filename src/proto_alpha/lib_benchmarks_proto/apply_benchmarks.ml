@@ -136,7 +136,10 @@ module Take_fees_benchmark = struct
          let (Manager_list annotated_list) = manager_of_list transaction_list in
          let* batch = Lwt.return (manager_list_from_annotated annotated_list) in
          let closure () =
-           Protocol.Apply.Internal_for_benchmark.take_fees ctxt batch
+           Protocol.Apply.Internal_for_benchmark.take_fees
+             ~fee_payer:pkh
+             ctxt
+             batch
          in
          return closure)
     in
