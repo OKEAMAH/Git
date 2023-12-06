@@ -1902,6 +1902,49 @@ end
 module Manager = struct
   open Validate_errors.Manager
 
+  module Hosted = struct
+    module Batch = struct
+      type t = {
+        (* guest_source *)
+        guest_pkh : public_key_hash;
+        (* guest's counter to track counter increments *)
+        guest_counter : Manager_counter.t option;
+        (* manager operations after latest Host {..} *)
+        txs : packed_contents list;
+        (* guests pk in case of Reveal operation *)
+        pk : public_key option;
+        (* guests signature stored here to validate signature agains hosted operations in this batch *)
+        guest_signature : signature;
+      }
+    end
+
+    type hosted_state = {
+      (* pkhs of guests we've already seen, we keep to disallow having multiple hosted operation batches by the same guest in single sponsor batch *)
+      seen_addr : Signature.Public_key_hash.Set.t;
+      (* set of guests who did a reveal operation *)
+      reveals_seen : Signature.Public_key_hash.Set.t;
+      (* list of already validated sponsored batches, used later for signature verification *)
+      seen_batches : Batch.t list;
+    }
+
+    type t = No_hosted_operations | Hosted of hosted_state
+
+    let is_hosted ~source t =
+      match t with
+      | {seen_addr; _} when Signature.Public_key_hash.Set.mem source seen_addr
+        ->
+          true
+      | _ -> false
+
+    let is_not_revealed_yet ~source t =
+      let open Result_syntax in
+      match t with
+      | {reveals_seen; _}
+        when Signature.Public_key_hash.Set.mem source reveals_seen ->
+          tzfail Incorrect_reveal_position
+      | _ -> return ()
+  end
+
   (** State that simulates changes from individual operations that have
       an effect on future operations inside the same batch. *)
   type batch_state = {
@@ -1917,6 +1960,7 @@ module Manager = struct
             empty account cleanup mechanism to avoid the need for this
             field. *)
     total_gas_used : Gas.Arith.fp;
+    hosted : Hosted.t;
   }
 
   let check_source_and_counter ~expected_source ~source ~previous_counter
@@ -1930,6 +1974,290 @@ module Manager = struct
     error_unless
       Manager_counter.(succ previous_counter = counter)
       Inconsistent_counters
+
+  let rec check_hosted_batch_tail_sanity :
+      type kind.
+      info ->
+      host:public_key_hash * Manager_counter.t ->
+      state:Hosted.hosted_state ->
+      batch:Hosted.Batch.t ->
+      kind Kind.manager contents_list ->
+      Hosted.hosted_state tzresult Lwt.t =
+    let open Lwt_result_syntax in
+    fun vi ~host ~state ~batch op ->
+      let module Set = Signature.Public_key_hash.Set in
+      let add_revealed (state : Hosted.hosted_state) source =
+        {state with reveals_seen = Set.add source state.reveals_seen}
+      in
+      let validate_guest (type kind) ~host ~state
+          ~batch:(Hosted.Batch.{guest_pkh; guest_counter; txs; _} as batch)
+          (Manager_operation
+             {source; counter; operation : kind manager_operation; _} as op) =
+        let*? batch =
+          let open Result_syntax in
+          match operation with
+          | Reveal key ->
+              let* () = Hosted.is_not_revealed_yet ~source state in
+              return {batch with pk = Some key}
+          | Transaction {amount; _} ->
+              if Tez.( > ) amount Tez.zero then
+                tzfail Sponsored_transaction_invalid_transaction
+              else return batch
+          | _ -> return batch
+        in
+        let*? () =
+          Option.iter_e
+            (fun guest_counter ->
+              check_source_and_counter
+                ~expected_source:guest_pkh
+                ~source
+                ~previous_counter:guest_counter
+                ~counter)
+            guest_counter
+        in
+        let batch =
+          {batch with guest_counter = Some counter; txs = Contents op :: txs}
+        in
+        let state = add_revealed state source in
+        return (host, state, batch)
+      in
+      let validate_host (type kind) ~host ~state
+          ~batch:(Hosted.Batch.{txs; _} as batch)
+          (Manager_operation
+             {source; counter; operation : kind manager_operation; _} as op) =
+        let*? () =
+          let open Result_syntax in
+          match operation with
+          | Reveal _ -> tzfail Incorrect_reveal_position
+          | _ -> return ()
+        in
+        let host_source, host_counter = host in
+        let*? () =
+          check_source_and_counter
+            ~expected_source:host_source
+            ~source
+            ~previous_counter:host_counter
+            ~counter
+        in
+        let batch = {batch with txs = Contents op :: txs} in
+        return ((host_source, counter), state, batch)
+      in
+      let validate ~host:(host_source, _) ~state ~batch
+          (Manager_operation {source; _} as op) =
+        if Signature.Public_key_hash.equal source host_source then
+          validate_host ~host ~state ~batch op
+        else
+          let*? () =
+            (* hosted batch can contain operations only by either the host or the guest *)
+            error_unless
+              (Signature.Public_key_hash.equal source batch.guest_pkh)
+              Sponsored_transaction_invalid_transaction
+          in
+          validate_guest ~host ~state ~batch op
+      in
+      match op with
+      | Single op ->
+          let* _, state, batch = validate ~host ~state ~batch op in
+          let state = {state with seen_batches = batch :: state.seen_batches} in
+          return state
+      | Cons
+          ( Manager_operation
+              ({source; counter; operation = Host host_op; _} as init),
+            rest ) ->
+          let host_pkh = fst host in
+          let*? () =
+            (* check that source of Host operation is the same as the original sponsor *)
+            error_unless
+              (Signature.Public_key_hash.equal source host_pkh)
+              Inconsistent_sources
+          in
+          let*? () =
+            (* check that sponsor isn't trying to host himself  *)
+            error_when
+              (Signature.Public_key_hash.equal source host_op.guest)
+              Sponsored_transaction_invalid_transaction
+          in
+          let*? () =
+            (* check that guest hasn't been hosted already *)
+            error_when
+              (Hosted.is_hosted ~source:host_op.guest state)
+              Sponsored_transaction_incorrect_host_position
+          in
+          let*? () =
+            let expected_source, previous_counter = host in
+            check_source_and_counter
+              ~expected_source
+              ~source
+              ~previous_counter
+              ~counter
+          in
+          let zeroed_out_host =
+            Contents
+              (Manager_operation
+                 {
+                   init with
+                   operation =
+                     Host {host_op with guest_signature = Signature.zero};
+                 })
+          in
+          let* () =
+            Contract.must_be_allocated vi.ctxt (Contract.Implicit host_op.guest)
+          in
+          let*? () =
+            (* check that hosted batch contains at least one operation by the guest *)
+            let open Result_syntax in
+            let* exists =
+              List.exists_e
+                (function
+                  | Contents (Manager_operation {source; _}) ->
+                      Ok
+                        (Signature.Public_key_hash.equal batch.guest_pkh source)
+                  | _ -> error Sponsored_transaction_invalid_transaction)
+                batch.txs
+            in
+            error_unless exists Sponsored_transaction_invalid_transaction
+          in
+          let state =
+            {
+              state with
+              seen_batches = batch :: state.seen_batches;
+              seen_addr = Set.add host_op.guest state.seen_addr;
+            }
+          in
+          let batch =
+            Hosted.Batch.
+              {
+                guest_pkh = host_op.guest;
+                pk = None;
+                guest_signature = host_op.guest_signature;
+                guest_counter = None;
+                txs = [zeroed_out_host];
+              }
+          in
+          check_hosted_batch_tail_sanity
+            vi
+            ~host:(source, counter)
+            ~batch
+            ~state
+            rest
+      | Cons ((Manager_operation _ as op), rest) ->
+          let* host, state, batch = validate ~host ~state ~batch op in
+          check_hosted_batch_tail_sanity vi ~host ~state ~batch rest
+
+  (** Check a few simple properties of sponsored transactions batch, and return the
+      initial {!Hosted.hosted_state} and the sponsors public key along with his pkh and counter.
+
+      Invariants checked:
+
+      - All Host {..} operations in a batch have the same source
+
+      - The Sponsor's and guest's contracts are allocated.
+
+      - The counters in a batch are successive for each of the guests and Sponsor, and the first of them
+        is the source's next expected counter.
+
+      - A batch contains at most one Reveal operation per guest_source.
+
+      - All transfers of guest must have [amount = zero]
+      
+      - There must be at least one operation by guest_source after each Host {..} operation for that guest_source
+
+      - The sponsor can't host themsevles
+
+      - The sponsors source's public key has been revealed (either before the
+        considered batch, or during its first operation).
+
+      - Each guest can only be hosted once per whole batch
+
+       *)
+  and check_hosted_batch :
+      type kind.
+      info ->
+      ?host:public_key_hash * Manager_counter.t ->
+      state:Hosted.hosted_state ->
+      kind Kind.manager contents_list ->
+      (public_key_hash
+      * public_key option
+      * Manager_counter.t
+      * Hosted.hosted_state)
+      tzresult
+      Lwt.t =
+    let open Lwt_result_syntax in
+    fun vi ?host ~state contents_list ->
+      match contents_list with
+      | Single (Manager_operation _) ->
+          tzfail Sponsored_transaction_invalid_transaction
+      | Cons
+          (Manager_operation {source; operation = Reveal key; counter; _}, rest)
+        when Option.is_none host ->
+          let* _, _, _, new_state =
+            check_hosted_batch vi ~host:(source, counter) ~state rest
+          in
+          return (source, Some key, counter, new_state)
+      | Cons (Manager_operation {operation = Reveal _; _}, _) ->
+          tzfail Incorrect_reveal_position
+      | Cons
+          ( Manager_operation
+              ({source; counter; operation = Host host_op; _} as init),
+            rest ) ->
+          let*? () =
+            error_when
+              (Signature.Public_key_hash.equal source host_op.guest)
+              Sponsored_transaction_invalid_transaction
+          in
+          let zeroed_out_host =
+            Contents
+              (Manager_operation
+                 {
+                   init with
+                   operation =
+                     Host {host_op with guest_signature = Signature.zero};
+                 })
+          in
+          let* () =
+            Contract.must_be_allocated vi.ctxt (Contract.Implicit host_op.guest)
+          in
+          let batch =
+            Hosted.Batch.
+              {
+                guest_pkh = host_op.guest;
+                pk = None;
+                guest_signature = host_op.guest_signature;
+                guest_counter = None;
+                txs = [zeroed_out_host];
+              }
+          in
+          let state =
+            {
+              state with
+              seen_addr =
+                Signature.Public_key_hash.Set.add host_op.guest state.seen_addr;
+            }
+          in
+          let* new_state =
+            check_hosted_batch_tail_sanity
+              vi
+              ~host:(source, counter)
+              ~batch
+              ~state
+              rest
+          in
+          return (source, None, counter, new_state)
+      | Cons (Manager_operation {source; counter; _}, rest) ->
+          let*? () =
+            match host with
+            | Some (expected_source, previous_counter) ->
+                check_source_and_counter
+                  ~expected_source
+                  ~source
+                  ~previous_counter
+                  ~counter
+            | None -> Ok ()
+          in
+          let* _, _, _, new_state =
+            check_hosted_batch vi ~host:(source, counter) ~state rest
+          in
+          return (source, None, counter, new_state)
 
   let rec check_batch_tail_sanity :
       type kind.
@@ -1980,6 +2308,18 @@ module Manager = struct
           let* () = check_batch_tail_sanity source counter rest in
           return (source, None, counter)
 
+  let rec check_for_hosted_ops :
+      type kind. kind Kind.manager contents_list -> [`Present | `None] tzresult
+      =
+   fun contents_list ->
+    let open Result_syntax in
+    match contents_list with
+    | Single (Manager_operation {operation = Host _; _}) ->
+        tzfail Sponsored_transaction_invalid_transaction
+    | Single (Manager_operation _) -> return `None
+    | Cons (Manager_operation {operation = Host _; _}, _) -> return `Present
+    | Cons (Manager_operation _, rest) -> check_for_hosted_ops rest
+
   (** Check a few simple properties of the batch, and return the
       initial {!batch_state} and the contract public key.
 
@@ -2005,35 +2345,76 @@ module Manager = struct
   let check_sanity_and_find_public_key vi
       (contents_list : _ Kind.manager contents_list) =
     let open Lwt_result_syntax in
-    let*? source, revealed_key, first_counter = check_batch contents_list in
-    let* balance = Contract.check_allocated_and_get_balance vi.ctxt source in
-    let* () = Contract.check_counter_increment vi.ctxt source first_counter in
-    let* pk =
-      (* Note that it is important to always retrieve the public
-         key. This includes the case where the key ends up not being
-         used because the signature check is skipped in
-         {!validate_manager_operation} called with
-         [~check_signature:false]. Indeed, the mempool may use
-         this argument when it has already checked the signature of
-         the operation in the past; but if there has been a branch
-         reorganization since then, the key might not be revealed in
-         the new branch anymore, in which case
-         {!Contract.get_manager_key} will return an error. *)
-      match revealed_key with
-      | Some pk -> return pk
-      | None -> Contract.get_manager_key vi.ctxt source
-    in
-    let initial_batch_state =
-      {
-        balance;
-        (* Initial contract allocation is ensured by the success of
-           the call to {!Contract.check_allocated_and_get_balance}
-           above. *)
-        is_allocated = true;
-        total_gas_used = Gas.Arith.zero;
-      }
-    in
-    return (initial_batch_state, pk)
+    let*? contains_hosted_ops = check_for_hosted_ops contents_list in
+    match contains_hosted_ops with
+    | `None ->
+        let*? source, revealed_key, first_counter = check_batch contents_list in
+        let* balance =
+          Contract.check_allocated_and_get_balance vi.ctxt source
+        in
+        let* () =
+          Contract.check_counter_increment vi.ctxt source first_counter
+        in
+        let* pk =
+          (* Note that it is important to always retrieve the public
+             key. This includes the case where the key ends up not being
+             used because the signature check is skipped in
+             {!validate_manager_operation} called with
+             [~check_signature:false]. Indeed, the mempool may use
+             this argument when it has already checked the signature of
+             the operation in the past; but if there has been a branch
+             reorganization since then, the key might not be revealed in
+             the new branch anymore, in which case
+             {!Contract.get_manager_key} will return an error. *)
+          match revealed_key with
+          | Some pk -> return pk
+          | None -> Contract.get_manager_key vi.ctxt source
+        in
+        let initial_batch_state =
+          {
+            balance;
+            (* Initial contract allocation is ensured by the success of
+               the call to {!Contract.check_allocated_and_get_balance}
+               above. *)
+            is_allocated = true;
+            total_gas_used = Gas.Arith.zero;
+            hosted = Hosted.No_hosted_operations;
+          }
+        in
+        return (initial_batch_state, pk)
+    | `Present ->
+        let* source, revealed_key, first_counter, state =
+          check_hosted_batch
+            vi
+            ~state:
+              Hosted.
+                {
+                  seen_addr = Signature.Public_key_hash.Set.empty;
+                  reveals_seen = Signature.Public_key_hash.Set.empty;
+                  seen_batches = [];
+                }
+            contents_list
+        in
+        let* balance =
+          Contract.check_allocated_and_get_balance vi.ctxt source
+        in
+        let* () =
+          Contract.check_counter_increment vi.ctxt source first_counter
+        in
+        let* pk =
+          match revealed_key with
+          | Some pk -> return pk
+          | None -> Contract.get_manager_key vi.ctxt source
+        in
+        let initial_batch_state =
+          {
+            balance;
+            is_allocated = true;
+            total_gas_used = Gas.Arith.zero;
+            hosted = Hosted state;
+          }
+        in
+        return (initial_batch_state, pk)
 
   let check_gas_limit info ~gas_limit =
     Gas.check_gas_limit
@@ -2150,7 +2531,7 @@ module Manager = struct
 
   let check_contents (type kind) vi batch_state
       (contents : kind Kind.manager contents) ~consume_gas_for_sig_check
-      remaining_block_gas =
+      ~fee_payer remaining_block_gas =
     let open Lwt_result_syntax in
     let (Manager_operation
           {source; fee; counter = _; operation = _; gas_limit; storage_limit}) =
@@ -2202,9 +2583,9 @@ module Manager = struct
         vi.ctxt
         ~balance:batch_state.balance
         ~amount:fee
-        source
+        fee_payer
     in
-    return {total_gas_used; balance; is_allocated}
+    return {total_gas_used; balance; is_allocated; hosted = batch_state.hosted}
 
   (** This would be [fold_left_es (check_contents vi) batch_state
      contents_list] if [contents_list] were an ordinary [list].  The
@@ -2220,9 +2601,15 @@ module Manager = struct
       batch_state ->
       kind Kind.manager contents_list ->
       consume_gas_for_sig_check:Gas.cost option ->
+      fee_payer:public_key_hash ->
       Gas.Arith.fp ->
       Gas.Arith.fp tzresult Lwt.t =
-   fun vi batch_state contents_list ~consume_gas_for_sig_check remaining_gas ->
+   fun vi
+       batch_state
+       contents_list
+       ~consume_gas_for_sig_check
+       ~fee_payer
+       remaining_gas ->
     let open Lwt_result_syntax in
     match contents_list with
     | Single contents ->
@@ -2232,6 +2619,7 @@ module Manager = struct
             batch_state
             contents
             ~consume_gas_for_sig_check
+            ~fee_payer
             remaining_gas
         in
         return batch_state.total_gas_used
@@ -2242,6 +2630,7 @@ module Manager = struct
             batch_state
             contents
             ~consume_gas_for_sig_check
+            ~fee_payer
             remaining_gas
         in
         check_contents_list
@@ -2249,10 +2638,11 @@ module Manager = struct
           batch_state
           tail
           ~consume_gas_for_sig_check:None
+          ~fee_payer
           remaining_gas
 
-  let check_manager_operation vi ~check_signature
-      (operation : _ Kind.manager operation) remaining_block_gas =
+  let check_manager_operation (type kind) vi ~check_signature
+      (operation : kind Kind.manager operation) remaining_block_gas =
     let open Lwt_result_syntax in
     let contents_list = operation.protocol_data.contents in
     let* batch_state, source_pk =
@@ -2263,18 +2653,66 @@ module Manager = struct
         (Michelson_v1_gas.Cost_of.Interpreter.algo_of_public_key source_pk)
         operation
     in
+    let fee_payer =
+      match contents_list with
+      | Single (Manager_operation {source; _}) -> source
+      | Cons (Manager_operation {source; _}, _) -> source
+    in
     let* gas_used =
       check_contents_list
         vi
         batch_state
         contents_list
         ~consume_gas_for_sig_check:(Some signature_checking_gas_cost)
+        ~fee_payer
         remaining_block_gas
     in
-    let*? () =
+    let* gas_used =
+      match batch_state.hosted with
+      | No_hosted_operations -> return gas_used
+      | Hosted hosted_state ->
+          let gas =
+            List.fold_left
+              (fun acc _ -> Gas.(acc +@ signature_checking_gas_cost))
+              Gas.free
+              hosted_state.seen_batches
+          in
+          let total_gas_used = Gas.(gas +@ cost_of_gas gas_used) in
+          let*? () =
+            may_trace_gas_limit_too_high vi
+            @@ error_unless
+                 (Gas.consume_from remaining_block_gas total_gas_used
+                 |> Result.is_ok)
+                 Gas.Block_quota_exceeded
+          in
+          return gas_used
+    in
+    let* () =
       if check_signature then
-        Operation.check_signature source_pk vi.chain_id operation
-      else ok_unit
+        let*? () = Operation.check_signature source_pk vi.chain_id operation in
+        match batch_state.hosted with
+        | No_hosted_operations -> return_unit
+        | Hosted {seen_batches; _} ->
+            List.iter_es
+              (fun Hosted.Batch.{guest_signature; pk = key; txs; guest_pkh; _} ->
+                let txs = List.rev txs in
+                let*? (Contents_list txs) = Operation.of_list txs in
+                let operation : _ operation =
+                  {
+                    protocol_data =
+                      {signature = Some guest_signature; contents = txs};
+                    shell = operation.shell;
+                  }
+                in
+                let* key =
+                  match key with
+                  | Some key -> return key
+                  | None -> Contract.get_manager_key vi.ctxt guest_pkh
+                in
+                Lwt_syntax.return
+                @@ Operation.check_signature key vi.chain_id operation)
+              seen_batches
+      else return_unit
     in
     return gas_used
 

@@ -195,6 +195,8 @@ module Manager : sig
     | Sc_rollup_riscv_pvm_disabled
     | Zk_rollup_feature_disabled
     | Sponsored_transaction_feature_disabled
+    | Sponsored_transaction_incorrect_host_position
+    | Sponsored_transaction_invalid_transaction
 end
 
 type error += Failing_noop_error
