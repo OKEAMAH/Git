@@ -1118,6 +1118,8 @@ module Manager = struct
     | Sc_rollup_riscv_pvm_disabled
     | Zk_rollup_feature_disabled
     | Sponsored_transaction_feature_disabled
+    | Sponsored_transaction_incorrect_host_position
+    | Sponsored_transaction_invalid_transaction
 
   let () =
     register_error_kind
@@ -1260,7 +1262,31 @@ module Manager = struct
       ~pp:(fun ppf () -> Format.fprintf ppf "%s" sptx_disabled)
       Data_encoding.unit
       (function Sponsored_transaction_feature_disabled -> Some () | _ -> None)
-      (fun () -> Sponsored_transaction_feature_disabled)
+      (fun () -> Sponsored_transaction_feature_disabled) ;
+    let sptx_incorrect_host_position =
+      "Sponsored transaction: incorrect host position"
+    in
+    register_error_kind
+      `Permanent
+      ~id:"validate.operation.sponsored_transaction_incorrect_host_position"
+      ~title:"Sponsored transaction incorrect host position"
+      ~description:sptx_incorrect_host_position
+      ~pp:(fun ppf () -> Format.fprintf ppf "%s" sptx_incorrect_host_position)
+      Data_encoding.unit
+      (function
+        | Sponsored_transaction_incorrect_host_position -> Some () | _ -> None)
+      (fun () -> Sponsored_transaction_incorrect_host_position) ;
+    let sptx_invalid = "Sponsored transaction: invalid transaction" in
+    register_error_kind
+      `Permanent
+      ~id:"validate.operation.sponsored_transaction_invalid_transaction"
+      ~title:"ZK rollups are disabled"
+      ~description:sptx_invalid
+      ~pp:(fun ppf () -> Format.fprintf ppf "%s" sptx_invalid)
+      Data_encoding.unit
+      (function
+        | Sponsored_transaction_invalid_transaction -> Some () | _ -> None)
+      (fun () -> Sponsored_transaction_invalid_transaction)
 end
 
 type error += Failing_noop_error
