@@ -161,6 +161,23 @@ trigger:
     # corresponds to the value in scripts/version.sh.
     - ./scripts/ci/check_alpine_version.sh
 
+build-kaniko:
+  stage: trigger
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_NAMESPACE == "tezos" && $CI_MERGE_REQUEST_ASSIGNEES !~ /nomadic-margebot/'
+      when: manual
+    - when: always
+  tags:
+     - "gcp"
+  script:
+    - echo "Container Build Job"
+    - mkdir -p /kaniko/.docker/
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD | base64)\"}}}" > /kaniko/.docker/config.json
+    - scripts/create_docker_image.sh
+
 include:
   # /!\ These rules should be be mutually exclusive and kept in sync
   # with the corresponding 'if'-rules on the workflow rules above.

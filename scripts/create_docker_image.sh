@@ -33,10 +33,9 @@ done
 
 echo "### Building tezos..."
 
-docker build \
-  --network host \
-  -t "$build_image_name:$image_version" \
-  -f build.Dockerfile \
+/kaniko/executor \
+  --dockerfile build.Dockerfile \
+  --context "$src_dir" \
   --target "$docker_target" \
   --cache-from "$build_image_name:$image_version" \
   --build-arg "BASE_IMAGE=$build_deps_image_name" \
@@ -47,9 +46,15 @@ docker build \
   --build-arg "GIT_VERSION=${commit_tag}" \
   --build-arg "RUST_TOOLCHAIN_IMAGE=$rust_toolchain_image" \
   --build-arg "RUST_TOOLCHAIN_IMAGE_VERSION=$rust_toolchain_image_version" \
-  "$src_dir"
+  --destination "$build_image_name:$image_version" \
+  --compressed-caching=false \
+  --single-snapshot \
+  --use-new-run \
+  --no-push
 
 echo "### Successfully built docker image: $build_image_name:$image_version"
+
+exit 1
 
 docker build \
   --network host \
