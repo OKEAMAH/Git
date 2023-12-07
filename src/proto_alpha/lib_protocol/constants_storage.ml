@@ -56,6 +56,10 @@ let consensus_key_activation_delay c =
   let constants = Raw_context.constants c in
   constants.preserved_cycles
 
+let slashable_deposits_period c =
+  let constants = Raw_context.constants c in
+  constants.preserved_cycles
+
 let blocks_per_cycle c =
   let constants = Raw_context.constants c in
   constants.blocks_per_cycle
