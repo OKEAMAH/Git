@@ -75,6 +75,8 @@ variables:
   # unzipping implementation (https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27496),
   # this setting cuts cache creation time.
   FF_USE_FASTZIP: "true"
+  # XXX: this is the default. This should be fixed at the runner level
+  FF_KUBERNETES_HONOR_ENTRYPOINT: "false"
 
   # If `RUNTEZTALIAS` is true, then Tezt tests are included in the @runtest
   # alias. We set it to false to deactivate these tests in the unit
