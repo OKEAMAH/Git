@@ -93,6 +93,9 @@ pub enum Type {
     KeyHash,
     Lambda(Rc<(Type, Type)>),
     Ticket(Rc<Type>),
+    Bls12381Fr,
+    Bls12381G1,
+    Bls12381G2,
 }
 
 impl Type {
@@ -102,7 +105,7 @@ impl Type {
         use Type::*;
         match self {
             Nat | Int | Bool | Mutez | String | Unit | Never | Operation | Address | ChainId
-            | Bytes | Key | Signature | KeyHash => 1,
+            | Bytes | Key | Signature | KeyHash | Bls12381Fr | Bls12381G1 | Bls12381G2 => 1,
             Pair(p) | Or(p) | Map(p) | Lambda(p) => 1 + p.0.size_for_gas() + p.1.size_for_gas(),
             Option(x) | List(x) | Set(x) | Contract(x) | Ticket(x) => 1 + x.size_for_gas(),
         }
