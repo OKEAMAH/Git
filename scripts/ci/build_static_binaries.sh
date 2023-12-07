@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+eval "$(opam env)"
+
 if [ -z "$EXECUTABLE_FILES" ]; then
     echo "Error: environment variable EXECUTABLE_FILES is empty."
     echo "Set it to e.g. 'script-inputs/released-executables'"
