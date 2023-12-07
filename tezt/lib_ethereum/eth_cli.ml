@@ -27,11 +27,11 @@
 let path = "eth"
 
 let spawn_command_and_read_string ?expect_failure command =
-  let process = Process.spawn path command in
+  let process = Process.spawn "npm" (["exec"; "--"; path] @ command) in
   Process.check_and_read_stdout ?expect_failure process
 
 let spawn_command ?expect_failure command =
-  let process = Process.spawn path command in
+  let process = Process.spawn "npm" (["exec"; "--"; path] @ command) in
   let* output = Process.check ?expect_failure process in
   return output
 
