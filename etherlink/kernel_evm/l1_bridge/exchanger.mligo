@@ -39,7 +39,8 @@ let burn address (ticket: tez_ticket) : return =
 
 (* Main access point that dispatches to the entrypoints according to
    the smart contract parameter. *)
-let main (action, _store : parameter * storage) : return =
+[@entry]
+let main (action : parameter) (_store : storage) : return =
   match action with
   | Mint callback -> mint callback
   | Burn (callback, tt) -> burn callback tt

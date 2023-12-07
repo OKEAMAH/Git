@@ -5,8 +5,8 @@
 #include "./evm_type.mligo"
 
 type request_deposit = {
-  l2_address: bytes; (* L2 address. *)
   evm_address: address; (* EVM rollup address. *)
+  l2_address: bytes; (* L2 address. *)
 }
 
 type storage = {
@@ -35,7 +35,7 @@ let deposit request ({exchanger; request_deposit}: storage) : return =
     let callback_storage = {exchanger; request_deposit = Some request} in
     [mint], callback_storage
 
-let callback (ticket: tez_ticket) {exchanger; request_deposit} : return =
+let callback (ticket: tez_ticket) ({exchanger; request_deposit}: storage) : return =
   let request_deposit =
     match request_deposit with
     | None -> failwith "Callback on non-locked deposit"
@@ -54,7 +54,8 @@ let callback (ticket: tez_ticket) {exchanger; request_deposit} : return =
   let reset_storage = {exchanger; request_deposit = None} in
   [deposit], reset_storage
 
-let main (action, storage : parameter * storage) : return =
+[@entry]
+let main (action : parameter) (storage : storage) : return =
   match action with
   | Deposit request -> deposit request storage
   | Callback tez_ticket -> callback tez_ticket storage

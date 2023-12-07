@@ -14,6 +14,7 @@ type upgrade_parameters = {
   payload : bytes;
 }
 
+[@entry]
 let main {evm_rollup; payload} (store : storage) : return =
   if Tezos.get_sender () <> store.admin then
     failwith "Unauthorized set entrypoint"
