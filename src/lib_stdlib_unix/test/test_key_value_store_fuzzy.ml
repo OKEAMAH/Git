@@ -421,7 +421,6 @@ let run_scenario
     let finalization = if finalization then "(finalization) " else "" in
     match (left_result, right_result) with
     | Ok left_value, Ok right_value ->
-        Log.info "CC: %b" (left_value = right_value) ;
         if left_value = right_value then return_unit
         else
           failwith
@@ -436,7 +435,6 @@ let run_scenario
             (Bytes.to_string left_value)
     | Error _, Error _ -> return_unit
     | Ok value, Error err ->
-        Log.info "CC: OK/ERROR" ;
         failwith
           "%s Unexpected different result while reading key %s/%d.@. For run \
            %d at %s:@.Expected: %a@.Got: %s"
@@ -449,7 +447,6 @@ let run_scenario
           err
           (Bytes.to_string value)
     | Error err, Ok value ->
-        Log.info "CC: ERROR/OK" ;
         failwith
           "%s Unexpected different result while reading key %s/%d.@. For run \
            %d at %s:@.Expected: %s@.Got: %a"
@@ -474,9 +471,7 @@ let run_scenario
       | Write_value {override; default; key = file, key} ->
           let value = value_of_key ~default file key in
           let left_promise =
-            Log.info "WB" ;
             let* r = L.write_value ~override left file key value in
-            Log.info "WA" ;
             return r
           in
           let right_promise = R.write_value ~override right file key value in
@@ -552,10 +547,8 @@ let run_scenario
         let promises_running_seq = Seq_s.cons_s promise promises_running_seq in
         run_actions action next_actions promises_running_seq
   in
-  Log.info "START" ;
   let* result = run_actions action next_actions Seq_s.empty in
   let*! () = L.close left in
-  Log.info "ALMOST END" ;
   return result
 
 let print (parameters, scenario) =
@@ -611,7 +604,6 @@ let parallel_test =
     (fun (parameters, scenario) ->
       let promise =
         let* _ = run_scenario parameters scenario in
-        Log.info "END" ;
         return_true
       in
       match Lwt_main.run promise with
