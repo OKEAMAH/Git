@@ -58,6 +58,7 @@ module Parameters = struct
     rpc_port : int;
     mode : mode;
     dal_node : Dal_node.t option;
+    loser_mode : string option;
     mutable endpoint : Client.endpoint;
     mutable pending_ready : unit option Lwt.u list;
     mutable pending_level : (int * int option Lwt.u) list;
@@ -403,7 +404,8 @@ let handle_event sc_node {name; value; timestamp = _} =
 
 let create_with_endpoint ?runner ?path ?name ?color ?data_dir ~base_dir
     ?event_pipe ?(rpc_host = "127.0.0.1") ?rpc_port ?(operators = [])
-    ?default_operator ?(dal_node : Dal_node.t option) mode endpoint =
+    ?default_operator ?(dal_node : Dal_node.t option) ?loser_mode mode endpoint
+    =
   let name = match name with None -> fresh_name () | Some name -> name in
   let data_dir =
     match data_dir with None -> Temp.dir name | Some dir -> dir
@@ -431,6 +433,7 @@ let create_with_endpoint ?runner ?path ?name ?color ?data_dir ~base_dir
         mode;
         endpoint;
         dal_node;
+        loser_mode;
         pending_ready = [];
         pending_level = [];
         runner;
@@ -440,7 +443,8 @@ let create_with_endpoint ?runner ?path ?name ?color ?data_dir ~base_dir
   sc_node
 
 let create ?runner ?path ?name ?color ?data_dir ~base_dir ?event_pipe ?rpc_host
-    ?rpc_port ?operators ?default_operator ?dal_node mode (node : Node.t) =
+    ?rpc_port ?operators ?default_operator ?dal_node ?loser_mode mode
+    (node : Node.t) =
   create_with_endpoint
     ?runner
     ?path
@@ -454,6 +458,7 @@ let create ?runner ?path ?name ?color ?data_dir ~base_dir ?event_pipe ?rpc_host
     ?operators
     ?default_operator
     ?dal_node
+    ?loser_mode
     mode
     (Node node)
 

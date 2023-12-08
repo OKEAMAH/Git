@@ -101,6 +101,7 @@ val create :
   ?operators:(purpose * string) list ->
   ?default_operator:string ->
   ?dal_node:Dal_node.t ->
+  ?loser_mode:string ->
   mode ->
   Node.t ->
   t
@@ -119,6 +120,7 @@ val create_with_endpoint :
   ?operators:(purpose * string) list ->
   ?default_operator:string ->
   ?dal_node:Dal_node.t ->
+  ?loser_mode:string ->
   mode ->
   Client.endpoint ->
   t
