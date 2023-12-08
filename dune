@@ -2,7 +2,10 @@
 (data_only_dirs _opam-repo-for-release)
 (env
  (_
-  (binaries (%{workspace_root}/src/tooling/node_wrapper.exe as node))))
+  (binaries (%{workspace_root}/src/tooling/node_wrapper.exe as node))
+  (odoc (warnings fatal))
+ )
+)
 
 ; This file is included in the link_flags stanza of binaries for which
 ; we want a static build.
