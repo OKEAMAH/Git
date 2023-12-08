@@ -1763,7 +1763,7 @@ let test_scenario_m8 () =
 let test_scenario_m9 () =
   let stop_level = Int32.of_int 2 in
   let node_b_qc = ref false in
-  let node_b_ttf = ref false in
+  let node_b_ttp = ref false in
   let node_b_level = ref Int32.zero in
   let bh : Block_hash.t option ref = ref None in
   let stop_on_event0 = function
@@ -1827,21 +1827,21 @@ let test_scenario_m9 () =
           false
       | Baking_state.Timeout timeout when !node_b_level = 1l -> (
           match timeout with
-          | Time_to_forge_block ->
+          | Time_to_prepare_next_level_block _ ->
               if !node_b_qc then (
-                node_b_ttf := true ;
+                node_b_ttp := true ;
                 false)
               else
                 Stdlib.failwith
-                  "time to forge emitted without observing qc event"
-          | Time_to_bake_next_level _ ->
-              if !node_b_qc && !node_b_ttf then false
-              else
-                Stdlib.failwith
-                  "time to bake emitted without observing qc or time to forge \
-                   event"
+                  "time to prepare emitted without observing qc event"
           | End_of_round _ ->
               Stdlib.failwith "End of round timeout not expected")
+      | Ready_to_inject _ when !node_b_level = 1l ->
+          if !node_b_qc && !node_b_ttp then false
+          else
+            Stdlib.failwith
+              "Block ready to inject without observing qc or time to prepare \
+               block event"
       | Baking_state.New_valid_proposal {block; _} ->
           node_b_level := block.shell.level ;
           false
@@ -1869,7 +1869,7 @@ let test_scenario_m9 () =
 let test_scenario_m10 () =
   let stop_level = 1l in
   let stop_round = Protocol.Alpha_context.Round.(succ zero) in
-  let node_b_ttf = ref false in
+  let node_b_ttp = ref false in
   let module Node_a_hooks : Hooks = struct
     include Default_hooks
 
@@ -1879,15 +1879,15 @@ let test_scenario_m10 () =
     include Default_hooks
 
     let stop_on_event = function
-      | Baking_state.Timeout Time_to_forge_block ->
-          node_b_ttf := true ;
+      | Baking_state.Timeout (Time_to_prepare_next_level_block _) ->
+          node_b_ttp := true ;
           false
       (* When we get to level = 1, round = 1, the time to forge timeout should
          not have been called *)
       | Baking_state.New_head_proposal {block; _} ->
           let block_round = block.round in
           if block.shell.level >= stop_level && block_round = stop_round then (
-            assert (not !node_b_ttf) ;
+            assert (not !node_b_ttp) ;
             true)
           else false
       | _ -> false

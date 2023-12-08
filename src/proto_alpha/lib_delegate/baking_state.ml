@@ -442,8 +442,7 @@ let update_current_phase state new_phase =
 
 type timeout_kind =
   | End_of_round of {ending_round : Round.t}
-  | Time_to_bake_next_level of {at_round : Round.t}
-  | Time_to_forge_block
+  | Time_to_prepare_next_level_block of {at_round : Round.t}
 
 let timeout_kind_encoding =
   let open Data_encoding in
@@ -462,12 +461,12 @@ let timeout_kind_encoding =
         (Tag 1)
         ~title:"Time_to_bake_next_level"
         (obj2
-           (req "kind" (constant "Time_to_bake_next_level"))
+           (req "kind" (constant "Time_to_prepare_next_level_block"))
            (req "round" Round.encoding))
         (function
-          | Time_to_bake_next_level {at_round} -> Some ((), at_round)
+          | Time_to_prepare_next_level_block {at_round} -> Some ((), at_round)
           | _ -> None)
-        (fun ((), at_round) -> Time_to_bake_next_level {at_round});
+        (fun ((), at_round) -> Time_to_prepare_next_level_block {at_round});
     ]
 
 let packed_operation_encoding =
@@ -1143,9 +1142,12 @@ let pp fmt {global_state; level_state; round_state} =
 let pp_timeout_kind fmt = function
   | End_of_round {ending_round} ->
       Format.fprintf fmt "end of round %a" Round.pp ending_round
-  | Time_to_bake_next_level {at_round} ->
-      Format.fprintf fmt "time to bake next level at round %a" Round.pp at_round
-  | Time_to_forge_block -> Format.fprintf fmt "time to forge block"
+  | Time_to_prepare_next_level_block {at_round} ->
+      Format.fprintf
+        fmt
+        "time to prepare next level block at round %a"
+        Round.pp
+        at_round
 
 let pp_forge_event fmt =
   let open Format in
@@ -1217,6 +1219,6 @@ let pp_event fmt = function
         Round.pp
         candidate.round_watched
   | Ready_to_inject forge_event ->
-      Format.fprintf fmt "ready to inject %a" pp_forge_event forge_event
+      Format.fprintf fmt "forge event: %a" pp_forge_event forge_event
   | Timeout kind ->
       Format.fprintf fmt "timeout reached: %a" pp_timeout_kind kind

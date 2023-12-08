@@ -771,6 +771,23 @@ module Actions = struct
       ("round", Round.encoding)
       ("delegate", Baking_state.consensus_key_and_delegate_encoding)
 
+  let delayed_block_injection =
+    declare_4
+      ~section
+      ~name:"delayed_block_injection"
+      ~level:Debug
+      ~msg:
+        "waiting {delay} before injecting block at level {level}, round \
+         {round} for {delegate}"
+      ("delay", Time.System.Span.encoding)
+      ~pp1:Time.System.Span.pp_hum
+      ("level", Data_encoding.int32)
+      ~pp2:pp_int32
+      ("round", Round.encoding)
+      ~pp3:Round.pp
+      ("delegate", Baking_state.consensus_key_and_delegate_encoding)
+      ~pp4:Baking_state.pp_consensus_key_and_delegate
+
   let injecting_block =
     declare_3
       ~section

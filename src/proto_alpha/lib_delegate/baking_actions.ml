@@ -115,21 +115,51 @@ let inject_block state prepared_block =
         };
     }
   in
-  let*! () =
-    Events.(
-      emit injecting_block (signed_block_header.shell.level, round, delegate))
+  let inject_block () =
+    let*! () =
+      Events.(
+        emit injecting_block (signed_block_header.shell.level, round, delegate))
+    in
+    let* bh =
+      Node_rpc.inject_block
+        state.global_state.cctxt
+        ~force:state.global_state.config.force
+        ~chain:(`Hash state.global_state.chain_id)
+        signed_block_header
+        operations
+    in
+    let*! () =
+      Events.(
+        emit
+          block_injected
+          (bh, signed_block_header.shell.level, round, delegate))
+    in
+    return_unit
   in
-  let* bh =
-    Node_rpc.inject_block
-      state.global_state.cctxt
-      ~force:state.global_state.config.force
-      ~chain:(`Hash state.global_state.chain_id)
-      signed_block_header
-      operations
+  let now = Time.System.now () in
+  let block_time =
+    Time.System.of_protocol_exn signed_block_header.shell.timestamp
   in
-  let*! () =
-    Events.(
-      emit block_injected (bh, signed_block_header.shell.level, round, delegate))
+  (* Blocks might be ready before their actual timestamp: when this
+     happens, we wait asynchronously until our clock reaches the
+     block's timestamp before injecting. *)
+  let* () =
+    let delay = Ptime.diff block_time now in
+    if Ptime.Span.(compare delay zero < 0) then inject_block ()
+    else
+      let*! () =
+        Events.(
+          emit
+            delayed_block_injection
+            (delay, signed_block_header.shell.level, round, delegate))
+      in
+      Lwt.dont_wait
+        (fun () ->
+          let*! () = Lwt_unix.sleep (Ptime.Span.to_float_s delay) in
+          let*! _ = inject_block () in
+          Lwt.return_unit)
+        (fun _exn -> ()) ;
+      return_unit
   in
   return new_state
 

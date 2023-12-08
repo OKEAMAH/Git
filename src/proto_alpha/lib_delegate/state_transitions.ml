@@ -481,17 +481,6 @@ let prepare_block_to_bake ~attestations ~dal_attestations ?last_proposal
   in
   return (Prepare_block {block_to_bake})
 
-let forge_fresh_block_action ~attestations ~dal_attestations ?last_proposal
-    ~(predecessor : block_info) state delegate =
-  prepare_block_to_bake
-    ~attestations
-    ~dal_attestations
-    ?last_proposal
-    ~predecessor
-    state
-    delegate
-    Round.zero
-
 (** Create an inject action that will inject either a fresh block or the pre-emptively
     forged block if it exists. *)
 let propose_fresh_block_action ~attestations ~dal_attestations ?last_proposal
@@ -672,33 +661,7 @@ let end_of_round state current_round =
         in
         return (new_state, action)
 
-let time_to_forge_block state =
-  let open Lwt_syntax in
-  let at_round = Round.zero in
-  let round_proposer_opt = round_proposer state ~level:`Next at_round in
-  match (state.level_state.elected_block, round_proposer_opt) with
-  | None, _ | _, None ->
-      (* Unreachable: the [Time_to_forge_Block] event can only be
-         triggered when we have a slot and an elected block *)
-      assert false
-  | Some elected_block, Some {consensus_key_and_delegate; _} ->
-      let attestations = elected_block.attestation_qc in
-      let dal_attestations =
-        (* Unlike proposal attestations, we don't watch and store DAL attestations for
-           each proposal, we'll retrieve them from the mempool *)
-        []
-      in
-      let* action =
-        forge_fresh_block_action
-          ~attestations
-          ~dal_attestations
-          ~predecessor:elected_block.proposal.block
-          state
-          consensus_key_and_delegate
-      in
-      return (state, action)
-
-let time_to_bake_at_next_level state at_round =
+let time_to_prepare_next_level_block state at_round =
   let open Lwt_syntax in
   (* It is now time to update the state level *)
   (* We need to keep track for which block we have 2f+1 *attestations*, that is,
@@ -916,11 +879,8 @@ let step (state : Baking_state.t) (event : Baking_state.event) :
           Lwt.return (state, Inject_dal_attestation {signed_dal_attestation})
       | Block_ready prepared_block ->
           Lwt.return (state, Inject_block {prepared_block}))
-  | _, Timeout (Time_to_bake_next_level {at_round}) ->
-      (* If it is time to bake the next level, stop everything currently
-         going on and propose the next level block *)
-      time_to_bake_at_next_level state at_round
-  | _, Timeout Time_to_forge_block -> time_to_forge_block state
+  | _, Timeout (Time_to_prepare_next_level_block {at_round}) ->
+      time_to_prepare_next_level_block state at_round
   | Idle, New_head_proposal proposal ->
       let* () =
         Events.(
