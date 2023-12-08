@@ -81,6 +81,27 @@ type dependency =
   | Job of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
 
+(** Values for the [GIT_STRATEGY] variable.
+
+    This can be used to specify whether a job should [Fetch] or [Clone]
+    the git repository, or not get it at all with [No_strategy].
+
+    For more information, see
+   {{:https://docs.gitlab.com/ee/ci/runners/configure_runners.html#git-strategy}GIT_STRATEGY} *)
+type git_strategy =
+  | Fetch  (** Translates to [fetch]. *)
+  | Clone  (** Translates to [clone]. *)
+  | No_strategy
+      (** Translates to [].
+
+          Renamed to avoid clashes with {!Option.None}. *)
+
+(** GitLab CI/CD YAML representation of [git_strategy].
+
+    Translates {!git_strategy} to values of accepted by the GitLab
+    CI/CD YAML variable [GIT_STRATEGY]. *)
+val enc_git_strategy : git_strategy -> string
+
 (** Define a job.
 
     This smart constructor for {!Gitlab_ci.Types.job} additionally:
@@ -103,6 +124,7 @@ val job :
   ?rules:Gitlab_ci.Types.when_ Gitlab_ci.Types.rule list ->
   ?timeout:Gitlab_ci.Types.timeout ->
   ?tags:string list ->
+  ?git_strategy:git_strategy ->
   stage:Stage.t ->
   name:string ->
   string list ->

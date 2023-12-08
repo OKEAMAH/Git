@@ -194,12 +194,9 @@ let trigger =
     ~allow_failure:false
     ~timeout:(Minutes 10)
     ~name:"trigger"
-    [
-      "echo 'Trigger pipeline!'";
-      (* Check that the Alpine version of the trigger job's image
-         corresponds to the value in scripts/version.sh. *)
-      "./scripts/ci/check_alpine_version.sh";
-    ]
+    ~git_strategy:No_strategy
+      (* This job requires no checkout, setting [No_strategy] saves ~10 seconds. *)
+    ["echo 'Trigger pipeline!'"]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the

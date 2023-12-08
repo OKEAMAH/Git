@@ -93,7 +93,8 @@ trigger:
   timeout: 10 minutes
   script:
   - echo 'Trigger pipeline!'
-  - ./scripts/ci/check_alpine_version.sh
+  variables:
+    GIT_STRATEGY: none
 include:
 - .gitlab/ci/jobs/shared/images.yml
 - .gitlab/ci/jobs/shared/templates.yml

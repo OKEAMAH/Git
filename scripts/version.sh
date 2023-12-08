@@ -21,7 +21,9 @@ export recommended_node_version=18.18.2
 # The Alpine minor version used to build the opam-repository images
 # and used to run the `trigger` job in the CI. This value SHOULD
 # correspond to the Alpine minor version given by the `trigger` job's
-# `image:`.
+# `image:`, which is ensured by running `make -C ci`. This value
+# SHOULD also correspond to the Alpine minor version used to build the
+# opam-repository images. This is checked in the job [sanity_ci].
 export alpine_version='3.18'
 
 ## full_opam_repository is a commit hash of the public OPAM repository, i.e.

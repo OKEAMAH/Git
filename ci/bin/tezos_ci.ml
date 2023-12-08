@@ -89,9 +89,17 @@ type dependency =
   | Job of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
 
+type git_strategy = Fetch | Clone | No_strategy
+
+let enc_git_strategy = function
+  | Fetch -> "fetch"
+  | Clone -> "clone"
+  | No_strategy -> "none"
+
 let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
     ?cache ?image ?interruptible ?(dependencies = []) ?services ?variables
-    ?rules ?timeout ?(tags = []) ~stage ~name script : Gitlab_ci.Types.job =
+    ?rules ?timeout ?(tags = []) ?git_strategy ~stage ~name script :
+    Gitlab_ci.Types.job =
   let tags =
     Some ((match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64") :: tags)
   in
@@ -111,6 +119,14 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
           (to_opt @@ List.rev needs, Some (List.rev dependencies))
     in
     loop ([], []) dependencies
+  in
+  let variables =
+    match git_strategy with
+    | Some strategy ->
+        Some
+          (("GIT_STRATEGY", enc_git_strategy strategy)
+          :: Option.value ~default:[] variables)
+    | None -> None
   in
   {
     name;
