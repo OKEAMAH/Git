@@ -11,24 +11,33 @@
 
 type variables = (string * string) list
 
-(** Represents values to the [when:] field in job rules. *)
+(** Represents values of the [when:] field in job rules. *)
 type when_ = Always | Never | On_success | Manual
 
-(** Represents values to the [when:] field in [workflow:] and [include:] rules. *)
+(** Represents values of the [when:] field in [workflow:] and [include:] rules. *)
 type when_workflow = Always | Never
 
-(** ['when_type rule] Represents a rule with the [when:]-type ['when_type].
-
-    - Rules that appears in the definition of jobs instantiate
-      ['when_type] to [when_].
-    - Rules that appears in the definition of workflows and includes
-      ['when_type] to [when_workflow].
-    - Additionally, for when in includes, [variables] must be [None]. *)
-type 'when_type rule = {
+(** Represents a job rule. *)
+type job_rule = {
   changes : string list option;
   if_ : If.t option;
   variables : variables option;
-  when_ : 'when_type;
+  when_ : when_;
+}
+
+(** Represents a workflow rule. *)
+type workflow_rule = {
+  changes : string list option;
+  if_ : If.t option;
+  variables : variables option;
+  when_ : when_workflow;
+}
+
+(** Represents an include rule. *)
+type include_rule = {
+  changes : string list option;
+  if_ : If.t option;
+  when_ : when_workflow;
 }
 
 type reports = {dotenv : string option; junit : string option}
@@ -71,7 +80,7 @@ type job = {
   interruptible : bool option;
   needs : string list option;
   dependencies : string list option;
-  rules : when_ rule list option;
+  rules : job_rule list option;
   script : string list option;
   services : service list option;
   stage : string option;
@@ -80,9 +89,9 @@ type job = {
   tags : string list option;
 }
 
-type workflow = {rules : when_workflow rule list; name : string option}
+type workflow = {rules : workflow_rule list; name : string option}
 
-type include_ = {local : string; rules : when_workflow rule list}
+type include_ = {local : string; rules : include_rule list}
 
 type config_element =
   | Workflow of workflow  (** Corresponds to a [workflow:] key. *)

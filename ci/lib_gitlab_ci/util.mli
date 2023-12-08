@@ -21,7 +21,7 @@ val job_rule :
   ?variables:variables ->
   ?when_:when_ ->
   unit ->
-  when_ rule
+  job_rule
 
 (** Constructs a workflow rule.
 
@@ -32,7 +32,7 @@ val workflow_rule :
   ?variables:variables ->
   ?when_:when_workflow ->
   unit ->
-  when_workflow rule
+  workflow_rule
 
 (** Constructs an include rule.
 
@@ -45,4 +45,4 @@ val include_rule :
   ?if_:If.t ->
   ?when_:when_workflow ->
   unit ->
-  when_workflow rule
+  include_rule

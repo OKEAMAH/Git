@@ -121,7 +121,7 @@ val job :
   ?dependencies:dependency list ->
   ?services:Gitlab_ci.Types.service list ->
   ?variables:Gitlab_ci.Types.variables ->
-  ?rules:Gitlab_ci.Types.when_ Gitlab_ci.Types.rule list ->
+  ?rules:Gitlab_ci.Types.job_rule list ->
   ?timeout:Gitlab_ci.Types.timeout ->
   ?tags:string list ->
   ?git_strategy:git_strategy ->

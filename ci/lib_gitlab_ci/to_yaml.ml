@@ -28,16 +28,6 @@ let enc_if expr = string @@ If.encode expr
 let enc_variables (vars : variables) : value =
   `O (List.map (fun (name, value) -> (name, `String value)) vars)
 
-let enc_rule_aux : ('a -> value) -> 'a rule -> value =
- fun enc_when {changes; if_; variables = vars; when_} ->
-      obj_flatten
-        [
-          opt "changes" strings changes;
-          opt "if" enc_if if_;
-          opt "variables" enc_variables vars;
-          key "when" enc_when when_;
-        ]
-
 let enc_when : when_ -> value = function
   | Always -> `String "always"
   | Never -> `String "never"
@@ -48,10 +38,40 @@ let enc_when_workflow : when_workflow -> value = function
   | Always -> `String "always"
   | Never -> `String "never"
 
-let enc_rules rules = array (enc_rule_aux enc_when) rules
+let enc_workflow_rule : workflow_rule -> value =
+ fun {changes; if_; variables; when_} ->
+  obj_flatten
+    [
+      opt "changes" strings changes;
+      opt "if" enc_if if_;
+      opt "variables" enc_variables variables;
+      key "when" enc_when_workflow when_;
+    ]
 
-let enc_workflow_rules : when_workflow rule list -> value =
-  array (enc_rule_aux enc_when_workflow)
+let enc_job_rule : job_rule -> value =
+ fun {changes; if_; variables; when_} ->
+  obj_flatten
+    [
+      opt "changes" strings changes;
+      opt "if" enc_if if_;
+      opt "variables" enc_variables variables;
+      key "when" enc_when when_;
+    ]
+
+let enc_include_rule : include_rule -> value =
+ fun {changes; if_; when_} ->
+  obj_flatten
+    [
+      opt "changes" strings changes;
+      opt "if" enc_if if_;
+      key "when" enc_when_workflow when_;
+    ]
+
+let enc_workflow_rules : workflow_rule list -> value = array enc_workflow_rule
+
+let enc_job_rules : job_rule list -> value = array enc_job_rule
+
+let enc_include_rules : include_rule list -> value = array enc_include_rule
 
 let enc_workflow : workflow -> value = function
   | {name; rules} ->
@@ -125,7 +145,7 @@ let enc_job : job -> value =
       opt "image" enc_image image;
       opt "stage" string stage;
       opt "tags" (array string) tags;
-      opt "rules" enc_rules rules;
+      opt "rules" enc_job_rules rules;
       opt "needs" strings needs;
       opt "dependencies" strings dependencies;
       opt "allow_failure" bool allow_failure;
@@ -146,7 +166,7 @@ let enc_includes : include_ list -> value =
     match rules with
     | [] -> `String local
     | _ :: _ ->
-        `O [("local", `String local); ("rules", enc_workflow_rules rules)]
+        `O [("local", `String local); ("rules", enc_include_rules rules)]
   in
   match includes with
   | [] -> failwith "empty includes"
