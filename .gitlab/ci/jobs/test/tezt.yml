@@ -90,6 +90,8 @@ include: .gitlab/ci/jobs/test/common.yml
   # WARNING: if you increase the number of parallel jobs, you need to
   # update test_coverage.yml with the new list of jobs.
   parallel: 60
+  tags:
+    - gcp_tezt_dev
 
 tezt:
   extends:
