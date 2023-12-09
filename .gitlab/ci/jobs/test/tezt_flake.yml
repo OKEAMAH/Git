@@ -45,3 +45,5 @@ tezt:
   # variable.
   parallel: 20
   retry: 0
+  tags:
+    - gcp_tezt_dev
