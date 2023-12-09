@@ -4,7 +4,6 @@ tezt:
   extends:
   - .test_template
   - .image_template__runtime_e2etest_dependencies
-  - .tags_template__no_gcp
   variables:
     JUNIT: "tezt-junit.xml"
   artifacts:
