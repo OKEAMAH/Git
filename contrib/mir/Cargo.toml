@@ -19,6 +19,10 @@ base58="0.2"
 cryptoxide="0.4"
 num-bigint="0.3"
 num-traits="0.2"
+bitvec="1.0"
+strum="0.25"
+strum_macros="0.25"
+smallvec={ version = "1.11", features = [ "const_new" ] }
 
 [[bin]]
 name = "tzt_runner"

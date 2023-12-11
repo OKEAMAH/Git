@@ -14,7 +14,7 @@
 mod test_typed_encode {
     use typed_arena::Arena;
 
-    use crate::ast::{self, byte_repr_trait::*, KeyHash};
+    use crate::ast::{self, byte_repr_trait::*, KeyHash, Micheline};
     use crate::ast::{Address, TypedValue};
 
     // Expected bytes to be produced with
@@ -29,12 +29,12 @@ mod test_typed_encode {
             .strip_prefix("0x")
             .expect("The `expected` argument must start from 0x");
 
+        let bytes = &hex::decode(hex_bytes).expect("Bad hex string in `expected` argument");
+
         let arena = Arena::new();
         let micheline = ast::typed_value_to_value_optimized_legacy(&arena, v);
-        assert_eq!(
-            micheline.encode_for_pack(),
-            hex::decode(hex_bytes).expect("Bad hex string in `expected` argument")
-        )
+        assert_eq!(&micheline.encode_for_pack(), bytes);
+        assert_eq!(Micheline::decode_packed(&arena, bytes), Ok(micheline),);
     }
 
     #[test]

@@ -12,6 +12,7 @@ pub mod macros;
 pub use errors::*;
 use macros::*;
 use num_bigint::BigInt;
+use strum_macros::EnumCount;
 
 /// Expand to the first argument if not empty; otherwise, the second argument.
 macro_rules! coalesce {
@@ -28,7 +29,7 @@ macro_rules! coalesce {
 /// representation of the identifiers.
 macro_rules! defprim {
     ($ty:ident; $($(#[token($str:expr)])? $prim:ident),* $(,)*) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumCount)]
         #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
         #[repr(u8)]
         pub enum $ty {
@@ -151,6 +152,26 @@ impl std::fmt::Display for Annotation<'_> {
             Annotation::Field(s) => write!(f, "%{s}"),
             Annotation::Variable(s) => write!(f, "@{s}"),
             Annotation::Type(s) => write!(f, ":{s}"),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a str> for Annotation<'a> {
+    type Error = ();
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value {
+            s @ ("@%" | "@%%" | "%@") => Ok(Annotation::Special(s)),
+            s => {
+                if let Some(s) = s.strip_prefix('@') {
+                    Ok(Annotation::Variable(s))
+                } else if let Some(s) = s.strip_prefix('%') {
+                    Ok(Annotation::Field(s))
+                } else if let Some(s) = s.strip_prefix(':') {
+                    Ok(Annotation::Type(s))
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 }
@@ -288,20 +309,7 @@ fn lex_bytes(lex: &mut Lexer) -> Result<Vec<u8>, LexerError> {
 }
 
 fn lex_annotation<'a>(lex: &mut Lexer<'a>) -> Annotation<'a> {
-    match lex.slice() {
-        s @ ("@%" | "@%%" | "%@") => Annotation::Special(s),
-        s => {
-            if let Some(s) = s.strip_prefix('@') {
-                Annotation::Variable(s)
-            } else if let Some(s) = s.strip_prefix('%') {
-                Annotation::Field(s)
-            } else if let Some(s) = s.strip_prefix(':') {
-                Annotation::Type(s)
-            } else {
-                unreachable!("regex for Annotation ensures it's either one of three")
-            }
-        }
-    }
+    Annotation::try_from(lex.slice()).expect("regex from annotation ensures it's valid")
 }
 
 #[cfg(test)]
