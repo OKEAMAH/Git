@@ -3092,12 +3092,12 @@ let bailout_mode_fail_to_start_without_operator ~kind =
           (Sc_rollup_node.Recovering, Constant.bootstrap1.alias);
         ]
   in
-  let process = Sc_rollup_node.spawn_run sc_rollup_node sc_rollup [] in
+  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
   let* () =
-    Process.check_error
-      process
+    Sc_rollup_node.check_error
       ~exit_code:1
       ~msg:(rex "Missing operator for the purpose of operating.")
+      sc_rollup_node
   in
   unit
 
@@ -3118,10 +3118,10 @@ let bailout_mode_fail_operator_no_stake ~kind =
              sc_rollup
              _tezos_node
              _tezos_client ->
-  let process = Sc_rollup_node.spawn_run sc_rollup_node sc_rollup [] in
+  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
   let* () =
-    Process.check_error
-      process
+    Sc_rollup_node.check_error
+      sc_rollup_node
       ~exit_code:1
       ~msg:(rex "This implicit account is not a staker of this smart rollup.")
   in
@@ -4605,20 +4605,19 @@ let test_arg_boot_sector_file ~kind =
   let () = write_file valid_boot_sector_file ~contents:boot_sector in
   (* Starts the rollup node with an invalid boot sector. Asserts that the
      node fails with an invalid genesis state. *)
-  let process =
-    Sc_rollup_node.spawn_run
+  let* () =
+    Sc_rollup_node.run
       rollup_node
       rollup
       ["--boot-sector-file"; invalid_boot_sector_file]
   in
   let* () = Client.bake_for_and_wait client in
-  let* err = Process.check_and_read_stderr ~expect_failure:true process in
-  if
-    err
-    =~ rex "Genesis commitment computed * is not equal to the rollup genesis"
-  then
-    Test.fail
-      "The rollup node failed as expected but not with the expected error" ;
+  let* () =
+    Sc_rollup_node.check_error
+      ~msg:
+        (rex "Genesis commitment computed * is not equal to the rollup genesis")
+      rollup_node
+  in
   (* Starts the rollup node with a valid boot sector. Asserts that the node
      works as expected by processing blocks. *)
   let* () =
@@ -4736,12 +4735,12 @@ let test_rollup_node_missing_preimage_exit_at_initialisation =
       client
   in
   let* _ = Sc_rollup_node.config_init rollup_node rollup_address in
-  let run_process = Sc_rollup_node.spawn_run rollup_node rollup_address [] in
+  let* () = Sc_rollup_node.run rollup_node rollup_address [] in
   let* () = Client.bake_for_and_wait client in
   let* () =
-    Process.check_error
+    Sc_rollup_node.check_error
       ~msg:(rex "Could not open file containing preimage of reveal hash")
-      run_process
+      rollup_node
   in
   Lwt.return_unit
 
@@ -4834,10 +4833,10 @@ let test_private_rollup_node_publish_not_in_whitelist =
     }
     ~kind:"arith"
   @@ fun _protocol rollup_node _rollup_client sc_rollup _tezos_node _client ->
-  let node_process = Sc_rollup_node.spawn_run rollup_node sc_rollup [] in
+  let* () = Sc_rollup_node.run rollup_node sc_rollup [] in
   let* () =
-    Process.check_error
-      node_process
+    Sc_rollup_node.check_error
+      rollup_node
       ~exit_code:1
       ~msg:(rex ".*The operator is not in the whitelist.*")
   in
@@ -5192,9 +5191,9 @@ let custom_mode_empty_operation_kinds ~kind =
       ~base_dir:(Client.base_dir tezos_client)
       ~default_operator:Constant.bootstrap1.alias
   in
-  let process = Sc_rollup_node.spawn_run sc_rollup_node sc_rollup [] in
-  Process.check_error
-    process
+  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup [] in
+  Sc_rollup_node.check_error
+    sc_rollup_node
     ~exit_code:1
     ~msg:(rex "Operation kinds for custom mode are empty.")
 
