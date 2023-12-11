@@ -190,7 +190,7 @@ let operators_params rollup_node =
     (Option.to_list rollup_node.persistent_state.default_operator)
     rollup_node.persistent_state.operators
 
-let make_arguments node =
+let global_arguments node =
   [
     "--endpoint";
     Client.string_of_endpoint ~hostname:true node.persistent_state.endpoint;
@@ -198,13 +198,12 @@ let make_arguments node =
     base_dir node;
   ]
 
-let spawn_command sc_node args =
+let spawn_command rollup_node =
   Process.spawn
-    ?runner:sc_node.persistent_state.runner
-    ~name:sc_node.name
-    ~color:sc_node.color
-    sc_node.path
-  @@ make_arguments sc_node @ args
+    ?runner:rollup_node.persistent_state.runner
+    ~name:rollup_node.name
+    ~color:rollup_node.color
+    rollup_node.path
 
 let common_node_args ~loser_mode ~allow_degraded ~gc_frequency ~history_mode
     sc_node =
@@ -253,7 +252,7 @@ let legacy_node_args ~loser_mode ~allow_degraded ~gc_frequency ~history_mode
       ~history_mode
       sc_node
 
-let spawn_config_init sc_node ?(force = false) ?loser_mode ?gc_frequency
+let spawn_config_init rollup_node ?(force = false) ?loser_mode ?gc_frequency
     ?(history_mode = Full) rollup_address =
   let mode, args =
     node_args
@@ -261,10 +260,12 @@ let spawn_config_init sc_node ?(force = false) ?loser_mode ?gc_frequency
       ~allow_degraded:true
       ~gc_frequency
       ~history_mode:(Some history_mode)
-      sc_node
+      rollup_node
       rollup_address
   in
-  spawn_command sc_node @@ ["init"; mode; "config"] @ args
+  spawn_command rollup_node
+  @@ global_arguments rollup_node
+  @ ["init"; mode; "config"] @ args
   @ if force then ["--force"] else []
 
 let config_init sc_node ?force ?loser_mode ?gc_frequency ?history_mode
@@ -520,7 +521,7 @@ let run ?(legacy = false) ?(restart = false) ?mode ?event_level
     ?event_level
     ?event_sections_levels
     node
-    (make_arguments node @ cmd)
+    (global_arguments node @ cmd)
 
 let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
     ?(allow_degraded = false)
@@ -558,7 +559,8 @@ let spawn_run ?loser_mode ?(allow_degraded = false)
       ~history_mode:(Some history_mode)
       rollup_address
   in
-  spawn_command node (["run"; mode] @ args @ extra_arguments)
+  spawn_command node @@ global_arguments node @ ["run"; mode] @ args
+  @ extra_arguments
 
 let change_node_and_restart ?event_level sc_rollup_node rollup_address node =
   let* () = terminate sc_rollup_node in
