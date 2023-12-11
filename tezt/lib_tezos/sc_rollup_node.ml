@@ -463,13 +463,18 @@ let create ?runner ?path ?name ?color ?data_dir ~base_dir ?event_pipe ?rpc_host
     (Node node)
 
 let do_runlike_command ?event_level ?event_sections_levels node arguments =
-  if node.status <> Not_running then
-    Test.fail "Smart contract rollup node %s is already running" node.name ;
+  (match node.status with
+  | Not_running -> ()
+  | Running _ -> Test.fail "Smart rollup node %s is already running" node.name) ;
   let on_terminate _status =
+    (* Cancel all [Ready] event listeners. *)
     trigger_ready node None ;
+    (* Cancel all [Level_at_least] event listeners. *)
+    let pending = node.persistent_state.pending_level in
+    node.persistent_state.pending_level <- [] ;
+    List.iter (fun (_, pending) -> Lwt.wakeup_later pending None) pending ;
     unit
   in
-  let arguments = make_arguments node @ arguments in
   run
     ?runner:node.persistent_state.runner
     ?event_level
@@ -511,7 +516,11 @@ let run ?(legacy = false) ?(restart = false) ?mode ?event_level
       Cli_arg.optional_arg "password-filename" Fun.id password_file
       @ ["run"; final_mode] @ args @ extra_arguments
   in
-  do_runlike_command ?event_level ?event_sections_levels node cmd
+  do_runlike_command
+    ?event_level
+    ?event_sections_levels
+    node
+    (make_arguments node @ cmd)
 
 let run ?legacy ?restart ?mode ?event_level ?event_sections_levels ?loser_mode
     ?(allow_degraded = false)
