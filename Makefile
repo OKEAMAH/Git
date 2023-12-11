@@ -141,12 +141,11 @@ kaitai-struct-files:
 
 .PHONY: check-kaitai-struct-files
 check-kaitai-struct-files:
-	@git diff --exit-code HEAD -- contrib/kaitai-struct-files/files || (echo "Cannot check kaitai struct files, some changes are uncommitted"; exit 1)
-	@dune build contrib/bin_codec_kaitai/codec.exe
+	@git diff --exit-code HEAD -- contrib/kaitai-struct-files/files && test -z "$(git ls-files --other --directory  contrib/kaitai-struct-files/files)" || (echo "Cannot check kaitai struct files, some changes are uncommitted"; exit 1)
 	@rm contrib/kaitai-struct-files/files/*.ksy
-	@_build/default/contrib/bin_codec_kaitai/codec.exe dump kaitai specs in contrib/kaitai-struct-files/files 2>/dev/null
+	@dune exec contrib/bin_codec_kaitai/codec.exe dump kaitai specs in contrib/kaitai-struct-files/files 2>/dev/null
 	@git add contrib/kaitai-struct-files/files/*.ksy
-	@git diff --exit-code HEAD -- contrib/kaitai-struct-files/files/ || (echo "Kaitai struct files mismatch. Update the files with `make kaitai-struct-files-update`."; exit 1)
+	@( git diff --exit-code HEAD -- contrib/kaitai-struct-files/files/  && test -z "$(git ls-files --other --directory  contrib/kaitai-struct-files/files)"|| (echo "Kaitai struct files mismatch. Update the files with `make kaitai-struct-files-update`."; exit 1)
 
 .PHONY: validate-kaitai-struct-files
 validate-kaitai-struct-files:
