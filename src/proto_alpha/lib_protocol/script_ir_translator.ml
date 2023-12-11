@@ -1444,7 +1444,7 @@ let parse_uint ~nb_bits =
   function
   | Micheline.Int (_, n) when Compare.Z.(Z.zero <= n) && Compare.Z.(n <= max_z)
     ->
-      return (Z.to_int n)
+      return (Z.to_int_exn n)
   | node ->
       tzfail
       @@ Invalid_syntactic_constant

@@ -782,6 +782,10 @@ struct
 
     let ediv_rem x y =
       Error_monad.catch_f (fun () -> ediv_rem x y) (fun _ -> Division_by_zero)
+
+    let to_int_exn = to_int
+
+    let to_int x = Result.catch_f (fun () -> to_int x) (fun _ -> `Overflow)
   end
 
   module Q = Q

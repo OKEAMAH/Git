@@ -873,7 +873,7 @@ let patch_block_time ctxt ~head_level ~block_time_target =
     let patched_block_gas_limit =
       let b_gas_lim_f =
         Gas_limit_repr.Arith.integral_to_z constants.hard_gas_limit_per_block
-        |> Z.to_int |> float
+        |> Z.to_int_exn |> float
       in
       b_gas_lim_f /. speedup_ratio
       |> int_of_float |> Gas_limit_repr.Arith.integral_of_int_exn

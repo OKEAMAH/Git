@@ -161,12 +161,14 @@ module S = struct
 end
 
 let q_to_float_string q =
+  let open Result_syntax in
   let offset = 1000 in
   let unit = Z.div q.Q.num q.den in
   let q = Q.(sub q (unit /// Z.one)) in
   let q = Q.(mul q (offset // 1)) in
   let dec = Z.div q.num q.den in
-  let padded_dec_string = Format.asprintf "%03d" (Z.to_int dec) in
+  let+ dec_to_int = Safe_z.to_int dec in
+  let padded_dec_string = Format.asprintf "%03d" dec_to_int in
   Format.asprintf "%a.%s" Z.pp_print unit padded_dec_string
 
 let current_rewards_per_minute ctxt =
@@ -193,7 +195,8 @@ let current_yearly_rate_value ~formatter ctxt =
   let f = Q.mul f q_min_per_year (* issuance rate per year *) in
   (* transform into a string *)
   let f = Q.(mul f (100 // 1)) in
-  return (formatter f)
+  let*? str = formatter f in
+  return str
 
 let collect_expected_rewards ~ctxt =
   let open Lwt_result_syntax in
@@ -276,9 +279,11 @@ let register () =
   register0 ~chunked:false S.current_yearly_rate (fun ctxt () () ->
       current_yearly_rate_value ~formatter:q_to_float_string ctxt) ;
   register0 ~chunked:false S.current_yearly_rate_exact (fun ctxt () () ->
-      current_yearly_rate_value ~formatter:(fun x -> x) ctxt) ;
+      current_yearly_rate_value ~formatter:Result_syntax.return ctxt) ;
   register0 ~chunked:false S.current_yearly_rate_details (fun ctxt () () ->
-      let* total = current_yearly_rate_value ~formatter:(fun x -> x) ctxt in
+      let* total =
+        current_yearly_rate_value ~formatter:Result_syntax.return ctxt
+      in
       let cycle = Some (Level.current ctxt).cycle in
       let* bonus = Delegate.Rewards.For_RPC.get_reward_bonus ctxt ~cycle in
       let dynamic = (bonus :> Q.t) in

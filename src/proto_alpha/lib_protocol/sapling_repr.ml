@@ -81,7 +81,7 @@ module Memo_size = struct
 
   let parse_z z =
     if Compare.Z.(Z.zero <= z) && Compare.Z.(z <= max_uint16_z) then
-      Ok (Z.to_int z)
+      Ok (Z.to_int_exn z)
     else err
 
   let unparse_to_z = Z.of_int

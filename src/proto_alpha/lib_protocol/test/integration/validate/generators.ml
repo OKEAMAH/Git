@@ -27,11 +27,10 @@ open Protocol
 open Alpha_context
 open Manager_operation_helpers
 
-let lwt_run f =
-  match Lwt_main.run f with
+let assert_ok ~pp_print_trace = function
   | Error err ->
       QCheck.Test.fail_reportf "@.Lwt_main.run error: %a@." pp_print_trace err
-  | Ok v -> v
+  | Ok x -> x
 
 (** {2 Datatypes} *)
 
@@ -219,7 +218,10 @@ let gen_2_operation_req :
   in
   let counter =
     match op1.counter with
-    | Some x -> Manager_counter.Internal_for_tests.to_int x
+    | Some x ->
+        assert_ok ~pp_print_trace:(fun ppf `Overflow ->
+            Format.fprintf ppf "Overflow")
+        @@ Manager_counter.Internal_for_tests.to_int x
     | None -> 1
   in
   let op_cstr =

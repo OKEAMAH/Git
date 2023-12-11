@@ -36,7 +36,7 @@ let expected_slots_for_given_active_stake ctxt ~total_active_stake_weight
   let number_of_attestations_per_cycle =
     blocks_per_cycle * consensus_committee_size
   in
-  Z.to_int
+  Safe_z.to_int
     (Z.div
        (Z.mul
           (Z.of_int64 active_stake_weight)
@@ -82,7 +82,7 @@ let record_attesting_participation ctxt ~delegate ~participation
               let* total_active_stake =
                 Stake_storage.get_total_active_stake ctxt level.cycle
               in
-              let expected_slots =
+              let*? expected_slots =
                 let active_stake_weight =
                   Stake_repr.staking_weight active_stake
                 in
@@ -191,7 +191,7 @@ module For_RPC = struct
         let* total_active_stake =
           Stake_storage.get_total_active_stake ctxt level.cycle
         in
-        let expected_cycle_activity =
+        let*? expected_cycle_activity =
           let active_stake_weight = Stake_repr.staking_weight active_stake in
           let total_active_stake_weight =
             Stake_repr.staking_weight total_active_stake

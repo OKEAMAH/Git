@@ -5501,8 +5501,13 @@ external hamdist: t -> t -> int = "ml_z_hamdist"
     converted value, an [Overflow] exception is raised.
  *)
 
-val to_int: t -> int
+val to_int_exn: t -> int
 (** Converts to a base integer. May raise an [Overflow]. *)
+
+val to_int : t -> (int, [`Overflow]) result
+(** Same as [to_int_exn] but using the error monad instead of raising an
+    exception.
+*)
 
 external to_int32: t -> int32 = "ml_z_to_int32"
 (** Converts to a 32-bit integer. May raise [Overflow]. *)
