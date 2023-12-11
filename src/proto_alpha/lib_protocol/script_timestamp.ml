@@ -38,8 +38,9 @@ let of_string x =
   | Some time -> Some (of_int64 (Time_repr.to_seconds time))
 
 let to_notation (Timestamp_tag x) =
-  Option.catch (fun () ->
-      Time_repr.to_notation (Time.of_seconds (Z.to_int64 x)))
+  let open Option_syntax in
+  let* x = Result.to_option (Z.to_int64 x) in
+  Option.catch (fun () -> Time_repr.to_notation (Time.of_seconds x))
 
 let to_num_str (Timestamp_tag x) = Z.to_string x
 

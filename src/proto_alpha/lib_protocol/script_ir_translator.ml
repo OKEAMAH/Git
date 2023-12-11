@@ -1543,7 +1543,7 @@ let parse_mutez ctxt : Script.node -> (Tez.t * context) tzresult =
   | Int (loc, v) as expr -> (
       match
         let open Option in
-        bind (catch (fun () -> Z.to_int64 v)) Tez.of_mutez
+        bind (Result.to_option @@ Z.to_int64 v) Tez.of_mutez
       with
       | Some tez -> Ok (tez, ctxt)
       | None ->

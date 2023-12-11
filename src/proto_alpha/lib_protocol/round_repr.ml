@@ -262,7 +262,7 @@ let raw_level_offset_of_round round_durations ~round =
              (Z.of_int32 round)
              (Z.of_int64 @@ Period_repr.to_seconds first_round_duration)))
     in
-    if Z.fits_int64 sum_durations then return (Z.to_int64 sum_durations)
+    if Z.fits_int64 sum_durations then return (Z.to_int64_exn sum_durations)
     else tzfail (Round_too_high round)
 
 type error += Level_offset_too_high of Period_repr.t

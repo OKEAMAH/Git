@@ -174,7 +174,7 @@ let mul_ratio_z ~rounding tez ~num ~den =
       | `Down -> Z.div numerator den
       | `Up -> Z.cdiv numerator den
     in
-    if Z.fits_int64 z then return (Tez_tag (Z.to_int64 z))
+    if Z.fits_int64 z then return (Tez_tag (Z.to_int64_exn z))
     else tzfail (Multiplication_overflow (tez, num))
 
 let mul_ratio ~rounding tez ~num ~den =
@@ -188,7 +188,8 @@ let mul_percentage ~rounding =
     (* Guaranteed to produce no errors by the invariants on {!Int_percentage.t}. *)
     let div' = match rounding with `Down -> Z.div | `Up -> Z.cdiv in
     Tez_tag
-      Z.(to_int64 (div' (mul (of_int64 t) (of_int (percentage :> int))) z100))
+      Z.(
+        to_int64_exn (div' (mul (of_int64 t) (of_int (percentage :> int))) z100))
 
 let of_mutez t = if t < 0L then None else Some (Tez_tag t)
 
@@ -200,7 +201,7 @@ let to_mutez (Tez_tag t) = t
 let encoding =
   let open Data_encoding in
   let decode (Tez_tag t) = Z.of_int64 t in
-  let encode = Json.wrap_error (fun i -> Tez_tag (Z.to_int64 i)) in
+  let encode = Json.wrap_error (fun i -> Tez_tag (Z.to_int64_exn i)) in
   Data_encoding.def name (check_size 10 (conv decode encode n))
 
 let balance_update_encoding =

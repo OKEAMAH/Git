@@ -25,3 +25,9 @@ let to_int x =
   match Z.to_int x with
   | Ok _ as res -> res
   | Error `Overflow -> tzfail (Conversion_to_bounded_integer (x, "int"))
+
+let to_int64 x =
+  let open Result_syntax in
+  match Z.to_int64 x with
+  | Ok _ as res -> res
+  | Error `Overflow -> tzfail (Conversion_to_bounded_integer (x, "int64"))

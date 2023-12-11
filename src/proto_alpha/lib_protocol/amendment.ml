@@ -47,9 +47,9 @@ let select_winning_proposal ctxt =
       let min_proposal_quorum =
         Z.of_int32 (Constants.min_proposal_quorum ctxt)
       in
-      let min_vote_to_pass =
+      let*? min_vote_to_pass =
         Z.(
-          to_int64
+          Safe_z.to_int64
             (div (mul min_proposal_quorum (of_int64 max_vote)) (of_int 100_00)))
       in
       if Compare.Int64.(vote >= min_vote_to_pass) then return_some proposal

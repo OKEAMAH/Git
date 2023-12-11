@@ -5512,8 +5512,13 @@ val to_int : t -> (int, [`Overflow]) result
 external to_int32: t -> int32 = "ml_z_to_int32"
 (** Converts to a 32-bit integer. May raise [Overflow]. *)
 
-external to_int64: t -> int64 = "ml_z_to_int64"
+val to_int64_exn: t -> int64
 (** Converts to a 64-bit integer. May raise [Overflow]. *)
+
+val to_int64 : t -> (int64, [`Overflow]) result
+(** Same as [to_int64_exn] but using the error monad instead of raising an
+    exception.
+*)
 
 val to_string: t -> string
 (** Gives a human-readable, decimal string representation of the argument. *)

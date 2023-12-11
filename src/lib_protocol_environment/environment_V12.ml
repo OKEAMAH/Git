@@ -786,6 +786,10 @@ struct
     let to_int_exn = to_int
 
     let to_int x = Result.catch_f (fun () -> to_int x) (fun _ -> `Overflow)
+
+    let to_int64_exn = to_int64
+
+    let to_int64 x = Result.catch_f (fun () -> to_int64 x) (fun _ -> `Overflow)
   end
 
   module Q = Q
