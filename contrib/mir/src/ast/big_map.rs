@@ -5,7 +5,12 @@
 /*                                                                            */
 /******************************************************************************/
 
-use std::{collections::BTreeMap, fmt::Display, mem, ops::DerefMut};
+use std::{
+    collections::{btree_map::Entry, BTreeMap},
+    fmt::Display,
+    mem,
+    ops::DerefMut,
+};
 
 use super::TypedValue;
 
@@ -453,11 +458,11 @@ pub fn dump_big_map_updates(
         match map.id {
             Some(id) => {
                 // Insert to grouped_maps
-                match grouped_maps.get_mut(&id) {
-                    None => {
-                        grouped_maps.insert(id, (map, Vec::new()));
+                match grouped_maps.entry(id) {
+                    Entry::Vacant(e) => {
+                        e.insert((map, Vec::new()));
                     }
-                    Some(l) => l.1.push(map),
+                    Entry::Occupied(e) => e.into_mut().1.push(map),
                 }
             }
             None => {
