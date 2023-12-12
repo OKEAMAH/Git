@@ -1056,6 +1056,18 @@ pub(crate) fn typecheck_instruction<'a>(
         (App(PACK, [], _), []) => no_overload!(PACK, len 1),
         (App(PACK, expect_args!(0), _), _) => unexpected_micheline!(),
 
+        (App(UNPACK, [ty], _), [.., T::Bytes]) => {
+            let ty = parse_ty(ctx, ty)?;
+            ty.ensure_prop(&mut ctx.gas, TypeProperty::Packable)?;
+            stack[0] = T::new_option(ty.clone());
+            I::Unpack(ty)
+        }
+        (App(UNPACK, [_], _), [.., ty]) => {
+            no_overload!(UNPACK, TypesNotEqual(T::Bytes, ty.clone()))
+        }
+        (App(UNPACK, [_], _), []) => no_overload!(UNPACK, len 1),
+        (App(UNPACK, expect_args!(1), _), _) => unexpected_micheline!(),
+
         (App(TRANSFER_TOKENS, [], _), [.., T::Contract(ct), T::Mutez, arg_t]) => {
             ensure_ty_eq(ctx, ct, arg_t)?;
             stack.drop_top(3);
@@ -4359,5 +4371,33 @@ mod typecheck_tests {
                 reason: Some(TypesNotEqual(Type::Bool, Type::Int).into())
             })
         );
+    }
+
+    #[test]
+    fn unpack() {
+        let stk = &mut tc_stk![Type::Bytes];
+        assert_eq!(
+            typecheck_instruction(&parse("UNPACK int").unwrap(), &mut Ctx::default(), stk),
+            Ok(Unpack(Type::Int))
+        );
+        assert_eq!(stk, &tc_stk![Type::new_option(Type::Int)]);
+    }
+
+    #[test]
+    fn unpack_bad_stack() {
+        let stk = &mut tc_stk![Type::Unit];
+        assert_eq!(
+            typecheck_instruction(&parse("UNPACK int").unwrap(), &mut Ctx::default(), stk),
+            Err(TcError::NoMatchingOverload {
+                instr: Prim::UNPACK,
+                stack: stk![Type::Unit],
+                reason: Some(TypesNotEqual(Type::Bytes, Type::Unit).into())
+            })
+        );
+    }
+
+    #[test]
+    fn unpack_short_stack() {
+        too_short_test(&app!(UNPACK[app!(unit)]), Prim::UNPACK, 1)
     }
 }

@@ -515,6 +515,11 @@ pub mod interpret_cost {
         // In practice, they both have the same cost.
         ((Checked::from(length) >> 1) + 25).as_gas_cost()
     }
+
+    pub fn unpack(bytes: &[u8]) -> Result<u32, OutOfGas> {
+        let size = Checked::from(bytes.len());
+        (260 + (size >> 1)).as_gas_cost()
+    }
 }
 
 #[cfg(test)]
