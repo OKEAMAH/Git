@@ -176,6 +176,35 @@ module Real = struct
     triggers : P2p_trigger.t;
   }
 
+  let set_env_network_delay () =
+    let get_loss = function
+      | None -> 0
+      | Some loss -> (
+          match int_of_string_opt loss with
+          | None ->
+              Format.eprintf
+                "Error while parsing artifical loss rate '%s': ignoring.@."
+                loss ;
+              0
+          | Some loss -> loss)
+    in
+    let get_delay = function
+      | None -> 0.
+      | Some delay -> (
+          match float_of_string_opt delay with
+          | None ->
+              Format.eprintf
+                "Error while parsing artifical delay '%s': ignoring.@."
+                delay ;
+              0.
+          | Some delay -> delay)
+    in
+    let loss = get_loss (Sys.getenv_opt "NETWORK_LOSS") in
+    let delay_min = get_delay (Sys.getenv_opt "NETWORK_MIN_DELAY") in
+    let delay_max = get_delay (Sys.getenv_opt "NETWORK_MAX_DELAY") in
+    let msg_fault = P2p_services.Connections.{loss; delay_min; delay_max} in
+    P2p_socket.set_default_msg_fault (Some msg_fault)
+
   let create ~config ~limits meta_cfg msg_cfg conn_meta_cfg =
     let open Lwt_result_syntax in
     let io_sched = create_scheduler limits in
@@ -224,6 +253,7 @@ module Real = struct
     in
     let* welcome = may_create_welcome_worker config limits connect_handler in
     P2p_metrics_collectors.collect pool ;
+    set_env_network_delay () ;
     return
       {
         config;
