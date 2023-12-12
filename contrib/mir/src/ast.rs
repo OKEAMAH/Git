@@ -7,7 +7,6 @@
 
 pub mod annotations;
 pub mod byte_repr_trait;
-pub mod bytes;
 pub mod comparable;
 pub mod micheline;
 pub mod michelson_address;

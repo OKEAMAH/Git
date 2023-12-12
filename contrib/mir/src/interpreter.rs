@@ -590,6 +590,11 @@ mod interpreter_tests {
     use Option::None;
     use TypedValue as V;
 
+    #[track_caller]
+    fn mk_0x(hex: &str) -> TypedValue {
+        TypedValue::Bytes(hex::decode(hex).unwrap_or_else(|e| panic!("Invalid hex: {e}")))
+    }
+
     #[test]
     fn test_add() {
         let mut stack = stk![V::nat(10), V::nat(20)];
@@ -653,7 +658,6 @@ mod interpreter_tests {
             assert_eq!(stack, stk![expected.into()]);
         }
 
-        use crate::ast::bytes::mk_0x;
         use overloads as o;
 
         check(And(o::And::Bytes), mk_0x("05"), mk_0x("06"), mk_0x("04"));
