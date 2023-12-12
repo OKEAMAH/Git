@@ -29,9 +29,9 @@ const print_full = function (rawTx) {
 }
 
 exports.transfer = function (playera, playerb, amount, options = {}) {
-    let tx = { 
+    let tx = {
         ...transfer_prototype_json,
-        ...options 
+        ...options
     };
     tx.nonce = playera.nonce;
     playera.nonce += 1;
@@ -44,7 +44,7 @@ exports.transfer = function (playera, playerb, amount, options = {}) {
 }
 
 exports.create = function (player, amount, data, options = {}) {
-    let tx = { 
+    let tx = {
         ...create_prototype_json,
         ...options,
     };
@@ -61,9 +61,9 @@ exports.create = function (player, amount, data, options = {}) {
 }
 
 exports.send = function (player, contract_addr, amount, data, options = {}) {
-    let tx = { 
+    let tx = {
         ...transfer_prototype_json,
-        ...options 
+        ...options
     };
     tx.nonce = player.nonce;
     player.nonce += 1;
@@ -89,7 +89,7 @@ const print_list = function (src) {
 }
 
 const chunk_data = function (src) {
-    run_chunker_command = `${CHUNKER} chunk data "${src}" --devmode`
+    run_chunker_command = `${CHUNKER} chunk data "${src}"`
     chunked_message = new Buffer.from(execSync(run_chunker_command)).toString();
     return chunked_message.split("\n").slice(1, -1);
 }
