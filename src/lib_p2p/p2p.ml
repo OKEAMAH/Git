@@ -174,9 +174,48 @@ module Real = struct
     welcome : P2p_welcome.t option;
     watcher : P2p_connection.P2p_event.t Lwt_watcher.input;
     triggers : P2p_trigger.t;
+    received_msg_hook :
+      ('msg, 'peer_meta, 'conn_meta) connection -> 'msg -> unit;
+    sent_msg_hook : ('msg, 'peer_meta, 'conn_meta) connection -> 'msg -> unit;
+    broadcasted_msg_hook :
+      ('msg, 'peer_meta, 'conn_meta) connection P2p_peer.Table.t ->
+      ?except:(('msg, 'peer_meta, 'conn_meta) connection -> bool) ->
+      ?alt:(('msg, 'peer_meta, 'conn_meta) connection -> bool) * 'msg ->
+      'msg ->
+      unit;
   }
 
-  let create ~config ~limits meta_cfg msg_cfg conn_meta_cfg =
+  let set_env_network_delay () =
+    let get_loss = function
+      | None -> 0
+      | Some loss -> (
+          match int_of_string_opt loss with
+          | None ->
+              Format.eprintf
+                "Error while parsing artifical loss rate '%s': ignoring.@."
+                loss ;
+              0
+          | Some loss -> loss)
+    in
+    let get_delay = function
+      | None -> 0.
+      | Some delay -> (
+          match float_of_string_opt delay with
+          | None ->
+              Format.eprintf
+                "Error while parsing artifical delay '%s': ignoring.@."
+                delay ;
+              0.
+          | Some delay -> delay)
+    in
+    let loss = get_loss (Sys.getenv_opt "NETWORK_LOSS") in
+    let delay_min = get_delay (Sys.getenv_opt "NETWORK_MIN_DELAY") in
+    let delay_max = get_delay (Sys.getenv_opt "NETWORK_MAX_DELAY") in
+    let msg_fault = P2p_services.Connections.{loss; delay_min; delay_max} in
+    P2p_socket.set_default_msg_fault (Some msg_fault)
+
+  let create ~config ~limits ?received_msg_hook ?sent_msg_hook
+      ?broadcasted_msg_hook meta_cfg msg_cfg conn_meta_cfg =
     let open Lwt_result_syntax in
     let io_sched = create_scheduler limits in
     let watcher = Lwt_watcher.create_input () in
@@ -223,7 +262,8 @@ module Real = struct
       create_maintenance_worker limits pool connect_handler config triggers log
     in
     let* welcome = may_create_welcome_worker config limits connect_handler in
-    P2p_metrics_collectors.collect pool ;
+    P2p_metrics_collectors.collect pool io_sched ;
+    set_env_network_delay () ;
     return
       {
         config;
