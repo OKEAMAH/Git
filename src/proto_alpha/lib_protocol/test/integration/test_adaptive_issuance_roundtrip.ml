@@ -43,7 +43,7 @@ type error += Unexpected_error
 
 let default_param_wait, default_unstake_wait =
   let constants = Default_parameters.constants_test in
-  let pc = constants.preserved_cycles in
+  let pc = constants.consensus_rights_delay in
   let msp = Protocol.Constants_repr.max_slashing_period in
   (pc + 1, pc + msp)
 
@@ -193,11 +193,12 @@ module State = struct
   }
 
   (** Expected number of cycles before staking parameters get applied *)
-  let param_wait state = state.constants.preserved_cycles + 1
+  let param_wait state =
+    state.constants.delegate_parameters_activation_delay + 1
 
   (** Expected number of cycles before staking unstaked funds get unfrozen *)
   let unstake_wait state =
-    let pc = state.constants.preserved_cycles in
+    let pc = state.constants.consensus_rights_delay in
     let msp = Protocol.Constants_repr.max_slashing_period in
     pc + msp
 
@@ -259,7 +260,7 @@ module State = struct
       apply_stake
         amount
         current_cycle
-        state.constants.preserved_cycles
+        state.constants.consensus_rights_delay
         staker_name
     in
     update_map ~log_updates:[staker_name] ~f state
@@ -571,7 +572,9 @@ module State = struct
       update_map
         ~f:
           (update_frozen_rights_cycle
-             (Cycle.add current_cycle (state.constants.preserved_cycles + 1)))
+             (Cycle.add
+                current_cycle
+                (state.constants.consensus_rights_delay + 1)))
         state
     in
     (* Apply autostaking *)
@@ -1137,7 +1140,7 @@ let begin_test ~activate_ai ?(burn_rewards = false)
                   List.fold_left
                     (fun map cycle -> CycleMap.add cycle init_staked map)
                     CycleMap.empty
-                    Cycle.(root ---> add root constants.preserved_cycles)
+                    Cycle.(root ---> add root constants.consensus_rights_delay)
                 in
                 let pkh = Context.Contract.pkh contract in
                 let account =
@@ -1199,7 +1202,7 @@ let set_delegate_params delegate_name parameters : (t, t) scenarios =
         set_delegate_parameters (B block) delegate.contract ~parameters
       in
       (* Update state *)
-      let wait = state.constants.preserved_cycles - 1 in
+      let wait = state.constants.delegate_parameters_activation_delay - 1 in
       let state =
         {
           state with
@@ -1995,7 +1998,7 @@ module Roundtrip = struct
   let shorter_roundtrip_for_baker =
     let constants = init_constants ~autostaking_enable:false () in
     let amount = Amount (Tez.of_mutez 333_000_000_000L) in
-    let preserved_cycles = constants.preserved_cycles in
+    let consensus_rights_delay = constants.consensus_rights_delay in
     begin_test ~activate_ai:true ~constants ["delegate"]
     --> next_block --> wait_ai_activation
     --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
@@ -2005,7 +2008,7 @@ module Roundtrip = struct
     --> List.fold_left
           (fun acc i -> acc |+ Tag (fs "wait %i cycles" i) --> wait_n_cycles i)
           (Tag "wait 0 cycles" --> Empty)
-          (Stdlib.List.init (preserved_cycles + 1) (fun i -> i + 1))
+          (Stdlib.List.init (consensus_rights_delay + 1) (fun i -> i + 1))
     --> stake "delegate" amount
     --> check_snapshot_balances "init"
 
@@ -2261,7 +2264,7 @@ module Rewards = struct
         ~autostaking_enable:false
         ()
     in
-    let pc = constants.preserved_cycles in
+    let pc = constants.consensus_rights_delay in
     begin_test ~activate_ai:true ~burn_rewards:true ~constants [""]
     --> next_block --> save_current_rate (* before AI rate *)
     --> wait_ai_activation
@@ -2282,7 +2285,7 @@ module Rewards = struct
         ~autostaking_enable:false
         ()
     in
-    let rate_var_lag = constants.preserved_cycles in
+    let rate_var_lag = constants.consensus_rights_delay in
     let init_params =
       {
         limit_of_staking_over_baking = Q.one;
@@ -2767,7 +2770,7 @@ module Slashing = struct
   let test_no_shortcut_for_cheaters =
     let constants = init_constants ~autostaking_enable:false () in
     let amount = Amount (Tez.of_mutez 333_000_000_000L) in
-    let preserved_cycles = constants.preserved_cycles in
+    let consensus_rights_delay = constants.consensus_rights_delay in
     begin_test ~activate_ai:true ~constants ["delegate"]
     --> next_block --> wait_ai_activation
     --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
@@ -2778,11 +2781,11 @@ module Slashing = struct
     --> (List.fold_left
            (fun acc i -> acc |+ Tag (fs "wait %i cycles" i) --> wait_n_cycles i)
            (Tag "wait 0 cycles" --> Empty)
-           (Stdlib.List.init (preserved_cycles - 1) (fun i -> i + 1))
+           (Stdlib.List.init (consensus_rights_delay - 1) (fun i -> i + 1))
          --> stake "delegate" amount
          --> assert_failure (check_snapshot_balances "init")
         |+ Tag "wait enough cycles (preserved cycles + 1)"
-           --> wait_n_cycles (preserved_cycles + 1)
+           --> wait_n_cycles (consensus_rights_delay + 1)
            --> stake "delegate" amount
            --> check_snapshot_balances "init")
 
@@ -2791,7 +2794,7 @@ module Slashing = struct
     let amount_to_unstake = Amount (Tez.of_mutez 200_000_000_000L) in
     let amount_to_restake = Amount (Tez.of_mutez 100_000_000_000L) in
     let amount_expected_in_unstake_after_slash = Tez.of_mutez 50_000_000_000L in
-    let preserved_cycles = constants.preserved_cycles in
+    let consensus_rights_delay = constants.consensus_rights_delay in
     begin_test ~activate_ai:true ~constants ["delegate"]
     --> next_block --> wait_ai_activation
     --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
@@ -2801,7 +2804,7 @@ module Slashing = struct
     --> List.fold_left
           (fun acc i -> acc |+ Tag (fs "wait %i cycles" i) --> wait_n_cycles i)
           (Tag "wait 0 cycles" --> Empty)
-          (Stdlib.List.init (preserved_cycles - 2) (fun i -> i + 1))
+          (Stdlib.List.init (consensus_rights_delay - 2) (fun i -> i + 1))
     --> double_attest "delegate" --> make_denunciations () --> next_cycle
     --> check_balance_field
           "delegate"
@@ -2824,7 +2827,7 @@ module Slashing = struct
             --> make_denunciations ())
         --> next_cycle
         --> check_balance_field "delegate" `Unstaked_frozen_total Tez.zero)
-    --> wait_n_cycles (constants.preserved_cycles + 1)
+    --> wait_n_cycles (constants.consensus_rights_delay + 1)
 
   let test_slash_rounding =
     let constants = init_constants ~autostaking_enable:false () in
