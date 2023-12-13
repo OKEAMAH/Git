@@ -47,15 +47,25 @@ module Events = struct
       ~level:Notice
       ("level", Data_encoding.int32)
 
-  let synchronized =
+  let start_synchronization =
     declare_2
       ~section
-      ~name:"synchronized"
-      ~msg:"Store synchronized up to level {level} ({hash})"
+      ~name:"start_synchronization"
+      ~msg:"Starting store synchronization for block {level} ({hash})"
       ~level:Notice
       ("level", Data_encoding.int32)
       ~pp2:Block_hash.pp_short
       ("hash", Block_hash.encoding)
+
+  let synchronized =
+    declare_2
+      ~section
+      ~name:"synchronized"
+      ~msg:"Store synchronized on head {hash} ({level})"
+      ~level:Notice
+      ~pp1:Block_hash.pp_short
+      ("hash", Block_hash.encoding)
+      ("level", Data_encoding.int32)
 end
 
 module Daemon = struct
@@ -67,13 +77,13 @@ module Daemon = struct
       closing the stream. *)
   let make_stream_daemon ~on_head ~head_stream =
     let open Lwt_result_syntax in
-    let* head_stream, stopper = head_stream in
+    let* head_stream, head_stream_stopper = head_stream in
     let rec go () =
       let*! tok = Lwt.choose [Lwt_stream.get head_stream] in
       match tok with
       | None -> return_unit
       | Some element ->
-          let*! r = on_head stopper element in
+          let*! r = on_head head_stream_stopper element in
           let*! () =
             match r with
             | Ok () -> Lwt.return_unit
@@ -103,23 +113,23 @@ let init_store ~allow_testchains ~readonly parameters =
   in
   return store
 
-let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
-    (watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper
+let sync_store (dynamic_store : Store.t option ref) last_status parameters
     (block_hash, (header : Tezos_base.Block_header.t)) =
   let open Lwt_result_syntax in
   let block_level = header.shell.level in
-  let*! () = Events.(emit new_head) block_level in
   let* () =
     match !dynamic_store with
     | Some store ->
+        let*! () =
+          Events.(emit start_synchronization) (block_level, block_hash)
+        in
         let* store, current_status, cleanups =
           Store.sync ~last_status:!last_status ~trigger_hash:block_hash store
         in
         last_status := current_status ;
         dynamic_store := Some store ;
-        Lwt_watcher.notify watcher (block_hash, header) ;
         let*! () = cleanups () in
-        let*! () = Events.(emit synchronized) (block_level, block_hash) in
+        let*! () = Events.(emit synchronized) (block_hash, block_level) in
         return_unit
     | None ->
         let* store =
@@ -128,6 +138,18 @@ let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
         dynamic_store := Some store ;
         return_unit
   in
+  return_unit
+
+let handle_new_head (dynamic_store : Store.t option ref) last_status parameters
+    (head_watcher : (Block_hash.t * Block_header.t) Lwt_watcher.input) _stopper
+    (block_hash, (header : Tezos_base.Block_header.t)) =
+  let open Lwt_result_syntax in
+  let block_level = header.shell.level in
+  let*! () = Events.(emit new_head) block_level in
+  let* () =
+    sync_store dynamic_store last_status parameters (block_hash, header)
+  in
+  Lwt_watcher.notify head_watcher (block_hash, header) ;
   return_unit
 
 let init (dynamic_store : Store.t option ref) parameters
