@@ -130,6 +130,12 @@ module type T = sig
       present (though not physically equal to the input state). *)
   val remove_operation : t -> Operation_hash.t -> t
 
+  val get_context :
+    chain_store ->
+    Store.Block.t ->
+    Time.Protocol.t ->
+    Tezos_protocol_environment.Context.t tzresult Lwt.t
+
   module Internal_for_tests : sig
     (** Return the map of operations currently present in the protocol
         representation of the mempool. *)
