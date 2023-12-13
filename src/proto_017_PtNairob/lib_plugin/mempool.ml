@@ -878,6 +878,48 @@ let fee_needed_to_overtake ~op_to_overtake ~candidate_op =
     |> Option.of_result |> Option.join
   else None
 
+type ctxt = Protocol.Alpha_context.t
+
+let get_context context ~(head : Tezos_base.Block_header.shell_header) =
+  let open Lwt_result_syntax in
+  let* ( ctxt,
+         (_ : Receipt.balance_updates),
+         (_ : Migration.origination_result list) ) =
+    prepare
+      context
+      ~level:(Int32.succ head.level)
+      ~predecessor_timestamp:head.timestamp
+      ~timestamp:head.timestamp
+    |> Lwt.map Environment.wrap_tzresult
+  in
+  return ctxt
+
+let delegate_from_operation ctxt
+    ({shell = _; protocol_data = Operation_data {contents; _}} : Main.operation)
+    =
+  let open Lwt_syntax in
+  match contents with
+  | Single (Failing_noop _) -> return_none
+  | Single (Preendorsement content) | Single (Endorsement content) -> (
+      let level = Level.from_raw ctxt content.level in
+      let* slot_owner = Stake_distribution.slot_owner ctxt level content.slot in
+      match slot_owner with
+      | Ok (_ctxt, consensus_key) -> return_some consensus_key.delegate
+      | Error _ -> return_none)
+  | Single (Dal_attestation _)
+  | Single (Seed_nonce_revelation _)
+  | Single (Double_preendorsement_evidence _)
+  | Single (Double_endorsement_evidence _)
+  | Single (Double_baking_evidence _)
+  | Single (Activate_account _)
+  | Single (Vdf_revelation _) ->
+      return_none
+  | Single (Proposals {source; _}) | Single (Ballot {source; _}) ->
+      return_some source
+  | Single (Drain_delegate {delegate; _}) -> return_some delegate
+  | Single (Manager_operation {source; _}) -> return_some source
+  | Cons (Manager_operation {source; _}, _) -> return_some source
+
 module Internal_for_tests = struct
   let default_config_with_clock_drift clock_drift =
     {default_config with clock_drift}
