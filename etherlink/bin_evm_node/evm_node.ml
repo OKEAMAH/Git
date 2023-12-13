@@ -26,6 +26,38 @@
 (*****************************************************************************)
 open Configuration
 
+(** [retry_connection ~is_lost_connection f] retries the connection
+    using [f]. If an error happen in [f] and [is_lost_connection]
+    returns true with this function, the connection is retried. *)
+let retry_connection ~is_lost_connection (f : Uri.t -> string tzresult Lwt.t)
+    endpoint : string tzresult Lwt.t =
+  let open Lwt_result_syntax in
+  let rec retry ~delay =
+    let*! result = f endpoint in
+    match result with
+    | Ok smart_rollup_address -> return smart_rollup_address
+    | Error err ->
+        if is_lost_connection err then (
+          Format.printf
+            "Cannot connect to %S, retrying in %.2f seconds...\n%!"
+            (Uri.to_string endpoint)
+            delay ;
+          let*! () = Lwt_unix.sleep delay in
+          let next_delay = delay *. 2. in
+          let delay = Float.min next_delay 30. in
+          retry ~delay)
+        else Lwt.return result
+  in
+  retry ~delay:1.
+
+(** [fetch_smart_rollup_address ~is_lost_connection ~keep_alive f]
+    tries to fetch the smart rollup address using [f]. If [keep_alive]
+    is true, tries to fetch until it works. *)
+let fetch_smart_rollup_address ~is_lost_connection ~keep_alive f
+    (endpoint : Uri.t) =
+  if keep_alive then retry_connection ~is_lost_connection f endpoint
+  else f endpoint
+
 let install_finalizer_prod server =
   let open Lwt_syntax in
   Lwt_exit.register_clean_up_callback ~loc:__LOC__ @@ fun exit_status ->
@@ -74,23 +106,34 @@ module Event = struct
       ("port", Data_encoding.uint16)
 end
 
-let rollup_node_config_prod ~rollup_node_endpoint =
+let rollup_node_config_prod ~rollup_node_endpoint ~keep_alive =
   let open Lwt_result_syntax in
   let open Evm_node_lib_prod in
   let module Rollup_node_rpc = Rollup_node.Make (struct
     let base = rollup_node_endpoint
   end) in
-  let* smart_rollup_address = Rollup_node_rpc.smart_rollup_address in
+  let* smart_rollup_address =
+    fetch_smart_rollup_address
+      ~is_lost_connection:(fun _ -> true)
+      ~keep_alive
+      (fun _endpoint -> Rollup_node_rpc.smart_rollup_address)
+      rollup_node_endpoint
+  in
   return ((module Rollup_node_rpc : Rollup_node.S), smart_rollup_address)
 
-let rollup_node_config_dev ~rollup_node_endpoint =
+let rollup_node_config_dev ~rollup_node_endpoint ~keep_alive =
   let open Lwt_result_syntax in
   let open Evm_node_lib_dev in
   let module Rollup_node_rpc = Rollup_node.Make (struct
     let base = rollup_node_endpoint
   end) in
   let* smart_rollup_address =
-    Rollup_node_services.smart_rollup_address rollup_node_endpoint
+    fetch_smart_rollup_address
+      ~is_lost_connection:(function
+        | Rollup_node_services.Lost_connection :: _ -> true | _ -> false)
+      ~keep_alive
+      Rollup_node_services.smart_rollup_address
+      rollup_node_endpoint
   in
   return
     ((module Rollup_node_rpc : Services_backend_sig.S), smart_rollup_address)
@@ -287,7 +330,7 @@ let proxy_command =
            cors_origins,
            cors_headers,
            verbose,
-           _keep_alive )
+           keep_alive )
          rollup_node_endpoint
          () ->
       let*! () = Tezos_base_unix.Internal_event_unix.init () in
@@ -307,7 +350,9 @@ let proxy_command =
       let* () = Configuration.save_proxy ~force:true ~data_dir config in
       let* () =
         if not config.devmode then
-          let* rollup_config = rollup_node_config_prod ~rollup_node_endpoint in
+          let* rollup_config =
+            rollup_node_config_prod ~rollup_node_endpoint ~keep_alive
+          in
           let* () = Evm_node_lib_prod.Tx_pool.start rollup_config in
           let* directory = prod_directory config rollup_config in
           let* server = start config ~directory in
@@ -317,7 +362,7 @@ let proxy_command =
           return_unit
         else
           let* ((backend_rpc, smart_rollup_address) as rollup_config) =
-            rollup_node_config_dev ~rollup_node_endpoint
+            rollup_node_config_dev ~rollup_node_endpoint ~keep_alive
           in
           let* () =
             Evm_node_lib_dev.Tx_pool.start
