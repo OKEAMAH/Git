@@ -1159,7 +1159,111 @@ module Make
                 unprocessed;
               }
             in
-            Tezos_rpc.Answer.return (params#version, pending_operations)) ;
+            let delegates =
+              List.filter_map
+                Signature.Public_key_hash.of_b58check_opt
+                params#delegates
+            in
+            match delegates with
+            | [] -> Tezos_rpc.Answer.return (params#version, pending_operations)
+            | _ -> (
+                let get_context () =
+                  let*! context =
+                    (* prevalidation_t.t contains the context, get_context returns it *)
+                    Prevalidation_t.get_context
+                      pv.shell.parameters.chain_store
+                      pv.shell.predecessor
+                      (Time.System.to_protocol pv.shell.timestamp)
+                  in
+                  match context with
+                  | Error _ -> Lwt.return_none
+                  | Ok context ->
+                      let*! ctxt =
+                        Proto.Plugin.get_context
+                          context
+                          ~head:(Store.Block.header pv.shell.predecessor).shell
+                      in
+                      Lwt.return @@ Result.to_option ctxt
+                in
+                let*! ctxt = get_context () in
+                match ctxt with
+                | None ->
+                    Tezos_rpc.Answer.return (params#version, pending_operations)
+                | Some ctxt ->
+                    let*! validated =
+                      List.filter_s
+                        (fun (_oph, protocol) ->
+                          let*! delegate =
+                            Proto.Plugin.delegate_from_operation ctxt protocol
+                          in
+                          match delegate with
+                          | None -> Lwt.return_false
+                          | Some delegate ->
+                              Lwt.return
+                              @@ List.mem
+                                   ~equal:Signature.Public_key_hash.equal
+                                   delegate
+                                   delegates)
+                        validated
+                    in
+                    let filter_map operations =
+                      Operation_hash.Map.fold_s
+                        (fun oph ((protocol, _errs) as op) operations ->
+                          let*! delegate =
+                            Proto.Plugin.delegate_from_operation ctxt protocol
+                          in
+                          match delegate with
+                          | None -> Lwt.return operations
+                          | Some delegate ->
+                              if
+                                List.mem
+                                  ~equal:Signature.Public_key_hash.equal
+                                  delegate
+                                  delegates
+                              then
+                                Lwt.return
+                                @@ Operation_hash.Map.add oph op operations
+                              else Lwt.return operations)
+                        operations
+                        Operation_hash.Map.empty
+                    in
+                    let*! refused = filter_map refused in
+                    let*! outdated = filter_map outdated in
+                    let*! branch_refused = filter_map branch_refused in
+                    let*! branch_delayed = filter_map branch_delayed in
+                    let*! unprocessed =
+                      Operation_hash.Map.fold_s
+                        (fun oph op operations ->
+                          let*! delegate =
+                            Proto.Plugin.delegate_from_operation ctxt op
+                          in
+                          match delegate with
+                          | None -> Lwt.return operations
+                          | Some delegate ->
+                              if
+                                List.mem
+                                  ~equal:Signature.Public_key_hash.equal
+                                  delegate
+                                  delegates
+                              then
+                                Lwt.return
+                                @@ Operation_hash.Map.add oph op operations
+                              else Lwt.return operations)
+                        unprocessed
+                        Operation_hash.Map.empty
+                    in
+                    let pending_operations =
+                      {
+                        Proto_services.Mempool.validated;
+                        refused;
+                        outdated;
+                        branch_refused;
+                        branch_delayed;
+                        unprocessed;
+                      }
+                    in
+                    Tezos_rpc.Answer.return (params#version, pending_operations)
+                )) ;
       dir :=
         Tezos_rpc.Directory.register
           !dir
