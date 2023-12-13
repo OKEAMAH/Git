@@ -315,6 +315,7 @@ pub enum Instruction {
     Ticket,
     ReadTicket,
     SplitTicket,
+    JoinTickets,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
