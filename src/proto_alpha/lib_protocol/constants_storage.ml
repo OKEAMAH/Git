@@ -24,10 +24,6 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let preserved_cycles c =
-  let constants = Raw_context.constants c in
-  constants.preserved_cycles
-
 let consensus_rights_delay c =
   let constants = Raw_context.constants c in
   constants.consensus_rights_delay
@@ -46,19 +42,20 @@ let issuance_modification_delay c =
 
 let adaptive_issuance_activation_delay c =
   let constants = Raw_context.constants c in
-  1 + constants.preserved_cycles + Constants_repr.max_slashing_period
+  1 + constants.delegate_parameters_activation_delay
+  + Constants_repr.max_slashing_period
 
 let tolerated_inactivity_period c =
   let constants = Raw_context.constants c in
-  1 + constants.preserved_cycles
+  1 + constants.consensus_rights_delay
 
 let consensus_key_activation_delay c =
   let constants = Raw_context.constants c in
-  constants.preserved_cycles
+  constants.consensus_rights_delay
 
 let slashable_deposits_period c =
   let constants = Raw_context.constants c in
-  constants.preserved_cycles
+  constants.consensus_rights_delay
 
 let blocks_per_cycle c =
   let constants = Raw_context.constants c in
