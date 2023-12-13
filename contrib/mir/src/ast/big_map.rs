@@ -448,22 +448,24 @@ pub fn dump_big_map_updates(
     finished_with_maps: &mut [&mut BigMap],
 ) -> Result<(), LazyStorageError> {
     // Note: this function is similar to `extract_lazy_storage_diff` from the
-    // Octez implementation. The difference is that their's `to_duplicate`
-    // argument is not necessary, because contract parameter cannot contain big
-    // map, it is for other kind of entries in lazy storage.
+    // Octez implementation. The difference is that we don't have their's
+    // `to_duplicate` argument.
+    //
+    // Temporarily we go with a simpler solution where each ID in
+    // `started_with_map_ids` is guaranteed to be the only ID referencing that
+    // big map in the lazy storage. Consequences of this:
+    // * If a contract produces an operation with a big map, we immediately
+    // deduplicate big map ID there too (Octez implementation does not).
+    // * There is no need to implement temporary lazy storage for now.
 
     // The `finished_with_maps` vector above is supposed to contain all big maps
-    // remaining on stack at the end of contract execution. If we consider
-    // `BigMapId` as pointers to actual big maps in the lazy storage, then one
-    // can say that:
-    // * If there is exactly one given BigMapId in the list, it "exclusively
-    // owns" the big map in the storage and we can update that map in-place.
-    // * If there are several BigMapId values, this is shared ownership.
-    // After interpretation there should remain no shared references, every
-    // BigMapId should point to its own location in the storage, which we
-    // will solve via copying.
-    // * If there is no BigMapId value at the end but it was present at the
-    // beginning, then the map in the storage can be garbage collected.
+    // remaining on stack at the end of contract execution. After this function
+    // call, we want the provided big maps to satisfy the following invariants:
+    // * No `BigMapId` appears twice. This ensures that a big map in the storage
+    //   cannot be updated in-parallel via different `Value::BigMap` values.
+    // * Big maps, whose IDs are gone, are removed from the lazy storage.
+    // * Best effort is made to avoid copying big maps in the lazy storage, big
+    //   maps are updated in-place when possible.
 
     // First, we find big maps that are related to same big map IDs in the
     // storage. This is necessary to understand which maps will be updated in
