@@ -19,19 +19,6 @@
   variables:
     ARCH: "x86_64"
 
-.unit_test_template_x86_64_coverage:
-  extends:
-    - .unit_test_template_x86_64
-    - .template__coverage_files
-  script:
-    - make $MAKE_TARGETS
-    - ./scripts/ci/merge_coverage.sh
-  artifacts:
-    when: always
-    paths:
-      - $BISECT_FILE
-      - test_results
-
 .unit_test_template_arm64:
   extends: .unit_test_template
   needs:
@@ -44,7 +31,7 @@
 
 unit:non-proto-x86_64:
   extends:
-  - .unit_test_template_x86_64_coverage
+  - .unit_test_template_x86_64
   - .tags_template__no_gcp
   # The [lib_benchmark] unit tests require Python
   - .image_template__runtime_build_test_dependencies
@@ -53,13 +40,13 @@ unit:non-proto-x86_64:
 
 unit:other-x86_64:
   extends:
-  - .unit_test_template_x86_64_coverage
+  - .unit_test_template_x86_64
   variables:
     MAKE_TARGETS: test-other-unit
 
 unit:proto-x86_64:
   extends:
-  - .unit_test_template_x86_64_coverage
+  - .unit_test_template_x86_64
   variables:
     MAKE_TARGETS: test-proto-unit
 

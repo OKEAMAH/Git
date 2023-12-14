@@ -34,12 +34,6 @@ include:
   - .gitlab/ci/jobs/test/tezt_build_long.yml
   - .gitlab/ci/jobs/test/kernels.yml
 
-  # Stage: test_coverage
-  # Only run on merge requests that do not have the label `ci--no-coverage`
-  - local: .gitlab/ci/jobs/coverage/coverage.yml
-    rules:
-      - if: '$CI_MERGE_REQUEST_LABELS !~ /(?:^|[,])ci--no-coverage(?:$|[,])/'
-
   # Stage: doc
   - .gitlab/ci/jobs/doc/linkcheck.yml
   - .gitlab/ci/jobs/doc/test_install_python.yml

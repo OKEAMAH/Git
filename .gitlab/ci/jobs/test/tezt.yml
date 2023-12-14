@@ -42,7 +42,7 @@ tezt-time-sensitive:
 # these are tezt tests as above, but run using the static binaries
 tezt:static-binaries:
   extends:
-    # Expansion of .integration_template but without coverage.
+    # TODO: Expansion of .integration_template but without coverage. ??
     - .default_settings_template
     - .image_template__runtime_e2etest_dependencies
     - .tezt_template
@@ -59,8 +59,6 @@ tezt:static-binaries:
     - tezt:fetch-records
   variables:
     TESTS: "cli"
-    # Disable coverage
-    BISECT_FILE: ""
   before_script:
     - mv octez-binaries/x86_64/octez-* .
 
