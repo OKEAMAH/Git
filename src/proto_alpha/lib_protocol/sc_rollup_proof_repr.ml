@@ -237,59 +237,32 @@ module Dal_proofs = struct
   (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
      The current DAL refutation integration is not resilient to DAL parameters
      changes when upgrading the protocol. The code needs to be adapted. *)
-  (** Given a page, identified by its ID, we accept to produce or verify a
-      proof for it if, and only if, the page's level [page_published_level]
-      is in the following boundaries:
-      - page_published_level > origination_level: this means that the slot
-        of the page was published after the rollup origination ;
-      - page_published_level + dal_attestation_lag <= commit_level: this
-        means that the slot of the page has been confirmed before or at the
-        [commit_level]. According to the definition in
-        {!Sc_rollup_commitment_repr}, [commit_level] (aka inbox_level
-        in that module) is the level (included) up to which the PVM consumed
-        all messages and DAL/DAC inputs before producing the related commitment.
-  *)
-  let page_level_is_valid ~dal_attestation_lag ~commit_inbox_level page_id =
-    (* [dal_attestation_lag] is supposed to be positive. *)
-    let page_published_level =
-      Dal_slot_repr.(page_id.Page.slot_id.Header.published_level)
-    in
-    let open Raw_level_repr in
-    let not_too_recent =
-      add page_published_level dal_attestation_lag <= commit_inbox_level
-    in
-    not_too_recent
 
-  let verify ~dal_attestation_lag ~commit_inbox_level dal_parameters page_id
-      dal_snapshot proof =
+  let verify dal_parameters page_id dal_snapshot proof =
     let open Result_syntax in
-    if page_level_is_valid ~dal_attestation_lag ~commit_inbox_level page_id then
-      let* input =
-        Dal_slot_repr.History.verify_proof
-          dal_parameters
-          page_id
-          dal_snapshot
-          proof
-      in
-      return_some (Sc_rollup_PVM_sig.Reveal (Dal_page input))
-    else return_none
+    let* input =
+      Dal_slot_repr.History.verify_proof
+        dal_parameters
+        page_id
+        dal_snapshot
+        proof
+    in
+    return_some (Sc_rollup_PVM_sig.Reveal (Dal_page input))
 
-  let produce ~dal_attestation_lag ~commit_inbox_level dal_parameters page_id
-      ~page_info ~get_history confirmed_slots_history =
+  let produce dal_parameters page_id ~page_info ~get_history
+      confirmed_slots_history =
     let open Lwt_result_syntax in
-    if page_level_is_valid ~dal_attestation_lag ~commit_inbox_level page_id then
-      let* proof, content_opt =
-        Dal_slot_repr.History.produce_proof
-          dal_parameters
-          page_id
-          ~page_info
-          ~get_history
-          confirmed_slots_history
-      in
-      return
-        ( Some (Reveal_proof (Dal_page_proof {proof; page_id})),
-          Some (Sc_rollup_PVM_sig.Reveal (Dal_page content_opt)) )
-    else return (None, None)
+    let* proof, content_opt =
+      Dal_slot_repr.History.produce_proof
+        dal_parameters
+        page_id
+        ~page_info
+        ~get_history
+        confirmed_slots_history
+    in
+    return
+      ( Some (Reveal_proof (Dal_page_proof {proof; page_id})),
+        Some (Sc_rollup_PVM_sig.Reveal (Dal_page content_opt)) )
 end
 
 let valid (type state proof output)
@@ -322,13 +295,7 @@ let valid (type state proof output)
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
-        Dal_proofs.verify
-          dal_parameters
-          ~dal_attestation_lag
-          ~commit_inbox_level
-          page_id
-          dal_snapshot
-          proof
+        Dal_proofs.verify dal_parameters page_id dal_snapshot proof
         |> Lwt.return
     | Some (Reveal_proof Dal_parameters_proof) ->
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/6562
@@ -495,8 +462,6 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
         let open Dal_with_history in
         Dal_proofs.produce
           dal_parameters
-          ~dal_attestation_lag
-          ~commit_inbox_level
           page_id
           ~page_info
           ~get_history
