@@ -151,8 +151,8 @@ check-kaitai-struct-files:
 .PHONY: validate-kaitai-struct-files
 validate-kaitai-struct-files:
 	@$(MAKE) check-kaitai-struct-files
-	@./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input 2>/dev/null || \
-	 (echo "To see the full log run: \"./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input\""; exit 1)
+	@./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh contrib/kaitai-struct-files/files 2>/dev/null || \
+	 (echo "To see the full log run: \"./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh contrib/kaitai-struct-files/files\""; exit 1)
 
 # Remove the old names of executables.
 # Depending on the commit you are updating from (v14.0, v15 or some version of master),
