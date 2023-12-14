@@ -452,8 +452,10 @@ pub fn dump_big_map_updates(
     // `to_duplicate` argument.
     //
     // Temporarily we go with a simpler solution where each ID in
-    // `started_with_map_ids` is guaranteed to be the only ID referencing that
-    // big map in the lazy storage. Consequences of this:
+    // `started_with_map_ids` is guaranteed to be used by only one big map, a
+    // big map that comes from parameter or storage value; these IDs are
+    // expected to be not used by big maps in other contracts. Consequences of
+    // this:
     // * If a contract produces an operation with a big map, we immediately
     // deduplicate big map ID there too (Octez implementation does not).
     // * There is no need to implement temporary lazy storage for now.
