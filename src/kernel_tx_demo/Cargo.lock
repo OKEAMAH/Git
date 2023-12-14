@@ -2154,8 +2154,7 @@ dependencies = [
 [[package]]
 name = "tezos_crypto_rs"
 version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284fa6f4be10eff67ca5b2f9e8ec9544be81a07223f6a4c8d3a49a13aecce768"
+source = "git+https://github.com/trilitech/tezedge.git?branch=emturner@tz1-hash-before-signing#3b3d3f6cde7dd6f761be787606ad8de0c3cb1e88"
 dependencies = [
  "anyhow",
  "base58",

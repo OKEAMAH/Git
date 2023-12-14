@@ -18,7 +18,6 @@ use crypto::PublicKeySignatureVerifier;
 use nom::combinator::{consumed, map};
 use nom::sequence::pair;
 use num_bigint::{BigInt, TryFromBigIntError};
-use tezos_crypto_rs::blake2b::digest_256;
 use tezos_crypto_rs::blake2b::Blake2bError;
 use tezos_data_encoding::nom::NomReader;
 #[cfg(feature = "debug")]
@@ -121,10 +120,7 @@ impl<'a> VerifiableOperation<'a> {
             }
         };
 
-        // TODO: https://github.com/trilitech/tezedge/issues/44
-        // Consider moving the hashing logic into `verify_signature`.
-        let hash = digest_256(self.parsed)?;
-        pk.verify_signature(&self.signature, &hash)?;
+        pk.verify_signature(&self.signature, self.parsed)?;
 
         Ok(())
     }

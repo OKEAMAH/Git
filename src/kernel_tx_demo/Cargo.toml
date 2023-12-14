@@ -18,3 +18,6 @@ tezos-smart-rollup-entrypoint = { path = "../kernel_sdk/entrypoint" }
 tezos-smart-rollup-storage = { path = "../kernel_sdk/storage" }
 tezos-smart-rollup-encoding = { path = "../kernel_sdk/encoding" }
 tezos-smart-rollup-mock = { path = "../kernel_sdk/mock" }
+
+[patch.crates-io]
+tezos_crypto_rs = { git = "https://github.com/trilitech/tezedge.git", branch = "emturner@tz1-hash-before-signing" }
