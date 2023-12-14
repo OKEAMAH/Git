@@ -249,29 +249,21 @@ module Dal_proofs = struct
         in that module) is the level (included) up to which the PVM consumed
         all messages and DAL/DAC inputs before producing the related commitment.
   *)
-  let page_level_is_valid ~dal_attestation_lag ~origination_level
-      ~commit_inbox_level page_id =
+  let page_level_is_valid ~dal_attestation_lag ~commit_inbox_level page_id =
     (* [dal_attestation_lag] is supposed to be positive. *)
     let page_published_level =
       Dal_slot_repr.(page_id.Page.slot_id.Header.published_level)
     in
     let open Raw_level_repr in
-    let not_too_old = page_published_level > origination_level in
     let not_too_recent =
       add page_published_level dal_attestation_lag <= commit_inbox_level
     in
-    not_too_old && not_too_recent
+    not_too_recent
 
-  let verify ~metadata ~dal_attestation_lag ~commit_inbox_level dal_parameters
-      page_id dal_snapshot proof =
+  let verify ~dal_attestation_lag ~commit_inbox_level dal_parameters page_id
+      dal_snapshot proof =
     let open Result_syntax in
-    if
-      page_level_is_valid
-        ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
-        ~dal_attestation_lag
-        ~commit_inbox_level
-        page_id
-    then
+    if page_level_is_valid ~dal_attestation_lag ~commit_inbox_level page_id then
       let* input =
         Dal_slot_repr.History.verify_proof
           dal_parameters
@@ -282,16 +274,10 @@ module Dal_proofs = struct
       return_some (Sc_rollup_PVM_sig.Reveal (Dal_page input))
     else return_none
 
-  let produce ~metadata ~dal_attestation_lag ~commit_inbox_level dal_parameters
-      page_id ~page_info ~get_history confirmed_slots_history =
+  let produce ~dal_attestation_lag ~commit_inbox_level dal_parameters page_id
+      ~page_info ~get_history confirmed_slots_history =
     let open Lwt_result_syntax in
-    if
-      page_level_is_valid
-        ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
-        ~dal_attestation_lag
-        ~commit_inbox_level
-        page_id
-    then
+    if page_level_is_valid ~dal_attestation_lag ~commit_inbox_level page_id then
       let* proof, content_opt =
         Dal_slot_repr.History.produce_proof
           dal_parameters
@@ -337,7 +323,6 @@ let valid (type state proof output)
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
         Dal_proofs.verify
-          ~metadata
           dal_parameters
           ~dal_attestation_lag
           ~commit_inbox_level
@@ -509,7 +494,6 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
     | Needs_reveal (Request_dal_page page_id) ->
         let open Dal_with_history in
         Dal_proofs.produce
-          ~metadata
           dal_parameters
           ~dal_attestation_lag
           ~commit_inbox_level
