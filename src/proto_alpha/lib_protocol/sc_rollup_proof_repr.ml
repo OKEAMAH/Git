@@ -233,38 +233,6 @@ let check_inbox_proof snapshot serialized_inbox_proof (level, counter) =
   | Some inbox_proof ->
       Sc_rollup_inbox_repr.verify_proof (level, counter) snapshot inbox_proof
 
-module Dal_proofs = struct
-  (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
-     The current DAL refutation integration is not resilient to DAL parameters
-     changes when upgrading the protocol. The code needs to be adapted. *)
-
-  let verify dal_parameters page_id dal_snapshot proof =
-    let open Result_syntax in
-    let* input =
-      Dal_slot_repr.History.verify_proof
-        dal_parameters
-        page_id
-        dal_snapshot
-        proof
-    in
-    return_some (Sc_rollup_PVM_sig.Reveal (Dal_page input))
-
-  let produce dal_parameters page_id ~page_info ~get_history
-      confirmed_slots_history =
-    let open Lwt_result_syntax in
-    let* proof, content_opt =
-      Dal_slot_repr.History.produce_proof
-        dal_parameters
-        page_id
-        ~page_info
-        ~get_history
-        confirmed_slots_history
-    in
-    return
-      ( Some (Reveal_proof (Dal_page_proof {proof; page_id})),
-        Some (Sc_rollup_PVM_sig.Reveal (Dal_page content_opt)) )
-end
-
 let valid (type state proof output)
     ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation) ~metadata
     snapshot commit_inbox_level dal_snapshot dal_parameters ~dal_attestation_lag
@@ -295,8 +263,14 @@ let valid (type state proof output)
     | Some (Reveal_proof Metadata_proof) ->
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
-        Dal_proofs.verify dal_parameters page_id dal_snapshot proof
-        |> Lwt.return
+        let*? input =
+          Dal_slot_repr.History.verify_proof
+            dal_parameters
+            page_id
+            dal_snapshot
+            proof
+        in
+        return_some (Sc_rollup_PVM_sig.Reveal (Dal_page input))
     | Some (Reveal_proof Dal_parameters_proof) ->
         (* FIXME: https://gitlab.com/tezos/tezos/-/issues/6562
            Support revealing historical DAL parameters.
@@ -460,12 +434,17 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
             Some Sc_rollup_PVM_sig.(Reveal (Metadata metadata)) )
     | Needs_reveal (Request_dal_page page_id) ->
         let open Dal_with_history in
-        Dal_proofs.produce
-          dal_parameters
-          page_id
-          ~page_info
-          ~get_history
-          confirmed_slots_history
+        let* proof, content_opt =
+          Dal_slot_repr.History.produce_proof
+            dal_parameters
+            page_id
+            ~page_info
+            ~get_history
+            confirmed_slots_history
+        in
+        return
+          ( Some (Reveal_proof (Dal_page_proof {proof; page_id})),
+            Some (Sc_rollup_PVM_sig.Reveal (Dal_page content_opt)) )
     | Needs_reveal Reveal_dal_parameters ->
         let open Dal_with_history in
         return
