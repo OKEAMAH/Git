@@ -452,8 +452,8 @@ pub fn dump_big_map_updates(
     finished_with_maps: &mut [&mut BigMap],
 ) -> Result<(), LazyStorageError> {
     // Note: this function is similar to `extract_lazy_storage_diff` from the
-    // Octez implementation. The difference is that we don't have their's
-    // `to_duplicate` argument.
+    // Tezos protocol implementation. The difference is that we don't have
+    // their's `to_duplicate` argument.
     //
     // Temporarily we go with a simpler solution where each ID in
     // `started_with_map_ids` is guaranteed to be used by only one big map, a
@@ -461,7 +461,8 @@ pub fn dump_big_map_updates(
     // expected to be not used by big maps in other contracts. Consequences of
     // this:
     // * If a contract produces an operation with a big map, we immediately
-    // deduplicate big map ID there too (Octez implementation does not).
+    // deduplicate big map ID there too (the Tezos protocol implementation does
+    // not).
     // * There is no need to implement temporary lazy storage for now.
 
     // The `finished_with_maps` vector above is supposed to contain all big maps
@@ -497,7 +498,7 @@ pub fn dump_big_map_updates(
                 }
             }
             None => {
-                // ID is empty, meaning that the entire big map is yet in
+                // ID is empty, meaning that the entire big map is still in
                 // memory. We have to create a new map in the storage.
                 let id = storage.big_map_new(&map.key_type, &map.value_type)?;
                 storage.big_map_bulk_update(id, mem::take(&mut map.overlay))?;
@@ -508,7 +509,7 @@ pub fn dump_big_map_updates(
 
     // Remove big maps that were gone.
     for map_id in started_with_map_ids {
-        // If not found among the eventual big maps...
+        // If not found in `finished_with_maps`...
         if !grouped_maps.contains_key(map_id) {
             storage.big_map_remove(*map_id)?
         }
