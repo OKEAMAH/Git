@@ -92,8 +92,9 @@ pub enum LazyStorageError {
 
 /// All the operations for working with the lazy storage.
 ///
-/// Note that in Octez implementation, work with this layer is observable. When
-/// you call a contract with `octez-client`, you can see, for instance:
+/// Note that in the Tezos protocol implementation, work with this layer is
+/// observable. When you call a contract with `octez-client`, you can see, for
+/// instance:
 ///
 /// ```txt
 /// Updated storage: (Pair 69183 70325)
@@ -103,9 +104,9 @@ pub enum LazyStorageError {
 ///   Set map(69183)[5] to 5
 /// ```
 ///
-/// So we try to mimic what Octez does, and do it carefully so that if we also
-/// need to log actions done at this layer, it would be close to what Octez
-/// does.
+/// So we try to mimic what the Tezos protocol does, and do it carefully so that
+/// if we also need to log actions done at this layer, it would be close to what
+/// the Tezos protocol does.
 pub trait LazyStorage {
     /// Get a value under the given key of the given big map.
     ///
