@@ -405,6 +405,9 @@ impl TypedValue {
                     None => {}
                 },
                 List(l) => l.iter_mut().for_each(|v| go(v, put_res)),
+                Set(_) => {
+                    // Elements are comparable and so have no big maps
+                }
                 Map(m) => m.iter_mut().for_each(|(_k, v)| {
                     // Key is comparable as so has no big map, skipping it
                     go(v, put_res)
