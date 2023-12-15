@@ -21,14 +21,22 @@ module Pool = struct
   type t = {
     transactions : transaction Nonce_map.t Pkey_map.t;
     global_index : int64; (* Index to order the transactions. *)
+    deposits : (Ethereum_types.hash * string) list;
   }
 
-  let empty : t = {transactions = Pkey_map.empty; global_index = Int64.zero}
+  let empty : t =
+    {transactions = Pkey_map.empty; global_index = Int64.zero; deposits = []}
+
+  (** Add a deposit*)
+  let add_deposits t deposit =
+    let {transactions; global_index; deposits} = t in
+    let deposits = List.append deposits [deposit] in
+    {transactions; global_index; deposits}
 
   (** Add a transacion to the pool.*)
   let add t pkey base_fee raw_tx delayed =
     let open Result_syntax in
-    let {transactions; global_index} = t in
+    let {transactions; global_index; deposits} = t in
     let* (Qty nonce) = Ethereum_types.transaction_nonce raw_tx in
     let* gas_price = Ethereum_types.transaction_gas_price base_fee raw_tx in
     let transaction = {index = global_index; raw_tx; gas_price; delayed} in
@@ -53,7 +61,7 @@ module Pool = struct
                    user_transactions))
         transactions
     in
-    return {transactions; global_index = Int64.(add global_index one)}
+    return {transactions; global_index = Int64.(add global_index one); deposits}
 
   (** Returns all the addresses of the pool *)
   let addresses {transactions; _} =
@@ -61,7 +69,7 @@ module Pool = struct
 
   (** Returns the transaction matching the predicate.
       And remove them from the pool. *)
-  let partition pkey predicate {transactions; global_index} =
+  let partition pkey predicate {transactions; global_index; deposits} =
     (* Get the sequence of transaction *)
     let selected, remaining =
       transactions |> Pkey_map.find pkey
@@ -75,7 +83,7 @@ module Pool = struct
     in
     (* Convert the sequence to a list *)
     let selected = selected |> Nonce_map.bindings |> List.map snd in
-    (selected, {transactions; global_index})
+    (selected, {transactions; global_index; deposits})
 
   (** Removes from the pool the transactions matching the predicate 
       for the given pkey. *)
@@ -87,7 +95,7 @@ module Pool = struct
       Returns the given nonce if the user does not have any transactions in the pool. *)
   let next_nonce pkey current_nonce (t : t) =
     let open Ethereum_types in
-    let {transactions; global_index = _} = t in
+    let {transactions; global_index = _; deposits = _} = t in
     (* Retrieves the list of transactions for a given user. *)
     let user_transactions =
       Pkey_map.find pkey transactions
@@ -257,9 +265,15 @@ let on_delayed_transaction state delayed_tx =
   state.pool <- pool ;
   return (Ok hash)
 
-let on_delayed_deposit _state _delayed_deposit =
-  (* Implemented in next commit *)
-  assert false
+let on_delayed_deposit state delayed_deposit =
+  let open Lwt_result_syntax in
+  let open Types in
+  let {rollup_node = (module Rollup_node); pool; _} = state in
+  let open Ethereum_types.Delayed_transaction in
+  let {hash; raw_deposit} = delayed_deposit in
+  let pool = Pool.add_deposits pool (hash, raw_deposit) in
+  state.pool <- pool ;
+  return (Ok hash)
 
 let on_transaction state transaction =
   match transaction with
