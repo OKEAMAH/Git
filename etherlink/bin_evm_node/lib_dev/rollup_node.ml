@@ -40,6 +40,22 @@ end) : Services_backend_sig.Backend = struct
         ((), Block_id.Head)
         {key = path}
         ()
+
+    let subkeys_from_rollup path _level =
+      call_service
+        ~base:Base.base
+        durable_state_subkeys
+        ((), Block_id.Head)
+        {key = path}
+        ()
+
+    let read_from_rollup_node path _level =
+      call_service
+        ~base:Base.base
+        durable_state_value
+        ((), Block_id.Head)
+        {key = path}
+        ()
   end
 
   module TxEncoder = struct

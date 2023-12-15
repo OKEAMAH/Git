@@ -387,6 +387,8 @@ let sequencer_command =
       in
       let module Sequencer = Sequencer.Make (struct
         let ctxt = ctxt
+
+        let base = rollup_node_endpoint
       end) in
       (* Ignore the smart rollup address for now. *)
       let* () =

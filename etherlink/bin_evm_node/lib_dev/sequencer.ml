@@ -5,8 +5,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Rollup_node_services
+
 module MakeBackend (Ctxt : sig
   val ctxt : Sequencer_context.t
+
+  val base : Uri.t
 end) : Services_backend_sig.Backend = struct
   module READER = struct
     let read path =
@@ -16,6 +20,22 @@ end) : Services_backend_sig.Backend = struct
       in
       let*! res = Sequencer_state.inspect evm_state path in
       return res
+
+    let subkeys_from_rollup path level =
+      call_service
+        ~base:Ctxt.base
+        durable_state_subkeys
+        ((), Block_id.Level level)
+        {key = path}
+        ()
+
+    let read_from_rollup_node path level =
+      call_service
+        ~base:Ctxt.base
+        durable_state_value
+        ((), Block_id.Level level)
+        {key = path}
+        ()
   end
 
   module TxEncoder = struct
@@ -56,5 +76,7 @@ end
 
 module Make (Ctxt : sig
   val ctxt : Sequencer_context.t
+
+  val base : Uri.t
 end) =
   Services_backend_sig.Make (MakeBackend (Ctxt))
