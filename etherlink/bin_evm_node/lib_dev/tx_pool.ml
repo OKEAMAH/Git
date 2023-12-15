@@ -257,11 +257,17 @@ let on_delayed_transaction state delayed_tx =
   state.pool <- pool ;
   return (Ok hash)
 
+let on_delayed_deposit _state _delayed_deposit =
+  (* Implemented in next commit *)
+  assert false
+
 let on_transaction state transaction =
   match transaction with
   | Transaction transaction -> on_normal_transaction state transaction
   | Delayed (Transaction delayed_transaction) ->
       on_delayed_transaction state delayed_transaction
+  | Delayed (Deposit delayed_deposit) ->
+      on_delayed_deposit state delayed_deposit
 
 let inject_transactions ~smart_rollup_address rollup_node pool =
   let open Lwt_result_syntax in

@@ -1147,7 +1147,9 @@ module Delayed_transaction = struct
     caller : Address.t;
   }
 
-  type t = Transaction of transaction
+  type deposit = {hash : hash; raw_deposit : string}
+
+  type t = Transaction of transaction | Deposit of deposit
 
   let encoding =
     let open Data_encoding in
@@ -1161,9 +1163,18 @@ module Delayed_transaction = struct
              (req "raw_tx" string)
              (req "caller" Address.encoding))
           (function
-            | Transaction {hash; raw_tx; caller} -> Some (hash, raw_tx, caller))
+            | Transaction {hash; raw_tx; caller} -> Some (hash, raw_tx, caller)
+            | _ -> None)
           (function
             | hash, raw_tx, caller -> Transaction {hash; raw_tx; caller});
+        case
+          (Tag 1)
+          ~title:"deposit"
+          (obj2 (req "hash" hash_encoding) (req "raw_deposit" string))
+          (function
+            | Deposit {hash; raw_deposit} -> Some (hash, raw_deposit)
+            | Transaction _ -> None)
+          (function hash, raw_deposit -> Deposit {hash; raw_deposit});
       ]
 
   let of_bytes bytes =
@@ -1179,10 +1190,16 @@ module Delayed_transaction = struct
               |> Hex.show |> hash_of_string
             in
             Some (Transaction {hash; raw_tx = Bytes.to_string raw_tx; caller})
+        | "\x02", Rlp.List [Value hash; deposit] ->
+            let hash = Hex.of_bytes hash |> Hex.show |> hash_of_string in
+            let raw_deposit = Rlp.encode deposit |> Bytes.to_string in
+            Some (Deposit {hash; raw_deposit})
         | _ -> None)
     | _ -> None
 
   let show transaction =
     match transaction with
     | Transaction {raw_tx; _} -> raw_tx |> Hex.of_string |> Hex.show
+    | Deposit {raw_deposit; _} -> raw_deposit |> Hex.of_string |> Hex.show
 end
+
