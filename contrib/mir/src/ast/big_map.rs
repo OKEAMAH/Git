@@ -139,22 +139,6 @@ pub trait LazyStorage {
         value: Option<TypedValue>,
     ) -> Result<(), LazyStorageError>;
 
-    /// Update big map with multiple changes, generalizes
-    /// [LazyStorage::big_map_update].
-    ///
-    /// The specified big map id must point to a valid map in the lazy storage.
-    /// Key and value types must match the type of key of the stored map.
-    fn big_map_bulk_update(
-        &mut self,
-        id: BigMapId,
-        entries_iter: impl IntoIterator<Item = (TypedValue, Option<TypedValue>)>,
-    ) -> Result<(), LazyStorageError> {
-        for (k, v) in entries_iter {
-            self.big_map_update(id, k, v)?
-        }
-        Ok(())
-    }
-
     /// Get key and value types of the map.
     ///
     /// The specified big map id must point to a valid map in the lazy storage.
@@ -179,6 +163,26 @@ pub trait LazyStorage {
     /// storage.
     fn big_map_remove(&mut self, id: BigMapId) -> Result<(), LazyStorageError>;
 }
+
+pub trait LazyStorageBulkUpdate: LazyStorage {
+    /// Update big map with multiple changes, generalizes
+    /// [LazyStorage::big_map_update].
+    ///
+    /// The specified big map id must point to a valid map in the lazy storage.
+    /// Key and value types must match the type of key of the stored map.
+    fn big_map_bulk_update(
+        &mut self,
+        id: BigMapId,
+        entries_iter: impl IntoIterator<Item = (TypedValue, Option<TypedValue>)>,
+    ) -> Result<(), LazyStorageError> {
+        for (k, v) in entries_iter {
+            self.big_map_update(id, k, v)?
+        }
+        Ok(())
+    }
+}
+
+impl<T: LazyStorage> LazyStorageBulkUpdate for T {}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct MapInfo {
