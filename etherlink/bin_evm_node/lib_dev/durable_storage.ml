@@ -225,4 +225,36 @@ module Make (Reader : READER) = struct
         Bytes.to_string bytes |> Hex.of_string |> Hex.show
         |> Ethereum_types.hex_of_string
     | None -> Ethereum_types.Hex (pad32left0 "0")
+
+  let delayed_transactions level =
+    let open Lwt_result_syntax in
+    let* keys =
+      Reader.subkeys_from_rollup
+        Durable_storage_path.Delayed_transaction.hashes
+        level
+    in
+    match keys with
+    | None -> return []
+    | Some keys ->
+        let keys =
+          (* Removes the empty key *)
+          keys
+          |> List.filter (fun s -> s <> "")
+          |> List.map (fun key -> Ethereum_types.hash_of_string key)
+        in
+        let*! transactions =
+          Lwt_list.filter_map_p
+            (fun hash ->
+              let path =
+                Durable_storage_path.Delayed_transaction.transaction hash
+              in
+              let*! bytes = Reader.read_from_rollup_node path level in
+              match bytes with
+              | Ok (Some bytes) ->
+                  Ethereum_types.Delayed_transaction.of_bytes bytes
+                  |> Lwt.return
+              | _ -> Lwt.return_none)
+            keys
+        in
+        return transactions
 end

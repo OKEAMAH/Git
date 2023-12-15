@@ -98,6 +98,9 @@ module type S = sig
     Ethereum_types.address ->
     Ethereum_types.quantity ->
     Ethereum_types.hex tzresult Lwt.t
+
+  val delayed_transactions :
+    int32 -> Ethereum_types.Delayed_transaction.t list tzresult Lwt.t
 end
 
 module type Backend = sig
