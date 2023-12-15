@@ -85,3 +85,9 @@ module Transaction_object = struct
 
   let object_ (Hash (Hex tx_hash)) = objects ^ "/" ^ tx_hash
 end
+
+module Delayed_transaction = struct
+  let hashes = "/delayed-inbox"
+
+  let transaction (Hash (Hex tx_hash)) = hashes ^ "/" ^ tx_hash ^ "/data"
+end
