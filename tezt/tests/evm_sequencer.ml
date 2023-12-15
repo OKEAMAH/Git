@@ -12,10 +12,20 @@ let delayed_path () =
     project_root
     // "etherlink/kernel_evm/l1_bridge/delayed_transaction_bridge.tz")
 
+let exchanger_path () =
+  Base.(project_root // "etherlink/kernel_evm/l1_bridge/exchanger.tz")
+
+let bridge_path () =
+  Base.(project_root // "etherlink/kernel_evm/l1_bridge/evm_bridge.tz")
+
 let evm_type =
   "or (or (pair bytes (ticket (pair nat (option bytes)))) bytes) bytes"
 
-type l1_contracts = {delayed_transaction_bridge : string}
+type l1_contracts = {
+  delayed_transaction_bridge : string;
+  exchanger : string;
+  bridge : string;
+}
 
 type sequencer_setup = {
   node : Node.t;
@@ -46,8 +56,31 @@ let setup_l1_contracts client =
       client
   in
   let* () = Client.bake_for_and_wait client in
-
-  return {delayed_transaction_bridge}
+  (* Originates the exchanger. *)
+  let* exchanger =
+    Client.originate_contract
+      ~alias:"exchanger"
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.public_key_hash
+      ~init:"Unit"
+      ~prg:(exchanger_path ())
+      ~burn_cap:Tez.one
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  (* Originates the bridge. *)
+  let* bridge =
+    Client.originate_contract
+      ~alias:"evm-bridge"
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.public_key_hash
+      ~init:(sf "Pair %S None" exchanger)
+      ~prg:(bridge_path ())
+      ~burn_cap:Tez.one
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  return {delayed_transaction_bridge; exchanger; bridge}
 
 let setup_sequencer ?(bootstrap_accounts = Eth_account.bootstrap_accounts)
     protocol =
@@ -62,6 +95,7 @@ let setup_sequencer ?(bootstrap_accounts = Eth_account.bootstrap_accounts)
       ~bootstrap_accounts
       ~sequencer:true
       ~delayed_bridge:l1_contracts.delayed_transaction_bridge
+      ~ticketer:l1_contracts.exchanger
       ()
   in
   let* {output; _} =
@@ -113,6 +147,22 @@ let send_raw_transaction_to_delayed_inbox ~sc_rollup_node ~node ~client
   let* () = Client.bake_for_and_wait client in
   let* _ = next_evm_level ~sc_rollup_node ~node ~client in
   Lwt.return hash
+
+let send_deposit_to_delayed_inbox ~amount ~bridge ~depositor ~receiver
+    ~sc_rollup_node ~sc_rollup_address ~node client =
+  let* () =
+    Client.transfer
+      ~entrypoint:"deposit"
+      ~arg:(sf "Pair %S %s" sc_rollup_address receiver)
+      ~amount
+      ~giver:depositor.Account.public_key_hash
+      ~receiver:bridge
+      ~burn_cap:Tez.one
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  let* _ = next_evm_level ~sc_rollup_node ~node ~client in
+  unit
 
 let test_persistent_state =
   Protocol.register_test
@@ -178,6 +228,62 @@ let test_send_transaction_to_delayed_inbox =
     ~error_msg:"hash %L should be present in the delayed inbox %R" ;
   unit
 
+let test_send_deposit_to_delayed_inbox =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "sequencer"; "delayed_inbox"; "deposit"]
+    ~title:"Send a deposit to the delayed inbox"
+  @@ fun protocol ->
+  let* {
+         client;
+         node;
+         l1_contracts = {bridge; _};
+         sc_rollup_address;
+         sc_rollup_node;
+         _;
+       } =
+    setup_sequencer protocol
+  in
+  let amount = Tez.of_int 16 in
+  let depositor = Constant.bootstrap5 in
+  let receiver =
+    Eth_account.
+      {
+        address = "0x1074Fd1EC02cbeaa5A90450505cF3B48D834f3EB";
+        private_key =
+          "0xb7c548b5442f5b28236f0dcd619f65aaaafd952240908adcf9642d8e616587ee";
+        public_key =
+          "0466ed90f9a86c0908746475fbe0a40c72237de22d89076302e22c2a8da259b4aba5c7ee1f3dc3fd0b240645462620ae62b6fe8fe5b3464c3b1b4ae6c06c97b7b6";
+      }
+  in
+  let* () =
+    send_deposit_to_delayed_inbox
+      ~amount
+      ~bridge
+      ~depositor
+      ~receiver:receiver.address
+      ~sc_rollup_node
+      ~sc_rollup_address
+      ~node
+      client
+  in
+  let* delayed_transactions_hashes =
+    Sc_rollup_node.RPC.call sc_rollup_node
+    @@ Sc_rollup_rpc.get_global_block_durable_state_value
+         ~pvm_kind:"wasm_2_0_0"
+         ~operation:Sc_rollup_rpc.Subkeys
+         ~key:"/delayed-inbox"
+         ()
+  in
+  Check.(
+    list_mem
+      string
+      "a07feb67aff94089c8d944f5f8ffb5acc37306da9102fc310264e90999a42eb1"
+      delayed_transactions_hashes)
+    ~error_msg:"the deposit is not present in the delayed inbox" ;
+  unit
+
 let register ~protocols =
   test_persistent_state protocols ;
-  test_send_transaction_to_delayed_inbox protocols
+  test_send_transaction_to_delayed_inbox protocols ;
+  test_send_deposit_to_delayed_inbox protocols
