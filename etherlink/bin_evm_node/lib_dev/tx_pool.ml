@@ -120,7 +120,9 @@ type parameters = {
   mode : mode;
 }
 
-type add_transaction = Transaction of string
+type add_transaction =
+  | Transaction of string
+  | Delayed of Ethereum_types.Delayed_transaction.t
 
 let add_transaction_encoding =
   let open Data_encoding in
@@ -130,8 +132,14 @@ let add_transaction_encoding =
         (Tag 0)
         ~title:"transaction"
         string
-        (function Transaction transaction -> Some transaction)
+        (function Transaction transaction -> Some transaction | _ -> None)
         (function transaction -> Transaction transaction);
+      case
+        (Tag 1)
+        ~title:"delayed"
+        Ethereum_types.Delayed_transaction.encoding
+        (function Delayed delayed -> Some delayed | _ -> None)
+        (fun delayed -> Delayed delayed);
     ]
 
 module Types = struct
@@ -196,7 +204,12 @@ module Request = struct
     | Add_transaction transaction -> (
         match transaction with
         | Transaction tx_raw ->
-            Format.fprintf ppf "Add tx [%s] to tx-pool" tx_raw)
+            Format.fprintf ppf "Add tx [%s] to tx-pool" tx_raw
+        | Delayed delayed ->
+            Format.fprintf
+              ppf
+              "Add tx [%s] to tx-pool"
+              (delayed |> Ethereum_types.Delayed_transaction.show))
     | Inject_transactions -> Format.fprintf ppf "Inject transactions"
 end
 
@@ -231,9 +244,24 @@ let on_normal_transaction state tx_raw =
       state.pool <- pool ;
       return (Ok hash)
 
+let on_delayed_transaction state delayed_tx =
+  let open Lwt_result_syntax in
+  let open Types in
+  let {rollup_node = (module Rollup_node); pool; _} = state in
+  let* (Qty base_fee) = Rollup_node.base_fee_per_gas () in
+  let open Ethereum_types.Delayed_transaction in
+  let {hash; raw_tx; caller} = delayed_tx in
+  (* Add the tx to the pool*)
+  let*? pool = Pool.add pool caller base_fee raw_tx true in
+  (* compute the hash *)
+  state.pool <- pool ;
+  return (Ok hash)
+
 let on_transaction state transaction =
   match transaction with
   | Transaction transaction -> on_normal_transaction state transaction
+  | Delayed (Transaction delayed_transaction) ->
+      on_delayed_transaction state delayed_transaction
 
 let inject_transactions ~smart_rollup_address rollup_node pool =
   let open Lwt_result_syntax in
