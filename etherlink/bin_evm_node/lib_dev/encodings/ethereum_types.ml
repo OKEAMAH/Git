@@ -1202,4 +1202,9 @@ module Delayed_transaction = struct
     | Transaction {raw_tx; _} -> raw_tx |> Hex.of_string |> Hex.show
     | Deposit {raw_deposit; _} -> raw_deposit |> Hex.of_string |> Hex.show
 end
+module Blueprint_tx = struct
 
+  (** Transaction inside a blueprint. *)
+  type t =
+    | Transaction of string  (** It can be a normal transaction *)
+end
