@@ -118,6 +118,20 @@ type parameters = {
   mode : mode;
 }
 
+type add_transaction = Transaction of string
+
+let add_transaction_encoding =
+  let open Data_encoding in
+  union
+    [
+      case
+        (Tag 0)
+        ~title:"transaction"
+        string
+        (function Transaction transaction -> Some transaction)
+        (function transaction -> Transaction transaction);
+    ]
+
 module Types = struct
   type state = {
     rollup_node : (module Services_backend_sig.S);
@@ -145,7 +159,7 @@ end
 module Request = struct
   type ('a, 'b) t =
     | Add_transaction :
-        string
+        add_transaction
         -> ((Ethereum_types.hash, string) result, tztrace) t
     | Inject_transactions : (unit, tztrace) t
 
@@ -162,10 +176,11 @@ module Request = struct
           ~title:"Add_transaction"
           (obj2
              (req "request" (constant "add_transaction"))
-             (req "transaction" string))
+             (req "transaction" add_transaction_encoding))
           (function
-            | View (Add_transaction messages) -> Some ((), messages) | _ -> None)
-          (fun ((), messages) -> View (Add_transaction messages));
+            | View (Add_transaction transaction) -> Some ((), transaction)
+            | _ -> None)
+          (fun ((), transaction) -> View (Add_transaction transaction));
         case
           (Tag 1)
           ~title:"Inject_transactions"
@@ -176,11 +191,10 @@ module Request = struct
 
   let pp ppf (View r) =
     match r with
-    | Add_transaction transaction ->
-        Format.fprintf
-          ppf
-          "Add [%s] tx to tx-pool"
-          (Hex.of_string transaction |> Hex.show)
+    | Add_transaction transaction -> (
+        match transaction with
+        | Transaction tx_raw ->
+            Format.fprintf ppf "Add tx [%s] to tx-pool" tx_raw)
     | Inject_transactions -> Format.fprintf ppf "Inject transactions"
 end
 
@@ -188,7 +202,7 @@ module Worker = Worker.MakeSingle (Name) (Request) (Types)
 
 type worker = Worker.infinite Worker.queue Worker.t
 
-let on_transaction state tx_raw =
+let on_normal_transaction state tx_raw =
   let open Lwt_result_syntax in
   let open Types in
   let {rollup_node = (module Rollup_node); pool; _} = state in
@@ -214,6 +228,10 @@ let on_transaction state tx_raw =
         (Ethereum_types.hash_to_string hash) ;
       state.pool <- pool ;
       return (Ok hash)
+
+let on_transaction state transaction =
+  match transaction with
+  | Transaction transaction -> on_normal_transaction state transaction
 
 let inject_transactions ~smart_rollup_address rollup_node pool =
   let open Lwt_result_syntax in
@@ -306,8 +324,8 @@ module Handlers = struct
    fun w request ->
     let state = Worker.state w in
     match request with
-    | Request.Add_transaction raw_tx ->
-        protect @@ fun () -> on_transaction state raw_tx
+    | Request.Add_transaction transaction ->
+        protect @@ fun () -> on_transaction state transaction
     | Request.Inject_transactions -> protect @@ fun () -> on_head state
 
   type launch_error = error trace
@@ -428,7 +446,9 @@ let shutdown () =
 let add raw_tx =
   let open Lwt_result_syntax in
   let*? w = Lazy.force worker in
-  Worker.Queue.push_request_and_wait w (Request.Add_transaction raw_tx)
+  Worker.Queue.push_request_and_wait
+    w
+    (Request.Add_transaction (Transaction raw_tx))
   |> handle_request_error
 
 let nonce pkey =
