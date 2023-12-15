@@ -2,7 +2,7 @@
 
 use crate::{
     error::Error,
-    inbox::{Transaction, TransactionContent},
+    inbox::{Deposit, Transaction, TransactionContent},
     safe_storage::SafeStorage,
 };
 use anyhow::Result;
@@ -19,6 +19,9 @@ pub const DELAYED_INBOX_PATH: RefPath = RefPath::assert_from(b"/delayed-inbox");
 
 // Tags that indicates the delayed transaction is a eth transaction.
 pub const DELAYED_TRANSACTION_TAG: u8 = 0x01;
+
+// Tags that indicates the delayed transaction is a deposit.
+pub const DELAYED_DEPOSIT_TAG: u8 = 0x02;
 
 pub trait DelayedInbox {
     /// Saves the transaction to the delayed inbox
@@ -61,12 +64,19 @@ pub struct DelayedEthereum {
     pub content: EthereumTransactionCommon,
 }
 
+/// Delayed deposit
+pub struct DelayedDeposit {
+    pub hash: [u8; TRANSACTION_HASH_SIZE], // Uses by the sequencer node to know the hash of the deposit
+    pub content: Deposit,
+}
+
 /// Delayed transaction
 /// Later it might be turn into a struct
 /// And fields like the timestamp might be added
 #[allow(clippy::large_enum_variant)]
 pub enum DelayedTransaction {
     Ethereum(DelayedEthereum),
+    Deposit(DelayedDeposit),
 }
 
 impl Encodable for DelayedEthereum {
@@ -84,6 +94,23 @@ impl Decodable for DelayedEthereum {
     }
 }
 
+impl Encodable for DelayedDeposit {
+    fn rlp_append(&self, stream: &mut rlp::RlpStream) {
+        let DelayedDeposit { hash, content } = self;
+        append_pair(stream, &hash.to_vec(), content);
+    }
+}
+
+impl Decodable for DelayedDeposit {
+    fn decode(decoder: &Rlp) -> std::prelude::v1::Result<Self, DecoderError> {
+        let (hash, content): (Vec<u8>, Deposit) = decode_pair(decoder)?;
+        let hash = hash
+            .try_into()
+            .map_err(|_| DecoderError::RlpInvalidLength)?;
+        Ok(DelayedDeposit { hash, content })
+    }
+}
+
 impl Encodable for DelayedTransaction {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
         stream.begin_list(2);
@@ -91,6 +118,10 @@ impl Encodable for DelayedTransaction {
             DelayedTransaction::Ethereum(delayed_tx) => {
                 stream.append(&DELAYED_TRANSACTION_TAG);
                 stream.append(delayed_tx);
+            }
+            DelayedTransaction::Deposit(delayed_deposit) => {
+                stream.append(&DELAYED_DEPOSIT_TAG);
+                stream.append(delayed_deposit);
             }
         }
     }
@@ -111,6 +142,10 @@ impl Decodable for DelayedTransaction {
                 let delayed_tx = decode_field(&next(&mut it)?, "content")?;
                 Ok(DelayedTransaction::Ethereum(delayed_tx))
             }
+            DELAYED_DEPOSIT_TAG => {
+                let delayed_tx = decode_field(&next(&mut it)?, "content")?;
+                Ok(DelayedTransaction::Deposit(delayed_tx))
+            }
             _ => Err(DecoderError::Custom("unknown tag")),
         }
     }
@@ -130,9 +165,11 @@ impl<Host: Runtime, Internal> DelayedInbox for SafeStorage<&mut Host, &mut Inter
                     content: tx.clone(),
                 })
             }
-            _ => {
-                // not yet supported
-                return Ok(());
+            TransactionContent::Deposit(deposit) => {
+                DelayedTransaction::Deposit(DelayedDeposit {
+                    hash: *tx_hash,
+                    content: deposit.clone(),
+                })
             }
         };
         delayed_inbox.push(self.host, &Hash(*tx_hash), &delayed_transaction)?;
