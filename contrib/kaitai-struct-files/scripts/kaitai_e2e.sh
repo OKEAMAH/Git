@@ -176,6 +176,10 @@ validate_kaitai_spec() {
     done
 }
 
+valid_files=""
+invalid_files=""
+no_valid_input=""
+no_invalid_input=""
 valid=0
 invalid=0
 untested=0
@@ -190,26 +194,43 @@ for ksy_file in "$KSY_DIR"/*.ksy; do
         log_with_ident 4 "- Aborting validation of \"$encoding\" due to missing valid input files."
         log_with_ident 4 "- To fix this add at least one valid \".hex\" file inside: \"$valid_input_dir\"."
         untested=$((untested + 1))
+        no_valid_input=$(printf "%s\n  - %s\n" "$no_valid_input" "$encoding")
         continue
     fi
     # Emit warning if no corresponding invalid input files.
     if ! dir_has_hex_files "$invalid_input_dir" ; then
         log_with_ident 4 "- WARNING: \"$encoding\" has no coresponding invalid input files."
         log_with_ident 4 "- To fix this add at least one invalid \".hex\" file inside: \"$invalid_input_dir\"."
+        no_invalid_input=$(printf "%s\n  - %s\n" "$no_invalid_input" "$encoding")
+
     fi
     validation_output=$(validate_kaitai_spec "$encoding" "$valid_input_dir" "$invalid_input_dir" 2>&1)
     validation_status=$?
     if [ $validation_status -eq 0 ]; then
         valid=$((valid + 1))
+        valid_files=$(printf "%s\n  - %s\n" "$valid_files" "$encoding")
         log_with_ident 4 "$encoding kaitai spec file is valid."
     else
         log_with_ident 4 "$encoding kaitai spec files is not valid."
         log_with_ident 4 "See the action log:"
         log_with_ident 8 "$validation_output"
         invalid=$((invalid + 1))
+        invalid_files=$(printf "%s\n  - %s\n" "$invalid_files" "$encoding")
     fi
 done
 cat << EOF
+FILES WITH MISSING VALID INPUT (not tested):$no_valid_input
+
+
+FILES WITH MISSING INVALID INPUT (tested regardless):$no_invalid_input
+
+
+VALID INPUT FILES:$valid_files
+
+
+INVALID INPUT FILES:$invalid_files
+
+
 VALIDATION RESULTS:
     - $valid/$total are semantically valid.
     - $invalid/$total are semantically invalid.
