@@ -99,6 +99,8 @@ pub enum Error {
     Reboot,
     #[error(transparent)]
     Encoding(EncodingError),
+    #[error("Kernel does not use a sequencer.")]
+    NotSequencer,
 }
 
 impl From<PathError> for StorageError {

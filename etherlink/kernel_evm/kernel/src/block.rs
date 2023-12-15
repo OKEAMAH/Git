@@ -448,6 +448,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
@@ -493,6 +494,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
@@ -538,6 +540,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
@@ -594,6 +597,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
         let mut evm_account_storage = init_account_storage().unwrap();
 
@@ -615,6 +619,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let tx_hash_0 = [0; TRANSACTION_HASH_SIZE];
@@ -668,6 +673,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
         let base_gas = U256::from(21000);
 
@@ -727,6 +733,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let mut evm_account_storage = init_account_storage().unwrap();
@@ -744,6 +751,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let tx = Transaction {
@@ -793,6 +801,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let accounts_index = init_account_index().unwrap();
@@ -846,6 +855,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let accounts_index = init_account_index().unwrap();
@@ -901,6 +911,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let blocks_index = init_blocks_index().unwrap();
@@ -995,6 +1006,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let block_constants = first_block(&mut host);
@@ -1066,6 +1078,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         let mut evm_account_storage = init_account_storage().unwrap();
@@ -1153,6 +1166,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         // first block should be 0
@@ -1238,6 +1252,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         // sanity check: no current block
@@ -1297,6 +1312,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         // sanity check: no current block

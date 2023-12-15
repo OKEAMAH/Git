@@ -7,6 +7,7 @@
 
 use crate::{
     inbox::{Deposit, KernelUpgrade, Transaction, TransactionContent},
+    safe_storage::KernelRuntime,
     sequencer_blueprint::SequencerBlueprint,
 };
 use primitive_types::{H160, U256};
@@ -303,7 +304,7 @@ impl InputResult {
         Self::Input(Input::Deposit(content))
     }
 
-    fn parse_internal_transfer<Host: Runtime>(
+    fn parse_internal_transfer<Host: KernelRuntime>(
         host: &mut Host,
         transfer: Transfer<RollupType>,
         smart_rollup_address: &[u8],
@@ -337,7 +338,7 @@ impl InputResult {
         }
     }
 
-    fn parse_internal<Host: Runtime>(
+    fn parse_internal<Host: KernelRuntime>(
         host: &mut Host,
         message: InternalInboxMessage<RollupType>,
         smart_rollup_address: &[u8],
@@ -361,7 +362,7 @@ impl InputResult {
         }
     }
 
-    pub fn parse<Host: Runtime>(
+    pub fn parse<Host: KernelRuntime>(
         host: &mut Host,
         input: Message,
         smart_rollup_address: [u8; 20],
@@ -397,6 +398,7 @@ impl InputResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{mock_internal::MockInternal, safe_storage::SafeStorage};
     use tezos_smart_rollup_host::input::Message;
     use tezos_smart_rollup_mock::MockHost;
 
@@ -404,7 +406,13 @@ mod tests {
 
     #[test]
     fn parse_unparsable_transaction() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let message = Message::new(0, 0, vec![1, 9, 32, 58, 59, 30]);
         assert_eq!(

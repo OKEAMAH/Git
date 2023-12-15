@@ -7,12 +7,11 @@ use crate::blueprint_storage::{store_inbox_blueprint, store_sequencer_blueprint}
 use crate::current_timestamp;
 use crate::inbox::read_inbox;
 use crate::inbox::InboxContent;
+use crate::safe_storage::KernelRuntime;
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_smart_rollup_host::metadata::RAW_ROLLUP_ADDRESS_SIZE;
 
-use tezos_smart_rollup_host::runtime::Runtime;
-
-fn fetch_inbox_blueprints<Host: Runtime>(
+fn fetch_inbox_blueprints<Host: KernelRuntime>(
     host: &mut Host,
     smart_rollup_address: [u8; RAW_ROLLUP_ADDRESS_SIZE],
     ticketer: Option<ContractKt1Hash>,
@@ -37,7 +36,7 @@ fn fetch_inbox_blueprints<Host: Runtime>(
     })
 }
 
-fn fetch_sequencer_blueprints<Host: Runtime>(
+fn fetch_sequencer_blueprints<Host: KernelRuntime>(
     host: &mut Host,
     smart_rollup_address: [u8; RAW_ROLLUP_ADDRESS_SIZE],
     ticketer: Option<ContractKt1Hash>,
@@ -46,10 +45,15 @@ fn fetch_sequencer_blueprints<Host: Runtime>(
 ) -> Result<Queue, anyhow::Error> {
     let InboxContent {
         kernel_upgrade,
-        transactions: _,
+        transactions,
         sequencer_blueprints,
     } = read_inbox(host, smart_rollup_address, ticketer, admin, delayed_bridge)?;
-    // TODO: store delayed inbox messages (transactions).
+
+    // store the transactions in the delayed inbox
+    for transaction in transactions {
+        host.save_transaction(&transaction)?;
+    }
+
     // Store the blueprints. This will replace the Queue in a future MR.
     for seq_blueprint in &sequencer_blueprints {
         let number = seq_blueprint.number;
@@ -69,7 +73,7 @@ fn fetch_sequencer_blueprints<Host: Runtime>(
     })
 }
 
-pub fn fetch<Host: Runtime>(
+pub fn fetch<Host: KernelRuntime>(
     host: &mut Host,
     smart_rollup_address: [u8; RAW_ROLLUP_ADDRESS_SIZE],
     ticketer: Option<ContractKt1Hash>,

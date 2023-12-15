@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::parsing::{Input, InputResult, MAX_SIZE_PER_CHUNK};
+use crate::safe_storage::KernelRuntime;
 use crate::sequencer_blueprint::SequencerBlueprint;
 use crate::simulation;
 use crate::storage::{
@@ -175,7 +176,7 @@ pub struct InboxContent {
     pub sequencer_blueprints: Vec<SequencerBlueprint>,
 }
 
-pub fn read_input<Host: Runtime>(
+pub fn read_input<Host: KernelRuntime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     ticketer: &Option<ContractKt1Hash>,
@@ -276,7 +277,7 @@ fn handle_deposit<Host: Runtime>(
     })
 }
 
-pub fn read_inbox<Host: Runtime>(
+pub fn read_inbox<Host: KernelRuntime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     ticketer: Option<ContractKt1Hash>,
@@ -351,7 +352,9 @@ pub fn read_inbox<Host: Runtime>(
 mod tests {
     use super::*;
     use crate::inbox::TransactionContent::Ethereum;
+    use crate::mock_internal::MockInternal;
     use crate::parsing::RollupType;
+    use crate::safe_storage::SafeStorage;
     use crate::storage::*;
     use tezos_crypto_rs::hash::SmartRollupHash;
     use tezos_data_encoding::types::Bytes;
@@ -462,7 +465,13 @@ mod tests {
 
     #[test]
     fn parse_valid_simple_transaction() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let tx_bytes = &hex::decode("f86d80843b9aca00825208940b52d4d3be5d18a7ab5e4476a2f5382bbf2b38d888016345785d8a000080820a95a0d9ef1298c18c88604e3f08e14907a17dfa81b1dc6b37948abe189d8db5cb8a43a06fc7040a71d71d3cb74bd05ead7046b10668ad255da60391c017eea31555f156").unwrap();
         let tx = EthereumTransactionCommon::from_bytes(tx_bytes).unwrap();
@@ -472,7 +481,8 @@ mod tests {
             content: Ethereum(tx.clone()),
         }));
 
-        host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)));
+        host.host
+            .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)));
 
         let inbox_content =
             read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
@@ -485,8 +495,13 @@ mod tests {
 
     #[test]
     fn parse_valid_chunked_transaction() {
-        let address = smart_rollup_address();
-        let mut host = MockHost::with_address(&address);
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let (data, tx) = large_transaction();
         let tx_hash: [u8; TRANSACTION_HASH_SIZE] = Keccak256::digest(data.clone()).into();
@@ -494,7 +509,8 @@ mod tests {
         let inputs = make_chunked_transactions(tx_hash, data);
 
         for input in inputs {
-            host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)))
+            host.host
+                .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)))
         }
 
         let inbox_content =
@@ -508,7 +524,13 @@ mod tests {
 
     #[test]
     fn parse_valid_kernel_upgrade() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
         store_kernel_upgrade_nonce(&mut host, 1).unwrap();
 
         // Prepare the upgrade's payload
@@ -535,9 +557,10 @@ mod tests {
             MichelsonOr::Right(MichelsonBytes(kernel_upgrade_payload));
 
         let transfer_metadata = TransferMetadata::new(sender.clone(), source);
-        host.add_transfer(payload, &transfer_metadata);
+        host.host.add_transfer(payload, &transfer_metadata);
 
-        let inbox_content = read_inbox(&mut host, [0; 20], None, Some(sender)).unwrap();
+        let inbox_content =
+            read_inbox(&mut host, [0; 20], None, Some(sender), None).unwrap();
         let expected_upgrade = Some(KernelUpgrade { preimage_hash });
         assert_eq!(inbox_content.kernel_upgrade, expected_upgrade);
     }
@@ -546,7 +569,13 @@ mod tests {
     // Assert that trying to create a chunked transaction has no impact. Only
     // the first `NewChunkedTransaction` should be considered.
     fn recreate_chunked_transaction() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let chunk_hashes = vec![[1; TRANSACTION_HASH_SIZE], [2; TRANSACTION_HASH_SIZE]];
         let tx_hash = [0; TRANSACTION_HASH_SIZE];
@@ -561,17 +590,17 @@ mod tests {
             chunk_hashes,
         };
 
-        host.add_external(Bytes::from(input_to_bytes(
+        host.host.add_external(Bytes::from(input_to_bytes(
             SMART_ROLLUP_ADDRESS,
             new_chunk1,
         )));
-        host.add_external(Bytes::from(input_to_bytes(
+        host.host.add_external(Bytes::from(input_to_bytes(
             SMART_ROLLUP_ADDRESS,
             new_chunk2,
         )));
 
         let _inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
 
         let num_chunks = chunked_transaction_num_chunks(&mut host, &tx_hash)
             .expect("The number of chunks should exist");
@@ -583,7 +612,13 @@ mod tests {
     // Assert that an out of bound chunk is simply ignored and does
     // not make the kernel fail.
     fn out_of_bound_chunk_is_ignored() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let (data, _tx) = large_transaction();
         let tx_hash = ZERO_TX_HASH;
@@ -593,7 +628,8 @@ mod tests {
         let chunk = inputs.remove(0);
 
         // Announce a chunked transaction.
-        host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, new_chunk)));
+        host.host
+            .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, new_chunk)));
 
         // Give a chunk with an invalid `i`.
         let out_of_bound_i = 42;
@@ -611,10 +647,11 @@ mod tests {
             },
             _ => panic!("Expected a transaction chunk"),
         };
-        host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk)));
+        host.host
+            .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk)));
 
         let _inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
 
         // The out of bounds chunk should not exist.
         let chunked_transaction_path = chunked_transaction_path(&tx_hash).unwrap();
@@ -629,7 +666,13 @@ mod tests {
     // Assert that an unknown chunk is simply ignored and does
     // not make the kernel fail.
     fn unknown_chunk_is_ignored() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let (data, _tx) = large_transaction();
         let tx_hash = ZERO_TX_HASH;
@@ -643,10 +686,11 @@ mod tests {
             _ => panic!("Expected a transaction chunk"),
         };
 
-        host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk)));
+        host.host
+            .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk)));
 
         let _inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
 
         // The unknown chunk should not exist.
         let chunked_transaction_path = chunked_transaction_path(&tx_hash).unwrap();
@@ -676,7 +720,13 @@ mod tests {
     // - Chunk 1
     // |--> Fails because the chunk is unknown
     fn transaction_is_complete_when_each_chunk_is_stored() {
-        let mut host = MockHost::default();
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let (data, tx) = large_transaction();
         let tx_hash: [u8; TRANSACTION_HASH_SIZE] = Keccak256::digest(data.clone()).into();
@@ -689,12 +739,14 @@ mod tests {
         let new_chunk = inputs[0].clone();
         let chunk0 = inputs[1].clone();
 
-        host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, new_chunk)));
+        host.host
+            .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, new_chunk)));
 
-        host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk0)));
+        host.host
+            .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, chunk0)));
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
         assert_eq!(
             inbox_content,
             InboxContent {
@@ -706,10 +758,11 @@ mod tests {
 
         // On the next level, try to re-give the chunks, but this time in full:
         for input in inputs {
-            host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)))
+            host.host
+                .add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)))
         }
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
 
         let expected_transactions = vec![Transaction {
             tx_hash,
@@ -724,7 +777,13 @@ mod tests {
         // parsing. This won't happen in practice, though
         let address = smart_rollup_address();
 
-        let mut host = MockHost::with_address(&address);
+        let mut mock_host = MockHost::default();
+        let mut internal = MockInternal();
+        let mut host = SafeStorage {
+            host: &mut mock_host,
+            internal: &mut internal,
+            delayed_inbox: None,
+        };
 
         let tx_bytes = &hex::decode("f86d80843b9aca00825208940b52d4d3be5d18a7ab5\
         e4476a2f5382bbf2b38d888016345785d8a000080820a95a0d9ef1298c18c88604e3f08e14907a17dfa81b1dc6b37948abe189d8db5cb8a43a06\
@@ -760,10 +819,10 @@ mod tests {
             contents: buffer,
         };
 
-        host.add_external(framed);
+        host.host.add_external(framed);
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash,
             content: Ethereum(tx),

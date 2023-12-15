@@ -104,7 +104,7 @@ pub const WORD_SIZE: usize = 32usize;
 const QUEUE_IN_PROGRESS: RefPath = RefPath::assert_from(b"/queue");
 
 // Path to the flag denoting whether the kernel is in sequencer mode or not.
-const SEQUENCER: RefPath = RefPath::assert_from(b"/sequencer");
+const SEQUENCER: RefPath = RefPath::assert_from(b"/evm/sequencer");
 
 // This function should be used when it makes sense that the value
 // stored under [path] can be empty.

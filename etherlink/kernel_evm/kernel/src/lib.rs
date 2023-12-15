@@ -17,7 +17,9 @@ use crate::upgrade::upgrade_kernel;
 use crate::Error::UpgradeError;
 use anyhow::Context;
 use block::ComputationResult;
+use delayed_inbox::DELAYED_INBOX_PATH;
 use evm_execution::Config;
+use linked_list::LinkedList;
 use migration::MigrationStatus;
 use primitive_types::U256;
 use storage::{
@@ -39,6 +41,7 @@ mod block;
 mod block_in_progress;
 mod blueprint;
 mod blueprint_storage;
+mod delayed_inbox;
 mod error;
 mod inbox;
 mod indexable_storage;
@@ -88,7 +91,7 @@ pub fn current_timestamp<Host: Runtime>(host: &mut Host) -> Timestamp {
     Timestamp::from(seconds)
 }
 
-pub fn stage_one<Host: Runtime>(
+pub fn stage_one<Host: KernelRuntime>(
     host: &mut Host,
     smart_rollup_address: [u8; 20],
     ticketer: Option<ContractKt1Hash>,
@@ -241,7 +244,10 @@ fn retrieve_base_fee_per_gas<Host: Runtime>(host: &mut Host) -> Result<U256, Err
     }
 }
 
-pub fn main<Host: KernelRuntime>(host: &mut Host) -> Result<(), anyhow::Error> {
+pub fn main<Host: KernelRuntime>(
+    host: &mut Host,
+    is_sequencer: bool,
+) -> Result<(), anyhow::Error> {
     let chain_id = retrieve_chain_id(host).context("Failed to retrieve chain id")?;
     let queue = if storage::was_rebooted(host)? {
         // kernel was rebooted
@@ -264,7 +270,6 @@ pub fn main<Host: KernelRuntime>(host: &mut Host) -> Result<(), anyhow::Error> {
                 let ticketer = read_ticketer(host);
                 let admin = read_admin(host);
                 let delayed_bridge = read_delayed_transaction_bridge(host);
-                let is_sequencer = is_sequencer(host)?;
                 stage_one(
                     host,
                     smart_rollup_address,
@@ -319,11 +324,21 @@ pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
         .expect("The kernel failed to create the temporary directory");
 
     let mut internal_storage = InternalStorage();
+    let is_sequencer = is_sequencer(host).unwrap();
+    let delayed_inbox = if is_sequencer {
+        Some(
+            LinkedList::new(&DELAYED_INBOX_PATH, host)
+                .expect("failed to create the delayed inbox"),
+        )
+    } else {
+        None
+    };
     let mut host = SafeStorage {
         host,
         internal: &mut internal_storage,
+        delayed_inbox,
     };
-    match main(&mut host) {
+    match main(&mut host, is_sequencer) {
         Ok(()) => {
             host.promote_upgrade()
                 .expect("Potential kernel upgrade promotion failed");
@@ -467,6 +482,7 @@ mod tests {
         let mut host = SafeStorage {
             host: &mut mock_host,
             internal: &mut internal,
+            delayed_inbox: None,
         };
 
         // sanity check: no current block

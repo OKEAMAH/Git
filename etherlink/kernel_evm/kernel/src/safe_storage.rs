@@ -5,6 +5,10 @@
 //
 // SPDX-License-Identifier: MIT
 
+use crate::{
+    delayed_inbox::{DelayedInbox, DelayedTransaction, Hash},
+    linked_list::LinkedList,
+};
 use tezos_evm_logging::{log, Level};
 use tezos_smart_rollup_core::PREIMAGE_HASH_SIZE;
 #[cfg(feature = "proto-alpha")]
@@ -80,7 +84,7 @@ impl InternalRuntime for InternalStorage {
 
 // The kernel runtime requires both the standard Runtime and the
 // new Extended one.
-pub trait KernelRuntime: Runtime + ExtendedRuntime {}
+pub trait KernelRuntime: Runtime + ExtendedRuntime + DelayedInbox {}
 
 // Every type implementing an InternalRuntime will implement
 // the ExtendedRuntime.
@@ -101,11 +105,12 @@ impl<T: InternalRuntime> ExtendedRuntime for T {
 
 // If a type implements the Runtime and InternalRuntime traits,
 // it also implements the KernelRuntime.
-impl<T: Runtime + InternalRuntime> KernelRuntime for T {}
+impl<T: Runtime + InternalRuntime + DelayedInbox> KernelRuntime for T {}
 
 pub struct SafeStorage<Host, Internal> {
     pub host: Host,
     pub internal: Internal,
+    pub delayed_inbox: Option<LinkedList<Hash, DelayedTransaction>>,
 }
 
 fn safe_path<T: Path>(path: &T) -> Result<OwnedPath, RuntimeError> {
