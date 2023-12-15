@@ -445,6 +445,52 @@ let rec sequencer_produce_block ~time_between_blocks worker =
   let* _pushed = Worker.Queue.push_request worker Request.Inject_transactions in
   sequencer_produce_block ~time_between_blocks worker
 
+let fetch_delayed_inbox ~level worker =
+  let state = Worker.state worker in
+  let (Types.{rollup_node = (module Rollup_node_rpc); _} : Types.state) =
+    state
+  in
+  (* Retrieve the delayed transactions 2 block before, to make sure the block is final*)
+  let previous_level = Int32.(sub level 2l) in
+  Rollup_node_rpc.delayed_transactions previous_level
+
+let include_delayed_transaction worker delayed_transaction =
+  let open Lwt_syntax in
+  let* _sent =
+    Worker.Queue.push_request
+      worker
+      (Request.Add_transaction (Delayed delayed_transaction))
+  in
+  return_unit
+
+let rec subscribe_delayed_inbox ~stream_l2 ~interval worker =
+  let open Lwt_syntax in
+  let open Sc_rollup_block in
+  let* new_head = Lwt_stream.get stream_l2 in
+  match new_head with
+  | None ->
+      (* Kind of retry strategy *)
+      Format.printf
+        "Connection with the rollup node has been lost, retrying...\n" ;
+      let* () = Lwt_unix.sleep 1. in
+      subscribe_delayed_inbox ~stream_l2 ~interval worker
+  | Some block ->
+      let level = block.header.level in
+      (* Fetch the delayed inbox with the given interval *)
+      if (level |> Int32.to_int) mod interval <> 0 then
+        subscribe_delayed_inbox ~stream_l2 ~interval worker
+      else
+        let* delayed_transactions = fetch_delayed_inbox ~level worker in
+        let* () =
+          match delayed_transactions with
+          | Error _err -> return_unit
+          | Ok delayed_transactions ->
+              Lwt_list.iter_p
+                (include_delayed_transaction worker)
+                delayed_transactions
+        in
+        subscribe_delayed_inbox ~stream_l2 ~interval worker
+
 let start ({mode; _} as parameters) =
   let open Lwt_result_syntax in
   let+ worker = Worker.launch table () parameters (module Handlers) in
@@ -458,7 +504,15 @@ let start ({mode; _} as parameters) =
         | Sequencer
             {time_between_blocks; rollup_node_endpoint; delayed_inbox_interval}
           ->
-            sequencer_produce_block ~time_between_blocks worker)
+            let*! stream_l2 = make_streamed_call ~rollup_node_endpoint in
+            Lwt.join
+              [
+                sequencer_produce_block ~time_between_blocks worker;
+                subscribe_delayed_inbox
+                  ~stream_l2
+                  ~interval:delayed_inbox_interval
+                  worker;
+              ])
       (fun _ ->
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
         Format.printf "[tx-pool] Pool has been stopped.\n%!")
