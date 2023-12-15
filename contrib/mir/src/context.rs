@@ -1,4 +1,5 @@
 use crate::ast::michelson_address::AddressHash;
+use crate::ast::Micheline;
 use crate::gas::Gas;
 
 #[derive(Debug)]
@@ -30,6 +31,20 @@ impl Default for Ctx {
             chain_id: tezos_crypto_rs::hash::ChainId(vec![0xf3, 0xd4, 0x85, 0x54]),
             self_address: "KT1BEqzn5Wx8uJrZNvuS9DVHmLvG9td3fDLi".try_into().unwrap(),
             operation_counter: 0,
+        }
+    }
+}
+
+pub struct Temp<'a> {
+    pub unpacked_bytes: typed_arena::Arena<u8>,
+    pub micheline_arena: typed_arena::Arena<Micheline<'a>>,
+}
+
+impl Default for Temp<'_> {
+    fn default() -> Self {
+        Temp {
+            unpacked_bytes: typed_arena::Arena::new(),
+            micheline_arena: typed_arena::Arena::new(),
         }
     }
 }

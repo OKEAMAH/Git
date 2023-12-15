@@ -251,6 +251,7 @@ pub enum TztOutput<'a> {
 fn execute_tzt_test_code<'a>(
     code: Micheline<'a>,
     ctx: &mut Ctx,
+    temp: &'a Temp<'a>,
     parameter: Option<&Micheline>,
     input: Vec<(Type, TypedValue<'a>)>,
 ) -> Result<(FailingTypeStack, IStack<'a>), TestError<'a>> {
@@ -274,11 +275,11 @@ fn execute_tzt_test_code<'a>(
     // the test was a success or a fail.
     let typechecked_code = typecheck_instruction(&code, ctx, Some(&entrypoints), &mut t_stack)?;
     let mut i_stack: IStack = TopIsFirst::from(vals).0;
-    typechecked_code.interpret(ctx, &mut i_stack)?;
+    typechecked_code.interpret(ctx, temp, &mut i_stack)?;
     Ok((t_stack, i_stack))
 }
 
-pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
+pub fn run_tzt_test<'a>(test: TztTest<'a>, temp: &'a Temp<'a>) -> Result<(), TztTestError<'a>> {
     // Here we compare the outcome of the interpreting with the
     // expectation from the test, and declare the result of the test
     // accordingly.
@@ -287,7 +288,12 @@ pub fn run_tzt_test(test: TztTest) -> Result<(), TztTestError> {
     ctx.amount = test.amount.unwrap_or_default();
     ctx.chain_id = test.chain_id.unwrap_or(Ctx::default().chain_id);
     ctx.self_address = test.self_addr.unwrap_or(Ctx::default().self_address);
-    let execution_result =
-        execute_tzt_test_code(test.code, &mut ctx, test.parameter.as_ref(), test.input);
+    let execution_result = execute_tzt_test_code(
+        test.code,
+        &mut ctx,
+        &temp,
+        test.parameter.as_ref(),
+        test.input,
+    );
     check_expectation(&mut ctx, test.output, execution_result)
 }

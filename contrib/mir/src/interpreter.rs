@@ -11,7 +11,7 @@ use std::rc::Rc;
 use typed_arena::Arena;
 
 use crate::ast::*;
-use crate::context::Ctx;
+use crate::context::{Ctx, Temp};
 use crate::gas::{interpret_cost, OutOfGas};
 use crate::irrefutable_match::irrefutable_match;
 use crate::stack::*;
@@ -48,6 +48,7 @@ impl<'a> ContractScript<'a> {
     pub fn interpret(
         &self,
         ctx: &mut crate::context::Ctx,
+        temp: &'a Temp<'a>,
         parameter: Micheline<'a>,
         storage: Micheline<'a>,
     ) -> Result<(impl Iterator<Item = OperationInfo<'a>>, TypedValue<'a>), ContractInterpretError<'a>>
@@ -56,7 +57,7 @@ impl<'a> ContractScript<'a> {
         let storage = typecheck_value(&storage, ctx, &self.storage)?;
         let tc_val = TypedValue::new_pair(parameter, storage);
         let mut stack = stk![tc_val];
-        self.code.interpret(ctx, &mut stack)?;
+        self.code.interpret(ctx, temp, &mut stack)?;
         use TypedValue as V;
         match stack.pop().expect("empty execution stack") {
             V::Pair(p) => match *p {
@@ -83,19 +84,21 @@ impl<'a> Instruction<'a> {
     pub fn interpret(
         &self,
         ctx: &mut Ctx,
+        temp: &'a Temp<'a>,
         stack: &mut IStack<'a>,
     ) -> Result<(), InterpretError<'a>> {
-        interpret_one(self, ctx, stack)
+        interpret_one(self, ctx, temp, stack)
     }
 }
 
 fn interpret<'a>(
     ast: &[Instruction<'a>],
     ctx: &mut Ctx,
+    temp: &'a Temp<'a>,
     stack: &mut IStack<'a>,
 ) -> Result<(), InterpretError<'a>> {
     for i in ast {
-        i.interpret(ctx, stack)?;
+        i.interpret(ctx, temp, stack)?;
     }
     ctx.gas.consume(interpret_cost::INTERPRET_RET)?;
     Ok(())
@@ -111,6 +114,7 @@ fn unreachable_state() -> ! {
 fn interpret_one<'a>(
     i: &Instruction<'a>,
     ctx: &mut Ctx,
+    temp: &'a Temp<'a>,
     stack: &mut IStack<'a>,
 ) -> Result<(), InterpretError<'a>> {
     use Instruction as I;
@@ -180,7 +184,7 @@ fn interpret_one<'a>(
             ctx.gas.consume(interpret_cost::dip(*opt_height)?)?;
             let protected_height: u16 = opt_height.unwrap_or(1);
             let mut protected = stack.split_off(protected_height as usize);
-            interpret(nested, ctx, stack)?;
+            interpret(nested, ctx, temp, stack)?;
             ctx.gas.consume(interpret_cost::undip(protected_height)?)?;
             stack.append(&mut protected);
         }
@@ -212,9 +216,9 @@ fn interpret_one<'a>(
         I::If(nested_t, nested_f) => {
             ctx.gas.consume(interpret_cost::IF)?;
             if pop!(V::Bool) {
-                interpret(nested_t, ctx, stack)?;
+                interpret(nested_t, ctx, temp, stack)?;
             } else {
-                interpret(nested_f, ctx, stack)?;
+                interpret(nested_f, ctx, temp, stack)?;
             }
         }
         I::IfNone(when_none, when_some) => {
@@ -222,9 +226,9 @@ fn interpret_one<'a>(
             match pop!(V::Option) {
                 Some(x) => {
                     stack.push(*x);
-                    interpret(when_some, ctx, stack)?
+                    interpret(when_some, ctx, temp, stack)?
                 }
-                None => interpret(when_none, ctx, stack)?,
+                None => interpret(when_none, ctx, temp, stack)?,
             }
         }
         I::IfCons(when_cons, when_nil) => {
@@ -233,11 +237,11 @@ fn interpret_one<'a>(
             match lst.uncons() {
                 Some(x) => {
                     stack.push(x);
-                    interpret(when_cons, ctx, stack)?
+                    interpret(when_cons, ctx, temp, stack)?
                 }
                 None => {
                     pop!();
-                    interpret(when_nil, ctx, stack)?;
+                    interpret(when_nil, ctx, temp, stack)?;
                 }
             }
         }
@@ -247,11 +251,11 @@ fn interpret_one<'a>(
             match or {
                 Or::Left(x) => {
                     stack.push(x);
-                    interpret(when_left, ctx, stack)?
+                    interpret(when_left, ctx, temp, stack)?
                 }
                 Or::Right(x) => {
                     stack.push(x);
-                    interpret(when_right, ctx, stack)?;
+                    interpret(when_right, ctx, temp, stack)?;
                 }
             }
         }
@@ -265,7 +269,7 @@ fn interpret_one<'a>(
             loop {
                 ctx.gas.consume(interpret_cost::LOOP)?;
                 if pop!(V::Bool) {
-                    interpret(nested, ctx, stack)?;
+                    interpret(nested, ctx, temp, stack)?;
                 } else {
                     ctx.gas.consume(interpret_cost::LOOP_EXIT)?;
                     break;
@@ -280,7 +284,7 @@ fn interpret_one<'a>(
                     for i in lst {
                         ctx.gas.consume(interpret_cost::PUSH)?;
                         stack.push(i);
-                        interpret(nested, ctx, stack)?;
+                        interpret(nested, ctx, temp, stack)?;
                     }
                 }
                 overloads::Iter::Set => {
@@ -288,7 +292,7 @@ fn interpret_one<'a>(
                     for v in set {
                         ctx.gas.consume(interpret_cost::PUSH)?;
                         stack.push(v);
-                        interpret(nested, ctx, stack)?;
+                        interpret(nested, ctx, temp, stack)?;
                     }
                 }
                 overloads::Iter::Map => {
@@ -296,7 +300,7 @@ fn interpret_one<'a>(
                     for (k, v) in map {
                         ctx.gas.consume(interpret_cost::PUSH)?;
                         stack.push(V::new_pair(k, v));
-                        interpret(nested, ctx, stack)?;
+                        interpret(nested, ctx, temp, stack)?;
                     }
                 }
             }
@@ -454,9 +458,10 @@ fn interpret_one<'a>(
         I::Unpack(ty) => {
             let bytes = pop!(V::Bytes);
             ctx.gas.consume(interpret_cost::unpack(bytes.as_slice())?)?;
+            let bytes = temp.unpacked_bytes.alloc_extend(bytes);
             let mut try_unpack = || -> Option<TypedValue> {
-                let arena = Arena::new();
-                let mich = Micheline::decode_packed(&arena, bytes.as_slice()).ok()?;
+                let arena = &temp.micheline_arena;
+                let mich = Micheline::decode_packed(arena, bytes).ok()?;
                 crate::interpreter::typecheck_value(&mich, ctx, ty).ok()
             };
             stack.push(V::new_option(try_unpack()));
@@ -567,18 +572,18 @@ fn interpret_one<'a>(
                     // See Note: Rc in lambdas
                     let code = Rc::clone(code);
                     let mut stk = stk![V::Lambda(lam), arg];
-                    interpret(&code, ctx, &mut stk)?;
+                    interpret(&code, ctx, temp, &mut stk)?;
                     stk
                 }
                 Lambda::Lambda { code, .. } => {
                     let mut stk = stk![arg];
-                    interpret(code, ctx, &mut stk)?;
+                    interpret(code, ctx, temp, &mut stk)?;
                     stk
                 }
             };
             stack.push(res_stk.pop().unwrap_or_else(|| unreachable_state()));
         }
-        I::Seq(nested) => interpret(nested, ctx, stack)?,
+        I::Seq(nested) => interpret(nested, ctx, temp, stack)?,
     }
     Ok(())
 }
@@ -594,6 +599,24 @@ mod interpreter_tests {
     use Instruction::*;
     use Option::None;
     use TypedValue as V;
+
+    fn interpret<'a>(
+        ast: &[Instruction<'a>],
+        ctx: &mut Ctx,
+        stack: &mut IStack<'a>,
+    ) -> Result<(), InterpretError<'a>> {
+        let temp = Box::leak(Box::new(Temp::default()));
+        super::interpret(ast, ctx, temp, stack)
+    }
+
+    fn interpret_one<'a>(
+        i: &Instruction<'a>,
+        ctx: &mut Ctx,
+        stack: &mut IStack<'a>,
+    ) -> Result<(), InterpretError<'a>> {
+        let temp = Box::leak(Box::new(Temp::default()));
+        super::interpret_one(i, ctx, temp, stack)
+    }
 
     #[test]
     fn test_add() {
