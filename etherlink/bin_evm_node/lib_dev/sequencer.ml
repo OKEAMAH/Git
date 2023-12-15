@@ -46,11 +46,12 @@ end) : Services_backend_sig.Backend = struct
       match transaction with
       | Transaction tx ->
           let tx_hash_str = Ethereum_types.hash_raw_tx tx in
-      let tx_hash =
-        Ethereum_types.(
-          Hash Hex.(of_string tx_hash_str |> show |> hex_of_string))
-      in
-      Result_syntax.return (tx_hash, transaction)
+          let tx_hash =
+            Ethereum_types.(
+              Hash Hex.(of_string tx_hash_str |> show |> hex_of_string))
+          in
+          Result_syntax.return (tx_hash, transaction)
+      | Deposit {hash; raw = _} -> Result_syntax.return (hash, transaction)
   end
 
   module Publisher = struct

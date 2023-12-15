@@ -1204,8 +1204,10 @@ module Delayed_transaction = struct
 end
 
 module Blueprint_tx = struct
+  type deposit = {hash : hash; raw : string}
 
   (** Transaction inside a blueprint. *)
   type t =
     | Transaction of string  (** It can be a normal transaction *)
+    | Deposit of deposit  (** Or a deposit *)
 end

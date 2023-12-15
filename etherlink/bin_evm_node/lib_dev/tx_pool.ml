@@ -33,6 +33,11 @@ module Pool = struct
     let deposits = List.append deposits [deposit] in
     {transactions; global_index; deposits}
 
+  (** Removes and returns all the delayed deposits *)
+  let deposits t =
+    let {transactions; global_index; deposits} = t in
+    ({transactions; global_index; deposits = []}, deposits)
+
   (** Add a transacion to the pool.*)
   let add t pkey base_fee raw_tx delayed =
     let open Result_syntax in
@@ -339,9 +344,19 @@ let inject_transactions ~smart_rollup_address rollup_node pool =
            let open Ethereum_types.Blueprint_tx in
            Transaction raw_tx)
   in
+
+  (* We also inject all the deposits if any *)
+  let pool, deposits = Pool.deposits pool in
+  let deposits =
+    List.map
+      (fun (hash, raw) -> Ethereum_types.Blueprint_tx.Deposit {hash; raw})
+      deposits
+  in
+
   (* Send the txs to the rollup *)
+  let transactions = List.append deposits txs in
   let*! hashes =
-    Rollup_node.inject_raw_transactions ~smart_rollup_address ~transactions:txs
+    Rollup_node.inject_raw_transactions ~smart_rollup_address ~transactions
   in
   (match hashes with
   | Error _ ->

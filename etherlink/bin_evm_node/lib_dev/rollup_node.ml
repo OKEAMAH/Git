@@ -65,7 +65,8 @@ end) : Services_backend_sig.Backend = struct
       let open Ethereum_types.Blueprint_tx in
       match transaction with
       | Transaction transaction ->
-      make_encoded_messages ~smart_rollup_address transaction
+          make_encoded_messages ~smart_rollup_address transaction
+      | Deposit _deposit -> error_with "Deposit is not supported"
   end
 
   module Publisher = struct

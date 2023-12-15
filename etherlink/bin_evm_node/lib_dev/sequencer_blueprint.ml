@@ -23,6 +23,18 @@ let encode_raw_transaction raw_tx =
       List [Value (Bytes.of_string "\001"); Value (Bytes.of_string raw_tx)];
     ]
 
+let encode_deposit deposit =
+  let open Rlp in
+  let Ethereum_types.Blueprint_tx.{hash; raw} = deposit in
+  match decode (Bytes.of_string raw) with
+  | Ok rlp ->
+      List
+        [
+          Value (hash |> hash_to_bytes |> Bytes.of_string);
+          List [Value (Bytes.of_string "\002"); rlp];
+        ]
+  | Error _ -> assert false
+
 (* TODO: https://gitlab.com/tezos/tezos/-/issues/6692
    Allow large blueprints in the kernel.
    For now, we only produce one chunk.
@@ -35,7 +47,8 @@ let make_blueprint_chunks ~transactions =
          (fun transaction ->
            let open Ethereum_types.Blueprint_tx in
            match transaction with
-           | Transaction raw_tx -> encode_raw_transaction raw_tx)
+           | Transaction raw_tx -> encode_raw_transaction raw_tx
+           | Deposit deposit -> encode_deposit deposit)
          transactions)
   in
   let timestamp = Value (now_bytes ()) in
