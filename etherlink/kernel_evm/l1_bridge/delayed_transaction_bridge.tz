@@ -1,0 +1,46 @@
+{ parameter
+    (or (unit %deposit) (pair %send (bytes %chunked_tx) (address %evm_address))) ;
+  storage address ;
+  code { UNPAIR ;
+         IF_LEFT
+           { DROP ;
+             DUP ;
+             SENDER ;
+             COMPARE ;
+             NEQ ;
+             IF { DROP ; PUSH string "Unauthorized address" ; FAILWITH }
+                { DUP ;
+                  CONTRACT unit ;
+                  IF_NONE { PUSH string "bad address for get_contract" ; FAILWITH } {} ;
+                  BALANCE ;
+                  DIG 2 ;
+                  NIL operation ;
+                  DIG 3 ;
+                  DIG 3 ;
+                  UNIT ;
+                  TRANSFER_TOKENS ;
+                  CONS ;
+                  PAIR } }
+           { UNPAIR ;
+             AMOUNT ;
+             PUSH mutez 1000000 ;
+             SWAP ;
+             COMPARE ;
+             NEQ ;
+             IF { DROP 3 ;
+                  PUSH string "Not enough tez to include the transaction in the delayed inbox" ;
+                  FAILWITH }
+                { SWAP ;
+                  CONTRACT (or (or (pair bytes (ticket (pair nat (option bytes)))) bytes) bytes) ;
+                  IF_NONE { PUSH string "option is None" ; FAILWITH } {} ;
+                  DIG 2 ;
+                  NIL operation ;
+                  DIG 2 ;
+                  PUSH mutez 0 ;
+                  DIG 4 ;
+                  RIGHT (pair bytes (ticket (pair nat (option bytes)))) ;
+                  LEFT bytes ;
+                  TRANSFER_TOKENS ;
+                  CONS ;
+                  PAIR } } } }
+
