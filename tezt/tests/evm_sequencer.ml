@@ -43,6 +43,15 @@ let next_evm_level ~sc_rollup_node ~node ~client =
   let* level = Node.get_level node in
   Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node level
 
+let next_delayed_inbox_fetch ~sc_rollup_node ~node ~client =
+  let rec aux n =
+    if n = 0 then Lwt.return_unit
+    else
+      let* _ = next_evm_level ~sc_rollup_node ~node ~client in
+      aux (n - 1)
+  in
+  aux 10
+
 let setup_l1_contracts client =
   (* Originates the delayed transaction bridge. *)
   let* delayed_transaction_bridge =
@@ -283,7 +292,53 @@ let test_send_deposit_to_delayed_inbox =
     ~error_msg:"the deposit is not present in the delayed inbox" ;
   unit
 
+let test_delayed_transfer_is_included =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "sequencer"; "delayed_inbox"]
+    ~title:"Delayed transaction is included"
+  @@ fun protocol ->
+  (* Start the evm node *)
+  let* {client; node; l1_contracts; sc_rollup_address; sc_rollup_node; evm_node}
+      =
+    setup_sequencer protocol
+  in
+  let endpoint = Evm_node.endpoint evm_node in
+  (* This is a transfer from Eth_account.bootstrap_accounts.(0) to
+     Eth_account.bootstrap_accounts.(1). *)
+  let raw_transfer =
+    "f86d80843b9aca00825b0494b53dc01974176e5dff2298c5a94343c2585e3c54880de0b6b3a764000080820a96a07a3109107c6bd1d555ce70d6253056bc18996d4aff4d4ea43ff175353f49b2e3a05f9ec9764dc4a3c3ab444debe2c3384070de9014d44732162bb33ee04da187ef"
+  in
+  let sender = Eth_account.bootstrap_accounts.(0).address in
+  let receiver = Eth_account.bootstrap_accounts.(1).address in
+  let* sender_balance_prev = Eth_cli.balance ~account:sender ~endpoint in
+  let* receiver_balance_prev = Eth_cli.balance ~account:receiver ~endpoint in
+  let* _hash =
+    send_raw_transaction_to_delayed_inbox
+      ~sc_rollup_node
+      ~client
+      ~l1_contracts
+      ~sc_rollup_address
+      ~node
+      raw_transfer
+  in
+  let* () = next_delayed_inbox_fetch ~sc_rollup_node ~node ~client in
+  (* Bake some blocks.*)
+  let* _ = Lwt_unix.sleep 20.0 in
+  let* sender_balance_next = Eth_cli.balance ~account:sender ~endpoint in
+  let* receiver_balance_next = Eth_cli.balance ~account:receiver ~endpoint in
+  Check.((sender_balance_prev <> sender_balance_next) Wei.typ)
+    ~error_msg:"Balance should be updated" ;
+  Check.((receiver_balance_prev <> receiver_balance_next) Wei.typ)
+    ~error_msg:"Balance should be updated" ;
+  Check.((sender_balance_prev > sender_balance_next) Wei.typ)
+    ~error_msg:"Expected a smaller balance" ;
+  Check.((receiver_balance_next > receiver_balance_prev) Wei.typ)
+    ~error_msg:"Expected a bigger balance" ;
+  unit
+
 let register ~protocols =
   test_persistent_state protocols ;
   test_send_transaction_to_delayed_inbox protocols ;
-  test_send_deposit_to_delayed_inbox protocols
+  test_send_deposit_to_delayed_inbox protocols ;
+  test_delayed_transfer_is_included protocols ;
