@@ -10,7 +10,10 @@
    the configuration. *)
 type mode =
   | Proxy of {rollup_node_endpoint : Uri.t}
-  | Sequencer of {time_between_blocks : float}
+  | Sequencer of {
+      time_between_blocks : float;
+      rollup_node_endpoint : Uri.t;
+    }
 
 type parameters = {
   rollup_node : (module Services_backend_sig.S);  (** The backend RPC module. *)

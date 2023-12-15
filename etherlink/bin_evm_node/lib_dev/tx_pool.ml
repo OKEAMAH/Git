@@ -106,7 +106,7 @@ end
 
 type mode =
   | Proxy of {rollup_node_endpoint : Uri.t}
-  | Sequencer of {time_between_blocks : float}
+  | Sequencer of {time_between_blocks : float; rollup_node_endpoint : Uri.t}
 
 type parameters = {
   rollup_node : (module Services_backend_sig.S);
@@ -403,7 +403,7 @@ let start ({mode; _} as parameters) =
         | Proxy {rollup_node_endpoint} ->
             let*! stream_l2 = make_streamed_call ~rollup_node_endpoint in
             subscribe_l2_block ~stream_l2 worker
-        | Sequencer {time_between_blocks} ->
+        | Sequencer {time_between_blocks; rollup_node_endpoint} ->
             sequencer_produce_block ~time_between_blocks worker)
       (fun _ ->
         (* TODO: https://gitlab.com/tezos/tezos/-/issues/6569*)
