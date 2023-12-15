@@ -337,8 +337,63 @@ let test_delayed_transfer_is_included =
     ~error_msg:"Expected a bigger balance" ;
   unit
 
+let test_delayed_deposit_is_included =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "sequencer"; "delayed_inbox"; "deposit"]
+    ~title:"Delayed deposit are included"
+  @@ fun protocol ->
+  let* {
+         client;
+         node;
+         l1_contracts = {bridge; _};
+         sc_rollup_address;
+         sc_rollup_node;
+         evm_node;
+       } =
+    setup_sequencer protocol
+  in
+  let endpoint = Evm_node.endpoint evm_node in
+
+  let amount = Tez.of_int 16 in
+  let depositor = Constant.bootstrap5 in
+  let receiver =
+    Eth_account.
+      {
+        address = "0x1074Fd1EC02cbeaa5A90450505cF3B48D834f3EB";
+        private_key =
+          "0xb7c548b5442f5b28236f0dcd619f65aaaafd952240908adcf9642d8e616587ee";
+        public_key =
+          "0466ed90f9a86c0908746475fbe0a40c72237de22d89076302e22c2a8da259b4aba5c7ee1f3dc3fd0b240645462620ae62b6fe8fe5b3464c3b1b4ae6c06c97b7b6";
+      }
+  in
+  let* receiver_balance_prev =
+    Eth_cli.balance ~account:receiver.address ~endpoint
+  in
+  let* () =
+    send_deposit_to_delayed_inbox
+      ~amount
+      ~bridge
+      ~depositor
+      ~receiver:receiver.address
+      ~sc_rollup_node
+      ~sc_rollup_address
+      ~node
+      client
+  in
+  let* () = next_delayed_inbox_fetch ~sc_rollup_node ~node ~client in
+  (* Sleep to let the sequencer produce some blocks. *)
+  let* () = Lwt_unix.sleep 20. in
+  let* receiver_balance_next =
+    Eth_cli.balance ~account:receiver.address ~endpoint
+  in
+  Check.((receiver_balance_next > receiver_balance_prev) Wei.typ)
+    ~error_msg:"Expected a bigger balance" ;
+  unit
+
 let register ~protocols =
   test_persistent_state protocols ;
   test_send_transaction_to_delayed_inbox protocols ;
   test_send_deposit_to_delayed_inbox protocols ;
   test_delayed_transfer_is_included protocols ;
+  test_delayed_deposit_is_included protocols
