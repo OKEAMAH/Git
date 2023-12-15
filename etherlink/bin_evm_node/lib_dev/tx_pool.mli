@@ -13,6 +13,7 @@ type mode =
   | Sequencer of {
       time_between_blocks : float;
       rollup_node_endpoint : Uri.t;
+      delayed_inbox_interval : int;
     }
 
 type parameters = {

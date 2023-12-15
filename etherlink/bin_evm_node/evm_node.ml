@@ -399,6 +399,7 @@ let sequencer_command =
                 {
                   time_between_blocks = 5.;
                   rollup_node_endpoint;
+                  delayed_inbox_interval = 10;
                 };
           }
       in
