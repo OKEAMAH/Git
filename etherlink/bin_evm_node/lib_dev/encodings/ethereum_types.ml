@@ -1181,4 +1181,8 @@ module Delayed_transaction = struct
             Some (Transaction {hash; raw_tx = Bytes.to_string raw_tx; caller})
         | _ -> None)
     | _ -> None
+
+  let show transaction =
+    match transaction with
+    | Transaction {raw_tx; _} -> raw_tx |> Hex.of_string |> Hex.show
 end
