@@ -238,3 +238,32 @@ pub fn decode_timestamp(decoder: &Rlp<'_>) -> Result<Timestamp, DecoderError> {
     .into();
     Ok(timestamp)
 }
+
+/// Append a pair
+///
+/// It creates a list of two elements
+pub fn append_pair(stream: &mut RlpStream, fst: &impl Encodable, snd: &impl Encodable) {
+    stream.begin_list(2);
+    stream.append(fst);
+    stream.append(snd);
+}
+
+/// Decode a pair
+///
+/// It decode a list of 2 elements
+pub fn decode_pair<F, S>(decoder: &Rlp<'_>) -> Result<(F, S), DecoderError>
+where
+    F: Decodable,
+    S: Decodable,
+{
+    if !decoder.is_list() {
+        return Err(DecoderError::RlpExpectedToBeList);
+    }
+    if !decoder.item_count()? != 2 {
+        return Err(DecoderError::RlpIncorrectListLen);
+    }
+    let mut it = decoder.iter();
+    let fst: F = decode_field(&next(&mut it)?, "first")?;
+    let snd: S = decode_field(&next(&mut it)?, "second")?;
+    Ok((fst, snd))
+}
