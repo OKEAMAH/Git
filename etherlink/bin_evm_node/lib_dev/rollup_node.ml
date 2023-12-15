@@ -62,6 +62,9 @@ end) : Services_backend_sig.Backend = struct
     type encoded = string list
 
     let encode_transaction ~smart_rollup_address ~transaction =
+      let open Ethereum_types.Blueprint_tx in
+      match transaction with
+      | Transaction transaction ->
       make_encoded_messages ~smart_rollup_address transaction
   end
 

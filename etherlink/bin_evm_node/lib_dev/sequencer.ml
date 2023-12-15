@@ -39,10 +39,13 @@ end) : Services_backend_sig.Backend = struct
   end
 
   module TxEncoder = struct
-    type encoded = string
+    type encoded = Ethereum_types.Blueprint_tx.t
 
     let encode_transaction ~smart_rollup_address:_ ~transaction =
-      let tx_hash_str = Ethereum_types.hash_raw_tx transaction in
+      let open Ethereum_types.Blueprint_tx in
+      match transaction with
+      | Transaction tx ->
+          let tx_hash_str = Ethereum_types.hash_raw_tx tx in
       let tx_hash =
         Ethereum_types.(
           Hash Hex.(of_string tx_hash_str |> show |> hex_of_string))
@@ -51,7 +54,7 @@ end) : Services_backend_sig.Backend = struct
   end
 
   module Publisher = struct
-    type message = string
+    type message = Ethereum_types.Blueprint_tx.t
 
     let publish_messages ~smart_rollup_address ~messages =
       let open Lwt_result_syntax in

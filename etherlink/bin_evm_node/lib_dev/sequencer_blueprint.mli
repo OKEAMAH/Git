@@ -11,5 +11,5 @@
 val create :
   smart_rollup_address:string ->
   number:Ethereum_types.quantity ->
-  transactions:string list ->
+  transactions:Ethereum_types.Blueprint_tx.t list ->
   string list

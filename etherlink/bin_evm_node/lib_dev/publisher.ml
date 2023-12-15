@@ -12,7 +12,7 @@ module type TxEncoder = sig
 
   val encode_transaction :
     smart_rollup_address:string ->
-    transaction:string ->
+    transaction:Ethereum_types.Blueprint_tx.t ->
     (hash * encoded) tzresult
 end
 

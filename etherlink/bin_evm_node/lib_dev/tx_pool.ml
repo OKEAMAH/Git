@@ -335,7 +335,9 @@ let inject_transactions ~smart_rollup_address rollup_node pool =
     txs
     |> List.sort (fun Pool.{index = index_a; _} {index = index_b; _} ->
            Int64.compare index_a index_b)
-    |> List.map (fun Pool.{raw_tx; _} -> raw_tx)
+    |> List.map (fun Pool.{raw_tx; _} ->
+           let open Ethereum_types.Blueprint_tx in
+           Transaction raw_tx)
   in
   (* Send the txs to the rollup *)
   let*! hashes =

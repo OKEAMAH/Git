@@ -21,7 +21,7 @@ module type S = sig
       and returns the hashes of injected transactions. *)
   val inject_raw_transactions :
     smart_rollup_address:string ->
-    transactions:string list ->
+    transactions:Ethereum_types.Blueprint_tx.t list ->
     Ethereum_types.hash list tzresult Lwt.t
 
   (** [current_block ~full_transaction_object] returns the most recent
