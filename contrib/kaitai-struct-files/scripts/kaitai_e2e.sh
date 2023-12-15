@@ -6,8 +6,9 @@
 #       This could be solved by --target-language and --target-script-path
 #       parameters.
 
-# TODO: https://gitlab.com/tezos/tezos/-/issues/6666
-#       The script is generally very verbose. We may want to add logging levels.
+# Run "make validate-kaitai-struct-files" to see concise summary of validation.
+# To see the full log run:
+# "./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input".
 
 set -u
 
@@ -235,6 +236,8 @@ VALIDATION RESULTS:
     - $valid/$total are semantically valid.
     - $invalid/$total are semantically invalid.
     - $untested/$total are not tested due to a missing input files.
+
+To see the full log run: $0 contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input
 EOF
 
 # This command succeeds unless semantically invalid files are found.

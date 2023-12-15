@@ -75,9 +75,7 @@ kaitai_e2e_checks:
     #       and npm dependencies (package.json) in one place, and that the local
     #       environment is then the same as CI environment.
     - . ./scripts/install_build_deps.js.sh
-    - ./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh
-      contrib/kaitai-struct-files/files
-      contrib/kaitai-struct-files/input
+    - make -C ${CI_PROJECT_DIR} validate-kaitai-struct-files
 
 oc.check_lift_limits_patch:
   extends:
