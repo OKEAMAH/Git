@@ -62,7 +62,7 @@ fn fetch_sequencer_blueprints<Host: KernelRuntime>(
     let proposals: Vec<QueueElement> = sequencer_blueprints
         .into_iter()
         .map(|sb| {
-            let blueprint: Blueprint = rlp::decode(&sb.chunk).unwrap();
+            let blueprint = host.parse_sequencer_blueprint(sb).unwrap();
             QueueElement::Blueprint(blueprint)
         })
         .collect();

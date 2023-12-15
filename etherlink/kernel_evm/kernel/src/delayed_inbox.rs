@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: 2023 Marigold <contact@marigold.dev>
 
 use crate::{
+    blueprint::Blueprint,
     error::Error,
     inbox::{Deposit, Transaction, TransactionContent},
     safe_storage::SafeStorage,
+    sequencer_blueprint::SequencerBlueprint,
 };
 use anyhow::Result;
 use primitive_types::H160;
@@ -28,6 +30,11 @@ pub trait DelayedInbox {
     ///
     /// The transaction will be located under /delayed-inbox
     fn save_transaction(&mut self, transaction: &Transaction) -> Result<()>;
+
+    fn parse_sequencer_blueprint(
+        &mut self,
+        sequencer_blueprint: SequencerBlueprint,
+    ) -> Result<Blueprint>;
 }
 
 /// Hash of a transaction
@@ -174,5 +181,24 @@ impl<Host: Runtime, Internal> DelayedInbox for SafeStorage<&mut Host, &mut Inter
         };
         delayed_inbox.push(self.host, &Hash(*tx_hash), &delayed_transaction)?;
         Ok(())
+    }
+
+    fn parse_sequencer_blueprint(
+        &mut self,
+        sequencer_blueprint: SequencerBlueprint,
+    ) -> Result<Blueprint> {
+        let Some(ref mut delayed_inbox) = self.delayed_inbox else {
+            return Err(Error::NotSequencer.into())
+        };
+
+        let blueprint: Blueprint = rlp::decode(&sequencer_blueprint.chunk)?;
+        for Transaction { tx_hash, .. } in &blueprint.transactions {
+            let _removed = delayed_inbox.remove(self.host, &Hash(*tx_hash))?;
+        }
+
+        Ok(Blueprint {
+            transactions: blueprint.transactions,
+            timestamp: blueprint.timestamp,
+        })
     }
 }
