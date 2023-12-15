@@ -14,6 +14,8 @@ module Pool = struct
     index : int64; (* Global index of the transaction. *)
     raw_tx : string; (* Current transaction. *)
     gas_price : Z.t; (* The maximum price the user can pay for fees. *)
+    delayed : bool;
+        (* indicates if the transaction comes from the delayed inbox. *)
   }
 
   type t = {
@@ -24,12 +26,12 @@ module Pool = struct
   let empty : t = {transactions = Pkey_map.empty; global_index = Int64.zero}
 
   (** Add a transacion to the pool.*)
-  let add t pkey base_fee raw_tx =
+  let add t pkey base_fee raw_tx delayed =
     let open Result_syntax in
     let {transactions; global_index} = t in
     let* (Qty nonce) = Ethereum_types.transaction_nonce raw_tx in
     let* gas_price = Ethereum_types.transaction_gas_price base_fee raw_tx in
-    let transaction = {index = global_index; raw_tx; gas_price} in
+    let transaction = {index = global_index; raw_tx; gas_price; delayed} in
     (* Add the transaction to the user's transaction map *)
     let transactions =
       Pkey_map.update
@@ -216,7 +218,7 @@ let on_normal_transaction state tx_raw =
       return (Error err)
   | Ok pkey ->
       (* Add the tx to the pool*)
-      let*? pool = Pool.add pool pkey base_fee tx_raw in
+      let*? pool = Pool.add pool pkey base_fee tx_raw false in
       (* compute the hash *)
       let tx_hash = Ethereum_types.hash_raw_tx tx_raw in
       let hash =
