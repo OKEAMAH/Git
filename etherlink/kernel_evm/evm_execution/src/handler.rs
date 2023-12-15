@@ -1480,8 +1480,28 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     vec![],
                 ));
             }
-        } else if let Ok((ExitReason::Error(ExitError::OutOfGas), _, _)) =
-            execution_result
+        } else if let Ok((
+            ExitReason::Error(
+                ExitError::OutOfGas
+                | ExitError::InvalidCode(_)
+                | ExitError::StackUnderflow
+                | ExitError::StackOverflow
+                | ExitError::InvalidJump
+                | ExitError::InvalidRange
+                | ExitError::DesignatedInvalid
+                | ExitError::CallTooDeep
+                | ExitError::CreateCollision
+                | ExitError::CreateContractLimit
+                | ExitError::OutOfOffset
+                | ExitError::PCUnderflow
+                | ExitError::CreateEmpty
+                | ExitError::MaxNonce
+                | ExitError::OutOfFund
+                | ExitError::Other(_),
+            ),
+            _,
+            _,
+        )) = execution_result
         {
             // Internal call failed: it runned out of gas. [rollback_inter_transaction]
             // will consume the gas with [refund_gas = false] and revert all subsequent
@@ -1794,12 +1814,16 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
             return Capture::Exit((ethereum_error_to_exit_reason(&err), vec![]));
         }
 
+        log!(self.host, Info, "BEFORE EXECUTING CALL");
+
         let result = self.execute_call(
             code_address,
             transfer,
             input,
             TransactionContext::from_context(context),
         );
+
+        log!(self.host, Info, "AFTER EXECUTING CALL");
 
         match self.end_inter_transaction(result, true) {
             Capture::Exit((reason, _, value)) => {
