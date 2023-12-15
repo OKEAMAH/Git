@@ -39,16 +39,20 @@ end) : Services_backend_sig.Backend = struct
   end
 
   module TxEncoder = struct
+    type encoded = string
+
     let encode_transaction ~smart_rollup_address:_ ~transaction =
       let tx_hash_str = Ethereum_types.hash_raw_tx transaction in
       let tx_hash =
         Ethereum_types.(
           Hash Hex.(of_string tx_hash_str |> show |> hex_of_string))
       in
-      Result_syntax.return (tx_hash, [transaction])
+      Result_syntax.return (tx_hash, transaction)
   end
 
   module Publisher = struct
+    type message = string
+
     let publish_messages ~smart_rollup_address ~messages =
       let open Lwt_result_syntax in
       let* ctxt = Sequencer_context.sync Ctxt.ctxt in

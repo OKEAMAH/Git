@@ -59,11 +59,15 @@ end) : Services_backend_sig.Backend = struct
   end
 
   module TxEncoder = struct
+    type encoded = string list
+
     let encode_transaction ~smart_rollup_address ~transaction =
       make_encoded_messages ~smart_rollup_address transaction
   end
 
   module Publisher = struct
+    type message = string list
+
     let publish_messages ~smart_rollup_address:_ ~messages =
       let open Lwt_result_syntax in
       (* The injection's service returns a notion of L2 message hash (defined
@@ -71,7 +75,12 @@ end) : Services_backend_sig.Backend = struct
          We do not wish to follow the message's inclusion, and thus, ignore
          the resulted hash. *)
       let* _answer =
-        call_service ~base:Base.base batcher_injection () () messages
+        call_service
+          ~base:Base.base
+          batcher_injection
+          ()
+          ()
+          (List.flatten messages)
       in
       return_unit
   end

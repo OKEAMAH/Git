@@ -108,7 +108,7 @@ module type Backend = sig
 
   module TxEncoder : Publisher.TxEncoder
 
-  module Publisher : Publisher.Publisher
+  module Publisher : Publisher.Publisher with type message = TxEncoder.encoded
 
   module SimulatorBackend : Simulator.SimulationBackend
 end
