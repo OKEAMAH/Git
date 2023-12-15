@@ -959,6 +959,8 @@ module Address = struct
   let to_string = address_to_string
 
   let of_string = address_of_string
+
+  let encoding = address_encoding
 end
 
 module AddressMap = MapMake (Address)
@@ -1136,6 +1138,7 @@ let filter_changes_encoding =
         (function Log f -> Some f | _ -> None)
         (fun f -> Log f);
     ]
+
 module Delayed_transaction = struct
   type transaction = {
     hash : hash;
@@ -1144,7 +1147,25 @@ module Delayed_transaction = struct
     caller : Address.t;
   }
 
-  type t = Transaction of transaction 
+  type t = Transaction of transaction
+
+  let encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          (Tag 0)
+          ~title:"transaction"
+          (obj3
+             (req "hash" hash_encoding)
+             (req "raw_tx" string)
+             (req "caller" Address.encoding))
+          (function
+            | Transaction {hash; raw_tx; caller} -> Some (hash, raw_tx, caller))
+          (function
+            | hash, raw_tx, caller -> Transaction {hash; raw_tx; caller});
+      ]
+
   let of_bytes bytes =
     match bytes |> Rlp.decode with
     | Ok (Rlp.List [Value tag; content]) -> (
