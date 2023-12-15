@@ -1136,3 +1136,28 @@ let filter_changes_encoding =
         (function Log f -> Some f | _ -> None)
         (fun f -> Log f);
     ]
+module Delayed_transaction = struct
+  type transaction = {
+    hash : hash;
+    raw_tx : string;
+        (* Binary string, so that it integrates smoothly with the tx-poolé*)
+    caller : Address.t;
+  }
+
+  type t = Transaction of transaction 
+  let of_bytes bytes =
+    match bytes |> Rlp.decode with
+    | Ok (Rlp.List [Value tag; content]) -> (
+        match (Bytes.to_string tag, content) with
+        | "\x01", Rlp.List [Value caller; Value raw_tx] ->
+            let caller =
+              caller |> Hex.of_bytes |> Hex.show |> Address.of_string
+            in
+            let hash =
+              raw_tx |> Hex.of_bytes |> Hex.show |> hash_raw_tx |> Hex.of_string
+              |> Hex.show |> hash_of_string
+            in
+            Some (Transaction {hash; raw_tx = Bytes.to_string raw_tx; caller})
+        | _ -> None)
+    | _ -> None
+end
