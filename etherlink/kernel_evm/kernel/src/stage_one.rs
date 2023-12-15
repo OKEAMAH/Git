@@ -22,7 +22,7 @@ fn fetch_inbox_blueprints<Host: Runtime>(
         kernel_upgrade,
         transactions,
         sequencer_blueprints: _,
-    } = read_inbox(host, smart_rollup_address, ticketer, admin)?;
+    } = read_inbox(host, smart_rollup_address, ticketer, admin, None)?;
     let timestamp = current_timestamp(host);
     let blueprint = Blueprint {
         transactions,
@@ -42,12 +42,13 @@ fn fetch_sequencer_blueprints<Host: Runtime>(
     smart_rollup_address: [u8; RAW_ROLLUP_ADDRESS_SIZE],
     ticketer: Option<ContractKt1Hash>,
     admin: Option<ContractKt1Hash>,
+    delayed_bridge: Option<ContractKt1Hash>,
 ) -> Result<Queue, anyhow::Error> {
     let InboxContent {
         kernel_upgrade,
         transactions: _,
         sequencer_blueprints,
-    } = read_inbox(host, smart_rollup_address, ticketer, admin)?;
+    } = read_inbox(host, smart_rollup_address, ticketer, admin, delayed_bridge)?;
     // TODO: store delayed inbox messages (transactions).
     // Store the blueprints. This will replace the Queue in a future MR.
     for seq_blueprint in &sequencer_blueprints {
@@ -73,10 +74,17 @@ pub fn fetch<Host: Runtime>(
     smart_rollup_address: [u8; RAW_ROLLUP_ADDRESS_SIZE],
     ticketer: Option<ContractKt1Hash>,
     admin: Option<ContractKt1Hash>,
+    delayed_bridge: Option<ContractKt1Hash>,
     is_sequencer: bool,
 ) -> Result<Queue, anyhow::Error> {
     if is_sequencer {
-        fetch_sequencer_blueprints(host, smart_rollup_address, ticketer, admin)
+        fetch_sequencer_blueprints(
+            host,
+            smart_rollup_address,
+            ticketer,
+            admin,
+            delayed_bridge,
+        )
     } else {
         fetch_inbox_blueprints(host, smart_rollup_address, ticketer, admin)
     }

@@ -180,6 +180,7 @@ pub fn read_input<Host: Runtime>(
     smart_rollup_address: [u8; 20],
     ticketer: &Option<ContractKt1Hash>,
     admin: &Option<ContractKt1Hash>,
+    delayed_bridge: &Option<ContractKt1Hash>,
 ) -> Result<InputResult, Error> {
     let input = host.read_input()?;
 
@@ -190,6 +191,7 @@ pub fn read_input<Host: Runtime>(
             smart_rollup_address,
             ticketer,
             admin,
+            delayed_bridge,
         )),
         None => Ok(InputResult::NoInput),
     }
@@ -279,6 +281,7 @@ pub fn read_inbox<Host: Runtime>(
     smart_rollup_address: [u8; 20],
     ticketer: Option<ContractKt1Hash>,
     admin: Option<ContractKt1Hash>,
+    delayed_bridge: Option<ContractKt1Hash>,
 ) -> Result<InboxContent, anyhow::Error> {
     let mut res = InboxContent {
         kernel_upgrade: None,
@@ -286,7 +289,13 @@ pub fn read_inbox<Host: Runtime>(
         sequencer_blueprints: vec![],
     };
     loop {
-        match read_input(host, smart_rollup_address, &ticketer, &admin)? {
+        match read_input(
+            host,
+            smart_rollup_address,
+            &ticketer,
+            &admin,
+            &delayed_bridge,
+        )? {
             InputResult::NoInput => {
                 return Ok(res);
             }
@@ -466,7 +475,7 @@ mod tests {
         host.add_external(Bytes::from(input_to_bytes(SMART_ROLLUP_ADDRESS, input)));
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash,
             content: Ethereum(tx),
@@ -489,7 +498,7 @@ mod tests {
         }
 
         let inbox_content =
-            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None).unwrap();
+            read_inbox(&mut host, SMART_ROLLUP_ADDRESS, None, None, None).unwrap();
         let expected_transactions = vec![Transaction {
             tx_hash,
             content: Ethereum(tx),

@@ -207,8 +207,33 @@ impl InputResult {
         InputResult::Input(Input::SequencerBlueprint(seq_blueprint))
     }
 
-    // External message structure :
-    // EXTERNAL_TAG 1B / FRAMING_PROTOCOL_TARGETTED 21B / MESSAGE_TAG 1B / DATA
+    /// Parses transactions that comes from an internal message
+    /// No need to check the framing protocol.
+    /// Only transactions are parsed, sequencer blueprint is ignored.
+    fn parse_transaction_from_internal(
+        source: ContractKt1Hash,
+        delayed_bridge: &Option<ContractKt1Hash>,
+        bytes: &[u8],
+    ) -> Self {
+        match delayed_bridge {
+            Some(delayed_bridge) if delayed_bridge.as_ref() == source.as_ref() => (),
+            _ => {
+                return InputResult::Unparsable;
+            }
+        };
+        let (transaction_tag, remaining) = parsable!(bytes.split_first());
+        match *transaction_tag {
+            SIMPLE_TRANSACTION_TAG => Self::parse_simple_transaction(remaining),
+            NEW_CHUNKED_TRANSACTION_TAG => Self::parse_new_chunked_transaction(remaining),
+            TRANSACTION_CHUNK_TAG => Self::parse_transaction_chunk(remaining),
+            _ => InputResult::Unparsable,
+        }
+    }
+
+    /// Parses an external message
+    ///
+    /// External message structure :
+    /// EXTERNAL_TAG 1B / FRAMING_PROTOCOL_TARGETTED 21B / MESSAGE_TAG 1B / DATA
     fn parse_external(input: &[u8], smart_rollup_address: &[u8]) -> Self {
         // Compatibility with framing protocol for external messages
         let remaining = match ExternalMessageFrame::parse(input) {
@@ -284,6 +309,7 @@ impl InputResult {
         smart_rollup_address: &[u8],
         ticketer: &Option<ContractKt1Hash>,
         admin: &Option<ContractKt1Hash>,
+        delayed_bridge: &Option<ContractKt1Hash>,
     ) -> Self {
         if transfer.destination.hash().0 != smart_rollup_address {
             log!(
@@ -301,7 +327,9 @@ impl InputResult {
                 MichelsonOr::Left(MichelsonPair(receiver, ticket)) => {
                     Self::parse_deposit(host, ticket, receiver, ticketer)
                 }
-                MichelsonOr::Right(_extra) => Self::Unparsable,
+                MichelsonOr::Right(MichelsonBytes(bytes)) => {
+                    Self::parse_transaction_from_internal(source, delayed_bridge, &bytes)
+                }
             },
             MichelsonOr::Right(MichelsonBytes(upgrade)) => {
                 Self::parse_kernel_upgrade(source, admin, &upgrade)
@@ -315,6 +343,7 @@ impl InputResult {
         smart_rollup_address: &[u8],
         ticketer: &Option<ContractKt1Hash>,
         admin: &Option<ContractKt1Hash>,
+        delayed_bridge: &Option<ContractKt1Hash>,
     ) -> Self {
         match message {
             InternalInboxMessage::InfoPerLevel(info) => {
@@ -326,6 +355,7 @@ impl InputResult {
                 smart_rollup_address,
                 ticketer,
                 admin,
+                delayed_bridge,
             ),
             _ => InputResult::Unparsable,
         }
@@ -337,6 +367,7 @@ impl InputResult {
         smart_rollup_address: [u8; 20],
         ticketer: &Option<ContractKt1Hash>,
         admin: &Option<ContractKt1Hash>,
+        delayed_bridge: &Option<ContractKt1Hash>,
     ) -> Self {
         let bytes = Message::as_ref(&input);
         let (input_tag, remaining) = parsable!(bytes.split_first());
@@ -355,6 +386,7 @@ impl InputResult {
                     &smart_rollup_address,
                     ticketer,
                     admin,
+                    delayed_bridge,
                 ),
             },
             Err(_) => InputResult::Unparsable,
@@ -380,6 +412,7 @@ mod tests {
                 &mut host,
                 message,
                 ZERO_SMART_ROLLUP_ADDRESS,
+                &None,
                 &None,
                 &None
             ),
