@@ -20,7 +20,7 @@ pub fn init() {
     storage_file.set_len(PVM_STATE_SIZE).unwrap();
     let _ = fs::create_dir("./diffs");
     let mut diff_index = File::create(format!("./diff_index")).unwrap();
-    diff_index.write_all(b"0").unwrap();
+    diff_index.write(&u64::to_ne_bytes(0 as u64)).unwrap();
     for i in 0..NB_DIFFS {
         let _diff_file = File::create(format!("./diffs/{i}_index")).unwrap();
         let _diff_file = File::create(format!("./diffs/{i}")).unwrap();
@@ -41,8 +41,8 @@ fn update_current_diff_index(diff_index: u64) {
 /// write the diff in the file
 pub fn write_diff_file(diff: &BTreeMap<u64, [u8; PAGE_SIZE]>) {
     let cardinal = diff.len();
-    let current_index = fs::read_to_string("./diff_index").unwrap();
-    let diff_index = str::parse::<u64>(&current_index).unwrap();
+    let current_index = fs::read("./diff_index").unwrap();
+    let diff_index = u64::from_ne_bytes(current_index.try_into().unwrap());
     let index_file = OpenOptions::new()
         .write(true)
         .open(format!("./diffs/{diff_index}_index"))
@@ -117,8 +117,8 @@ pub fn apply_diff(diff: &mut BTreeMap<u64, [u8; PAGE_SIZE]>) {
 }
 
 fn load_diff(index: u64) -> BTreeMap<u64, [u8; PAGE_SIZE]> {
-    let current_index = fs::read_to_string("./diff_index").unwrap();
-    let diff_index = str::parse::<u64>(&current_index).unwrap();
+    let current_index = fs::read("./diff_index").unwrap();
+    let diff_index = u64::from_ne_bytes(current_index.try_into().unwrap());
     let index = (diff_index + NB_DIFFS - 1 - index) % NB_DIFFS;
     let values = fs::read(format!("./diffs/{index}")).unwrap();
     let keys = fs::read(format!("./diffs/{index}_index")).unwrap();
@@ -155,6 +155,8 @@ mod tests {
         nuke();
         init();
         apply_diff(&mut diff1);
+        let state = load_state();
+        println!("state{:?}", state);
         apply_diff(&mut diff2);
         let state = load_state();
         println!("state{:?}", state);
