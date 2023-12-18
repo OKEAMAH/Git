@@ -8,11 +8,11 @@ use std::os::unix::fs::FileExt;
 use std::slice::Chunks;
 
 /// my comment : in bytes
-const PVM_STATE_SIZE: u64 = 2048;
+const PVM_STATE_SIZE: u64 = 32;
 
-const NB_DIFFS: u64 = 10;
+const NB_DIFFS: u64 = 3;
 
-const PAGE_SIZE: usize = 8;
+const PAGE_SIZE: usize = 4;
 
 /// Creates a bunch of files, 1 for storage, NB_DIFFS for diffs, 1 for the index of the diff file to modify
 pub fn init() {
@@ -141,29 +141,50 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut diff1: BTreeMap<u64, [u8; 8]> =
+        let mut diff1: BTreeMap<u64, [u8; PAGE_SIZE]> =
             vec![(1_u64, [1_u8; PAGE_SIZE]), (2_u64, [2_u8; PAGE_SIZE])]
                 .into_iter()
                 .collect();
-        let mut diff2: BTreeMap<u64, [u8; 8]> =
+        let mut diff2: BTreeMap<u64, [u8; PAGE_SIZE]> =
             vec![(2_u64, [3_u8; PAGE_SIZE]), (3_u64, [4_u8; PAGE_SIZE])]
                 .into_iter()
                 .collect();
-        //  BTreeMap::new();
+        let mut diff3: BTreeMap<u64, [u8; PAGE_SIZE]> =
+            vec![(3_u64, [3_u8; PAGE_SIZE]), (4_u64, [4_u8; PAGE_SIZE])]
+                .into_iter()
+                .collect();
+
+        let mut diff4: BTreeMap<u64, [u8; PAGE_SIZE]> =
+            vec![(1_u64, [3_u8; PAGE_SIZE]), (2_u64, [4_u8; PAGE_SIZE])]
+                .into_iter()
+                .collect();
+
         println!("fst diff{:?}", diff1);
         println!("snd diff{:?}", diff2);
         nuke();
         init();
         apply_diff(&mut diff1);
-        let state = load_state();
-        println!("state{:?}", state);
+        let state1 = load_state();
+        println!("state1{:?}", state1);
         apply_diff(&mut diff2);
-        let state = load_state();
-        println!("state{:?}", state);
-        let diff0 = load_diff(0);
-        println!("diff0{:?}", diff0);
-        let diff1 = load_diff(1);
-        println!("diff1{:?}", diff1);
+        let state2 = load_state();
+        println!("state2{:?}", state2);
+
+        apply_diff(&mut diff3);
+        let state3 = load_state();
+        println!("state3{:?}", state3);
+        apply_diff(&mut diff4);
+        let state4 = load_state();
+        println!("state4{:?}", state4);
+
+        let diff43 = load_diff(0);
+        println!("diff43{:?}", diff43);
+
+        let diff32 = load_diff(1);
+        println!("diff32{:?}", diff32);
+
+        let diff21 = load_diff(2);
+        println!("diff21{:?}", diff21);
 
         panic!("caca");
     }
