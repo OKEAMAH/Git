@@ -160,6 +160,10 @@ mod tests {
         apply_diff(&mut diff2);
         let state = load_state();
         println!("state{:?}", state);
+        let diff0 = load_diff(0);
+        println!("diff0{:?}", diff0);
+        let diff1 = load_diff(1);
+        println!("diff1{:?}", diff1);
 
         panic!("caca");
     }
