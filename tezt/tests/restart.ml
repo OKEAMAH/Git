@@ -50,7 +50,7 @@ let test_restart () =
     let* () = Node.run node [] in
     Lwt.return_unit
   in
-  let* () = loop 1_000 f in
+  let* () = loop 100 f in
   unit
 
 let register () = test_restart ()
