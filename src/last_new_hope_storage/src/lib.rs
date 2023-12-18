@@ -28,8 +28,8 @@ pub fn init() {
 /// write the diff in the file
 pub fn write_diff_file(diff: &BTreeMap<u64, [u8; PAGE_SIZE]>) {
     let cardinal = diff.len();
-    let diff_index_file = fs::read_to_string("./diff_index").unwrap();
-    let diff_index = str::parse::<u64>(&diff_index_file).unwrap();
+    let index_to_update = fs::read_to_string("./diff_index").unwrap();
+    let diff_index = str::parse::<u64>(&index_to_update).unwrap();
     // println!(".diffs/{diff_index}_index") ;
     let index_file = OpenOptions::new()
         .write(true)
@@ -47,7 +47,14 @@ pub fn write_diff_file(diff: &BTreeMap<u64, [u8; PAGE_SIZE]>) {
         let _ = index_file.write_at(&k.to_ne_bytes(), offset).unwrap();
         let _ = value_file.write_at(v, offset).unwrap();
         offset += 8
-    })
+    });
+    diff_index += 1;
+    diff_index = diff_index % NB_DIFFS;
+    let diff_index_file = OpenOptions::new()
+        .write(true)
+        .open(format!("./diff_index"))
+        .unwrap();
+    let _ = diff_index_file.write(&diff_index.to_ne_bytes()).unwrap();
 }
 
 pub fn nuke() {
@@ -57,15 +64,15 @@ pub fn nuke() {
 }
 
 /// update the storage with the given diff
-pub fn update_storage(diff: &BTreeMap<u64, [u8; PAGE_SIZE]>) {
-    let storage = OpenOptions::new()
-        .write(true)
-        .open(format!("./storage"))
-        .unwrap();
-    diff.iter().for_each(|(k, v)| {
-        let _ = storage.write_at(v, k * (PAGE_SIZE as u64)).unwrap();
-    })
-}
+// pub fn update_storage(diff: &BTreeMap<u64, [u8; PAGE_SIZE]>) {
+//     let storage = OpenOptions::new()
+//         .write(true)
+//         .open(format!("./storage"))
+//         .unwrap();
+//     diff.iter().for_each(|(k, v)| {
+//         let _ = storage.write_at(v, k * (PAGE_SIZE as u64)).unwrap();
+//     })
+// }
 
 // pub fn to_backward_diff(diff: &mut BTreeMap<u64, [u8; PAGE_SIZE]>)  {
 //     let storage = OpenOptions::new()
@@ -89,7 +96,6 @@ pub fn update_and_convert_diff(
         .open(format!("./storage"))
         .unwrap();
     let buff = &mut [0 as u8; PAGE_SIZE];
-
     diff.iter()
         .map(|(k, v)| {
             storage.read_at(buff, k * (PAGE_SIZE as u64)).unwrap();
@@ -99,6 +105,19 @@ pub fn update_and_convert_diff(
         .collect()
 }
 
+fn get_diff(index: u64) {
+    let diff = OpenOptions::new()
+        .read(true)
+        .open(format!("./diffs/{index}"))
+        .unwrap();
+    let diff_index = OpenOptions::new()
+        .read(true)
+        .open(format!("./diffs_index/{index}"))
+        .unwrap();
+    let res = std::collections::BTreeMap::new();
+}
+
+pub fn checkout(index: u64) {}
 /// update the diff files with the diff
 
 #[cfg(test)]
