@@ -3898,6 +3898,48 @@ let test_migration_plugin ~migrate_from ~migrate_to =
     ~description
     ()
 
+let check_rollup_key_payload sc_rollup_node ~target_level ~pvm_name ~parameters
+    ~payload ~key =
+  Log.info "Wait for the rollup node to catch up." ;
+  let* _level =
+    Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node target_level
+  in
+  let* value_written =
+    Sc_rollup_node.RPC.call sc_rollup_node ~rpc_hooks
+    @@ Sc_rollup_rpc.get_global_block_durable_state_value
+         ~pvm_kind:pvm_name
+         ~operation:Sc_rollup_rpc.Value
+         ~key
+         ()
+  in
+  match (value_written, payload) with
+  | None, None ->
+      Log.info "Key %S not found as expected." key ;
+      unit
+  | None, Some payload ->
+      Test.fail
+        "Expected a value %S to be found for key %S. But none was found."
+        payload
+        key
+  | Some payload, None ->
+      Test.fail "Not expecting a value, but found %S." payload
+  | Some value, Some payload ->
+      let value = `Hex value |> Hex.to_string in
+      Check.(
+        (String.length value = parameters.Dal.Parameters.cryptobox.slot_size)
+          int
+          ~error_msg:"Expected a value of size %R. Got %L") ;
+      if String.starts_with ~prefix:payload value then unit
+      else
+        let message =
+          Format.asprintf
+            "Expected the payload '%s' to be a prefix of the value written. \
+             Instead found: %s"
+            payload
+            (String.sub value 0 (String.length payload))
+        in
+        Test.fail "%s" message
+
 module Tx_kernel_e2e = struct
   open Tezos_protocol_alpha.Protocol
   open Tezt_tx_kernel
@@ -4180,37 +4222,14 @@ module Tx_kernel_e2e = struct
         ~attestation_lag:parameters.attestation_lag
         ~number_of_slots:parameters.number_of_slots
     in
-    Log.info "Wait for the rollup node to catch up." ;
-    let* _level =
-      Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node target_level
-    in
     let key = "/output/slot-0" in
-    let* value_written =
-      Sc_rollup_node.RPC.call sc_rollup_node ~rpc_hooks
-      @@ Sc_rollup_rpc.get_global_block_durable_state_value
-           ~pvm_kind:pvm_name
-           ~operation:Sc_rollup_rpc.Value
-           ~key
-           ()
-    in
-    match value_written with
-    | None -> Test.fail "Expected a value to be found. But none was found."
-    | Some value ->
-        let value = `Hex value |> Hex.to_string in
-        Check.(
-          (String.length value = parameters.Dal.Parameters.cryptobox.slot_size)
-            int
-            ~error_msg:"Expected a value of size %R. Got $L") ;
-        if String.starts_with ~prefix:payload value then unit
-        else
-          let message =
-            Format.asprintf
-              "Expected the payload '%s' to be a prefix of the value written. \
-               Instead found: %s"
-              payload
-              (String.sub value 0 (String.length payload))
-          in
-          Test.fail "%s" message
+    check_rollup_key_payload
+      sc_rollup_node
+      ~target_level
+      ~pvm_name
+      ~parameters
+      ~payload:(Some payload)
+      ~key
 end
 
 let register ~protocols =
