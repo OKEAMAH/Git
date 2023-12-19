@@ -289,8 +289,21 @@ module Make_indexable (N : NAME) (K : INDEX_KEY) (V : Index.Value.S) = struct
     mutable gc_status : gc_status;
   }
 
-  let internal_indexes ?(only_stale = false) store =
-    if only_stale then store.stales else store.fresh :: store.stales
+  let internal_indexes ?(only_stale = false) ?(with_staging = true) store =
+    (if only_stale then [] else [store.fresh])
+    @
+    if with_staging then store.stales
+    else match store.stales with [] -> [] | _staging :: rest -> rest
+
+  let internal_indexes_classified ?(only_stale = false) ?(with_staging = true)
+      store =
+    (if only_stale then [] else [(store.fresh, `Fresh)])
+    @
+    match store.stales with
+    | [] -> []
+    | staging :: stales ->
+        let stales = List.map (fun s -> (s, `Stale)) stales in
+        if with_staging then (staging, `Staging) :: stales else stales
 
   let unsafe_mem store k =
     List.exists (fun i -> I.mem i.index k) (internal_indexes store)
@@ -305,17 +318,17 @@ module Make_indexable (N : NAME) (K : INDEX_KEY) (V : Index.Value.S) = struct
 
   let find_index i k = try Some (I.find i k) with Not_found -> None
 
-  let unsafe_find ?only_stale store k =
+  let unsafe_find ?only_stale ?with_staging store k =
     List.find_map
-      (fun i ->
-        try find_index i.index k
+      (fun (i, kind) ->
+        try Option.map (fun v -> (v, kind)) (find_index i.index k)
         with e ->
           Format.kasprintf
             Stdlib.failwith
             "cannot access index %s : %s"
             i.index_path
             (Printexc.to_string e))
-      (internal_indexes ?only_stale store)
+      (internal_indexes_classified ?only_stale ?with_staging store)
 
   let find store k =
     let open Lwt_result_syntax in
@@ -323,7 +336,8 @@ module Make_indexable (N : NAME) (K : INDEX_KEY) (V : Index.Value.S) = struct
     @@ protect
     @@ fun () ->
     Lwt_idle_waiter.task store.scheduler @@ fun () ->
-    return (unsafe_find store k)
+    let v = unsafe_find store k |> Option.map fst in
+    return v
 
   let add ?(flush = true) store k v =
     let open Lwt_result_syntax in
@@ -458,16 +472,22 @@ module Make_indexable (N : NAME) (K : INDEX_KEY) (V : Index.Value.S) = struct
       [tmp_index]. *)
   let unsafe_retain_one_item store tmp_index filter k =
     let open Lwt_syntax in
-    let value = unsafe_find ~only_stale:true store k in
-    let* () =
+    let value = unsafe_find ~only_stale:true ~with_staging:true store k in
+    let* v =
       match value with
       | None ->
-          Store_events.missing_value_gc N.name (Format.asprintf "%a" K.pp k)
-      | Some v ->
+          let* () =
+            Store_events.missing_value_gc N.name (Format.asprintf "%a" K.pp k)
+          in
+          return_none
+      | Some (v, (`Fresh | `Staging)) ->
+          (* Don't copy data from fresh store or staging store *)
+          return_some v
+      | Some (v, `Stale) ->
           if filter v then I.replace tmp_index.index k v ;
-          return_unit
+          return_some v
     in
-    return value
+    return v
 
   (** When the gc operation finishes, i.e. we have copied all elements to retain
       to the temporary index, we can replace all the stale indexes by the
@@ -476,10 +496,22 @@ module Make_indexable (N : NAME) (K : INDEX_KEY) (V : Index.Value.S) = struct
     let open Lwt_result_syntax in
     protect @@ fun () ->
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
-    let*! () = List.iter_s rm_internal_index store.stales in
+    let*! () =
+      List.iter_s
+        rm_internal_index
+        (internal_indexes ~only_stale:true ~with_staging:false store)
+    in
+    let*! staging_index =
+      match store.stales with
+      | [] -> Lwt.return_none
+      | staging :: _ ->
+          let staging_path = stale_path store.path 2 in
+          let*! staging_index = mv_internal_index store staging staging_path in
+          Lwt.return_some staging_index
+    in
     let stale_path = stale_path store.path 1 in
     let*! index_stale = mv_internal_index store tmp_index stale_path in
-    store.stales <- [index_stale] ;
+    store.stales <- Option.to_list staging_index @ [index_stale] ;
     store.gc_status <- No_gc ;
     let*! () = Store_events.finished_gc N.name in
     return_unit
