@@ -84,6 +84,13 @@ val append_dummy_l2_chain :
   length:int ->
   Sc_rollup_block.t list tzresult Lwt.t
 
+val add_l2_block :
+  [`Read | `Write] Node_context.t ->
+  ?is_first_block:bool ->
+  predecessor_l2_block:Sc_rollup_block.t ->
+  string list ->
+  Sc_rollup_block.t tzresult Lwt.t
+
 (** {2 Assertions} *)
 
 module Assert : sig
