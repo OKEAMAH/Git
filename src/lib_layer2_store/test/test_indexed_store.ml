@@ -554,7 +554,10 @@ module Indexable_for_test = struct
 
   let close = S.close
 
-  let gc s ~retain = S.gc ~async:false s (Retain retain)
+  let gc s ~retain =
+    let open Lwt_result_syntax in
+    let* () = S.gc ~async:false s (Retain retain) in
+    S.gc ~async:false s (Retain retain)
 end
 
 let () =
@@ -601,7 +604,10 @@ module Indexable_removable_for_test = struct
 
   let close = S.close
 
-  let gc s ~retain = S.gc ~async:false s (Retain retain)
+  let gc s ~retain =
+    let open Lwt_result_syntax in
+    let* () = S.gc ~async:false s (Retain retain) in
+    S.gc ~async:false s (Retain retain)
 end
 
 let () =
@@ -679,7 +685,10 @@ module Indexed_file_for_test = struct
 
   let close = S.close
 
-  let gc s ~retain = S.gc ~async:false s (Retain retain)
+  let gc s ~retain =
+    let open Lwt_result_syntax in
+    let* () = S.gc ~async:false s (Retain retain) in
+    S.gc ~async:false s (Retain retain)
 end
 
 module Indexed_file_integers = struct
@@ -713,17 +722,22 @@ module Indexed_file_integers = struct
   let close = S.close
 
   let gc s ~largest ~smallest =
-    S.gc
-      ~async:false
-      s
-      (Iterator
-         {
-           first = largest;
-           next =
-             (fun i _ ->
-               if i <= smallest then Lwt.return_none
-               else Lwt.return_some (Int32.pred i));
-         })
+    let go () =
+      S.gc
+        ~async:false
+        s
+        (Iterator
+           {
+             first = largest;
+             next =
+               (fun i _ ->
+                 if i <= smallest then Lwt.return_none
+                 else Lwt.return_some (Int32.pred i));
+           })
+    in
+    let open Lwt_result_syntax in
+    let* () = go () in
+    go ()
 end
 
 let () =
