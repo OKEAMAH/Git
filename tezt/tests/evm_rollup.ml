@@ -4328,15 +4328,15 @@ let test_l2_intermediate_OOG_call =
   Protocol.register_test
     ~__FILE__
     ~tags:["evm"; "out_of_gas"; "call"]
-    ~title:
-      "Check that an L2 call to a smart contract with an intermediate call \
-       that runs out of gas still succeeds."
     ~uses:(fun _protocol ->
       [
         Constant.octez_smart_rollup_node;
         Constant.octez_evm_node;
         Constant.smart_rollup_installer;
       ])
+    ~title:
+      "Check that an L2 call to a smart contract with an intermediate call \
+       that runs out of gas still succeeds."
   @@ fun protocol ->
   let* ({evm_node; sc_rollup_node; node; client; _} as evm_setup) =
     setup_past_genesis ~admin:None protocol
