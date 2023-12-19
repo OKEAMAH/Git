@@ -24,11 +24,7 @@ const BLST_FP12_ZERO: blst_fp12 = blst_fp12 {
 /// seem overly generic, but we want to accept both owned and borrowed
 /// items, as there's no easy way to convert an owning iterator to iterator
 /// over references.
-pub fn pairing_check<TG1, TG2, Item>(pairs: impl IntoIterator<Item = Item>) -> bool
-where
-    TG1: Borrow<G1>,
-    TG2: Borrow<G2>,
-    Item: Borrow<(TG1, TG2)>,
+pub fn pairing_check<'a>(pairs: impl Iterator<Item = (&'a G1, &'a G2)>) -> bool
 {
     let mut x = blst_fp12::default(); // defaults to blst_fp12_one
 
@@ -55,66 +51,66 @@ mod tests {
 
     #[test]
     fn empty_list() {
-        assert!(pairing_check::<&_, &_, _>(&[]))
+        assert!(pairing_check(vec![].into_iter()))
     }
 
     #[test]
     fn one_elt() {
-        assert!(pairing_check([(G1::zero(), G2::zero())]));
-        assert!(pairing_check([(G1::zero(), G2::one())]));
-        assert!(pairing_check([(G1::one(), G2::zero())]));
-        assert!(!pairing_check([(G1::one(), G2::one())]));
+        assert!(pairing_check(vec![(&G1::zero(), &G2::zero())].into_iter()));
+        assert!(pairing_check(vec![(&G1::zero(), &G2::one())].into_iter()));
+        assert!(pairing_check(vec![(&G1::one(), &G2::zero())].into_iter()));
+        assert!(!pairing_check(vec![(&G1::one(), &G2::one())].into_iter()));
     }
 
     #[test]
     fn two_elts() {
         use super::super::{g1, g2};
 
-        assert!(pairing_check([
-            (G1::one(), G2::one()),
-            (G1::one(), G2::neg_one())
-        ]));
-        assert!(pairing_check([
-            (G1::neg_one(), G2::one()),
-            (G1::one(), G2::one())
-        ]));
+        assert!(pairing_check(vec![
+            (&G1::one(), &G2::one()),
+            (&G1::one(), &G2::neg_one())
+        ].into_iter()));
+        assert!(pairing_check(vec![
+            (&G1::neg_one(), &G2::one()),
+            (&G1::one(), &G2::one())
+        ].into_iter()));
 
-        assert!(pairing_check([
-            (g1::tests::some_val(), g2::tests::some_val()),
-            (g1::tests::some_val(), g2::tests::neg_some_val()),
-        ]));
+        assert!(pairing_check(vec![
+            (&g1::tests::some_val(), &g2::tests::some_val()),
+            (&g1::tests::some_val(), &g2::tests::neg_some_val()),
+        ].into_iter()));
 
-        assert!(pairing_check([
-            (g1::tests::some_val(), g2::tests::some_val()),
-            (g1::tests::neg_some_val(), g2::tests::some_val()),
-        ]));
+        assert!(pairing_check(vec![
+            (&g1::tests::some_val(), &g2::tests::some_val()),
+            (&g1::tests::neg_some_val(), &g2::tests::some_val()),
+        ].into_iter()));
 
         // failing checks
-        assert!(!pairing_check([
-            (G1::one(), G2::one()),
-            (G1::neg_one(), G2::neg_one())
-        ]));
-        assert!(!pairing_check([
-            (G1::neg_one(), G2::neg_one()),
-            (G1::one(), G2::one())
-        ]));
-        assert!(!pairing_check([
-            (G1::one(), G2::one()),
-            (G1::one(), G2::one())
-        ]));
-        assert!(!pairing_check([
-            (G1::neg_one(), G2::neg_one()),
-            (G1::neg_one(), G2::neg_one())
-        ]));
+        assert!(!pairing_check(vec![
+            (&G1::one(), &G2::one()),
+            (&G1::neg_one(), &G2::neg_one())
+        ].into_iter()));
+        assert!(!pairing_check(vec![
+            (&G1::neg_one(), &G2::neg_one()),
+            (&G1::one(), &G2::one())
+        ].into_iter()));
+        assert!(!pairing_check(vec![
+            (&G1::one(), &G2::one()),
+            (&G1::one(), &G2::one())
+        ].into_iter()));
+        assert!(!pairing_check(vec![
+            (&G1::neg_one(), &G2::neg_one()),
+            (&G1::neg_one(), &G2::neg_one())
+        ].into_iter()));
 
-        assert!(!pairing_check([
-            (g1::tests::some_val(), g2::tests::some_val()),
-            (g1::tests::neg_some_val(), g2::tests::neg_some_val()),
-        ]));
+        assert!(!pairing_check(vec![
+            (&g1::tests::some_val(), &g2::tests::some_val()),
+            (&g1::tests::neg_some_val(), &g2::tests::neg_some_val()),
+        ].into_iter()));
 
-        assert!(!pairing_check([
-            (g1::tests::some_val(), g2::tests::some_val()),
-            (g1::tests::some_val(), g2::tests::some_val()),
-        ]));
+        assert!(!pairing_check(vec![
+            (&g1::tests::some_val(), &g2::tests::some_val()),
+            (&g1::tests::some_val(), &g2::tests::some_val()),
+        ].into_iter()));
     }
 }
