@@ -780,7 +780,7 @@ module Scripts = struct
           (fun () ->
             let exp_ty = Script_ir_unparser.serialize_ty_for_error exp_ty in
             Script_tc_errors.Ill_typed_data (None, data, exp_ty))
-          (let allow_forged_tickets = false in
+          (let allow_forged_tickets = true in
            let allow_forged_lazy_storage_id =
              true
              (* Safe since we ignore the value afterwards. *)
@@ -1292,7 +1292,7 @@ module Scripts = struct
               parse_data
                 ctxt
                 ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
-                ~allow_forged_tickets:false
+                ~allow_forged_tickets:true
                 ~allow_forged_lazy_storage_id:true
                 map_ty
                 items
