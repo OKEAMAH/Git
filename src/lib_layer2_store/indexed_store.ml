@@ -810,8 +810,21 @@ struct
     mutable gc_status : gc_status;
   }
 
-  let internal_stores ?(only_stale = false) store =
-    if only_stale then store.stales else store.fresh :: store.stales
+  let internal_stores ?(only_stale = false) ?(with_staging = true) store =
+    (if only_stale then [] else [store.fresh])
+    @
+    if with_staging then store.stales
+    else match store.stales with [] -> [] | _staging :: rest -> rest
+
+  let internal_stores_classified ?(only_stale = false) ?(with_staging = true)
+      store =
+    (if only_stale then [] else [(store.fresh, `Fresh)])
+    @
+    match store.stales with
+    | [] -> []
+    | staging :: stales ->
+        let stales = List.map (fun s -> (s, `Stale)) stales in
+        if with_staging then (staging, `Staging) :: stales else stales
 
   let unsafe_mem store k =
     List.exists (fun s -> Header_index.mem s.index k) (internal_stores store)
@@ -830,11 +843,11 @@ struct
 
   let find_index i k = try Some (Header_index.find i k) with Not_found -> None
 
-  let unsafe_find_header ?only_stale store k =
+  let unsafe_find_header ?only_stale ?with_staging store k =
     List.find_map
-      (fun s ->
+      (fun (s, kind) ->
         Option.map
-          (fun h -> (h, s))
+          (fun h -> (h, s, kind))
           (try find_index s.index k
            with e ->
              Format.kasprintf
@@ -842,7 +855,7 @@ struct
                "cannot access index %s : %s"
                s.index_path
                (Printexc.to_string e)))
-      (internal_stores ?only_stale store)
+      (internal_stores_classified ?only_stale ?with_staging store)
 
   let header store key =
     let open Lwt_result_syntax in
@@ -860,22 +873,22 @@ struct
     | None -> (
         match unsafe_find_header store key with
         | None -> return_none
-        | Some ({header; _}, _store) -> return_some header)
+        | Some ({header; _}, _store, _kind) -> return_some header)
 
-  let unsafe_read_from_disk_opt ?only_stale store key =
+  let unsafe_read_from_disk_opt ?only_stale ?with_staging store key =
     let open Lwt_result_syntax in
-    match unsafe_find_header ?only_stale store key with
+    match unsafe_find_header ?only_stale ?with_staging store key with
     | None -> return_none
-    | Some ({IHeader.offset; header}, internal_store) ->
+    | Some ({IHeader.offset; header}, internal_store, kind) ->
         let+ value, _ofs =
           Values_file.pread_value internal_store.fd ~file_offset:offset
         in
-        Some (value, header)
+        Some ((value, header), kind)
 
   let unsafe_read_from_disk store key =
     let open Lwt_result_syntax in
     let* r = unsafe_read_from_disk_opt store key in
-    match r with None -> tzfail (Exn Not_found) | Some r -> return r
+    match r with None -> tzfail (Exn Not_found) | Some (r, _kind) -> return r
 
   let read store key =
     trace (Cannot_read_from_store IHeader.name)
@@ -1071,16 +1084,22 @@ struct
       [tmp_store]. *)
   let unsafe_retain_one_item store tmp_store key =
     let open Lwt_result_syntax in
-    let* v = unsafe_read_from_disk_opt ~only_stale:true store key in
-    let* () =
+    let* v =
+      unsafe_read_from_disk_opt ~only_stale:true ~with_staging:true store key
+    in
+    let* v =
       match v with
       | None ->
           let*! () =
             Store_events.missing_value_gc N.name (Format.asprintf "%a" K.pp key)
           in
-          return_unit
-      | Some (value, header) ->
-          unsafe_append_internal tmp_store ~key ~header ~value
+          return_none
+      | Some (v, (`Fresh | `Staging)) ->
+          (* Don't copy data from fresh store or staging store *)
+          return_some v
+      | Some (((value, header) as v), `Stale) ->
+          let+ () = unsafe_append_internal tmp_store ~key ~header ~value in
+          Some v
     in
     return v
 
@@ -1091,10 +1110,22 @@ struct
     let open Lwt_result_syntax in
     protect @@ fun () ->
     Lwt_idle_waiter.force_idle store.scheduler @@ fun () ->
-    let* () = List.iter_es rm_internal_store store.stales in
+    let* () =
+      List.iter_es
+        rm_internal_store
+        (internal_stores ~only_stale:true ~with_staging:false store)
+    in
+    let* staging_store =
+      match store.stales with
+      | [] -> return_none
+      | staging :: _ ->
+          let staging_path = stale_path store.path 2 in
+          let* staging_store = mv_internal_store store staging staging_path in
+          return_some staging_store
+    in
     let stale_path = stale_path store.path 1 in
     let* store_stale = mv_internal_store store tmp_store stale_path in
-    store.stales <- [store_stale] ;
+    store.stales <- Option.to_list staging_store @ [store_stale] ;
     store.gc_status <- No_gc ;
     Cache.clear store.cache ;
     let*! () = Store_events.finished_gc N.name in
