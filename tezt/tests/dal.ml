@@ -4232,6 +4232,196 @@ module Tx_kernel_e2e = struct
       ~key
 end
 
+module Test_dal_with_rollups_at_different_levels = struct
+  (* 1. The kind of actions we may take. Each action is achieved in its given
+     context. *)
+  type action =
+    | Bake of {client : Client.t; dal_node : Dal_node.t option}
+    | Publish_dal_slot of {
+        index : int;
+        content : string;
+        slot_size : int;
+        client : Client.t;
+        dal_node : Dal_node.t;
+      }
+    | Attest_dal_slots of {
+        level : int option;
+        slots : int list;
+        num_slots : int;
+        client : Client.t;
+        dal_node : Dal_node.t;
+      }
+    | Originate_echo_rollup of {
+        sc_rollup_node : Sc_rollup_node.t;
+        client : Client.t;
+        pvm_name : peer_id;
+      }
+    | Start_rollup_node of {
+        sc_rollup_node : Sc_rollup_node.t;
+        rollup_addr : string option;
+      }
+    | Exec of {lambda : unit -> unit Lwt.t}
+
+  (* 2. The helper functions that build actions. *)
+  module Mk_action = struct
+    let bake client dal_node = Bake {client; dal_node}
+
+    let bake_n ~num_blocks client dal_node =
+      List.init num_blocks (fun _ -> Bake {client; dal_node})
+
+    let publish_dal_slot ?(index = 0) ~content ~slot_size client dal_node =
+      Publish_dal_slot {index; content; slot_size; client; dal_node}
+
+    let attest_dal_slots ?(slots = [0]) ?level ~num_slots client dal_node =
+      Attest_dal_slots {slots; level; num_slots; client; dal_node}
+
+    let originate_echo_rollup sc_rollup_node client ~pvm_name =
+      Originate_echo_rollup {sc_rollup_node; client; pvm_name}
+
+    let start_rollup_node ?rollup_addr sc_rollup_node =
+      Start_rollup_node {sc_rollup_node; rollup_addr}
+
+    let exec lambda = Exec {lambda}
+  end
+
+  (* 3. The functions that implement the actions. *)
+  module Do_action = struct
+    let originate_rollup sc_rollup_node client pvm_name cont =
+      Log.info "Originate the echo kernel." ;
+      let* {boot_sector; _} =
+        Sc_rollup_helpers.prepare_installer_kernel
+          ~base_installee:"./"
+          ~preimages_dir:
+            (Filename.concat (Sc_rollup_node.data_dir sc_rollup_node) pvm_name)
+          "dal_echo_kernel"
+      in
+      let* rollup =
+        Client.Sc_rollup.originate
+          ~burn_cap:Tez.(of_int 9999999)
+          ~alias:"dal_echo_kernel"
+          ~src:Constant.bootstrap1.public_key_hash
+          ~kind:pvm_name
+          ~boot_sector
+          ~parameters_ty:"unit"
+          client
+      in
+      cont ~rollup ()
+
+    let start_rollup_node ?addr sc_rollup_node cont =
+      match addr with
+      | None -> Test.fail "No rollup address given"
+      | Some rollup ->
+          let* () =
+            Sc_rollup_node.run sc_rollup_node rollup [Log_kernel_debug]
+          in
+          cont ()
+
+    let publish_and_store_dal_slot ?(src = Constant.bootstrap2) ~index ~content
+        ~slot_size client dal_node cont =
+      let* _commitment =
+        publish_and_store_slot ~with_proof:true client dal_node src ~index
+        @@ Helpers.make_slot ~slot_size content
+      in
+      cont ()
+
+    let bake client dal_node cont =
+      let* () =
+        let dal_node_endpoint = Option.map Helpers.endpoint dal_node in
+        (* Empty set for keys means "bake for all delegates". *)
+        Client.bake_for_and_wait
+          ?dal_node_endpoint
+          ~keys:[]
+          ~minimal_timestamp:false
+          client
+      in
+      cont ()
+
+    let attest_dal_slots ~num_slots ~attested_level ~slots dal_node client cont
+        =
+      let* attested_level =
+        match attested_level with
+        | Some level -> return level
+        | None -> Client.level client
+      in
+      let* () =
+        Lwt_list.iter_s
+          (fun attester ->
+            let* res =
+              Dal_RPC.(
+                call dal_node @@ get_attestable_slots ~attester ~attested_level)
+            in
+            let slot_list =
+              match res with
+              | Not_in_committee -> []
+              | Attestable_slots slot_list -> slot_list
+            in
+            (* In the list of [slots] to attest, only keep those that are
+               attestable. *)
+            let slots =
+              let attestable_slots = Array.of_list slot_list in
+              List.filter (fun i -> attestable_slots.(i)) slots
+            in
+            match slots with
+            | [] -> unit (* This include not being in committee. *)
+            | _ ->
+                let* (`OpHash _h) =
+                  inject_dal_attestation
+                    ~level:attested_level
+                    ~force:true
+                    ~signer:attester
+                    ~nb_slots:num_slots
+                    slots
+                    client
+                in
+                unit)
+          (Array.to_list Account.Bootstrap.keys)
+      in
+      cont ()
+
+    let exec lambda cont =
+      let* () = lambda () in
+      cont ()
+  end
+
+  (* 4. The function that iterate on the actions *)
+  let run_scenario scenario =
+    let open Do_action in
+    let rec aux ?rollup actions () =
+      match actions with
+      | [] -> unit
+      | action :: actions -> (
+          match action with
+          | Bake {client; dal_node} ->
+              bake client dal_node (aux ?rollup actions)
+          | Originate_echo_rollup {sc_rollup_node; client; pvm_name} ->
+              originate_rollup sc_rollup_node client pvm_name (fun ~rollup ->
+                  aux actions ~rollup)
+          | Publish_dal_slot {index; content; slot_size; client; dal_node} ->
+              publish_and_store_dal_slot
+                ~index
+                ~content
+                ~slot_size
+                client
+                dal_node
+                (aux ?rollup actions)
+          | Attest_dal_slots {level; slots; client; dal_node; num_slots} ->
+              attest_dal_slots
+                ~num_slots
+                ~attested_level:level
+                ~slots
+                dal_node
+                client
+                (aux ?rollup actions)
+          | Start_rollup_node {sc_rollup_node; rollup_addr} ->
+              let addr =
+                Option.fold ~some:(fun r -> Some r) ~none:rollup rollup_addr
+              in
+              start_rollup_node ?addr sc_rollup_node (aux ?rollup actions)
+          | Exec {lambda} -> exec lambda (aux ?rollup actions))
+    in
+    aux scenario ()
+end
+
 let register ~protocols =
   (* Tests with Layer1 node only *)
   scenario_with_layer1_node
