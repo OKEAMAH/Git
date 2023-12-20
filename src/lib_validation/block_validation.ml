@@ -25,6 +25,33 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+let trace_exn_pure ~__LOC__ f =
+  try f
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
+let trace_exn_s ~__LOC__ f =
+  let open Lwt_syntax in
+  try
+    let* r = f in
+    return r
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
+let trace_exn_es ~__LOC__ f =
+  let open Lwt_result_syntax in
+  try
+    let*! r = f in
+    (match r with
+    | Ok _ -> ()
+    | Error _ -> Format.eprintf "## %s || Error result@." __LOC__) ;
+    Lwt.return r
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
 open Block_validator_errors
 open Validation_errors
 
@@ -597,40 +624,63 @@ module Make (Proto : Protocol_plugin.T) = struct
       (predecessor_block_header : Block_header.t) block_header block_hash
       operations =
     let open Lwt_result_syntax in
-    trace
-      (invalid_block block_hash Economic_protocol_error)
-      (let* state =
-         (Proto.begin_application
-            context
-            chain_id
-            (Application block_header)
-            ~predecessor:predecessor_block_header.shell
-            ~cache [@time.duration_lwt application_beginning])
-       in
-       let* state, ops_metadata =
-         (List.fold_left_es
-            (fun (state, acc) ops ->
-              let* state, ops_metadata =
-                List.fold_left_es
-                  (fun (state, acc) (oph, op, _check_signature) ->
-                    let* state, op_metadata =
-                      Proto.apply_operation state oph op
-                    in
-                    return (state, op_metadata :: acc))
-                  (state, [])
-                  ops
-              in
-              return (state, List.rev ops_metadata :: acc))
-            (state, [])
-            operations [@time.duration_lwt operations_application])
-       in
-       let ops_metadata = List.rev ops_metadata in
-       let* validation_result, block_data =
-         (Proto.finalize_application
-            state
-            (Some block_header.shell) [@time.duration_lwt block_finalization])
-       in
-       return (validation_result, block_data, ops_metadata))
+    trace_exn_es ~__LOC__
+    @@ trace
+         (invalid_block block_hash Economic_protocol_error)
+         (let* state =
+            trace_exn_es ~__LOC__
+            @@ (Proto.begin_application
+                  context
+                  chain_id
+                  (Application block_header)
+                  ~predecessor:predecessor_block_header.shell
+                  ~cache [@time.duration_lwt application_beginning])
+          in
+          let* state, ops_metadata =
+            (List.fold_left_es
+               (fun (state, acc) ops ->
+                 let* state, ops_metadata =
+                   List.fold_left_es
+                     (fun (state, acc) (oph, op, _check_signature) ->
+                       let* state, op_metadata =
+                         try
+                           let*! res = Proto.apply_operation state oph op in
+                           (match res with
+                           | Ok _ -> ()
+                           | Error _ ->
+                               Format.eprintf
+                                 "### %s:@.Applying operation %a returned \
+                                  error result@."
+                                 __LOC__
+                                 Operation_hash.pp
+                                 oph) ;
+                           Lwt.return res
+                         with exn ->
+                           Format.eprintf
+                             "### %s:@.Applying operation %a returned %s@."
+                             __LOC__
+                             Operation_hash.pp
+                             oph
+                             (Printexc.to_string exn) ;
+                           raise exn
+                       in
+                       return (state, op_metadata :: acc))
+                     (state, [])
+                     ops
+                 in
+                 return (state, List.rev ops_metadata :: acc))
+               (state, [])
+               operations [@time.duration_lwt operations_application])
+          in
+          let ops_metadata = List.rev ops_metadata in
+          let* validation_result, block_data =
+            trace_exn_es ~__LOC__
+            @@ (Proto.finalize_application
+                  state
+                  (Some block_header.shell)
+                [@time.duration_lwt block_finalization])
+          in
+          return (validation_result, block_data, ops_metadata))
 
   let may_init_new_protocol chain_id new_protocol
       (block_header : Proto.block_header) block_hash
@@ -672,8 +722,12 @@ module Make (Proto : Protocol_plugin.T) = struct
       ~predecessor_context ~predecessor_resulting_context_hash
       ~(block_header : Block_header.t) operations =
     let open Lwt_result_syntax in
-    let block_hash = Block_header.hash block_header in
-    let shell_header_hash = hash_shell_header block_header.shell in
+    let block_hash =
+      trace_exn_pure ~__LOC__ @@ Block_header.hash block_header
+    in
+    let shell_header_hash =
+      trace_exn_pure ~__LOC__ @@ hash_shell_header block_header.shell
+    in
     match cached_result with
     | Some (({result; _} as cached_result), context)
       when Shell_header_hash.equal result.shell_header_hash shell_header_hash ->
@@ -686,100 +740,120 @@ module Make (Proto : Protocol_plugin.T) = struct
         let*! () = Validation_events.(emit using_preapply_result block_hash) in
         let*! context_hash =
           if simulate then
-            Lwt.return
+            trace_exn_s ~__LOC__ @@ Lwt.return
             @@ Context_ops.hash
                  ~time:block_header.shell.timestamp
                  ?message:result.validation_store.message
                  context
           else
-            Context_ops.commit
-              ~time:block_header.shell.timestamp
-              ?message:result.validation_store.message
-              context
+            trace_exn_s ~__LOC__
+            @@ Context_ops.commit
+                 ~time:block_header.shell.timestamp
+                 ?message:result.validation_store.message
+                 context
         in
-        assert (
-          Context_hash.equal
-            context_hash
-            result.validation_store.resulting_context_hash) ;
+        trace_exn_pure ~__LOC__
+        @@ assert (
+             Context_hash.equal
+               context_hash
+               result.validation_store.resulting_context_hash) ;
         return cached_result
     | Some _ | None ->
         let* () =
-          check_block_header
-            ~predecessor_block_header
-            ~predecessor_resulting_context_hash
-            block_hash
-            block_header
+          trace_exn_es ~__LOC__
+          @@ check_block_header
+               ~predecessor_block_header
+               ~predecessor_resulting_context_hash
+               block_hash
+               block_header
         in
-        let* block_header = parse_block_header block_hash block_header in
-        let* () = check_operation_quota block_hash operations in
-        let predecessor_hash = Block_header.hash predecessor_block_header in
+        let* block_header =
+          trace_exn_es ~__LOC__ @@ parse_block_header block_hash block_header
+        in
+        let* () =
+          trace_exn_es ~__LOC__ @@ check_operation_quota block_hash operations
+        in
+        let predecessor_hash =
+          trace_exn_pure ~__LOC__ @@ Block_header.hash predecessor_block_header
+        in
         let* operations =
-          (parse_operations
-             block_hash
-             operations [@time.duration_lwt operations_parsing])
+          trace_exn_es ~__LOC__
+          @@ (parse_operations
+                block_hash
+                operations [@time.duration_lwt operations_parsing])
         in
         let* context =
-          prepare_context
-            predecessor_block_metadata_hash
-            predecessor_ops_metadata_hash
-            block_header
-            predecessor_context
-            predecessor_hash
+          trace_exn_es ~__LOC__
+          @@ prepare_context
+               predecessor_block_metadata_hash
+               predecessor_ops_metadata_hash
+               block_header
+               predecessor_context
+               predecessor_hash
         in
         let* validation_result, block_metadata, ops_metadata =
-          proto_apply_operations
-            chain_id
-            context
-            cache
-            predecessor_block_header
-            block_header
-            block_hash
-            operations
+          trace_exn_es ~__LOC__
+          @@ proto_apply_operations
+               chain_id
+               context
+               cache
+               predecessor_block_header
+               block_header
+               block_hash
+               operations
         in
         let*! validation_result =
-          may_patch_protocol
-            ~user_activated_upgrades
-            ~user_activated_protocol_overrides
-            ~level:block_header.shell.level
-            validation_result
+          trace_exn_s ~__LOC__
+          @@ may_patch_protocol
+               ~user_activated_upgrades
+               ~user_activated_protocol_overrides
+               ~level:block_header.shell.level
+               validation_result
         in
         let context = validation_result.context in
-        let*! new_protocol = Context_ops.get_protocol context in
+        let*! new_protocol =
+          trace_exn_s ~__LOC__ @@ Context_ops.get_protocol context
+        in
         let expected_proto_level =
+          trace_exn_pure ~__LOC__
+          @@
           if Protocol_hash.equal new_protocol Proto.hash then
             predecessor_block_header.shell.proto_level
           else (predecessor_block_header.shell.proto_level + 1) mod 256
         in
         let* () =
-          fail_when
-            (block_header.shell.proto_level <> expected_proto_level)
-            (invalid_block
-               block_hash
-               (Invalid_proto_level
-                  {
-                    found = block_header.shell.proto_level;
-                    expected = expected_proto_level;
-                  }))
+          trace_exn_es ~__LOC__
+          @@ fail_when
+               (block_header.shell.proto_level <> expected_proto_level)
+               (invalid_block
+                  block_hash
+                  (Invalid_proto_level
+                     {
+                       found = block_header.shell.proto_level;
+                       expected = expected_proto_level;
+                     }))
         in
         let* () =
-          fail_when
-            Fitness.(validation_result.fitness <> block_header.shell.fitness)
-            (invalid_block
-               block_hash
-               (Invalid_fitness
-                  {
-                    expected = block_header.shell.fitness;
-                    found = validation_result.fitness;
-                  }))
+          trace_exn_es ~__LOC__
+          @@ fail_when
+               Fitness.(validation_result.fitness <> block_header.shell.fitness)
+               (invalid_block
+                  block_hash
+                  (Invalid_fitness
+                     {
+                       expected = block_header.shell.fitness;
+                       found = validation_result.fitness;
+                     }))
         in
         let* validation_result, new_protocol_env_version, expected_context_hash
             =
-          may_init_new_protocol
-            chain_id
-            new_protocol
-            block_header
-            block_hash
-            validation_result
+          trace_exn_es ~__LOC__
+          @@ may_init_new_protocol
+               chain_id
+               new_protocol
+               block_header
+               block_hash
+               validation_result
         in
         let max_operations_ttl =
           max
@@ -788,15 +862,18 @@ module Make (Proto : Protocol_plugin.T) = struct
         in
         let validation_result = {validation_result with max_operations_ttl} in
         let* block_metadata, ops_metadata =
-          compute_metadata
-            ~operation_metadata_size_limit
-            new_protocol_env_version
-            block_metadata
-            ops_metadata
+          trace_exn_es ~__LOC__
+          @@ compute_metadata
+               ~operation_metadata_size_limit
+               new_protocol_env_version
+               block_metadata
+               ops_metadata
         in
         let (Context {cache; _}) = validation_result.context in
         let context = validation_result.context in
         let*! resulting_context_hash =
+          trace_exn_s ~__LOC__
+          @@
           if simulate then
             Lwt.return
             @@ Context_ops.hash
@@ -804,10 +881,11 @@ module Make (Proto : Protocol_plugin.T) = struct
                  ?message:validation_result.message
                  context
           else
-            Context_ops.commit
-              ~time:block_header.shell.timestamp
-              ?message:validation_result.message
-              context [@time.duration_lwt context_commitment] [@time.flush]
+            trace_exn_s ~__LOC__
+            @@ (Context_ops.commit
+                  ~time:block_header.shell.timestamp
+                  ?message:validation_result.message
+                  context [@time.duration_lwt context_commitment] [@time.flush])
         in
         let* () =
           let is_context_consistent =
@@ -818,14 +896,16 @@ module Make (Proto : Protocol_plugin.T) = struct
                    performed in the [check_block_header] call above. *)
                 true
             | Resulting_context ->
-                Context_hash.equal
-                  resulting_context_hash
-                  block_header.shell.context
+                trace_exn_pure ~__LOC__
+                @@ Context_hash.equal
+                     resulting_context_hash
+                     block_header.shell.context
           in
-          fail_unless
-            is_context_consistent
-            (Validation_errors.Inconsistent_hash
-               (resulting_context_hash, block_header.shell.context))
+          trace_exn_es ~__LOC__
+          @@ fail_unless
+               is_context_consistent
+               (Validation_errors.Inconsistent_hash
+                  (resulting_context_hash, block_header.shell.context))
         in
         let validation_store =
           {
