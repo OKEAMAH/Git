@@ -50,7 +50,29 @@ let () =
 type initialisation_parameters = {srs_g1 : Srs_g1.t; srs_g2 : Srs_g2.t}
 
 (* Initialisation parameters are supposed to be instantiated once. *)
-let initialisation_parameters = ref None
+let num_reads =
+  Format.eprintf "# init num_reads at toplevel@." ;
+  ref 0
+
+let num_writes =
+  Format.eprintf "# init num_writes at toplevel@." ;
+  ref 0
+
+let num_resets =
+  Format.eprintf "# init num_resets at toplevel@." ;
+  ref 0
+
+let initialisation_parameters =
+  Format.eprintf "# init initialisation_parameters to None at toplevel@." ;
+  ref None
+
+let debug_counters ~__LOC__ =
+  Format.eprintf
+    "## %s: num_reads: %d, num_writes: %d, num_resets: %d@."
+    __LOC__
+    !num_reads
+    !num_writes
+    !num_resets
 
 type error += Dal_initialisation_twice
 
@@ -101,10 +123,13 @@ let load_parameters parameters =
   let open Result_syntax in
   match !initialisation_parameters with
   | None ->
+      incr num_writes ;
       initialisation_parameters := Some parameters ;
+      debug_counters ~__LOC__ ;
       return_unit
   | Some _ ->
       Format.eprintf "## %s: Dal_initialisation_twice" __LOC__ ;
+      debug_counters ~__LOC__ ;
       fail [Dal_initialisation_twice]
 
 (* FIXME https://gitlab.com/tezos/tezos/-/issues/3400
@@ -572,8 +597,12 @@ module Inner = struct
       trace_exn_e ~__LOC__
       @@
       match !initialisation_parameters with
-      | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
-      | Some srs -> return srs
+      | None ->
+          debug_counters ~__LOC__ ;
+          fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
+      | Some srs ->
+          incr num_reads ;
+          return srs
     in
     match raw with
     | Error err -> (
@@ -1353,7 +1382,10 @@ module Internal_for_tests = struct
     in
     {srs_g1; srs_g2}
 
-  let load_parameters parameters = initialisation_parameters := Some parameters
+  let load_parameters parameters =
+    incr num_writes ;
+    initialisation_parameters := Some parameters ;
+    debug_counters ~__LOC__
 
   let make_dummy_shards (t : t) ~state =
     trace_exn_pure ~__LOC__ @@ Random.set_state state ;
@@ -1388,7 +1420,10 @@ module Internal_for_tests = struct
 
   let precomputation_equal = Kate_amortized.preprocess_equal
 
-  let reset_initialisation_parameters () = initialisation_parameters := None
+  let reset_initialisation_parameters () =
+    incr num_resets ;
+    initialisation_parameters := None ;
+    debug_counters ~__LOC__
 
   let dummy_commitment ~state () = Commitment_proof.random ~state ()
 
@@ -1431,8 +1466,12 @@ module Internal_for_tests = struct
          trace_exn_e ~__LOC__
          @@
          match !initialisation_parameters with
-         | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
-         | Some srs -> return srs
+         | None ->
+             debug_counters ~__LOC__ ;
+             fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
+         | Some srs ->
+             incr num_reads ;
+             return srs
        in
        ensure_validity
          ~slot_size
