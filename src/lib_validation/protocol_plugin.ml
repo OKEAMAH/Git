@@ -202,6 +202,15 @@ let () =
     (function Ill_formed_operation oph -> Some oph | _ -> None)
     (fun oph -> Ill_formed_operation oph)
 
+let trace_exn_s ~__LOC__ f =
+  let open Lwt_syntax in
+  try
+    let* r = f in
+    return r
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
 module Patch_T (Proto : T) : T = struct
   include Proto
 
@@ -209,9 +218,12 @@ module Patch_T (Proto : T) : T = struct
     let open Lwt_syntax in
     let* status = Proto.Plugin.syntactic_check op in
     match status with
-    | `Ill_formed -> Lwt_result_syntax.tzfail (Ill_formed_operation oph)
+    | `Ill_formed ->
+        Format.eprintf "## %s@." __LOC__ ;
+        Lwt_result_syntax.tzfail (Ill_formed_operation oph)
     | `Well_formed ->
-        Proto.validate_operation ?check_signature validation_state oph op
+        trace_exn_s ~__LOC__
+        @@ Proto.validate_operation ?check_signature validation_state oph op
 
   module Mempool = struct
     include Proto.Mempool
