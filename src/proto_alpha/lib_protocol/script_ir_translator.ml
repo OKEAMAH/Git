@@ -2068,11 +2068,10 @@ let normalized_lam_rec ~unparse_code_rec ~stack_depth ctxt kdescr code_field =
              In [parse_data], both [allow_forged_lazy_storage_id] and [allow_forged_lazy_storage_id] should be [false] for:
              - PUSH
              - UNPACK
-             - user-provided script parameters
              - storage on origination
              And [true] for:
              - internal calls parameters
-             - storage after origination
+             - storage after origination.
              For
              - user-provided script parameters 
              [allow_forged_lazy_storage_id] should be [false] but [allow_forged_tickets] should be [true] as users are allowed to transfer tickets.
@@ -2477,7 +2476,7 @@ let rec parse_data :
       Lwt.return @@ traced_no_lwt @@ parse_bls12_381_fr ctxt expr
   (*
                    /!\ When adding new lazy storage kinds, you may want to guard the parsing
-                   of identifiers with [allow_lazy_storage_id].
+                   of identifiers with [allow_forged_lazy_storage_id].
                *)
   (* Sapling *)
   | Sapling_transaction_t memo_size, expr ->

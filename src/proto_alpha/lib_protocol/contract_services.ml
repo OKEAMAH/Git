@@ -460,7 +460,7 @@ let register () =
                 parse_data
                   ctxt
                   ~elab_conf:legacy
-                  ~allow_forged_tickets:false
+                  ~allow_forged_tickets:true
                   ~allow_forged_lazy_storage_id:true
                   value_type
                   (Micheline.root value)
