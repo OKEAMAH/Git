@@ -7,6 +7,8 @@
 
 open Ethereum_types
 
+let _ = "Oh fada, tu vas me lancer les tests"
+
 let keccak256 (Hex s) =
   let bytes = Hex.to_bytes_exn (`Hex s) in
   Tezos_crypto.Hacl.Hash.Keccak_256.digest bytes
