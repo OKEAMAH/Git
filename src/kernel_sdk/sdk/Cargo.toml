@@ -60,24 +60,42 @@ version = "=0.5.2"
 optional = true
 
 [target.'cfg(target_os = "hermit")'.dependencies.hermit]
-# TODO: remove pin once patched version of hermit is published
-git = "https://github.com/hermit-os/hermit-rs.git"
 version = "0.7.2"
 default-features = false
 
 [features]
-default = ["std", "crypto", "dlmalloc", "panic-hook", "data-encoding", "storage", "bls"]
+default = [
+  "std",
+  "crypto",
+  "dlmalloc",
+  "panic-hook",
+  "data-encoding",
+  "storage",
+  "bls",
+]
 crypto = ["tezos_crypto_rs"]
 bls = ["tezos-smart-rollup-encoding/bls"]
 debug_alloc = ["tezos-smart-rollup-debug/alloc"]
 alloc = ["tezos-smart-rollup-entrypoint/alloc"]
 dlmalloc = ["tezos-smart-rollup-entrypoint/dlmalloc"]
 panic-hook = ["tezos-smart-rollup-entrypoint/default"]
-data-encoding = ["tezos_data_encoding", "tezos-smart-rollup-encoding/alloc", "tezos-smart-rollup-encoding/tezos-encoding", "tezos-smart-rollup-encoding/crypto"]
+data-encoding = [
+  "tezos_data_encoding",
+  "tezos-smart-rollup-encoding/alloc",
+  "tezos-smart-rollup-encoding/tezos-encoding",
+  "tezos-smart-rollup-encoding/crypto",
+]
 storage = ["tezos-smart-rollup-storage"]
 std = ["alloc", "debug_alloc", "tezos-smart-rollup-entrypoint/std"]
 testing = ["crypto", "tezos-smart-rollup-mock"]
-proto-nairobi = ["tezos-smart-rollup-core/proto-nairobi", "tezos-smart-rollup-host/proto-nairobi", "tezos-smart-rollup-mock/proto-nairobi"]
+proto-nairobi = [
+  "tezos-smart-rollup-core/proto-nairobi",
+  "tezos-smart-rollup-host/proto-nairobi",
+  "tezos-smart-rollup-mock/proto-nairobi",
+]
 proto-alpha = ["proto-alpha-no-mock", "tezos-smart-rollup-mock/proto-alpha"]
 # TODO: remove `proto-alpha-no-mock` once `mock` can compile on RISC-V
-proto-alpha-no-mock = ["tezos-smart-rollup-core/proto-alpha", "tezos-smart-rollup-host/proto-alpha"]
+proto-alpha-no-mock = [
+  "tezos-smart-rollup-core/proto-alpha",
+  "tezos-smart-rollup-host/proto-alpha",
+]

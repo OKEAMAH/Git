@@ -689,7 +689,8 @@ dependencies = [
 [[package]]
 name = "hermit"
 version = "0.7.2"
-source = "git+https://github.com/hermit-os/hermit-rs.git#d207a82a0a0580cfa51dcc1924cfacc8d303a28d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a98f9b983110430c36ab1954682ac9e64dfd83083ae5b1966da8193264423c86"
 dependencies = [
  "flate2",
  "tar",
@@ -930,7 +931,6 @@ dependencies = [
 [[package]]
 name = "jstz_api"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "base64 0.21.5",
  "boa_engine",
@@ -952,7 +952,6 @@ dependencies = [
 [[package]]
 name = "jstz_core"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "bincode",
  "boa_engine",
@@ -967,7 +966,6 @@ dependencies = [
 [[package]]
 name = "jstz_crypto"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -979,7 +977,6 @@ dependencies = [
 [[package]]
 name = "jstz_kernel"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "bincode",
  "boa_engine",
@@ -998,7 +995,6 @@ dependencies = [
 [[package]]
 name = "jstz_proto"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "boa_engine",
  "boa_gc",
