@@ -67,6 +67,35 @@ let () =
     (function () -> Dal_initialisation_twice)
   [@@coverage off]
 
+let trace_exn_pure ~__LOC__ f =
+  try f
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
+let trace_exn_es ~__LOC__ f =
+  let open Lwt_result_syntax in
+  try
+    let*! r = f in
+    (match r with
+    | Ok _ -> ()
+    | Error _ -> Format.eprintf "## %s || Error result@." __LOC__) ;
+    Lwt.return r
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
+let trace_exn_e ~__LOC__ f =
+  try
+    let r = f in
+    (match r with
+    | Ok _ -> ()
+    | Error _ -> Format.eprintf "## %s || Error result@." __LOC__) ;
+    r
+  with e ->
+    Format.eprintf "## %s || EXN %s@." __LOC__ (Printexc.to_string e) ;
+    raise e
+
 (* This function is expected to be called once. *)
 let load_parameters parameters =
   let open Result_syntax in
@@ -74,7 +103,9 @@ let load_parameters parameters =
   | None ->
       initialisation_parameters := Some parameters ;
       return_unit
-  | Some _ -> fail [Dal_initialisation_twice]
+  | Some _ ->
+      Format.eprintf "## %s: Dal_initialisation_twice" __LOC__ ;
+      fail [Dal_initialisation_twice]
 
 (* FIXME https://gitlab.com/tezos/tezos/-/issues/3400
 
@@ -83,6 +114,8 @@ let load_parameters parameters =
 let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
     ~srs_size_log2 =
   let open Lwt_result_syntax in
+  trace_exn_es ~__LOC__
+  @@
   let len = 1 lsl srs_size_log2 in
   let to_bigstring ~path =
     let open Lwt_syntax in
@@ -263,7 +296,7 @@ module Inner = struct
   let scalar_bytes_amount = Scalar.size_in_bytes - 1
 
   (* Builds group of nth roots of unity, a valid domain for the FFT. *)
-  let make_domain n = Domain.build n
+  let make_domain n = trace_exn_pure ~__LOC__ @@ Domain.build n
 
   type t = {
     redundancy_factor : int;
@@ -298,13 +331,16 @@ module Inner = struct
 
   (* The page size is a power of two and thus not a multiple of [scalar_bytes_amount],
      hence the + 1 to account for the remainder of the division. *)
-  let page_length ~page_size = Int.div page_size scalar_bytes_amount + 1
+  let page_length ~page_size =
+    trace_exn_pure ~__LOC__ @@ (Int.div page_size scalar_bytes_amount + 1)
 
   (* [slot_as_polynomial_length ~slot_size ~page_size] returns the length of the
      polynomial of maximal degree representing a slot of size [slot_size] with
      [slot_size / page_size] pages. The returned length thus depends on the number
      of pages. *)
   let slot_as_polynomial_length ~slot_size ~page_size =
+    trace_exn_pure ~__LOC__
+    @@
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = FFT.select_fft_domain page_length in
     slot_size / page_size * page_length_domain
@@ -312,6 +348,8 @@ module Inner = struct
   let ensure_validity_without_srs ~slot_size ~page_size ~redundancy_factor
       ~number_of_shards =
     let open Result_syntax in
+    trace_exn_e ~__LOC__
+    @@
     let assert_result condition error_message =
       if not condition then fail (`Fail (error_message ())) else return_unit
     in
@@ -510,7 +548,8 @@ module Inner = struct
 
   let parameters_encoding = Dal_config.parameters_encoding
 
-  let pages_per_slot {slot_size; page_size; _} = slot_size / page_size
+  let pages_per_slot {slot_size; page_size; _} =
+    trace_exn_pure ~__LOC__ @@ (slot_size / page_size)
 
   (* Error cases of this functions are not encapsulated into
      `tzresult` for modularity reasons. *)
@@ -518,6 +557,8 @@ module Inner = struct
       ({redundancy_factor; slot_size; page_size; number_of_shards} as
       parameters) =
     let open Result_syntax in
+    trace_exn_e ~__LOC__
+    @@
     let max_polynomial_length =
       slot_as_polynomial_length ~slot_size ~page_size
     in
@@ -526,6 +567,8 @@ module Inner = struct
     in
     let shard_length = erasure_encoded_polynomial_length / number_of_shards in
     let* raw =
+      trace_exn_e ~__LOC__
+      @@
       match !initialisation_parameters with
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
       | Some srs -> return srs
@@ -591,6 +634,8 @@ module Inner = struct
 
      Runtime is [O(n log n)] where [n = Domains.length d]. *)
   let polynomials_product d ps =
+    trace_exn_pure ~__LOC__
+    @@
     let evaluations = List.map (FFT.fft d) ps in
     FFT.ifft_inplace d (Evals.mul_c ~evaluations ())
 
@@ -603,6 +648,8 @@ module Inner = struct
        This can be achieved by adding some padding with null bytes to the
        byte sequence if the length is strictly less than the slot size, or
        truncate it if the length is strictly greater than the slot size. *)
+    trace_exn_e ~__LOC__
+    @@
     if Bytes.length slot <> t.slot_size then
       Error
         (`Slot_wrong_size
@@ -694,6 +741,8 @@ module Inner = struct
   let polynomial_to_slot t p =
     (* The last operation of [polynomial_from_slot] is the interpolation,
        so we undo it with an evaluation on the same domain [t.domain_polynomial_length]. *)
+    trace_exn_pure ~__LOC__
+    @@
     let evaluations = FFT.fft (Domain.build t.max_polynomial_length) p in
     let slot = Bytes.make t.slot_size '\x00' in
     let offset = ref 0 in
@@ -719,8 +768,9 @@ module Inner = struct
      This can be achieved with an n-points discrete Fourier transform
      supported by the [Scalar] field in time O(n log n). *)
   let encode t p =
-    Evals.to_array
-      (FFT.fft (Domain.build t.erasure_encoded_polynomial_length) p)
+    trace_exn_pure ~__LOC__
+    @@ Evals.to_array
+         (FFT.fft (Domain.build t.erasure_encoded_polynomial_length) p)
 
   (* The shards are arranged in cosets to produce batches of KZG proofs
      for the shards efficiently.
@@ -731,6 +781,8 @@ module Inner = struct
      where W_0 = {w^{t.number_of_shards * j}}_{j in ⟦0, t.shard_length-1⟧}
      and W_i = w^i W_0 (|W_0|=t.shard_length). *)
   let shards_from_polynomial t p =
+    trace_exn_pure ~__LOC__
+    @@
     let codeword = encode t p in
     let rec loop index seq =
       if index < 0 then seq
@@ -755,6 +807,8 @@ module Inner = struct
   let encoded_share_size t =
     (* FIXME: https://gitlab.com/tezos/tezos/-/issues/4289
        Improve shard size computation *)
+    trace_exn_pure ~__LOC__
+    @@
     let share_scalar_len =
       t.erasure_encoded_polynomial_length / t.number_of_shards
     in
@@ -785,6 +839,8 @@ module Inner = struct
 
      Asymptotic complexity is O(n log n). *)
   let polynomial_from_shards t shards =
+    trace_exn_pure ~__LOC__
+    @@
     let shards =
       (* We always consider the first k codeword vector components,
          the ShardSet allows collecting distinct indices.
@@ -1014,6 +1070,8 @@ module Inner = struct
       Ok (Poly.truncate ~len:t.max_polynomial_length p)
 
   let commit t p =
+    trace_exn_e ~__LOC__
+    @@
     try Ok (Commitment.commit t.srs.raw.srs_g1 p)
     with Kzg.Commitment.SRS_too_short _ ->
       Error
@@ -1048,6 +1106,8 @@ module Inner = struct
      Generalize this function to pass the slot_size in parameter. *)
   let prove_commitment
       ({srs = {raw = {srs_g1; _}; _}; max_polynomial_length; _} : t) p =
+    trace_exn_e ~__LOC__
+    @@
     if Srs_g1.size srs_g1 >= max_polynomial_length then
       Ok
         (Degree_check.prove
@@ -1062,6 +1122,8 @@ module Inner = struct
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
   let verify_commitment (t : t) cm proof =
+    trace_exn_pure ~__LOC__
+    @@
     let max_allowed_committed_poly_degree = t.max_polynomial_length - 1 in
     let max_committable_degree = Srs_g1.size t.srs.raw.srs_g1 - 1 in
     let offset_monomial_degree =
@@ -1072,18 +1134,21 @@ module Inner = struct
     Degree_check.verify {srs_0; srs_n_d} cm proof
 
   let save_precompute_shards_proofs precomputation ~filename =
-    protect (fun () ->
-        Lwt_io.with_file ~mode:Output filename (fun chan ->
-            let open Lwt_result_syntax in
-            let str =
-              Data_encoding.Binary.to_string_exn
-                Encoding.shards_proofs_precomputation_encoding
-                precomputation
-            in
-            let*! () = Lwt_io.write chan str in
-            return_unit))
+    trace_exn_es ~__LOC__
+    @@ protect (fun () ->
+           Lwt_io.with_file ~mode:Output filename (fun chan ->
+               let open Lwt_result_syntax in
+               let str =
+                 Data_encoding.Binary.to_string_exn
+                   Encoding.shards_proofs_precomputation_encoding
+                   precomputation
+               in
+               let*! () = Lwt_io.write chan str in
+               return_unit))
 
   let hash_precomputation precomputation =
+    trace_exn_pure ~__LOC__
+    @@
     let encoding =
       Data_encoding.Binary.to_bytes_exn
         Encoding.shards_proofs_precomputation_encoding
@@ -1092,36 +1157,41 @@ module Inner = struct
     Tezos_crypto.Blake2B.hash_bytes [encoding]
 
   let load_precompute_shards_proofs ~hash ~filename () =
-    protect (fun () ->
-        Lwt_io.with_file ~mode:Input filename (fun chan ->
-            let open Lwt_result_syntax in
-            let*! str = Lwt_io.read chan in
-            let precomputation =
-              Data_encoding.Binary.of_string_exn
-                Encoding.shards_proofs_precomputation_encoding
-                str
-            in
-            let* () =
-              match hash with
-              | Some given ->
-                  let expected = hash_precomputation precomputation in
-                  if Tezos_crypto.Blake2B.equal given expected then return_unit
-                  else
-                    tzfail
-                      (Invalid_precomputation_hash
-                         {
-                           given = Tezos_crypto.Blake2B.to_string given;
-                           expected = Tezos_crypto.Blake2B.to_string expected;
-                         })
-              | None -> return_unit
-            in
-            return precomputation))
+    trace_exn_es ~__LOC__
+    @@ protect (fun () ->
+           Lwt_io.with_file ~mode:Input filename (fun chan ->
+               let open Lwt_result_syntax in
+               let*! str = Lwt_io.read chan in
+               let precomputation =
+                 Data_encoding.Binary.of_string_exn
+                   Encoding.shards_proofs_precomputation_encoding
+                   str
+               in
+               let* () =
+                 match hash with
+                 | Some given ->
+                     let expected = hash_precomputation precomputation in
+                     if Tezos_crypto.Blake2B.equal given expected then
+                       return_unit
+                     else
+                       tzfail
+                         (Invalid_precomputation_hash
+                            {
+                              given = Tezos_crypto.Blake2B.to_string given;
+                              expected = Tezos_crypto.Blake2B.to_string expected;
+                            })
+                 | None -> return_unit
+               in
+               return precomputation))
 
   let precompute_shards_proofs t =
-    (* Precomputes step. 1 of multiple multi-reveals. *)
+    trace_exn_pure ~__LOC__
+    @@ (* Precomputes step. 1 of multiple multi-reveals. *)
     Kate_amortized.preprocess_multiple_multi_reveals t.kate_amortized
 
   let prove_shards t ~precomputation ~polynomial =
+    trace_exn_pure ~__LOC__
+    @@
     (* Resizing input polynomial [p] to obtain an array of length [t.max_polynomial_length + 1]. *)
     let coefficients =
       Array.init (t.max_polynomial_length + 1) (fun _ -> Scalar.(copy zero))
@@ -1136,6 +1206,8 @@ module Inner = struct
 
   let verify_shard (t : t) commitment {index = shard_index; share = evaluations}
       proof =
+    trace_exn_e ~__LOC__
+    @@
     if shard_index < 0 || shard_index >= t.number_of_shards then
       Error
         (`Shard_index_out_of_range
@@ -1169,6 +1241,8 @@ module Inner = struct
         else Error `Invalid_shard
 
   let prove_page t p page_index =
+    trace_exn_e ~__LOC__
+    @@
     if page_index < 0 || page_index >= t.pages_per_slot then
       Error `Page_index_out_of_range
     else
@@ -1184,6 +1258,8 @@ module Inner = struct
   (* Parses the [slot_page] to get the evaluations that it contains. The
      evaluation points are given by the [slot_page_index]. *)
   let verify_page t commitment ~page_index page proof =
+    trace_exn_e ~__LOC__
+    @@
     if page_index < 0 || page_index >= t.pages_per_slot then
       Error `Page_index_out_of_range
     else
@@ -1335,6 +1411,8 @@ module Internal_for_tests = struct
       {redundancy_factor; slot_size; page_size; number_of_shards} =
     let open Result_syntax in
     let* raw =
+       trace_exn_e ~__LOC__
+       @@
       match !initialisation_parameters with
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
       | Some srs -> return srs
@@ -1372,12 +1450,16 @@ module Config = struct
         | Some parameters ->
             return (Internal_for_tests.parameters_initialisation parameters)
         | None ->
-            let*? srs_g1_path, srs_g2_path = find_srs_files () in
-            initialisation_parameters_from_files
-              ~srs_g1_path
-              ~srs_g2_path
-              ~srs_size_log2
+            let*? srs_g1_path, srs_g2_path =
+              trace_exn_e ~__LOC__ @@ find_srs_files ()
+            in
+            trace_exn_es ~__LOC__
+            @@ initialisation_parameters_from_files
+                 ~srs_g1_path
+                 ~srs_g2_path
+                 ~srs_size_log2
       in
-      Lwt.return (load_parameters initialisation_parameters)
+      Lwt.return
+        (trace_exn_e ~__LOC__ @@ load_parameters initialisation_parameters)
     else return_unit
 end
