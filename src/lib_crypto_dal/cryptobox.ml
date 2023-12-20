@@ -1330,6 +1330,8 @@ module Verifier = Inner
 module Internal_for_tests = struct
   let parameters_initialisation
       {slot_size; page_size; number_of_shards; redundancy_factor; _} =
+    trace_exn_pure ~__LOC__
+    @@
     let length = slot_as_polynomial_length ~slot_size ~page_size in
     let secret =
       Scalar.of_string
@@ -1354,7 +1356,7 @@ module Internal_for_tests = struct
   let load_parameters parameters = initialisation_parameters := Some parameters
 
   let make_dummy_shards (t : t) ~state =
-    Random.set_state state ;
+    trace_exn_pure ~__LOC__ @@ Random.set_state state ;
     let rec loop index seq =
       if index = t.number_of_shards then seq
       else
@@ -1380,7 +1382,7 @@ module Internal_for_tests = struct
     Commitment_proof.alter_proof proof
 
   let minimum_number_of_shards_to_reconstruct_slot (t : t) =
-    t.number_of_shards / t.redundancy_factor
+    trace_exn_pure ~__LOC__ @@ (t.number_of_shards / t.redundancy_factor)
 
   let select_fft_domain = FFT.select_fft_domain
 
@@ -1424,20 +1426,21 @@ module Internal_for_tests = struct
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
     let open Result_syntax in
-    let* raw =
-       trace_exn_e ~__LOC__
-       @@
-      match !initialisation_parameters with
-      | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
-      | Some srs -> return srs
-    in
-    ensure_validity
-      ~slot_size
-      ~page_size
-      ~redundancy_factor
-      ~number_of_shards
-      ~srs_g1_length:(Srs_g1.size raw.srs_g1)
-      ~srs_g2_length:(Srs_g2.size raw.srs_g2)
+    (trace_exn_e ~__LOC__
+    @@ let* raw =
+         trace_exn_e ~__LOC__
+         @@
+         match !initialisation_parameters with
+         | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
+         | Some srs -> return srs
+       in
+       ensure_validity
+         ~slot_size
+         ~page_size
+         ~redundancy_factor
+         ~number_of_shards
+         ~srs_g1_length:(Srs_g1.size raw.srs_g1)
+         ~srs_g2_length:(Srs_g2.size raw.srs_g2))
 
   let ensure_validity parameters =
     match ensure_validity parameters with Ok _ -> true | _ -> false
@@ -1459,21 +1462,22 @@ module Config = struct
   let init_dal ~find_srs_files ?(srs_size_log2 = 21) dal_config =
     let open Lwt_result_syntax in
     if dal_config.activated then
-      let* initialisation_parameters =
-        match dal_config.use_mock_srs_for_testing with
-        | Some parameters ->
-            return (Internal_for_tests.parameters_initialisation parameters)
-        | None ->
-            let*? srs_g1_path, srs_g2_path =
-              trace_exn_e ~__LOC__ @@ find_srs_files ()
-            in
-            trace_exn_es ~__LOC__
-            @@ initialisation_parameters_from_files
-                 ~srs_g1_path
-                 ~srs_g2_path
-                 ~srs_size_log2
-      in
-      Lwt.return
-        (trace_exn_e ~__LOC__ @@ load_parameters initialisation_parameters)
+      trace_exn_es ~__LOC__
+      @@ let* initialisation_parameters =
+           match dal_config.use_mock_srs_for_testing with
+           | Some parameters ->
+               return (Internal_for_tests.parameters_initialisation parameters)
+           | None ->
+               let*? srs_g1_path, srs_g2_path =
+                 trace_exn_e ~__LOC__ @@ find_srs_files ()
+               in
+               trace_exn_es ~__LOC__
+               @@ initialisation_parameters_from_files
+                    ~srs_g1_path
+                    ~srs_g2_path
+                    ~srs_size_log2
+         in
+         Lwt.return
+           (trace_exn_e ~__LOC__ @@ load_parameters initialisation_parameters)
     else return_unit
 end
