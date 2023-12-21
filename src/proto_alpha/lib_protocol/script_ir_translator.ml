@@ -493,18 +493,29 @@ type ('a, 's, 'b, 'u, 'c, 'v) branch = {
 let merge_branches :
     type a s b u c v.
     context ->
+    carbonate_stack_serialization:bool ->
     Script.location ->
     (a, s) judgement ->
     (b, u) judgement ->
     (a, s, b, u, c, v) branch ->
     ((c, v) judgement * context) tzresult =
   let open Result_syntax in
-  fun ctxt loc btr bfr {branch} ->
+  fun ctxt ~carbonate_stack_serialization loc btr bfr {branch} ->
     match (btr, bfr) with
     | Typed ({aft = aftbt; _} as dbt), Typed ({aft = aftbf; _} as dbf) ->
         let unmatched_branches () =
-          let aftbt = serialize_stack_for_error ctxt aftbt in
-          let aftbf = serialize_stack_for_error ctxt aftbf in
+          let aftbt =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              aftbt
+          in
+          let aftbf =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              aftbf
+          in
           Unmatched_branches (loc, aftbt, aftbf)
         in
         record_trace_eval
@@ -1245,6 +1256,7 @@ let rec make_comb_get_proof_argument :
 let rec make_comb_set_proof_argument :
     type value valuec before beforec a s.
     context ->
+    carbonate_stack_serialization:bool ->
     (a, s) stack_ty ->
     location ->
     int ->
@@ -1252,7 +1264,7 @@ let rec make_comb_set_proof_argument :
     (before, beforec) ty ->
     (value, before) comb_set_proof_argument tzresult =
   let open Result_syntax in
-  fun ctxt stack_ty loc n value_ty ty ->
+  fun ctxt ~carbonate_stack_serialization stack_ty loc n value_ty ty ->
     match (n, ty) with
     | 0, _ -> return (Comb_set_proof_argument (Comb_set_zero, value_ty))
     | 1, Pair_t (_hd_ty, tl_ty, _, _) ->
@@ -1260,13 +1272,25 @@ let rec make_comb_set_proof_argument :
         Comb_set_proof_argument (Comb_set_one, after_ty)
     | n, Pair_t (hd_ty, tl_ty, _, _) ->
         let* (Comb_set_proof_argument (comb_set_left_witness, tl_ty')) =
-          make_comb_set_proof_argument ctxt stack_ty loc (n - 2) value_ty tl_ty
+          make_comb_set_proof_argument
+            ctxt
+            ~carbonate_stack_serialization
+            stack_ty
+            loc
+            (n - 2)
+            value_ty
+            tl_ty
         in
         let+ (Ty_ex_c after_ty) = pair_t loc hd_ty tl_ty' in
         Comb_set_proof_argument
           (Comb_set_plus_two comb_set_left_witness, after_ty)
     | _ ->
-        let whole_stack = serialize_stack_for_error ctxt stack_ty in
+        let whole_stack =
+          serialize_stack_for_error
+            ctxt
+            ~carbonate:carbonate_stack_serialization
+            stack_ty
+        in
         tzfail (Bad_stack (loc, I_UPDATE, 2, whole_stack))
 
 type 'a ex_ty_cstr =
@@ -2081,11 +2105,19 @@ let rec parse_data :
     elab_conf:elab_conf ->
     stack_depth:int ->
     context ->
+    carbonate_stack_serialization:bool ->
     allow_forged:bool ->
     (a, ac) ty ->
     Script.node ->
     (a * context) tzresult Lwt.t =
- fun ~unparse_code_rec ~elab_conf ~stack_depth ctxt ~allow_forged ty script_data ->
+ fun ~unparse_code_rec
+     ~elab_conf
+     ~stack_depth
+     ctxt
+     ~carbonate_stack_serialization
+     ~allow_forged
+     ty
+     script_data ->
   let open Lwt_result_syntax in
   let*? ctxt = Gas.consume ctxt Typecheck_costs.parse_data_cycle in
   let non_terminal_recursion ctxt ty script_data =
@@ -2097,6 +2129,7 @@ let rec parse_data :
         ~elab_conf
         ~stack_depth:(stack_depth + 1)
         ctxt
+        ~carbonate_stack_serialization
         ~allow_forged
         ty
         script_data
@@ -2288,6 +2321,7 @@ let rec parse_data :
              ~elab_conf
              ~stack_depth:(stack_depth + 1)
              ctxt
+             ~carbonate_stack_serialization
              ta
              tr
              script_instr
@@ -2308,6 +2342,7 @@ let rec parse_data :
            ~elab_conf
            ~stack_depth:(stack_depth + 1)
            ctxt
+           ~carbonate_stack_serialization
            ta
            tr
            lambda_rec_ty
@@ -2504,6 +2539,7 @@ and parse_view :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
     context ->
+    carbonate_stack_serialization:bool ->
     (storage, storagec) ty ->
     view ->
     (storage typed_view * context) tzresult Lwt.t =
@@ -2511,6 +2547,7 @@ and parse_view :
   fun ~unparse_code_rec
       ~elab_conf
       ctxt
+      ~carbonate_stack_serialization
       storage_type
       {input_ty; output_ty; view_code} ->
     let legacy = elab_conf.legacy in
@@ -2538,6 +2575,7 @@ and parse_view :
         ~stack_depth:0
         Tc_context.view
         ctxt
+        ~carbonate_stack_serialization
         view_code
         (Item_t (pair_ty, Bot_t))
     in
@@ -2552,9 +2590,19 @@ and parse_view :
             ctxt )
     | Typed ({loc; aft; _} as descr) -> (
         let ill_type_view stack_ty loc =
-          let actual = serialize_stack_for_error ctxt stack_ty in
+          let actual =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              stack_ty
+          in
           let expected_stack = Item_t (output_ty, Bot_t) in
-          let expected = serialize_stack_for_error ctxt expected_stack in
+          let expected =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              expected_stack
+          in
           Ill_typed_view {loc; actual; expected}
         in
         let open Result_syntax in
@@ -2580,18 +2628,30 @@ and parse_views :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
     context ->
+    carbonate_stack_serialization:bool ->
     (storage, storagec) ty ->
     view_map ->
     (storage typed_view_map * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~elab_conf ctxt storage_type views ->
+  fun ~unparse_code_rec
+      ~elab_conf
+      ctxt
+      ~carbonate_stack_serialization
+      storage_type
+      views ->
     let aux ctxt name cur_view =
       let*? ctxt =
         Gas.consume
           ctxt
           (Michelson_v1_gas.Cost_of.Interpreter.view_update name views)
       in
-      parse_view ~unparse_code_rec ~elab_conf ctxt storage_type cur_view
+      parse_view
+        ~unparse_code_rec
+        ~elab_conf
+        ctxt
+        ~carbonate_stack_serialization
+        storage_type
+        cur_view
     in
     Script_map.map_es_in_context aux ctxt views
 
@@ -2602,6 +2662,7 @@ and parse_kdescr :
     stack_depth:int ->
     tc_context ->
     context ->
+    carbonate_stack_serialization:bool ->
     (arg, argc) ty ->
     (ret, retc) ty ->
     Script.node ->
@@ -2612,6 +2673,7 @@ and parse_kdescr :
       ~stack_depth
       tc_context
       ctxt
+      ~carbonate_stack_serialization
       arg
       ret
       script_instr ->
@@ -2621,6 +2683,7 @@ and parse_kdescr :
         ~elab_conf
         tc_context
         ctxt
+        ~carbonate_stack_serialization
         ~stack_depth:(stack_depth + 1)
         script_instr
         (Item_t (arg, Bot_t))
@@ -2632,7 +2695,12 @@ and parse_kdescr :
           Gas_monad.run ctxt
           @@ Gas_monad.record_trace_eval ~error_details (fun loc ->
                  let ret = serialize_ty_for_error ret in
-                 let stack_ty = serialize_stack_for_error ctxt stack_ty in
+                 let stack_ty =
+                   serialize_stack_for_error
+                     ctxt
+                     ~carbonate:carbonate_stack_serialization
+                     stack_ty
+                 in
                  Bad_return (loc, stack_ty, ret))
           @@ ty_eq ~error_details ty ret
         in
@@ -2642,7 +2710,12 @@ and parse_kdescr :
             ctxt )
     | Typed {loc; aft = stack_ty; _}, ctxt ->
         let ret = serialize_ty_for_error ret in
-        let stack_ty = serialize_stack_for_error ctxt stack_ty in
+        let stack_ty =
+          serialize_stack_for_error
+            ctxt
+            ~carbonate:carbonate_stack_serialization
+            stack_ty
+        in
         tzfail @@ Bad_return (loc, stack_ty, ret)
     | Failed {descr}, ctxt ->
         return
@@ -2657,6 +2730,7 @@ and parse_lam_rec :
     stack_depth:int ->
     tc_context ->
     context ->
+    carbonate_stack_serialization:bool ->
     (arg, argc) ty ->
     (ret, retc) ty ->
     ((arg, ret) lambda, _) ty ->
@@ -2667,6 +2741,7 @@ and parse_lam_rec :
      ~stack_depth
      tc_context
      ctxt
+     ~carbonate_stack_serialization
      arg
      ret
      lambda_rec_ty
@@ -2678,6 +2753,7 @@ and parse_lam_rec :
       ~elab_conf
       tc_context
       ctxt
+      ~carbonate_stack_serialization
       ~stack_depth:(stack_depth + 1)
       script_instr
       (Item_t (arg, Item_t (lambda_rec_ty, Bot_t)))
@@ -2691,7 +2767,12 @@ and parse_lam_rec :
           Gas_monad.run ctxt
           @@ Gas_monad.record_trace_eval ~error_details (fun loc ->
                  let ret = serialize_ty_for_error ret in
-                 let stack_ty = serialize_stack_for_error ctxt stack_ty in
+                 let stack_ty =
+                   serialize_stack_for_error
+                     ctxt
+                     ~carbonate:carbonate_stack_serialization
+                     stack_ty
+                 in
                  Bad_return (loc, stack_ty, ret))
           @@ ty_eq ~error_details ty ret
         in
@@ -2713,7 +2794,12 @@ and parse_lam_rec :
         script_instr
   | Typed {loc; aft = stack_ty; _}, ctxt ->
       let ret = serialize_ty_for_error ret in
-      let stack_ty = serialize_stack_for_error ctxt stack_ty in
+      let stack_ty =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack_ty
+      in
       tzfail @@ Bad_return (loc, stack_ty, ret)
   | Failed {descr}, ctxt ->
       (normalized_lam_rec [@ocaml.tailcall])
@@ -2730,6 +2816,7 @@ and parse_instr :
     stack_depth:int ->
     tc_context ->
     context ->
+    carbonate_stack_serialization:bool ->
     Script.node ->
     (a, s) stack_ty ->
     ((a, s) judgement * context) tzresult Lwt.t =
@@ -2738,6 +2825,7 @@ and parse_instr :
      ~stack_depth
      tc_context
      ctxt
+     ~carbonate_stack_serialization
      script_instr
      stack_ty ->
   let open Lwt_result_syntax in
@@ -2748,7 +2836,12 @@ and parse_instr :
       loc name n m : ((a, b) eq * context) tzresult =
     let open Result_syntax in
     record_trace_eval (fun () ->
-        let stack_ty = serialize_stack_for_error ctxt stack_ty in
+        let stack_ty =
+          serialize_stack_for_error
+            ctxt
+            ~carbonate:carbonate_stack_serialization
+            stack_ty
+        in
         Bad_stack (loc, name, m, stack_ty))
     @@ record_trace
          (Bad_stack_item n)
@@ -2786,12 +2879,18 @@ and parse_instr :
         ~elab_conf
         tc_context
         ctxt
+        ~carbonate_stack_serialization
         ~stack_depth:(stack_depth + 1)
         script_instr
         stack_ty
   in
   let bad_stack_error ctxt loc prim relevant_stack_portion =
-    let whole_stack = serialize_stack_for_error ctxt stack_ty in
+    let whole_stack =
+      serialize_stack_for_error
+        ctxt
+        ~carbonate:carbonate_stack_serialization
+        stack_ty
+    in
     Result_syntax.tzfail
       (Bad_stack (loc, prim, relevant_stack_portion, whole_stack))
   in
@@ -2818,7 +2917,12 @@ and parse_instr :
               in
               Dropn_proof_argument (KPrefix (loc, a, n'), stack_after_drops)
           | _, _ ->
-              let whole_stack = serialize_stack_for_error ctxt whole_stack in
+              let whole_stack =
+                serialize_stack_for_error
+                  ctxt
+                  ~carbonate:carbonate_stack_serialization
+                  whole_stack
+              in
               tzfail (Bad_stack (loc, I_DROP, whole_n, whole_stack))
       in
       let*? () = error_unexpected_annot loc result_annot in
@@ -2892,7 +2996,12 @@ and parse_instr :
               in
               Dig_proof_argument (KPrefix (loc, v, n'), x, Item_t (v, aft'))
           | _, _ ->
-              let whole_stack = serialize_stack_for_error ctxt stack in
+              let whole_stack =
+                serialize_stack_for_error
+                  ~carbonate:carbonate_stack_serialization
+                  ctxt
+                  stack
+              in
               tzfail (Bad_stack (loc, I_DIG, 3, whole_stack))
       in
       let*? n = parse_uint10 n in
@@ -2909,14 +3018,24 @@ and parse_instr :
       let*? () = error_unexpected_annot loc result_annot in
       match make_dug_proof_argument loc whole_n x whole_stack with
       | None ->
-          let whole_stack = serialize_stack_for_error ctxt whole_stack in
+          let whole_stack =
+            serialize_stack_for_error
+              ~carbonate:carbonate_stack_serialization
+              ctxt
+              whole_stack
+          in
           tzfail (Bad_stack (loc, I_DUG, whole_n, whole_stack))
       | Some (Dug_proof_argument (n', aft)) ->
           let dug = {apply = (fun k -> IDug (loc, whole_n, n', k))} in
           typed ctxt loc dug aft)
   | Prim (loc, I_DUG, [_], result_annot), stack ->
       let*? () = error_unexpected_annot loc result_annot in
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack
+      in
       tzfail (Bad_stack (loc, I_DUG, 1, stack))
   | Prim (loc, I_DUG, (([] | _ :: _ :: _) as l), _), _ ->
       tzfail (Invalid_arity (loc, I_DUG, 1, List.length l))
@@ -2936,6 +3055,7 @@ and parse_instr :
           ~elab_conf
           ~stack_depth:(stack_depth + 1)
           ctxt
+          ~carbonate_stack_serialization
           ~allow_forged:false
           t
           d
@@ -2973,7 +3093,12 @@ and parse_instr :
       match judgement with
       | Typed ({loc; aft = Item_t (ret, aft_rest); _} as kibody) ->
           let invalid_map_body () =
-            let aft = serialize_stack_for_error ctxt kibody.aft in
+            let aft =
+              serialize_stack_for_error
+                ~carbonate:carbonate_stack_serialization
+                ctxt
+                kibody.aft
+            in
             Invalid_map_body (loc, aft)
           in
           record_trace_eval
@@ -2985,7 +3110,12 @@ and parse_instr :
              let apply k = IOpt_map {loc; body; k} in
              typed_no_lwt ctxt loc {apply} final_stack)
       | Typed {aft = Bot_t; _} ->
-          let aft = serialize_stack_for_error ctxt Bot_t in
+          let aft =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              Bot_t
+          in
           tzfail (Invalid_map_body (loc, aft))
       | Failed _ -> tzfail (Invalid_map_block_fail loc))
   | ( Prim (loc, I_IF_NONE, [bt; bf], annot),
@@ -3009,7 +3139,8 @@ and parse_instr :
         in
         {loc; instr = ifnone; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      Lwt.return
+      @@ merge_branches ctxt ~carbonate_stack_serialization loc btr bfr {branch}
   (* pairs *)
   | Prim (loc, I_PAIR, [], annot), Item_t (a, Item_t (b, rest)) ->
       let*? () = check_constr_annot loc annot in
@@ -3078,7 +3209,12 @@ and parse_instr :
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
       match make_comb_get_proof_argument n comb_ty with
       | None ->
-          let whole_stack = serialize_stack_for_error ctxt stack_ty in
+          let whole_stack =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              stack_ty
+          in
           tzfail (Bad_stack (loc, I_GET, 1, whole_stack))
       | Some (Comb_get_proof_argument (witness, ty')) ->
           let after_stack_ty = Item_t (ty', rest_ty) in
@@ -3090,7 +3226,14 @@ and parse_instr :
       let*? n = parse_uint11 n in
       let*? ctxt = Gas.consume ctxt (Typecheck_costs.proof_argument n) in
       let*? (Comb_set_proof_argument (witness, after_ty)) =
-        make_comb_set_proof_argument ctxt stack_ty loc n value_ty comb_ty
+        make_comb_set_proof_argument
+          ctxt
+          ~carbonate_stack_serialization
+          stack_ty
+          loc
+          n
+          value_ty
+          comb_ty
       in
       let after_stack_ty = Item_t (after_ty, rest_ty) in
       let comb_set = {apply = (fun k -> IComb_set (loc, n, witness, k))} in
@@ -3150,7 +3293,8 @@ and parse_instr :
         in
         {loc; instr; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      Lwt.return
+      @@ merge_branches ctxt ~carbonate_stack_serialization loc btr bfr {branch}
   (* lists *)
   | Prim (loc, I_NIL, [t], annot), stack ->
       let*? Ex_ty t, ctxt =
@@ -3189,7 +3333,8 @@ and parse_instr :
         in
         {loc; instr; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      Lwt.return
+      @@ merge_branches ctxt ~carbonate_stack_serialization loc btr bfr {branch}
   | Prim (loc, I_SIZE, [], annot), Item_t (List_t _, rest) ->
       let*? () = check_var_type_annot loc annot in
       let list_size = {apply = (fun k -> IList_size (loc, k))} in
@@ -3211,7 +3356,12 @@ and parse_instr :
       match judgement with
       | Typed ({aft = Item_t (ret, rest) as aft; _} as kibody) ->
           let invalid_map_body () =
-            let aft = serialize_stack_for_error ctxt aft in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                aft
+            in
             Invalid_map_body (loc, aft)
           in
           record_trace_eval
@@ -3229,7 +3379,12 @@ and parse_instr :
              let stack = Item_t (ty, rest) in
              typed_no_lwt ctxt loc list_map stack)
       | Typed {aft; _} ->
-          let aft = serialize_stack_for_error ctxt aft in
+          let aft =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              aft
+          in
           tzfail (Invalid_map_body (loc, aft))
       | Failed _ -> tzfail (Invalid_map_block_fail loc))
   | Prim (loc, I_ITER, [body], annot), Item_t (List_t (elt, _), rest) -> (
@@ -3253,8 +3408,18 @@ and parse_instr :
       match judgement with
       | Typed ({aft; _} as ibody) ->
           let invalid_iter_body () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let rest = serialize_stack_for_error ctxt rest in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                ibody.aft
+            in
+            let rest =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                rest
+            in
             Invalid_iter_body (loc, rest, aft)
           in
           record_trace_eval
@@ -3293,8 +3458,18 @@ and parse_instr :
       match judgement with
       | Typed ({aft; _} as ibody) ->
           let invalid_iter_body () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let rest = serialize_stack_for_error ctxt rest in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                ibody.aft
+            in
+            let rest =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                rest
+            in
             Invalid_iter_body (loc, rest, aft)
           in
           record_trace_eval
@@ -3347,7 +3522,12 @@ and parse_instr :
       match judgement with
       | Typed ({aft = Item_t (ret, rest) as aft; _} as ibody) ->
           let invalid_map_body () =
-            let aft = serialize_stack_for_error ctxt aft in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                aft
+            in
             Invalid_map_body (loc, aft)
           in
           record_trace_eval
@@ -3366,7 +3546,12 @@ and parse_instr :
              let stack = Item_t (ty, rest) in
              typed_no_lwt ctxt loc instr stack)
       | Typed {aft; _} ->
-          let aft = serialize_stack_for_error ctxt aft in
+          let aft =
+            serialize_stack_for_error
+              ctxt
+              ~carbonate:carbonate_stack_serialization
+              aft
+          in
           tzfail (Invalid_map_body (loc, aft))
       | Failed _ -> tzfail (Invalid_map_block_fail loc))
   | Prim (loc, I_ITER, [body], annot), Item_t (Map_t (key, element_ty, _), rest)
@@ -3392,8 +3577,18 @@ and parse_instr :
       match judgement with
       | Typed ({aft; _} as ibody) ->
           let invalid_iter_body () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let rest = serialize_stack_for_error ctxt rest in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                ibody.aft
+            in
+            let rest =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                rest
+            in
             Invalid_iter_body (loc, rest, aft)
           in
           record_trace_eval
@@ -3579,7 +3774,8 @@ and parse_instr :
         in
         {loc; instr; bef; aft = ibt.aft}
       in
-      Lwt.return @@ merge_branches ctxt loc btr bfr {branch}
+      Lwt.return
+      @@ merge_branches ctxt ~carbonate_stack_serialization loc btr bfr {branch}
   | Prim (loc, I_LOOP, [body], annot), (Item_t (Bool_t, rest) as stack) -> (
       let*? () = check_kind [Seq_kind] body in
       let*? () = error_unexpected_annot loc annot in
@@ -3590,8 +3786,18 @@ and parse_instr :
       match judgement with
       | Typed ibody ->
           let unmatched_branches () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let stack = serialize_stack_for_error ctxt stack in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                ibody.aft
+            in
+            let stack =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                stack
+            in
             Unmatched_branches (loc, aft, stack)
           in
           record_trace_eval
@@ -3632,8 +3838,18 @@ and parse_instr :
       match judgement with
       | Typed ibody ->
           let unmatched_branches () =
-            let aft = serialize_stack_for_error ctxt ibody.aft in
-            let stack = serialize_stack_for_error ctxt stack in
+            let aft =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                ibody.aft
+            in
+            let stack =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                stack
+            in
             Unmatched_branches (loc, aft, stack)
           in
           record_trace_eval
@@ -3679,6 +3895,7 @@ and parse_instr :
           ~elab_conf
           ~stack_depth:(stack_depth + 1)
           ctxt
+          ~carbonate_stack_serialization
           arg
           ret
           code
@@ -3710,6 +3927,7 @@ and parse_instr :
           ~elab_conf
           ~stack_depth:(stack_depth + 1)
           ctxt
+          ~carbonate_stack_serialization
           arg
           ret
           lambda_rec_ty
@@ -3784,7 +4002,12 @@ and parse_instr :
             let w = KPrefix (loc, v, n') in
             Dipn_proof_argument (w, ctxt, descr, Item_t (v, aft'))
         | _, _ ->
-            let whole_stack = serialize_stack_for_error ctxt stack in
+            let whole_stack =
+              serialize_stack_for_error
+                ctxt
+                ~carbonate:carbonate_stack_serialization
+                stack
+            in
             tzfail (Bad_stack (loc, I_DIP, 1, whole_stack))
       in
       let*? () = error_unexpected_annot loc result_annot in
@@ -4312,6 +4535,7 @@ and parse_instr :
                 ~param_type:arg_type
                 ~entrypoints)
              ctxt
+             ~carbonate_stack_serialization
              ~elab_conf
              ~stack_depth:(stack_depth + 1)
              arg_type_full
@@ -4321,7 +4545,13 @@ and parse_instr :
       match result with
       | {kbef = Item_t (arg, Bot_t); kaft = Item_t (ret, Bot_t); _}, ctxt ->
           let views_result =
-            parse_views ~unparse_code_rec ctxt ~elab_conf storage_type views
+            parse_views
+              ~unparse_code_rec
+              ctxt
+              ~carbonate_stack_serialization
+              ~elab_conf
+              storage_type
+              views
           in
           let* _typed_views, ctxt =
             trace (Ill_typed_contract (canonical_code, [])) views_result
@@ -4694,13 +4924,28 @@ and parse_instr :
       let t = serialize_ty_for_error t in
       tzfail (Undefined_unop (loc, name, t))
   | Prim (loc, ((I_UPDATE | I_SLICE | I_OPEN_CHEST) as name), [], _), stack ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack
+      in
       tzfail (Bad_stack (loc, name, 3, stack))
   | Prim (loc, I_CREATE_CONTRACT, _, _), stack ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack
+      in
       tzfail (Bad_stack (loc, I_CREATE_CONTRACT, 7, stack))
   | Prim (loc, I_TRANSFER_TOKENS, [], _), stack ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack
+      in
       tzfail (Bad_stack (loc, I_TRANSFER_TOKENS, 4, stack))
   | ( Prim
         ( loc,
@@ -4715,7 +4960,12 @@ and parse_instr :
           _,
           _ ),
       stack ) ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack
+      in
       tzfail (Bad_stack (loc, name, 1, stack))
   | ( Prim
         ( loc,
@@ -4726,7 +4976,12 @@ and parse_instr :
           _,
           _ ),
       stack ) ->
-      let stack = serialize_stack_for_error ctxt stack in
+      let stack =
+        serialize_stack_for_error
+          ctxt
+          ~carbonate:carbonate_stack_serialization
+          stack
+      in
       tzfail (Bad_stack (loc, name, 2, stack))
   (* Generic parsing errors *)
   | expr, _ ->
@@ -5059,10 +5314,11 @@ let parse_code :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
     context ->
+    carbonate_stack_serialization:bool ->
     code:lazy_expr ->
     (ex_code * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~elab_conf ctxt ~code ->
+  fun ~unparse_code_rec ~elab_conf ctxt ~carbonate_stack_serialization ~code ->
     let*? code, ctxt =
       Script.force_decode_in_context
         ~consume_deserialization_gas:When_needed
@@ -5104,6 +5360,7 @@ let parse_code :
            Tc_context.(toplevel ~storage_type ~param_type:arg_type ~entrypoints)
            ~elab_conf
            ctxt
+           ~carbonate_stack_serialization
            ~stack_depth:0
            arg_type_full
            ret_type_full
@@ -5120,12 +5377,19 @@ let parse_storage :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
     context ->
+    carbonate_stack_serialization:bool ->
     allow_forged:bool ->
     ('storage, _) ty ->
     storage:lazy_expr ->
     ('storage * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~elab_conf ctxt ~allow_forged storage_type ~storage ->
+  fun ~unparse_code_rec
+      ~elab_conf
+      ctxt
+      ~carbonate_stack_serialization
+      ~allow_forged
+      storage_type
+      ~storage ->
     let*? storage, ctxt =
       Script.force_decode_in_context
         ~consume_deserialization_gas:When_needed
@@ -5141,6 +5405,7 @@ let parse_storage :
          ~elab_conf
          ~stack_depth:0
          ctxt
+         ~carbonate_stack_serialization
          ~allow_forged
          storage_type
          (root storage))
@@ -5149,22 +5414,34 @@ let parse_script :
     unparse_code_rec:Script_ir_unparser.unparse_code_rec ->
     elab_conf:elab_conf ->
     context ->
+    carbonate_stack_serialization:bool ->
     allow_forged_in_storage:bool ->
     Script.t ->
     (ex_script * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~elab_conf ctxt ~allow_forged_in_storage {code; storage} ->
+  fun ~unparse_code_rec
+      ~elab_conf
+      ctxt
+      ~carbonate_stack_serialization
+      ~allow_forged_in_storage
+      {code; storage} ->
     let* ( Ex_code
              (Code
                {code; arg_type; storage_type; views; entrypoints; code_size}),
            ctxt ) =
-      parse_code ~unparse_code_rec ~elab_conf ctxt ~code
+      parse_code
+        ~unparse_code_rec
+        ~elab_conf
+        ctxt
+        ~carbonate_stack_serialization
+        ~code
     in
     let+ storage, ctxt =
       parse_storage
         ~unparse_code_rec
         ~elab_conf
         ctxt
+        ~carbonate_stack_serialization
         ~allow_forged:allow_forged_in_storage
         storage_type
         ~storage
@@ -5198,10 +5475,16 @@ let typecheck_code :
     legacy:bool ->
     show_types:bool ->
     context ->
+    carbonate_stack_serialization:bool ->
     Script.expr ->
     (typechecked_code_internal * context) tzresult Lwt.t =
   let open Lwt_result_syntax in
-  fun ~unparse_code_rec ~legacy ~show_types ctxt code ->
+  fun ~unparse_code_rec
+      ~legacy
+      ~show_types
+      ctxt
+      ~carbonate_stack_serialization
+      code ->
     (* Constants need to be expanded or [parse_toplevel] may fail. *)
     let* ctxt, code = Global_constants_storage.expand ctxt code in
     let*? toplevel, ctxt = parse_toplevel ctxt code in
@@ -5240,6 +5523,7 @@ let typecheck_code :
         ~unparse_code_rec
         (Tc_context.toplevel ~storage_type ~param_type:arg_type ~entrypoints)
         ctxt
+        ~carbonate_stack_serialization
         ~elab_conf
         ~stack_depth:0
         arg_type_full
@@ -5250,7 +5534,13 @@ let typecheck_code :
       trace (Ill_typed_contract (code, !type_map)) result
     in
     let views_result =
-      parse_views ~unparse_code_rec ctxt ~elab_conf storage_type views
+      parse_views
+        ~unparse_code_rec
+        ctxt
+        ~carbonate_stack_serialization
+        ~elab_conf
+        storage_type
+        views
     in
     let+ typed_views, ctxt =
       trace (Ill_typed_contract (code, !type_map)) views_result
@@ -5318,7 +5608,7 @@ include Data_unparser (struct
 
   let parse_packable_ty = parse_packable_ty
 
-  let parse_data = parse_data
+  let parse_data = parse_data ~carbonate_stack_serialization:true
 end)
 
 let unparse_code_rec : unparse_code_rec =
@@ -5352,13 +5642,20 @@ let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
              type_map = _;
            },
          ctxt ) =
-    typecheck_code ~unparse_code_rec ~legacy ~show_types:false ctxt code
+    typecheck_code
+      ~unparse_code_rec
+      ~legacy
+      ~show_types:false
+      ctxt
+      ~carbonate_stack_serialization:true
+      code
   in
   let* storage, ctxt =
     parse_storage
       ~unparse_code_rec
       ~elab_conf:(Script_ir_translator_config.make ~legacy ())
       ctxt
+      ~carbonate_stack_serialization:true
       ~allow_forged:allow_forged_in_storage
       storage_type
       ~storage
@@ -5863,29 +6160,69 @@ let extract_lazy_storage_diff ctxt mode ~temporary ~to_duplicate ~to_update ty v
 let list_of_big_map_ids ids =
   Lazy_storage.IdSet.fold Big_map (fun id acc -> id :: acc) ids []
 
-let parse_data ~elab_conf ctxt ~allow_forged ty t =
-  parse_data ~unparse_code_rec ~elab_conf ~allow_forged ~stack_depth:0 ctxt ty t
+let parse_data ~elab_conf ctxt ~carbonate_stack_serialization ~allow_forged ty t
+    =
+  parse_data
+    ~unparse_code_rec
+    ~elab_conf
+    ~allow_forged
+    ~stack_depth:0
+    ctxt
+    ~carbonate_stack_serialization
+    ty
+    t
 
 let parse_view ~elab_conf ctxt ty view =
-  parse_view ~unparse_code_rec ~elab_conf ctxt ty view
+  parse_view
+    ~unparse_code_rec
+    ~elab_conf
+    ctxt
+    ~carbonate_stack_serialization:true
+    ty
+    view
 
 let parse_views ~elab_conf ctxt ty views =
-  parse_views ~unparse_code_rec ~elab_conf ctxt ty views
+  parse_views
+    ~unparse_code_rec
+    ~elab_conf
+    ctxt
+    ~carbonate_stack_serialization:true
+    ty
+    views
 
 let parse_code ~elab_conf ctxt ~code =
-  parse_code ~unparse_code_rec ~elab_conf ctxt ~code
+  parse_code
+    ~unparse_code_rec
+    ~elab_conf
+    ctxt
+    ~carbonate_stack_serialization:true
+    ~code
 
 let parse_storage ~elab_conf ctxt ~allow_forged ty ~storage =
-  parse_storage ~unparse_code_rec ~elab_conf ctxt ~allow_forged ty ~storage
+  parse_storage
+    ~unparse_code_rec
+    ~elab_conf
+    ctxt
+    ~carbonate_stack_serialization:true
+    ~allow_forged
+    ty
+    ~storage
 
 let parse_script ~elab_conf ctxt ~allow_forged_in_storage script =
-  parse_script ~unparse_code_rec ~elab_conf ctxt ~allow_forged_in_storage script
+  parse_script
+    ~unparse_code_rec
+    ~elab_conf
+    ctxt
+    ~allow_forged_in_storage
+    ~carbonate_stack_serialization:true
+    script
 
 let parse_comparable_data ?type_logger ctxt ty t =
   parse_data
     ~elab_conf:Script_ir_translator_config.(make ~legacy:false ?type_logger ())
     ~allow_forged:false
     ctxt
+    ~carbonate_stack_serialization:true
     ty
     t
 
@@ -5904,6 +6241,7 @@ let parse_instr :
     ~stack_depth:0
     tc_context
     ctxt
+    ~carbonate_stack_serialization:true
     script_instr
     stack_ty
 
@@ -6009,6 +6347,12 @@ let script_size
 let typecheck_code ~legacy ~show_types ctxt code =
   let open Lwt_result_syntax in
   let+ Typechecked_code_internal {type_map; _}, ctxt =
-    typecheck_code ~unparse_code_rec ~legacy ~show_types ctxt code
+    typecheck_code
+      ~unparse_code_rec
+      ~legacy
+      ~show_types
+      ctxt
+      ~carbonate_stack_serialization:false
+      code
   in
   (type_map, ctxt)

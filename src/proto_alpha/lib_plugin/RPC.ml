@@ -786,6 +786,7 @@ module Scripts = struct
            in
            Script_ir_translator.parse_data
              ctxt
+             ~carbonate_stack_serialization:false
              ~elab_conf:(elab_conf ~legacy ())
              ~allow_forged
              exp_ty
@@ -908,6 +909,7 @@ module Scripts = struct
             let* x, ctxt =
               Script_ir_translator.parse_data
                 ctxt
+                ~carbonate_stack_serialization:false
                 ~elab_conf
                 ~allow_forged:true
                 ty
@@ -1288,6 +1290,7 @@ module Scripts = struct
             let* _, ctxt =
               parse_data
                 ctxt
+                ~carbonate_stack_serialization:false
                 ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
                 ~allow_forged:true
                 map_ty
@@ -1780,6 +1783,7 @@ module Scripts = struct
             ~elab_conf
             ~allow_forged:true
             ctxt
+            ~carbonate_stack_serialization:false
             storage_type
             (Micheline.root storage)
         in
@@ -1827,6 +1831,7 @@ module Scripts = struct
         let* data, ctxt =
           parse_data
             ctxt
+            ~carbonate_stack_serialization:false
             ~elab_conf:(elab_conf ~legacy:true ())
             ~allow_forged:true
             typ
@@ -1854,6 +1859,7 @@ module Scripts = struct
         let* data, ctxt =
           parse_data
             ctxt
+            ~carbonate_stack_serialization:false
             ~elab_conf:(elab_conf ~legacy ())
             ~allow_forged:true
             typ
@@ -2537,6 +2543,7 @@ module Big_map = struct
                 let* value, ctxt =
                   parse_data
                     ctxt
+                    ~carbonate_stack_serialization:false
                     ~elab_conf:(elab_conf ~legacy:true ())
                     ~allow_forged:true
                     value_type

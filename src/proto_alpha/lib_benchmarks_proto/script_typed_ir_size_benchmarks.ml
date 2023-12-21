@@ -93,6 +93,7 @@ module Value_size_benchmark : Tezos_benchmark.Benchmark.S = struct
              Lwt_main.run
                (Script_ir_translator.parse_data
                   ctxt
+                  ~carbonate_stack_serialization:true
                   ~elab_conf:strict
                   ~allow_forged:false
                   ty

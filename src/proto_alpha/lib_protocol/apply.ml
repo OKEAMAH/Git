@@ -1091,6 +1091,7 @@ let apply_manager_operation :
                 Script_ir_translator.parse_data
                   ~elab_conf
                   ctxt
+                  ~carbonate_stack_serialization:true
                   ~allow_forged:false
                   Script_typed_ir.pair_int_int_unit_t
                   (Micheline.root parameters)
@@ -1151,6 +1152,7 @@ let apply_manager_operation :
             let* typed_arg, ctxt =
               Script_ir_translator.parse_data
                 ctxt
+                ~carbonate_stack_serialization:true
                 ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
                   (* FIXME: https://gitlab.com/tezos/tezos/-/issues/2964
 

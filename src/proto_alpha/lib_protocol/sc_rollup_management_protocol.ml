@@ -76,6 +76,7 @@ let make_transaction ctxt ~parameters_ty ~unparsed_parameters ~destination
   let+ parameters, ctxt =
     Script_ir_translator.parse_data
       ctxt
+      ~carbonate_stack_serialization:true
       ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
       ~allow_forged:true
       parameters_ty

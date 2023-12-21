@@ -1769,6 +1769,7 @@ let lift_execution_arg (type a ac) ctxt ~internal (entrypoint_ty : (a, ac) ty)
         let arg = Micheline.root arg in
         parse_data
           ctxt
+          ~carbonate_stack_serialization:true
           ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
           ~allow_forged:internal
           entrypoint_ty

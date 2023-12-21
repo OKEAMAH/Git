@@ -431,6 +431,7 @@ let register () =
                 ctxt
                 ~elab_conf:legacy
                 ~allow_forged:true
+                ~carbonate_stack_serialization:true
                 value_type
                 (Micheline.root value)
             in
@@ -457,6 +458,7 @@ let register () =
               let* value, ctxt =
                 parse_data
                   ctxt
+                  ~carbonate_stack_serialization:true
                   ~elab_conf:legacy
                   ~allow_forged:true
                   value_type

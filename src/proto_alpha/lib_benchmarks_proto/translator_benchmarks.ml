@@ -232,6 +232,7 @@ module Typechecking_data : Benchmark.S = struct
                Lwt_main.run
                  (Script_ir_translator.parse_data
                     ctxt
+                    ~carbonate_stack_serialization:true
                     ~elab_conf:strict
                     ~allow_forged:false
                     ty
@@ -311,6 +312,7 @@ module Unparsing_data : Benchmark.S = struct
              let*! result =
                Script_ir_translator.parse_data
                  ctxt
+                 ~carbonate_stack_serialization:true
                  ~elab_conf:strict
                  ~allow_forged:false
                  ty

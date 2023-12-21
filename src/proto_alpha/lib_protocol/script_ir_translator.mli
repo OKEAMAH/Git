@@ -180,6 +180,7 @@ val parse_comparable_data :
 val parse_data :
   elab_conf:Script_ir_translator_config.elab_config ->
   context ->
+  carbonate_stack_serialization:bool ->
   allow_forged:bool ->
   ('a, _) Script_typed_ir.ty ->
   Script.node ->

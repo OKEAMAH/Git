@@ -48,8 +48,8 @@ val serialize_ty_for_error : ('a, 'b) ty -> Script.expr
 
 (** [serialize_stack_for_error ctxt stack_ty] returns a Micheline representation of
     [stack_ty] as a list of Micheline expressions ONLY IF gas is unlimited
-    in [ctxt]. Otherwise returns an empty list. *)
-val serialize_stack_for_error : context -> ('a, 'b) stack_ty -> Script.expr list
+    in [ctxt] or [carbonate] is false. Otherwise returns an empty list. *)
+val serialize_stack_for_error : context -> carbonate:bool -> ('a, 'b) stack_ty -> Script.expr list
 
 (** [unparse_ty ~loc ctxt ty] returns the Micheline representation of a given
     type and an update context, where gas has been properly consumed. *)

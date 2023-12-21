@@ -117,6 +117,7 @@ let data_typechecker_workload ctxt t_kind micheline_node ex_ty =
         (let* res =
            Script_ir_translator.parse_data
              ctxt
+             ~carbonate_stack_serialization:true
              ~elab_conf:(Script_ir_translator_config.make ~legacy:false ())
              ~allow_forged:false
              ty

@@ -782,6 +782,7 @@ let unpack ctxt ~ty ~bytes =
         let*! value_opt =
           parse_data
             ctxt
+            ~carbonate_stack_serialization:true
             ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
             ~allow_forged:false
             ty
