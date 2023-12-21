@@ -21,7 +21,6 @@ pub mod overloads;
 
 pub use micheline::Micheline;
 use num_bigint::{BigInt, BigUint};
-use std::borrow::Cow;
 use std::{
     collections::{BTreeMap, BTreeSet},
     rc::Rc,
@@ -396,9 +395,7 @@ impl<'a> IntoMicheline<'a> for TypedValue<'a> {
                         },
                     ]),
                     match em.tag {
-                        Some(tag) => {
-                            [Annotation::Field(Cow::Owned(tag.as_str().to_string()))].into()
-                        }
+                        Some(tag) => [Annotation::Field(tag.into_cow())].into(),
                         None => annotations::NO_ANNS,
                     },
                 ),
