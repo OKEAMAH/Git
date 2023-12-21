@@ -795,6 +795,7 @@ mod tests {
     #[test]
     fn emit() {
         run_e2e_test(
+            &Arena::new(),
             "EMIT %mytag nat",
             stk![Type::Nat],
             stk![Type::Operation],
@@ -815,6 +816,7 @@ mod tests {
         );
 
         run_e2e_test(
+            &Arena::new(),
             "EMIT nat",
             stk![Type::Nat],
             stk![Type::Operation],
@@ -835,6 +837,7 @@ mod tests {
         );
 
         run_e2e_test(
+            &Arena::new(),
             "EMIT",
             stk![Type::Nat],
             stk![Type::Operation],

@@ -481,6 +481,7 @@ impl<'a> TypedValue<'a> {
             Operation(op) => match &mut op.as_mut().operation {
                 crate::ast::Operation::TransferTokens(t) => t.param.collect_big_maps(put_res),
                 crate::ast::Operation::SetDelegate(_) => {}
+                crate::ast::Operation::Emit(e) => e.value.collect_big_maps(put_res),
             },
         }
     }

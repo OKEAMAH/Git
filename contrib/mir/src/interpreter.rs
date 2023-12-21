@@ -1304,8 +1304,8 @@ mod interpreter_tests {
     use super::{Lambda, Or};
     use crate::ast::big_map::{InMemoryLazyStorage, LazyStorageBulkUpdate};
     use crate::ast::michelson_address as addr;
-    use crate::bls;
     use crate::ast::or::Or::Left;
+    use crate::bls;
     use crate::gas::Gas;
     use num_bigint::BigUint;
     use Instruction::*;

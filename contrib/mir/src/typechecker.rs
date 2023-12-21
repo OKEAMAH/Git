@@ -1740,7 +1740,7 @@ pub(crate) fn typecheck_instruction<'a>(
         (App(EMIT, [t], anns), [.., _]) => {
             let emit_val_type = pop!();
             let emit_type_arg = parse_ty(ctx, t)?;
-            ensure_ty_eq(ctx, &emit_type_arg, &emit_val_type)?;
+            ensure_ty_eq(&mut ctx.gas, &emit_type_arg, &emit_val_type)?;
             // NB: the docs for the EMIT instruction
             // https://tezos.gitlab.io/michelson-reference/#instr-EMIT claim
             // the type needs to be packable, but that's not quite correct, as

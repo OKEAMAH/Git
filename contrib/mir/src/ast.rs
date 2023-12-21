@@ -21,6 +21,7 @@ pub mod overloads;
 
 pub use micheline::Micheline;
 use num_bigint::{BigInt, BigUint};
+use std::borrow::Cow;
 use std::{
     collections::{BTreeMap, BTreeSet},
     rc::Rc,
@@ -29,8 +30,8 @@ pub use tezos_crypto_rs::hash::ChainId;
 use typed_arena::Arena;
 
 use crate::{
-    bls,
     ast::annotations::{FieldAnnotation, NO_ANNS},
+    bls,
     lexer::{Annotation, Prim},
 };
 
@@ -395,7 +396,9 @@ impl<'a> IntoMicheline<'a> for TypedValue<'a> {
                         },
                     ]),
                     match em.tag {
-                        Some(tag) => [Annotation::Field(tag.as_str())].into(),
+                        Some(tag) => {
+                            [Annotation::Field(Cow::Owned(tag.as_str().to_string()))].into()
+                        }
                         None => annotations::NO_ANNS,
                     },
                 ),

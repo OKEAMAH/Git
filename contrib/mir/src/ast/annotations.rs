@@ -61,9 +61,9 @@ impl<'a> Annotations<'a> {
         self.0.iter()
     }
 
-    pub fn get_single_field_ann(&'a self) -> Result<Option<FieldAnnotation<'a>>, AnnotationError> {
+    pub fn get_single_field_ann(&self) -> Result<Option<FieldAnnotation<'a>>, AnnotationError> {
         use Annotation::*;
-        let mut res = None;
+        let mut res: Option<FieldAnnotation> = None;
         for i in &self.0 {
             match i {
                 Special(..) | Type(..) | Variable(..) => (),
