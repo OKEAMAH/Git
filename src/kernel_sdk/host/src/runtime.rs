@@ -30,11 +30,29 @@ use tezos_smart_rollup_core::smart_rollup_core::ReadInputMessageInfo;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
-#[derive(Copy, Eq, PartialEq, Clone, Debug)]
+/// Container for paths when not found.
+///
+/// Path only stored with `feature = "alloc"` enabled.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PathNotFound {
+    #[cfg(feature = "alloc")]
+    path: crate::path::OwnedPath,
+}
+
+impl<P: Path> From<&P> for PathNotFound {
+    fn from(_path: &P) -> Self {
+        Self {
+            #[cfg(feature = "alloc")]
+            path: _path.into()
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
 /// Errors that may be returned when called [Runtime] methods.
 pub enum RuntimeError {
     /// Attempted to read from/delete a key that does not exist.
-    PathNotFound,
+    PathNotFound(PathNotFound),
     /// Attempted to get a subkey at an out-of-bounds index.
     StoreListIndexOutOfBounds,
     /// Errors returned by the host functions
@@ -55,7 +73,7 @@ impl std::error::Error for RuntimeError {
 impl core::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::PathNotFound => write!(f, "RuntimeError::PathNotFound"),
+            Self::PathNotFound(inner) => write!(f, "RuntimeError::{inner:?}"),
             Self::HostErr(e) => e.fmt(f),
             Self::DecodingError => write!(f, "RuntimeError::DecodingError"),
             Self::StoreListIndexOutOfBounds => {
@@ -736,7 +754,7 @@ fn check_path_has_value<T: Path>(
     {
         Ok(())
     } else {
-        Err(RuntimeError::PathNotFound)
+        Err(RuntimeError::PathNotFound(path.into()))
     }
 }
 
@@ -747,7 +765,7 @@ fn check_path_exists<T: Path>(
     if let Ok(Some(_)) = runtime.store_has(path) {
         Ok(())
     } else {
-        Err(RuntimeError::PathNotFound)
+        Err(RuntimeError::PathNotFound(path.into()))
     }
 }
 
@@ -978,7 +996,7 @@ mod tests {
         let result = mock.store_read(&path, offset, READ_SIZE);
 
         // Assert
-        assert_eq!(Err(RuntimeError::PathNotFound), result);
+        assert_eq!(Err(RuntimeError::PathNotFound((&path).into())), result);
     }
 
     #[test]
@@ -1205,7 +1223,7 @@ mod tests {
         let result = mock.store_delete(&path);
 
         // Assert
-        assert_eq!(Err(RuntimeError::PathNotFound), result);
+        assert_eq!(Err(RuntimeError::PathNotFound((&path).into())), result);
     }
 
     #[test]
@@ -1313,7 +1331,7 @@ mod tests {
             .return_const(tezos_smart_rollup_core::VALUE_TYPE_NONE);
 
         assert_eq!(
-            Err(RuntimeError::PathNotFound),
+            Err(RuntimeError::PathNotFound((&PATH).into())),
             mock.store_value_size(&PATH)
         );
     }

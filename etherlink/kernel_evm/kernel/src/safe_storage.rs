@@ -109,7 +109,7 @@ pub struct SafeStorage<Host, Internal> {
 }
 
 fn safe_path<T: Path>(path: &T) -> Result<OwnedPath, RuntimeError> {
-    concat(&TMP_PATH, path).map_err(|_| RuntimeError::PathNotFound)
+    concat(&TMP_PATH, path).map_err(|_| RuntimeError::PathNotFound(path.into()))
 }
 
 impl<Host, InternalHost: InternalRuntime> InternalRuntime

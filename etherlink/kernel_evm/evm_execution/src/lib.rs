@@ -36,7 +36,7 @@ extern crate tezos_smart_rollup_host as host;
 
 use precompiles::PrecompileSet;
 
-#[derive(Error, Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Error, Clone, Debug, Eq, PartialEq)]
 pub enum DurableStorageError {
     /// Some runtime error happened while using durable storage
     #[error("Runtime error: {0:?}")]

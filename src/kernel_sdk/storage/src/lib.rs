@@ -14,7 +14,7 @@ use thiserror::Error;
 /// All errors that may occur when using the accoun transaction API. When
 /// the error variant encapsulates some other error type, this is where the
 /// error originates from the durable storage interface on the host runtime.
-#[derive(Error, Copy, Eq, PartialEq, Clone, Debug)]
+#[derive(Error, Eq, PartialEq, Clone, Debug)]
 pub enum StorageError {
     /// Invalid accounts path. Could not get the string representation of
     /// the accounts storage path.

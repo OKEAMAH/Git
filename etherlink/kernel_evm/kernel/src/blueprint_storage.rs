@@ -86,7 +86,7 @@ fn read_u256_default<Host: Runtime>(
     match store_read_slice(host, &path, &mut buffer, 8) {
         Ok(()) => Ok(U256::from_little_endian(&buffer)),
         Err(
-            Error::Storage(StorageError::Runtime(RuntimeError::PathNotFound))
+            Error::Storage(StorageError::Runtime(RuntimeError::PathNotFound(_)))
             | Error::Storage(StorageError::Runtime(RuntimeError::HostErr(
                 tezos_smart_rollup_host::Error::StoreNotAValue,
             )))

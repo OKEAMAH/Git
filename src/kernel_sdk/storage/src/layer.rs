@@ -65,7 +65,7 @@ impl<T: From<OwnedPath>> Layer<T> {
         };
 
         match host.store_copy(&self.path, &copy.path) {
-            Ok(()) | Err(RuntimeError::PathNotFound) => Ok(copy),
+            Ok(()) | Err(RuntimeError::PathNotFound(_)) => Ok(copy),
             Err(e) => Err(e.into()),
         }
     }

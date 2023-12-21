@@ -156,7 +156,7 @@ fn yaml_config_move_execute() {
 
     assert_eq!(
         host.store_read(&AUXILIARY_KERNEL_BOOT_PATH, 0, MAX_FILE_CHUNK_SIZE),
-        Err(RuntimeError::PathNotFound)
+        Err(RuntimeError::PathNotFound((&AUXILIARY_KERNEL_BOOT_PATH).into()))
     );
 }
 

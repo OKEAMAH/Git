@@ -82,7 +82,7 @@ impl IndexableStorage {
         match read_u64(host, &path) {
             Ok(l) => Ok(l),
             Err(
-                RuntimeError::PathNotFound
+                RuntimeError::PathNotFound(_)
                 | RuntimeError::HostErr(tezos_smart_rollup_host::Error::StoreNotAValue)
                 | RuntimeError::HostErr(tezos_smart_rollup_host::Error::StoreInvalidAccess),
                 // An InvalidAccess implies that the path does not exist at all

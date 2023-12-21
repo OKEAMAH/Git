@@ -160,7 +160,7 @@ fn read_u256(
 ) -> Result<U256, AccountStorageError> {
     match host.store_read(path, 0, WORD_SIZE) {
         Ok(bytes) if bytes.len() == WORD_SIZE => Ok(U256::from_little_endian(&bytes)),
-        Ok(_) | Err(RuntimeError::PathNotFound) => Ok(default),
+        Ok(_) | Err(RuntimeError::PathNotFound(_)) => Ok(default),
         Err(err) => Err(err.into()),
     }
 }
@@ -173,7 +173,7 @@ fn read_h256(
 ) -> Result<H256, AccountStorageError> {
     match host.store_read(path, 0, WORD_SIZE) {
         Ok(bytes) if bytes.len() == WORD_SIZE => Ok(H256::from_slice(&bytes)),
-        Ok(_) | Err(RuntimeError::PathNotFound) => Ok(default),
+        Ok(_) | Err(RuntimeError::PathNotFound(_)) => Ok(default),
         Err(err) => Err(err.into()),
     }
 }
@@ -382,7 +382,7 @@ impl EthereumAccount {
 
         match host.store_read_all(&path) {
             Ok(bytes) => Ok(bytes),
-            Err(RuntimeError::PathNotFound) => Ok(vec![]),
+            Err(RuntimeError::PathNotFound(_)) => Ok(vec![]),
             Err(err) => Err(AccountStorageError::from(err)),
         }
     }
@@ -401,7 +401,7 @@ impl EthereumAccount {
 
         match host.store_value_size(&path) {
             Ok(size) => Ok(U256::from(size)),
-            Err(RuntimeError::PathNotFound) => Ok(U256::zero()),
+            Err(RuntimeError::PathNotFound(_)) => Ok(U256::zero()),
             Err(err) => Err(AccountStorageError::from(err)),
         }
     }

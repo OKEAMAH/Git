@@ -161,7 +161,7 @@ impl Account {
                 let value = u64::from_le_bytes(buffer);
                 Ok(if value != 0_u64 { Some(value) } else { None })
             }
-            Err(PathNotFound | HostErr(StoreNotAValue)) => Ok(None),
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => Ok(None),
             _ => Err(AccountStorageError::MalformedValue),
         }
     }
@@ -223,7 +223,7 @@ impl Account {
                     )),
                 }
             }
-            Err(PathNotFound | HostErr(StoreNotAValue)) => {
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => {
                 if amount != 0 {
                     Err(AccountStorageError::NotEnoughFunds(
                         path.clone(),
@@ -267,7 +267,7 @@ impl Account {
                     Err(AccountStorageError::AmountOverflow)
                 }
             }
-            Err(PathNotFound | HostErr(StoreNotAValue)) => {
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => {
                 host.store_write(&path, &amount.to_le_bytes(), 0)
                     .map_err(AccountStorageError::from)?;
                 Ok(amount)
@@ -289,7 +289,7 @@ impl Account {
         match host.store_read_slice(&path, 0, &mut buffer) {
             Ok(8) => Ok(i64::from_le_bytes(buffer)),
             Ok(_) => Err(AccountStorageError::MalformedValue),
-            Err(PathNotFound | HostErr(StoreNotAValue)) => Ok(0_i64),
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => Ok(0_i64),
             Err(error) => Err(AccountStorageError::from(error)),
         }
     }
@@ -318,7 +318,7 @@ impl Account {
                 }
             }
             Ok(_) => Err(AccountStorageError::MalformedValue),
-            Err(PathNotFound | HostErr(StoreNotAValue)) => host
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => host
                 .store_write(&path, &(1_i64).to_le_bytes(), 0)
                 .map_err(AccountStorageError::from),
             Err(error) => Err(AccountStorageError::from(error)),
@@ -355,7 +355,7 @@ impl Account {
                 }
             }
             Ok(_) => Err(AccountStorageError::MalformedValue),
-            Err(PathNotFound | HostErr(StoreNotAValue)) => {
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => {
                 if counter != 0_i64 {
                     return Err(AccountStorageError::CounterMismatch(counter, 0_i64));
                 }
@@ -395,7 +395,7 @@ impl Account {
 
         match host.store_delete(&path) {
             Ok(_) => Ok(()),
-            Err(PathNotFound | HostErr(StoreNotAValue)) => Ok(()),
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => Ok(()),
             Err(error) => Err(AccountStorageError::from(error)),
         }
     }
@@ -415,7 +415,7 @@ impl Account {
         match host.store_read_slice(&path, 0, &mut buffer) {
             Ok(PK_SIZE) => Ok(Some(PublicKeyEd25519(buffer.to_vec()))),
             Ok(_) => Err(AccountStorageError::MalformedSignature),
-            Err(PathNotFound | HostErr(StoreNotAValue)) => Ok(None),
+            Err(PathNotFound(_) | HostErr(StoreNotAValue)) => Ok(None),
             Err(error) => Err(AccountStorageError::from(error)),
         }
     }
