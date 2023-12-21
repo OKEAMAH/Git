@@ -268,10 +268,7 @@ val produce :
 module Dal_helpers : sig
   (** We consider that a DAL page or slot published at a level [published_level]
       is valid, and produce or verify a proof for it if, and only if, the level
-      is in the following boundaries:
-
-      - [published_level] > [origination_level]: this means that the slot of the
-      page was published after the rollup origination ;
+      is in the following boundary:
 
       - [published_level] + [dal_attestation_lag] <= [commit_inbox_level]: this
       means that the slot of the page has been attested before or at the
@@ -283,7 +280,6 @@ module Dal_helpers : sig
       before producing the related commitment. *)
   val valid_published_level :
     dal_attestation_lag:int ->
-    origination_level:Raw_level_repr.t ->
     commit_inbox_level:Raw_level_repr.t ->
     published_level:Raw_level_repr.t ->
     bool

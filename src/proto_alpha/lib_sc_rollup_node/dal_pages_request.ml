@@ -110,15 +110,12 @@ let storage_invariant_broken published_level index =
     Raw_level.pp
     published_level
 
-let page_level_is_valid ~dal_attestation_lag ~published_level ~origination_level
-    ~inbox_level =
-  let origination_level_res = Raw_level.of_int32 origination_level in
+let page_level_is_valid ~dal_attestation_lag ~published_level ~inbox_level =
   let commit_inbox_level_res = Raw_level.of_int32 inbox_level in
-  match (origination_level_res, commit_inbox_level_res) with
-  | Ok origination_level, Ok commit_inbox_level ->
+  match commit_inbox_level_res with
+  | Ok commit_inbox_level ->
       Alpha_context.Sc_rollup.Proof.Dal_helpers.valid_published_level
         ~dal_attestation_lag
-        ~origination_level
         ~commit_inbox_level
         ~published_level
   | _ -> false
@@ -126,16 +123,9 @@ let page_level_is_valid ~dal_attestation_lag ~published_level ~origination_level
 let slot_pages ~dal_attestation_lag ~inbox_level node_ctxt
     Dal.Slot.Header.{published_level; index} =
   let open Lwt_result_syntax in
-  let Node_context.{genesis_info = {level = origination_level; _}; _} =
-    node_ctxt
-  in
   if
     not
-    @@ page_level_is_valid
-         ~dal_attestation_lag
-         ~published_level
-         ~origination_level
-         ~inbox_level
+    @@ page_level_is_valid ~dal_attestation_lag ~published_level ~inbox_level
   then return_none
   else
     let* confirmed_in_block_hash =
@@ -161,16 +151,9 @@ let page_content ~dal_attestation_lag ~inbox_level node_ctxt page_id =
   let open Lwt_result_syntax in
   let Dal.Page.{slot_id; page_index} = page_id in
   let Dal.Slot.Header.{published_level; index} = slot_id in
-  let Node_context.{genesis_info = {level = origination_level; _}; _} =
-    node_ctxt
-  in
   if
     not
-    @@ page_level_is_valid
-         ~dal_attestation_lag
-         ~published_level
-         ~origination_level
-         ~inbox_level
+    @@ page_level_is_valid ~dal_attestation_lag ~published_level ~inbox_level
   then return_none
   else
     let* confirmed_in_block_hash =
