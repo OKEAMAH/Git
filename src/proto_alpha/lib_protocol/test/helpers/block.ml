@@ -810,11 +810,11 @@ let detect_manager_failure :
     type kind. kind Apply_results.operation_metadata -> _ =
   let open Result_syntax in
   let rec detect_manager_failure :
-      type kind. kind Apply_results.contents_result_list -> _ =
+      type kind. hosted:bool -> kind Apply_results.contents_result_list -> _ =
     let open Apply_results in
     let open Apply_operation_result in
     let open Apply_internal_results in
-    let detect_manager_failure_single (type kind)
+    let detect_manager_failure_single (type kind) ~hosted
         (Manager_operation_result
            {operation_result; internal_operation_results; _} :
           kind Kind.manager Apply_results.contents_result) =
@@ -822,25 +822,33 @@ let detect_manager_failure :
           (result : (kind, _, _) operation_result) =
         match result with
         | Applied _ -> return_unit
-        | Skipped _ -> assert false
+        | Skipped _ -> if hosted then return_unit else assert false
         | Backtracked (_, None) ->
             (* there must be another error for this to happen *)
             return_unit
-        | Backtracked (_, Some errs) -> fail errs
-        | Failed (_, errs) -> fail errs
+        | Backtracked (_, Some errs) ->
+            if hosted then return_unit else fail errs
+        | Failed (_, errs) -> if hosted then return_unit else fail errs
       in
       let* () = detect_manager_failure operation_result in
       List.iter_e
         (fun (Internal_operation_result (_, r)) -> detect_manager_failure r)
         internal_operation_results
     in
-    function
-    | Single_result (Manager_operation_result _ as res) ->
-        detect_manager_failure_single res
-    | Single_result _ -> return_unit
-    | Cons_result (res, rest) ->
-        let* () = detect_manager_failure_single res in
-        detect_manager_failure rest
+    fun ~hosted -> function
+      | Single_result (Manager_operation_result _ as res) ->
+          detect_manager_failure_single ~hosted res
+      | Single_result _ -> return_unit
+      | Cons_result
+          ( (Manager_operation_result
+               {operation_result = Failed (Kind.Host_manager_kind, _); _} as
+            res),
+            rest ) ->
+          let* () = detect_manager_failure_single ~hosted:true res in
+          detect_manager_failure ~hosted:true rest
+      | Cons_result (res, rest) ->
+          let* () = detect_manager_failure_single ~hosted res in
+          detect_manager_failure ~hosted rest
   in
   fun {contents} -> detect_manager_failure contents
 
@@ -890,7 +898,7 @@ let apply_with_metadata ?(policy = By_round 0) ?(check_size = true)
             match result with
             | No_operation_metadata -> return (state, contents_result)
             | Operation_metadata metadata ->
-                let*? () = detect_manager_failure metadata in
+                let*? () = detect_manager_failure ~hosted:false metadata in
                 return (state, result :: contents_result))
         (vstate, [])
         operations
