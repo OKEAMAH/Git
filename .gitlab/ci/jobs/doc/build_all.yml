@@ -1,3 +1,19 @@
+documentation:build_odoc_lite:
+  extends:
+    - .default_settings_template
+    - .image_template__runtime_build_test_dependencies
+    - .tags_template__build
+    - .rules__octez_docs_changes
+  stage: build
+  needs: [trigger]
+  script:
+    - make -C docs -j odoc-lite
+  artifacts:
+    paths:
+      # Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706)
+      - docs/_build/api/odoc/
+    expire_in: 1 day
+
 # Warning: the documentation:linkcheck job must have at least the same
 # restrictions in the rules as documentation:build_all, otherwise the CI
 # may complain that documentation:linkcheck depends on documentation:build_all
@@ -9,11 +25,18 @@ documentation:build_all:
     - .tags_template__build
     - .rules__octez_docs_changes
   stage: build
-  needs: [trigger]
+  dependencies:
+    - "oc.build_x86_64-released"
+    - "oc.build_x86_64-exp-dev-extra"
+    - "documentation:build_odoc_lite"
+  needs:
+    - "oc.build_x86_64-released"
+    - "oc.build_x86_64-exp-dev-extra"
+    - "documentation:build_odoc_lite"
   before_script:
     - . $HOME/.venv/bin/activate
   script:
-    - ./.gitlab/ci/jobs/doc/documentation:build_all.sh
+    - make -C docs -j html
   artifacts:
     expose_as: 'Documentation - excluding old protocols'
     paths:
