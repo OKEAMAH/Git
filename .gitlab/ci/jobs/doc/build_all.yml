@@ -6,24 +6,24 @@ documentation:build_odoc_lite:
     - .rules__octez_docs_changes
   stage: build
   needs: [trigger]
-  variables:
-    DUNE_CACHE: enabled
-    DUNE_CACHE_ROOT: $CI_PROJECT_DIR/_dune_cache
+  # variables:
+  #   DUNE_CACHE: enabled
+  #   DUNE_CACHE_ROOT: $CI_PROJECT_DIR/_dune_cache
   script:
     - make -C docs -j odoc-lite SHELL=$(pwd)/scripts/timing.sh
   after_script:
     - cat /tmp/make_log
-    - du -hs $DUNE_CACHE_ROOT
+    # - du -hs $DUNE_CACHE_ROOT
   artifacts:
     paths:
       # Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706)
       - docs/_build/api/odoc/
     expire_in: 1 day
-  cache:
-    key: odoc-dune-cache
-    policy: push
-    paths:
-      - $CI_PROJECT_DIR/_dune_cache
+  # cache:
+  #   key: odoc-dune-cache
+  #   policy: push
+  #   paths:
+  #     - $CI_PROJECT_DIR/_dune_cache
 
 # Warning: the documentation:linkcheck job must have at least the same
 # restrictions in the rules as documentation:build_all, otherwise the CI
@@ -44,25 +44,25 @@ documentation:build_all:
     - "oc.build_x86_64-released"
     - "oc.build_x86_64-exp-dev-extra"
     - "documentation:build_odoc_lite"
-  variables:
-    DUNE_CACHE: enabled
-    DUNE_CACHE_ROOT: $CI_PROJECT_DIR/_dune_cache
+  # variables:
+  #   DUNE_CACHE: enabled
+  #   DUNE_CACHE_ROOT: $CI_PROJECT_DIR/_dune_cache
   before_script:
     - . $HOME/.venv/bin/activate
-    - du -hs $DUNE_CACHE_ROOT || true
+    # - du -hs $DUNE_CACHE_ROOT || true
   script:
     - make -C docs -j html SHELL=$(pwd)/scripts/timing.sh
   after_script:
     - cat /tmp/make_log
-    - du -hs $DUNE_CACHE_ROOT
+    # - du -hs $DUNE_CACHE_ROOT
   artifacts:
     expose_as: 'Documentation - excluding old protocols'
     paths:
       # Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706)
       - docs/_build/
     expire_in: 1 week
-  cache:
-    key: odoc-dune-cache
-    policy: pull
-    paths:
-      - $CI_PROJECT_DIR/_dune_cache
+  # cache:
+  #   key: odoc-dune-cache
+  #   policy: pull
+  #   paths:
+  #     - $CI_PROJECT_DIR/_dune_cache
