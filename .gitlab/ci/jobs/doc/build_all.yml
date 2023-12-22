@@ -7,7 +7,9 @@ documentation:build_odoc_lite:
   stage: build
   needs: [trigger]
   script:
-    - make -C docs -j odoc-lite
+    - make -C docs -j odoc-lite SHELL=$(pwd)/scripts/timing.sh
+  after_script::
+    - cat /tmp/make_log
   artifacts:
     paths:
       # Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706)
