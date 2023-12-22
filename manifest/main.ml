@@ -5341,6 +5341,7 @@ end = struct
             ("test_voting", true);
             ("test_zk_rollup", true);
             ("test_transfer_ticket", N.(number >= 016));
+            ("test_host_operation", N.(number >= 019));
           ]
           |> conditional_list
         in

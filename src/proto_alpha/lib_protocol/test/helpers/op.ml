@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -1101,3 +1102,50 @@ let zk_rollup_update ?force_reveal ?counter ?fee ?gas_limit ?storage_limit ctxt
   in
   let+ account = Context.Contract.manager ctxt src in
   sign account.sk (Context.branch ctxt) to_sign_op
+
+let host ?force_reveal ?counter ?fee ?gas_limit ?storage_limit ctxt
+    (src : Contract.t) ~guest ~ops =
+  let open Lwt_result_syntax in
+  let* to_sign_op =
+    manager_operation
+      ?force_reveal
+      ?counter
+      ?fee
+      ?gas_limit
+      ?storage_limit
+      ~source:src
+      ctxt
+      (Host {guest; guest_signature = Signature.zero})
+  in
+  match to_sign_op with
+  | Contents_list (Single (Manager_operation _ as op)) ->
+      let ops = ops in
+      let batch = Contents_list (Cons (op, ops)) in
+      let guest = Contract.Implicit guest in
+      let* account = Context.Contract.manager ctxt guest in
+      let {protocol_data = Operation_data {signature; _}; _} =
+        sign account.sk (Context.branch ctxt) batch
+      in
+      let (Manager_operation op) = op in
+      let op =
+        Manager_operation
+          {
+            op with
+            operation =
+              Host
+                {
+                  guest = Context.Contract.pkh guest;
+                  guest_signature =
+                    WithExceptions.Option.get ~loc:__FILE__ signature;
+                };
+          }
+      in
+      return (Contents_list (Cons (op, ops)))
+  | _ -> assert false
+
+let sponsor ctxt (src : Contract.t) ~ops =
+  let open Lwt_result_syntax in
+  let+ account = Context.Contract.manager ctxt src in
+  sign account.sk (Context.branch ctxt) ops
+
+module Micheline = Micheline

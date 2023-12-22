@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2023 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -650,3 +651,25 @@ val zk_rollup_update :
   zk_rollup:Zk_rollup.t ->
   update:Zk_rollup.Update.t ->
   Operation.packed tzresult Lwt.t
+
+(** [host ctxt source ~guest ~ops] signs host operation by the guest and additional operations *)
+val host :
+  ?force_reveal:bool ->
+  ?counter:Manager_counter.t ->
+  ?fee:Tez.t ->
+  ?gas_limit:gas_limit ->
+  ?storage_limit:Z.t ->
+  Context.t ->
+  Contract.t ->
+  guest:public_key_hash ->
+  ops:'a Kind.manager contents_list ->
+  packed_contents_list tzresult Lwt.t
+
+(** [sponsor ctxt source ~ops] sponsors a set of operations *)
+val sponsor :
+  Context.t ->
+  Contract.t ->
+  ops:packed_contents_list ->
+  (packed_operation, tztrace) result Lwt.t
+
+module Micheline = Micheline
