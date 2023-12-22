@@ -49,9 +49,6 @@ let version dir =
   Directory.register0 dir version_service (fun () () ->
       Lwt.return_ok client_version)
 
-let describe dir =
-  Directory.register_describe_directory_service dir Service.description_service
-
 let openapi_service =
   Service.get_service
     ~description:"OpenAPI specification of RPCs for Etherlink EVM node"
@@ -529,4 +526,4 @@ let directory config
   |> dispatch
        config
        ((module Rollup_node_rpc : Services_backend_sig.S), smart_rollup_address)
-  |> describe |> openapi
+  |> openapi
