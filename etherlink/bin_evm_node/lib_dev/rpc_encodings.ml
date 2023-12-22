@@ -24,101 +24,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Encodings for the JSON-RPC standard. See
-    https://www.jsonrpc.org/specification.
-*)
-module JSONRPC = struct
-  let version = "2.0"
-
-  (** Ids in the JSON-RPC specification can be either a string, a number or NULL
-      (which is represented by the option type). *)
-  type id_repr = Id_string of string | Id_float of float
-
-  let id_repr_encoding =
-    let open Data_encoding in
-    union
-      [
-        case
-          ~title:"id-string"
-          (Tag 0)
-          string
-          (function Id_string s -> Some s | _ -> None)
-          (fun s -> Id_string s);
-        case
-          ~title:"id-int"
-          (Tag 1)
-          float
-          (function Id_float i -> Some i | _ -> None)
-          (fun i -> Id_float i);
-      ]
-
-  type id = id_repr option
-
-  type request = {
-    method_ : string;
-    parameters : Data_encoding.json option;
-    id : id;
-  }
-
-  let request_encoding =
-    Data_encoding.(
-      conv
-        (fun {parameters; id; method_; _} -> ((), method_, parameters, id))
-        (fun ((), method_, parameters, id) -> {method_; parameters; id})
-        (obj4
-           (req "jsonrpc" (constant version))
-           (req "method" string)
-           (opt "params" Data_encoding.json)
-           (opt "id" id_repr_encoding)))
-
-  type 'data error = {code : int; message : string; data : 'data option}
-
-  let error_encoding data_encoding =
-    Data_encoding.(
-      conv
-        (fun {code; message; data} -> (code, message, data))
-        (fun (code, message, data) -> {code; message; data})
-        (obj3
-           (req "code" int31)
-           (req "message" string)
-           (opt "data" data_encoding)))
-
-  type value = (Data_encoding.json, Data_encoding.json error) result
-
-  type response = {value : value; id : id}
-
-  let response_encoding =
-    Data_encoding.(
-      conv
-        (fun {value; id} ->
-          let result, error =
-            match value with Ok r -> (Some r, None) | Error e -> (None, Some e)
-          in
-          ((), result, error, id))
-        (fun ((), result, error, id) ->
-          let value =
-            match (result, error) with
-            | Some r, None -> Ok r
-            | None, Some e -> Error e
-            | _ -> assert false
-            (* Impossible case according to the JSON-RPC standard: result XOR
-               error. *)
-          in
-          {value; id})
-        (obj4
-           (req "jsonrpc" (constant version))
-           (opt "result" Data_encoding.json)
-           (opt "error" (error_encoding Data_encoding.json))
-           (req "id" (option id_repr_encoding))))
-end
-
 module Error = struct
   type t = unit
 
   let encoding = Data_encoding.unit
 end
 
-type 'result rpc_result = ('result, Error.t JSONRPC.error) result
+type 'data json_rpc_error = {code : int; message : string; data : 'data option}
+
+type 'result rpc_result = ('result, Error.t json_rpc_error) result
 
 type ('input, 'output) method_ = ..
 
@@ -692,3 +606,136 @@ let map_method_name method_name =
   | None ->
       if List.mem ~equal:( = ) method_name unsupported_methods then Unsupported
       else Unknown
+
+(** Encodings for the JSON-RPC standard. See
+    https://www.jsonrpc.org/specification.
+*)
+module JSONRPC = struct
+  let version = "2.0"
+
+  (** Ids in the JSON-RPC specification can be either a string, a number or NULL
+      (which is represented by the option type). *)
+  type id_repr = Id_string of string | Id_float of float
+
+  let id_repr_encoding =
+    let open Data_encoding in
+    union
+      [
+        case
+          ~title:"id-string"
+          (Tag 0)
+          string
+          (function Id_string s -> Some s | _ -> None)
+          (fun s -> Id_string s);
+        case
+          ~title:"id-int"
+          (Tag 1)
+          float
+          (function Id_float i -> Some i | _ -> None)
+          (fun i -> Id_float i);
+      ]
+
+  type id = id_repr option
+
+  type request = {
+    method_ : string;
+    parameters : Data_encoding.json option;
+    id : id;
+  }
+
+  let generic_request_encoding =
+    Data_encoding.(
+      conv
+        (fun {parameters; id; method_; _} -> ((), method_, parameters, id))
+        (fun ((), method_, parameters, id) -> {method_; parameters; id})
+        (obj4
+           (req "jsonrpc" (constant version))
+           (req "method" string)
+           (opt "params" Data_encoding.json)
+           (opt "id" id_repr_encoding)))
+
+  let method_input_schema method_name params =
+    Data_encoding.(
+      def method_name ~title:method_name
+      @@ obj4
+           (req "jsonrpc" (constant version))
+           (req "method" (constant method_name))
+           (opt "params" params)
+           (opt "id" id_repr_encoding)
+      |> Json.schema)
+
+  let requests_schema =
+    supported_methods
+    |> List.rev_map (fun (module M : METHOD) ->
+           method_input_schema M.method_ M.input_encoding)
+    |> Json_schema.combine One_of
+
+  let request_encoding =
+    let open Data_encoding in
+    conv Fun.id Fun.id generic_request_encoding ~schema:requests_schema
+
+  type 'data error = 'data json_rpc_error = {
+    code : int;
+    message : string;
+    data : 'data option;
+  }
+
+  let error_encoding data_encoding =
+    Data_encoding.(
+      conv
+        (fun {code; message; data} -> (code, message, data))
+        (fun (code, message, data) -> {code; message; data})
+        (obj3
+           (req "code" int31)
+           (req "message" string)
+           (opt "data" data_encoding)))
+
+  type value = (Data_encoding.json, Data_encoding.json error) result
+
+  type response = {value : value; id : id}
+
+  let generic_response_encoding =
+    Data_encoding.(
+      conv
+        (fun {value; id} ->
+          let result, error =
+            match value with Ok r -> (Some r, None) | Error e -> (None, Some e)
+          in
+          ((), result, error, id))
+        (fun ((), result, error, id) ->
+          let value =
+            match (result, error) with
+            | Some r, None -> Ok r
+            | None, Some e -> Error e
+            | _ -> assert false
+            (* Impossible case according to the JSON-RPC standard: result XOR
+               error. *)
+          in
+          {value; id})
+        (obj4
+           (req "jsonrpc" (constant version))
+           (opt "result" Data_encoding.json)
+           (opt "error" (error_encoding Data_encoding.json))
+           (req "id" (option id_repr_encoding))))
+
+  let method_response_schema method_name res =
+    Data_encoding.(
+      let title = method_name ^ "_response" in
+      def title ~title
+      @@ obj4
+           (req "jsonrpc" (constant version))
+           (opt "result" res)
+           (opt "error" (error_encoding Data_encoding.json))
+           (req "id" (option id_repr_encoding))
+      |> Json.schema)
+
+  let response_schema =
+    supported_methods
+    |> List.rev_map (fun (module M : METHOD) ->
+           method_response_schema M.method_ M.output_encoding)
+    |> Json_schema.combine One_of
+
+  let response_encoding =
+    let open Data_encoding in
+    conv Fun.id Fun.id generic_response_encoding ~schema:response_schema
+end
