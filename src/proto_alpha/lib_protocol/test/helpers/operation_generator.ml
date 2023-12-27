@@ -73,6 +73,7 @@ let manager_kinds =
     `KSet_deposits_limit;
     `KIncrease_paid_storage;
     `KRegister_global_constant;
+    `KPush_cnt;
     `KTransfer_ticket;
     `KDal_publish_slot_header;
     `KSc_rollup_originate;
@@ -512,6 +513,10 @@ let generate_register_global_constant =
   let value = Script_repr.lazy_expr (Expr.from_string "Pair 1 2") in
   QCheck2.Gen.pure (Register_global_constant {value})
 
+let generate_push_cnt =
+  let open QCheck2.Gen in
+  return Push_cnt
+
 let generate_transfer_ticket =
   let open QCheck2.Gen in
   let* ticketer = random_contract in
@@ -614,6 +619,7 @@ let generator_of ?source = function
   | `KDelegation -> generate_manager_operation ?source generate_delegation
   | `KRegister_global_constant ->
       generate_manager_operation ?source generate_register_global_constant
+  | `KPush_cnt -> generate_manager_operation ?source generate_push_cnt
   | `KTransfer_ticket ->
       generate_manager_operation ?source generate_transfer_ticket
   | `KDal_publish_slot_header ->

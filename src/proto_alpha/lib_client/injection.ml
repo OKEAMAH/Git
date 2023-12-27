@@ -345,6 +345,7 @@ let estimated_gas_single (type kind)
         | Reveal_result {consumed_gas}
         | Delegation_result {consumed_gas; _}
         | Register_global_constant_result {consumed_gas; _}
+        | Push_cnt_result {consumed_gas; _}
         | Set_deposits_limit_result {consumed_gas}
         | Update_consensus_key_result {consumed_gas; _}
         | Increase_paid_storage_result {consumed_gas; _}
@@ -411,6 +412,7 @@ let estimated_storage_single (type kind) ~origination_size
             Ok (Z.add paid_storage_size_diff origination_size)
         | Register_global_constant_result {size_of_constant; _} ->
             Ok size_of_constant
+        | Push_cnt_result _ -> Ok Z.zero
         | Update_consensus_key_result _ -> Ok Z.zero
         | Sc_rollup_execute_outbox_message_result {paid_storage_size_diff; _}
         | Transfer_ticket_result {paid_storage_size_diff; _}
@@ -503,8 +505,8 @@ let originated_contracts_single (type kind)
         | Transaction_result
             ( Transaction_to_sc_rollup_result _
             | Transaction_to_zk_rollup_result _ )
-        | Register_global_constant_result _ | Reveal_result _
-        | Delegation_result _ | Set_deposits_limit_result _
+        | Register_global_constant_result _ | Push_cnt_result _
+        | Reveal_result _ | Delegation_result _ | Set_deposits_limit_result _
         | Update_consensus_key_result _ | Increase_paid_storage_result _
         | Transfer_ticket_result _ | Dal_publish_slot_header_result _
         | Sc_rollup_originate_result _ | Sc_rollup_add_messages_result _

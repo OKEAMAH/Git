@@ -58,6 +58,11 @@ type _ successful_manager_operation_result =
       global_address : Script_expr_hash.t;
     }
       -> Kind.register_global_constant successful_manager_operation_result
+  | Push_cnt_result : {
+      consumed_gas : Gas.Arith.fp;
+      cnt : int32;
+    }
+      -> Kind.push_cnt successful_manager_operation_result
   | Set_deposits_limit_result : {
       consumed_gas : Gas.Arith.fp;
     }
@@ -452,6 +457,22 @@ module Manager_result = struct
         (fun (balance_updates, consumed_gas, size_of_constant, global_address) ->
         Register_global_constant_result
           {balance_updates; consumed_gas; size_of_constant; global_address})
+
+  let push_cnt_case =
+    make
+      ~op_case:Operation.Encoding.Manager_operations.push_cnt_case
+      ~encoding:
+        Data_encoding.(
+          obj2
+            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
+            (req "cnt" Cnt_repr.encoding))
+      ~select:(function
+        | Successful_manager_result (Push_cnt_result _ as op) -> Some op
+        | _ -> None)
+      ~proj:(function
+        | Push_cnt_result {consumed_gas; cnt} -> (consumed_gas, cnt))
+      ~kind:Kind.Push_cnt_manager_kind
+      ~inj:(fun (consumed_gas, cnt) -> Push_cnt_result {consumed_gas; cnt})
 
   let delegation_case =
     make
@@ -999,6 +1020,8 @@ let equal_manager_kind :
   | Kind.Event_manager_kind, Kind.Event_manager_kind -> Some Eq
   | Kind.Event_manager_kind, _ -> None
   | Kind.Register_global_constant_manager_kind, _ -> None
+  | Kind.Push_cnt_manager_kind, Kind.Push_cnt_manager_kind -> Some Eq
+  | Kind.Push_cnt_manager_kind, _ -> None
   | Kind.Set_deposits_limit_manager_kind, Kind.Set_deposits_limit_manager_kind
     ->
       Some Eq
@@ -1640,6 +1663,16 @@ module Encoding = struct
             Some (op, res)
         | _ -> None)
 
+  let push_cnt_case =
+    make_manager_case
+      Operation.Encoding.push_cnt_case
+      Manager_result.push_cnt_case
+      (function
+        | Contents_and_result
+            ((Manager_operation {operation = Push_cnt; _} as op), res) ->
+            Some (op, res)
+        | _ -> None)
+
   let set_deposits_limit_case =
     make_manager_case
       Operation.Encoding.set_deposits_limit_case
@@ -1824,6 +1857,7 @@ let common_cases =
     origination_case;
     delegation_case;
     register_global_constant_case;
+    push_cnt_case;
     set_deposits_limit_case;
     increase_paid_storage_case;
     update_consensus_key_case;
@@ -2228,6 +2262,27 @@ let kind_equal :
         } ) ->
       Some Eq
   | Manager_operation {operation = Register_global_constant _; _}, _ -> None
+  | ( Manager_operation {operation = Push_cnt; _},
+      Manager_operation_result
+        {operation_result = Applied (Push_cnt_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Push_cnt; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Push_cnt_result _, _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Push_cnt; _},
+      Manager_operation_result
+        {
+          operation_result = Failed (Alpha_context.Kind.Push_cnt_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Push_cnt; _},
+      Manager_operation_result
+        {operation_result = Skipped Alpha_context.Kind.Push_cnt_manager_kind; _}
+    ) ->
+      Some Eq
+  | Manager_operation {operation = Push_cnt; _}, _ -> None
   | ( Manager_operation {operation = Set_deposits_limit _; _},
       Manager_operation_result
         {operation_result = Applied (Set_deposits_limit_result _); _} ) ->

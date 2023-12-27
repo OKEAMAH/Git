@@ -77,6 +77,7 @@ type manager_operation_kind =
   | K_Transaction
   | K_Origination
   | K_Register_global_constant
+  | K_Push_cnt
   | K_Delegation
   | K_Undelegation
   | K_Self_delegation
@@ -173,6 +174,7 @@ let kind_to_string = function
   | K_Update_consensus_key -> "Update consensus key"
   | K_Origination -> "Origination"
   | K_Register_global_constant -> "Register global constant"
+  | K_Push_cnt -> "Push cnt"
   | K_Increase_paid_storage -> "Increase paid storage"
   | K_Reveal -> "Revelation"
   | K_Transfer_ticket -> "Transfer_ticket"
@@ -667,6 +669,16 @@ let mk_register_global_constant (oinfos : operation_req) (infos : infos) =
     ~source:(contract_of (get_source infos))
     ~value:(Script_repr.lazy_expr (Expr.from_string "Pair 1 2"))
 
+let mk_push_cnt (oinfos : operation_req) (infos : infos) =
+  Op.push_cnt
+    ?force_reveal:oinfos.force_reveal
+    ?counter:oinfos.counter
+    ?fee:oinfos.fee
+    ?gas_limit:oinfos.gas_limit
+    ?storage_limit:oinfos.storage_limit
+    (B infos.ctxt.block)
+    ~source:(contract_of (get_source infos))
+
 let mk_set_deposits_limit (oinfos : operation_req) (infos : infos) =
   Op.set_deposits_limit
     ?force_reveal:oinfos.force_reveal
@@ -987,6 +999,7 @@ let select_op (op_req : operation_req) (infos : infos) =
     | K_Transaction -> mk_transaction
     | K_Origination -> mk_origination
     | K_Register_global_constant -> mk_register_global_constant
+    | K_Push_cnt -> mk_push_cnt
     | K_Delegation -> mk_delegation
     | K_Undelegation -> mk_undelegation
     | K_Self_delegation -> mk_self_delegation
@@ -1353,6 +1366,7 @@ let subjects =
     K_Transaction;
     K_Origination;
     K_Register_global_constant;
+    K_Push_cnt;
     K_Delegation;
     K_Undelegation;
     K_Self_delegation;
@@ -1384,7 +1398,7 @@ let is_consumer = function
   | K_Dal_publish_slot_header | K_Zk_rollup_origination | K_Zk_rollup_publish
   | K_Zk_rollup_update ->
       false
-  | K_Transaction | K_Origination | K_Register_global_constant
+  | K_Transaction | K_Origination | K_Register_global_constant | K_Push_cnt
   | K_Transfer_ticket ->
       true
 
@@ -1395,8 +1409,8 @@ let revealed_subjects =
   List.filter (function K_Reveal -> false | _ -> true) subjects
 
 let is_disabled flags = function
-  | K_Transaction | K_Origination | K_Register_global_constant | K_Delegation
-  | K_Undelegation | K_Self_delegation | K_Set_deposits_limit
+  | K_Transaction | K_Origination | K_Register_global_constant | K_Push_cnt
+  | K_Delegation | K_Undelegation | K_Self_delegation | K_Set_deposits_limit
   | K_Update_consensus_key | K_Increase_paid_storage | K_Reveal
   | K_Transfer_ticket ->
       false

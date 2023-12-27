@@ -118,6 +118,8 @@ module Kind : sig
 
   type register_global_constant = Register_global_constant_kind
 
+  type push_cnt = Push_cnt_kind
+
   type transfer_ticket = Transfer_ticket_kind
 
   type dal_publish_slot_header = Dal_publish_slot_header_kind
@@ -152,6 +154,7 @@ module Kind : sig
     | Delegation_manager_kind : delegation manager
     | Event_manager_kind : event manager
     | Register_global_constant_manager_kind : register_global_constant manager
+    | Push_cnt_manager_kind : push_cnt manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Increase_paid_storage_manager_kind : increase_paid_storage manager
     | Update_consensus_key_manager_kind : update_consensus_key manager
@@ -370,6 +373,7 @@ and _ manager_operation =
       value : Script_repr.lazy_expr;
     }
       -> Kind.register_global_constant manager_operation
+  | Push_cnt : Kind.push_cnt manager_operation
   (* [Set_deposits_limit] sets an optional limit for frozen deposits
      of a contract at a lower value than the maximum limit.  When None,
      the limit in unset back to the default maximum limit. *)
@@ -728,6 +732,8 @@ module Encoding : sig
   val register_global_constant_case :
     Kind.register_global_constant Kind.manager case
 
+  val push_cnt_case : Kind.push_cnt Kind.manager case
+
   val set_deposits_limit_case : Kind.set_deposits_limit Kind.manager case
 
   val increase_paid_storage_case : Kind.increase_paid_storage Kind.manager case
@@ -787,6 +793,8 @@ module Encoding : sig
     val update_consensus_key_case : Kind.update_consensus_key case
 
     val register_global_constant_case : Kind.register_global_constant case
+
+    val push_cnt_case : Kind.push_cnt case
 
     val set_deposits_limit_case : Kind.set_deposits_limit case
 

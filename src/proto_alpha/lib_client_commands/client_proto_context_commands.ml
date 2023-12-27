@@ -1851,6 +1851,40 @@ let commands_rw () =
         return_unit);
     command
       ~group
+      ~desc:"Increase counter: inject the manager operation"
+      (args2 fee_arg fee_parameter_args)
+      (prefixes ["increase"; "counter"]
+      @@ prefix "from"
+      @@ Client_keys.Public_key_hash.source_param
+           ~name:"src"
+           ~desc:"the delagate key for account pushing the counter"
+      @@ stop)
+      (fun (fee, fee_parameter) src_pkh (cctxt : Protocol_client_context.full) ->
+        let open Lwt_result_syntax in
+        let* _, src_pk, src_sk = Client_keys.get_key cctxt src_pkh in
+        let*! () = cctxt#message "==> Increasing counter started...\n" in
+        let*! errors =
+          push_cnt
+            cctxt
+            ?fee
+            ?confirmations:cctxt#confirmations
+            ~source:src_pkh
+            ~src_pk
+            ~src_sk
+            ~fee_parameter
+            ()
+        in
+        let*! (_ : _ Injection.result option) =
+          report_michelson_errors
+            ~no_print_source:false
+            ~msg:"pushing the counter simulation failed"
+            cctxt
+            errors
+        in
+        let*! () = cctxt#message "==> client_proto_commands.ml: exit\n" in
+        return_unit);
+    command
+      ~group
       ~desc:"Call a smart contract (same as 'transfer 0')."
       (args14
          fee_arg

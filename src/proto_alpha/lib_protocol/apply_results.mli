@@ -167,6 +167,11 @@ and _ successful_manager_operation_result =
       global_address : Script_expr_hash.t;
     }
       -> Kind.register_global_constant successful_manager_operation_result
+  | Push_cnt_result : {
+      consumed_gas : Gas.Arith.fp;
+      cnt : int32;
+    }
+      -> Kind.push_cnt successful_manager_operation_result
   | Set_deposits_limit_result : {
       consumed_gas : Gas.Arith.fp;
     }

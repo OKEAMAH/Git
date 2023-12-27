@@ -49,6 +49,8 @@ end
 
 module Block_round : Simple_single_data_storage with type value = Round_repr.t
 
+module Cnt : Simple_single_data_storage with type value = Cnt_repr.t
+
 type missed_attestations_info = {remaining_slots : int; missed_levels : int}
 
 module Slashed_deposits_history : sig

@@ -305,6 +305,18 @@ val register_global_constant :
   value:Protocol.Alpha_context.Script.lazy_expr ->
   (Protocol.operation, tztrace) result Lwt.t
 
+val push_cnt :
+  ?force_reveal:bool ->
+  ?counter:Manager_counter.t ->
+  ?public_key:Signature.public_key ->
+  ?fee:Tez.t ->
+  ?gas_limit:gas_limit ->
+  ?storage_limit:Z.t ->
+  Context.t ->
+  (* Account doing the registration *)
+  source:Contract.t ->
+  (Protocol.operation, tztrace) result Lwt.t
+
 val double_attestation :
   Context.t ->
   Kind.attestation Operation.t ->

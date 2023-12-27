@@ -1393,6 +1393,17 @@ let apply_manager_operation :
             }
         in
         return (ctxt, result, [])
+    | Push_cnt ->
+        let* ctxt = Cnt.increase ctxt in
+        let* new_value = Cnt.get ctxt in
+        let result =
+          Push_cnt_result
+            {
+              consumed_gas = Gas.consumed ~since:ctxt_before_op ~until:ctxt;
+              cnt = new_value;
+            }
+        in
+        return (ctxt, result, [])
     | Set_deposits_limit limit ->
         let*! is_registered = Delegate.registered ctxt source in
         let*? () =
@@ -1771,7 +1782,8 @@ let burn_manager_storage_fees :
               size_of_constant = payload.size_of_constant;
               global_address = payload.global_address;
             } )
-    | Set_deposits_limit_result _ | Update_consensus_key_result _ ->
+    | Push_cnt_result _ | Set_deposits_limit_result _
+    | Update_consensus_key_result _ ->
         return (ctxt, storage_limit, smopr)
     | Increase_paid_storage_result _ -> return (ctxt, storage_limit, smopr)
     | Transfer_ticket_result payload ->

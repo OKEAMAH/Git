@@ -214,6 +214,7 @@ let pp_manager_operation_content (type kind) source ppf
         "Register Global:@,Value: %a"
         pp_micheline_from_lazy_expr
         value
+  | Push_cnt -> Format.fprintf ppf "Pushing the counter +1"
   | Set_deposits_limit limit_opt -> (
       Format.fprintf
         ppf
@@ -555,6 +556,8 @@ let pp_slot_header ppf slot_header =
 let pp_consumed_gas ppf consumed_gas =
   Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas
 
+let pp_cnt ppf cnt = Format.fprintf ppf "@,Updated counter: %a" Cnt.pp cnt
+
 let pp_paid_storage_size_diff ppf paid_storage_size_diff =
   if paid_storage_size_diff <> Z.zero then
     Format.fprintf
@@ -679,6 +682,10 @@ let pp_manager_operation_contents_result ppf op_result =
     pp_consumed_gas ppf consumed_gas ;
     pp_storage_size ppf size_of_constant ;
     Format.fprintf ppf "@,Global address: %a" Script_expr_hash.pp global_address
+  in
+  let pp_push_cnt_result (Push_cnt_result {consumed_gas; cnt}) =
+    pp_consumed_gas ppf consumed_gas ;
+    pp_cnt ppf cnt
   in
   let pp_increase_paid_storage_result
       (Increase_paid_storage_result {consumed_gas; balance_updates}) =
@@ -815,6 +822,7 @@ let pp_manager_operation_contents_result ppf op_result =
     | Origination_result _ -> "origination"
     | Delegation_result _ -> "delegation"
     | Register_global_constant_result _ -> "global constant registration"
+    | Push_cnt_result _ -> "pushing cnt"
     | Set_deposits_limit_result _ -> "deposits limit modification"
     | Update_consensus_key_result _ -> "consensus key update"
     | Increase_paid_storage_result _ -> "paid storage increase"
@@ -849,6 +857,7 @@ let pp_manager_operation_contents_result ppf op_result =
     | Origination_result op_res -> pp_origination_result ppf op_res
     | Register_global_constant_result _ as op ->
         pp_register_global_constant_result op
+    | Push_cnt_result _ as op -> pp_push_cnt_result op
     | Increase_paid_storage_result _ as op -> pp_increase_paid_storage_result op
     | Transfer_ticket_result _ as op -> pp_transfer_ticket_result op
     | Sc_rollup_originate_result _ as op -> pp_sc_rollup_originate_result op

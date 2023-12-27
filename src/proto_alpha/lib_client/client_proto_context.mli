@@ -90,6 +90,17 @@ val register_global_constant :
   (Kind.register_global_constant Kind.manager Injection.result, tztrace) result
   Lwt.t
 
+val push_cnt :
+  #Protocol_client_context.full ->
+  ?fee:Tez.t ->
+  ?confirmations:int ->
+  source:Signature.public_key_hash ->
+  src_pk:Signature.public_key ->
+  src_sk:Client_keys.sk_uri ->
+  fee_parameter:Injection.fee_parameter ->
+  unit ->
+  (Kind.push_cnt Kind.manager Injection.result, tztrace) result Lwt.t
+
 (** Calls {!Tezos_protocol_plugin_alpha.Plugin.RPC.Big_map.big_map_get_normalized}. *)
 val get_big_map_value :
   #Protocol_client_context.rpc_context ->

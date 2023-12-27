@@ -105,6 +105,13 @@ module Block_round : Simple_single_data_storage with type value = Round_repr.t =
     end)
     (Round_repr)
 
+module Cnt : Simple_single_data_storage with type value = Cnt_repr.t =
+  Make_single_data_storage (Registered) (Raw_context)
+    (struct
+      let name = ["cnt"]
+    end)
+    (Cnt_repr)
+
 module Tenderbake = struct
   module First_level_of_protocol =
     Make_single_data_storage (Registered) (Raw_context)

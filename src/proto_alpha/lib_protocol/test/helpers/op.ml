@@ -620,6 +620,25 @@ let register_global_constant ?force_reveal ?counter ?public_key ?fee ?gas_limit
   in
   sign account.sk (Context.branch ctxt) sop
 
+let push_cnt ?force_reveal ?counter ?public_key ?fee ?gas_limit ?storage_limit
+    ctxt ~source =
+  let open Lwt_result_syntax in
+  let* account = Context.Contract.manager ctxt source in
+  let operation = Push_cnt in
+  let+ sop =
+    manager_operation
+      ?force_reveal
+      ?counter
+      ?public_key
+      ?fee
+      ?gas_limit
+      ?storage_limit
+      ~source
+      ctxt
+      operation
+  in
+  sign account.sk (Context.branch ctxt) sop
+
 let unsafe_transaction ?force_reveal ?counter ?fee ?gas_limit ?storage_limit
     ?(parameters = Script.unit_parameter) ?(entrypoint = Entrypoint.default)
     ctxt (src : Contract.t) (destination : Contract.t) (amount : Tez.t) =

@@ -135,6 +135,7 @@
   Destination_repr
   Script_int
   Ticket_amount
+  Cnt_repr
   Operation_repr
   Manager_repr
   Commitment_repr
@@ -164,6 +165,7 @@
   Ticket_hash_builder
   Constants_storage
   Level_storage
+  Cnt_storage
   Nonce_storage
   Seed_storage
   Contract_manager_storage
@@ -431,6 +433,7 @@
   destination_repr.ml destination_repr.mli
   script_int.ml script_int.mli
   ticket_amount.ml ticket_amount.mli
+  cnt_repr.ml cnt_repr.mli
   operation_repr.ml operation_repr.mli
   manager_repr.ml manager_repr.mli
   commitment_repr.ml commitment_repr.mli
@@ -460,6 +463,7 @@
   ticket_hash_builder.ml ticket_hash_builder.mli
   constants_storage.ml constants_storage.mli
   level_storage.ml level_storage.mli
+  cnt_storage.ml cnt_storage.mli
   nonce_storage.ml nonce_storage.mli
   seed_storage.ml seed_storage.mli
   contract_manager_storage.ml contract_manager_storage.mli
@@ -729,6 +733,7 @@
   destination_repr.ml destination_repr.mli
   script_int.ml script_int.mli
   ticket_amount.ml ticket_amount.mli
+  cnt_repr.ml cnt_repr.mli
   operation_repr.ml operation_repr.mli
   manager_repr.ml manager_repr.mli
   commitment_repr.ml commitment_repr.mli
@@ -758,6 +763,7 @@
   ticket_hash_builder.ml ticket_hash_builder.mli
   constants_storage.ml constants_storage.mli
   level_storage.ml level_storage.mli
+  cnt_storage.ml cnt_storage.mli
   nonce_storage.ml nonce_storage.mli
   seed_storage.ml seed_storage.mli
   contract_manager_storage.ml contract_manager_storage.mli
@@ -1011,6 +1017,7 @@
   destination_repr.ml destination_repr.mli
   script_int.ml script_int.mli
   ticket_amount.ml ticket_amount.mli
+  cnt_repr.ml cnt_repr.mli
   operation_repr.ml operation_repr.mli
   manager_repr.ml manager_repr.mli
   commitment_repr.ml commitment_repr.mli
@@ -1040,6 +1047,7 @@
   ticket_hash_builder.ml ticket_hash_builder.mli
   constants_storage.ml constants_storage.mli
   level_storage.ml level_storage.mli
+  cnt_storage.ml cnt_storage.mli
   nonce_storage.ml nonce_storage.mli
   seed_storage.ml seed_storage.mli
   contract_manager_storage.ml contract_manager_storage.mli

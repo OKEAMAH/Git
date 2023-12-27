@@ -227,6 +227,8 @@
     "interpreter/N_ICheck_signature_secp256k1_alloc_const": 0,
     "interpreter/N_ICheck_signature_secp256k1_coeff": 1.125,
     "interpreter/N_ICheck_signature_secp256k1_const": 51600,
+    "interpreter/N_ICnt_alloc_const": 12,
+    "interpreter/N_ICnt_const": 10,
     "interpreter/N_IComb_alloc_coeff": 11.98235521489165,
     "interpreter/N_IComb_alloc_const": 5.609495538132251,
     "interpreter/N_IComb_coeff": 3.25,

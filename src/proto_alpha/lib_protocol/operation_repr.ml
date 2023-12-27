@@ -84,6 +84,8 @@ module Kind = struct
 
   type register_global_constant = Register_global_constant_kind
 
+  type push_cnt = Push_cnt_kind
+
   type transfer_ticket = Transfer_ticket_kind
 
   type dal_publish_slot_header = Dal_publish_slot_header_kind
@@ -118,6 +120,7 @@ module Kind = struct
     | Delegation_manager_kind : delegation manager
     | Event_manager_kind : event manager
     | Register_global_constant_manager_kind : register_global_constant manager
+    | Push_cnt_manager_kind : push_cnt manager
     | Set_deposits_limit_manager_kind : set_deposits_limit manager
     | Increase_paid_storage_manager_kind : increase_paid_storage manager
     | Update_consensus_key_manager_kind : update_consensus_key manager
@@ -323,6 +326,7 @@ and _ manager_operation =
       value : Script_repr.lazy_expr;
     }
       -> Kind.register_global_constant manager_operation
+  | Push_cnt : Kind.push_cnt manager_operation
   | Set_deposits_limit :
       Tez_repr.t option
       -> Kind.set_deposits_limit manager_operation
@@ -413,6 +417,7 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Origination _ -> Kind.Origination_manager_kind
   | Delegation _ -> Kind.Delegation_manager_kind
   | Register_global_constant _ -> Kind.Register_global_constant_manager_kind
+  | Push_cnt -> Kind.Push_cnt_manager_kind
   | Set_deposits_limit _ -> Kind.Set_deposits_limit_manager_kind
   | Increase_paid_storage _ -> Kind.Increase_paid_storage_manager_kind
   | Update_consensus_key _ -> Kind.Update_consensus_key_manager_kind
@@ -552,6 +557,10 @@ let zk_rollup_operation_publish_tag = zk_rollup_operation_tag_offset + 1
 
 let zk_rollup_operation_update_tag = zk_rollup_operation_tag_offset + 2
 
+let cnt_offset = 235
+
+let push_cnt_tag = cnt_offset + 0
+
 module Encoding = struct
   open Data_encoding
 
@@ -680,6 +689,17 @@ module Encoding = struct
             | Manager (Register_global_constant _ as op) -> Some op | _ -> None);
           proj = (function Register_global_constant {value} -> value);
           inj = (fun value -> Register_global_constant {value});
+        }
+
+    let push_cnt_case =
+      MCase
+        {
+          tag = push_cnt_tag;
+          name = "push_cnt";
+          encoding = Data_encoding.empty;
+          select = (function Manager (Push_cnt as op) -> Some op | _ -> None);
+          proj = (function Push_cnt -> ());
+          inj = (fun () -> Push_cnt);
         }
 
     let set_deposits_limit_case =
@@ -1464,6 +1484,9 @@ module Encoding = struct
   let register_global_constant_case =
     make_manager_case 111 Manager_operations.register_global_constant_case
 
+  let push_cnt_case =
+    make_manager_case push_cnt_tag Manager_operations.push_cnt_case
+
   let set_deposits_limit_case =
     make_manager_case 112 Manager_operations.set_deposits_limit_case
 
@@ -1559,6 +1582,7 @@ module Encoding = struct
       PCase drain_delegate_case;
       PCase failing_noop_case;
       PCase register_global_constant_case;
+      PCase push_cnt_case;
       PCase transfer_ticket_case;
       PCase dal_publish_slot_header_case;
       PCase sc_rollup_originate_case;
@@ -2008,6 +2032,8 @@ let equal_manager_operation_kind :
   | Delegation _, _ -> None
   | Register_global_constant _, Register_global_constant _ -> Some Eq
   | Register_global_constant _, _ -> None
+  | Push_cnt, Push_cnt -> Some Eq
+  | Push_cnt, _ -> None
   | Set_deposits_limit _, Set_deposits_limit _ -> Some Eq
   | Set_deposits_limit _, _ -> None
   | Increase_paid_storage _, Increase_paid_storage _ -> Some Eq

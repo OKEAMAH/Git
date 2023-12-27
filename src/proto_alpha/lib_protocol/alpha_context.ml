@@ -271,6 +271,15 @@ module Round = struct
   let get ctxt = Storage.Block_round.get ctxt
 end
 
+module Cnt = struct
+  include Cnt_repr
+  include Cnt_storage
+
+  let get ctxt = Storage.Cnt.get ctxt
+
+  let update ctxt cnt = Storage.Cnt.update ctxt cnt
+end
+
 module Gas = struct
   include Gas_limit_repr
 

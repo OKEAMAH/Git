@@ -135,6 +135,7 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
         let* ctxt = Forbidden_delegates_storage.init_for_genesis ctxt in
         let*! ctxt = Storage.Contract.Total_supply.add ctxt Tez_repr.zero in
         let* ctxt = Storage.Block_round.init ctxt Round_repr.zero in
+        let* ctxt = Storage.Cnt.init ctxt 0l in
         let init_commitment (ctxt, balance_updates)
             Commitment_repr.{blinded_public_key_hash; amount} =
           let* ctxt, new_balance_updates =
