@@ -4,7 +4,10 @@
 
 use std::convert::Infallible;
 
-use evm_execution::account_storage::EthereumAccountStorage;
+use evm_execution::account_storage::{
+    account_path, EthereumAccount, EthereumAccountStorage,
+};
+use primitive_types::H160;
 use revm::primitives::db::Database;
 use revm_primitives::{AccountInfo, Address, Bytecode, B256, U256};
 use tezos_smart_rollup_host::runtime::Runtime;
@@ -12,6 +15,20 @@ use tezos_smart_rollup_host::runtime::Runtime;
 pub struct EtherlinkDB<'a, Host: Runtime> {
     pub host: &'a mut Host,
     pub evm_account_storage: &'a mut EthereumAccountStorage,
+}
+
+fn get_account_opt<Host: Runtime>(
+    db: &mut EtherlinkDB<'_, Host>,
+    address: Address,
+) -> Option<EthereumAccount> {
+    let raw_address: [u8; 20] = <[u8; 20]>::from(address.0);
+    let address = H160::from(raw_address);
+
+    if let Ok(path) = account_path(&address) {
+        db.evm_account_storage.get_or_create(db.host, &path).ok()
+    } else {
+        None
+    }
 }
 
 impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
