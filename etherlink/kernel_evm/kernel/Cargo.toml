@@ -47,14 +47,13 @@ tezos-smart-rollup-storage.workspace = true
 
 tezos_data_encoding.workspace = true
 
-proptest = { workspace = true, optional = true }
-
 [dev-dependencies]
 tezos-smart-rollup-mock.workspace = true
 tezos-smart-rollup-panic-hook.workspace = true
+proptest.workspace = true
+getrandom = { version = "0.2", features = ["js"] }
 
 [features]
 default = ["panic-hook"]
 panic-hook = []
 debug = ["tezos-evm-logging/debug"]
-testing = ["proptest"]
