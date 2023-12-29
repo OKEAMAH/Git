@@ -9,7 +9,9 @@ use evm_execution::account_storage::{
 };
 use primitive_types::H160;
 use revm::primitives::db::Database;
-use revm_primitives::{AccountInfo, Address, Bytecode, B256, U256};
+use revm_primitives::{
+    ruint::Uint, AccountInfo, Address, Bytecode, Bytes, FixedBytes, B256, U256,
+};
 use tezos_smart_rollup_host::runtime::Runtime;
 
 pub struct EtherlinkDB<'a, Host: Runtime> {
@@ -36,7 +38,28 @@ impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
 
     /// Get basic account information.
     fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
-        Ok(None)
+        let account_opt = get_account_opt(self, address);
+
+        match account_opt {
+            Some(account) => {
+                let limbs = account.balance(self.host).unwrap().0;
+                let balance: Uint<256, 4> = <Uint<256, 4>>::from_limbs(limbs);
+                let nonce: u64 = account.nonce(self.host).unwrap().as_u64(); // can overflow
+                let code_hash_bytes = account.code_hash(self.host).unwrap().0;
+                let code_hash: FixedBytes<32> = <FixedBytes<32>>::from(code_hash_bytes);
+                let code = account.code(self.host).unwrap();
+                let code_bytes = Bytes::from(code);
+                let code: Option<Bytecode> = Some(Bytecode::new_raw(code_bytes));
+                let account_info = AccountInfo {
+                    balance,
+                    nonce,
+                    code_hash,
+                    code,
+                };
+                Ok(Some(account_info))
+            }
+            None => Ok(None),
+        }
     }
 
     /// Get account code by its hash.
