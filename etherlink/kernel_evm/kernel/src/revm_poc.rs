@@ -79,7 +79,20 @@ impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
 
     /// Get storage value of address at index.
     fn storage(&mut self, address: Address, index: RU256) -> Result<RU256, Self::Error> {
-        Ok(RU256::ZERO)
+        let account_opt = get_account_opt(self, address);
+
+        match account_opt {
+            Some(account) => {
+                let index = ru256_to_u256(index);
+                let raw_storage = account
+                    .get_storage(self.host, &u256_to_h256(index))
+                    .unwrap();
+                let storage_limbs = U256::from(raw_storage.as_bytes()).0;
+                let storage = <Uint<256, 4>>::from_limbs(storage_limbs);
+                Ok(storage)
+            }
+            None => Ok(RU256::ZERO),
+        }
     }
 
     /// Get block hash by block number.
