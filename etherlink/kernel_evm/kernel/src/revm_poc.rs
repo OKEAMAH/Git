@@ -4,19 +4,22 @@
 
 use std::convert::Infallible;
 
-use evm_execution::account_storage::{
-    account_path, EthereumAccount, EthereumAccountStorage,
+use evm_execution::{
+    account_storage::{account_path, EthereumAccount, EthereumAccountStorage},
+    storage::blocks::get_block_hash,
 };
 use primitive_types::{H160, H256, U256};
 use revm::primitives::db::Database;
 use revm_primitives::{
     ruint::Uint, AccountInfo, Address, Bytecode, Bytes, FixedBytes, B256, U256 as RU256,
 };
+use tezos_ethereum::block::BlockConstants;
 use tezos_smart_rollup_host::runtime::Runtime;
 
 pub struct EtherlinkDB<'a, Host: Runtime> {
     pub host: &'a mut Host,
     pub evm_account_storage: &'a mut EthereumAccountStorage,
+    pub block: BlockConstants,
 }
 
 fn get_account_opt<Host: Runtime>(
@@ -97,6 +100,21 @@ impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
 
     /// Get block hash by block number.
     fn block_hash(&mut self, number: RU256) -> Result<B256, Self::Error> {
-        Ok(B256::ZERO)
+        // return 0 when block number not in valid range
+        // Ref. https://www.evm.codes/#40?fork=shanghai (opcode 0x40)
+
+        let number = ru256_to_u256(number);
+
+        match self.block.number.checked_sub(number) {
+            Some(block_diff)
+                if block_diff <= U256::from(256) && block_diff != U256::zero() =>
+            {
+                let block_hash = get_block_hash(self.host, number)
+                    .unwrap_or_else(|_| H256::zero())
+                    .0;
+                Ok(B256::from(block_hash))
+            }
+            _ => Ok(B256::ZERO),
+        }
     }
 }
