@@ -8,7 +8,7 @@ use crate::block_in_progress::BlockInProgress;
 use crate::inbox::KernelUpgrade;
 use crate::indexable_storage::IndexableStorage;
 use anyhow::Context;
-use evm_execution::account_storage::EthereumAccount;
+use evm_execution::account_storage::{EthereumAccount, CODE_HASH_PATH, CODE_PATH};
 use tezos_crypto_rs::hash::{ContractKt1Hash, HashTrait};
 use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_core::MAX_FILE_CHUNK_SIZE;
@@ -834,6 +834,17 @@ pub fn delete_kernel_upgrade<Host: Runtime>(host: &mut Host) -> anyhow::Result<(
 
 pub fn is_sequencer<Host: Runtime>(host: &Host) -> Result<bool, Error> {
     Ok(host.store_has(&SEQUENCER)?.is_some())
+}
+
+pub fn get_code_by_hash<Host: Runtime>(
+    host: &Host,
+    code_hash: H256,
+) -> Result<Vec<u8>, Error> {
+    let code_hash_path = OwnedPath::try_from("/".to_string() + &code_hash.to_string())?;
+    let full_code_hash_path = concat(&CODE_HASH_PATH, &code_hash_path)?;
+    let code_path = concat(&full_code_hash_path, &CODE_PATH)?;
+
+    host.store_read_all(&code_path).map_err(Error::from)
 }
 
 #[cfg(test)]

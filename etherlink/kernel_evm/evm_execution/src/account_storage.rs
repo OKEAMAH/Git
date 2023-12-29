@@ -6,6 +6,7 @@
 //! Ethereum account state and storage
 
 use const_decoder::Decoder;
+use hex::ToHex;
 use host::path::{concat, OwnedPath, Path, RefPath};
 use host::runtime::{Runtime, RuntimeError, ValueType};
 use primitive_types::{H160, H256, U256};
@@ -116,13 +117,13 @@ const BALANCE_PATH: RefPath = RefPath::assert_from(b"/balance");
 /// This value is computed when the code is stored and kept for future queries. This
 /// path should be prefixed with the path to
 /// where the account is stored for the world state or for the current transaction.
-const CODE_HASH_PATH: RefPath = RefPath::assert_from(b"/code.hash");
+pub const CODE_HASH_PATH: RefPath = RefPath::assert_from(b"/code.hash");
 
 /// "Internal" accounts - accounts with contract code, have their code stored here.
 /// This
 /// path should be prefixed with the path to
 /// where the account is stored for the world state or for the current transaction.
-const CODE_PATH: RefPath = RefPath::assert_from(b"/code");
+pub const CODE_PATH: RefPath = RefPath::assert_from(b"/code");
 
 /// The contracts of "internal" accounts have their own storage area. The account
 /// location prefixed to this path gives the root path (prefix) to where such storage
@@ -378,13 +379,33 @@ impl EthereumAccount {
     /// contract code associated with it - this is the same for "external" and un-used
     /// accounts.
     pub fn code(&self, host: &impl Runtime) -> Result<Vec<u8>, AccountStorageError> {
-        let path = concat(&self.path, &CODE_PATH)?;
+        // get -> account / code_hash / <code_hash_value>
+        // get -> <code_hash_value> / code / <value>
+        // This is done in order to retrieve code by code_hash for REVM Database spec.
+        let path = concat(&self.path, &CODE_HASH_PATH)?;
 
-        match host.store_read_all(&path) {
+        let code_hash = match host.store_read_all(&path) {
             Ok(bytes) => Ok(bytes),
             Err(RuntimeError::PathNotFound) => Ok(vec![]),
             Err(err) => Err(AccountStorageError::from(err)),
+        }?;
+
+        if code_hash.is_empty() {
+            // Otherwise with would read empty steps from durable storage
+            // which would return an error.
+            // If the code_hash is empty then the code associated is empty.
+            return Ok(vec![]);
         }
+
+        let code_hash_str = code_hash.encode_hex::<String>();
+
+        let code_hash_path = OwnedPath::try_from("/".to_string() + &code_hash_str)?;
+
+        let full_code_hash_path = concat(&CODE_HASH_PATH, &code_hash_path)?;
+        let code_path = concat(&full_code_hash_path, &CODE_PATH)?;
+
+        host.store_read_all(&code_path)
+            .map_err(AccountStorageError::from)
     }
 
     /// Get the hash of the code associated with an account. This value is computed and
@@ -417,18 +438,22 @@ impl EthereumAccount {
     ) -> Result<(), AccountStorageError> {
         let code_hash: H256 = bytes_hash(code);
         let code_hash_bytes: [u8; WORD_SIZE] = code_hash.into();
-        let code_hash_path = concat(&self.path, &CODE_HASH_PATH)?;
+        let code_hash_str = format!("{:#x}", code_hash);
+        let code_hash_path = OwnedPath::try_from("/".to_string() + &code_hash_str[2..])?;
+        let full_code_hash_path = concat(&CODE_HASH_PATH, &code_hash_path)?;
+        let code_path = concat(&full_code_hash_path, &CODE_PATH)?;
 
-        host.store_write(&code_hash_path, &code_hash_bytes, 0)?;
+        host.store_write_all(&code_path, code)?;
 
-        let code_path = concat(&self.path, &CODE_PATH)?;
+        let acc_code_hash_path = concat(&self.path, &CODE_HASH_PATH)?;
 
-        let store_has_program = host.store_has(&code_path)?;
+        let store_has_program = host.store_has(&acc_code_hash_path)?;
 
         if store_has_program.is_some() {
-            host.store_delete(&code_path)?;
+            host.store_delete(&acc_code_hash_path)?;
         }
-        host.store_write_all(&code_path, code)
+
+        host.store_write_all(&acc_code_hash_path, &code_hash_bytes)
             .map_err(AccountStorageError::from)
     }
 

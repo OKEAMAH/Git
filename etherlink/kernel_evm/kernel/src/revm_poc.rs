@@ -16,6 +16,8 @@ use revm_primitives::{
 use tezos_ethereum::block::BlockConstants;
 use tezos_smart_rollup_host::runtime::Runtime;
 
+use crate::storage::get_code_by_hash;
+
 pub struct EtherlinkDB<'a, Host: Runtime> {
     pub host: &'a mut Host,
     pub evm_account_storage: &'a mut EthereumAccountStorage,
@@ -77,7 +79,9 @@ impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
 
     /// Get account code by its hash.
     fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error> {
-        Ok(Bytecode::new())
+        let code_hash = H256(code_hash.0);
+        let code = get_code_by_hash(self.host, code_hash).unwrap();
+        Ok(Bytecode::new_raw(Bytes::from(code)))
     }
 
     /// Get storage value of address at index.
