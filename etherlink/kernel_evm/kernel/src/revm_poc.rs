@@ -7,10 +7,10 @@ use std::convert::Infallible;
 use evm_execution::account_storage::{
     account_path, EthereumAccount, EthereumAccountStorage,
 };
-use primitive_types::H160;
+use primitive_types::{H160, H256, U256};
 use revm::primitives::db::Database;
 use revm_primitives::{
-    ruint::Uint, AccountInfo, Address, Bytecode, Bytes, FixedBytes, B256, U256,
+    ruint::Uint, AccountInfo, Address, Bytecode, Bytes, FixedBytes, B256, U256 as RU256,
 };
 use tezos_smart_rollup_host::runtime::Runtime;
 
@@ -31,6 +31,12 @@ fn get_account_opt<Host: Runtime>(
     } else {
         None
     }
+}
+
+fn u256_to_h256(value: U256) -> H256 {
+    let mut ret = H256::zero();
+    value.to_big_endian(ret.as_bytes_mut());
+    ret
 }
 
 impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
@@ -68,12 +74,12 @@ impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
     }
 
     /// Get storage value of address at index.
-    fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
-        Ok(U256::ZERO)
+    fn storage(&mut self, address: Address, index: RU256) -> Result<RU256, Self::Error> {
+        Ok(RU256::ZERO)
     }
 
     /// Get block hash by block number.
-    fn block_hash(&mut self, number: U256) -> Result<B256, Self::Error> {
+    fn block_hash(&mut self, number: RU256) -> Result<B256, Self::Error> {
         Ok(B256::ZERO)
     }
 }
