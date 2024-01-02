@@ -3,6 +3,9 @@ include:
   - .gitlab/ci/jobs/sanity/sanity_ci.yml
   - .gitlab/ci/jobs/sanity/docker_hadolint.yml
 
+  # Stage: image
+  - .gitlab/ci/jobs/build/build_rust_toolchain.yml
+
   # Stage: package
   - .gitlab/ci/jobs/packaging/opam_prepare.yml
   - .gitlab/ci/jobs/packaging/opam_package.yml
