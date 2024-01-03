@@ -13,12 +13,12 @@ if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then
     # This script is running in a MR before_merging pipeline.
     # Attempt to fetch cache from the predecessor of the base of this MR.
     git fetch origin "${CI_MERGE_REQUEST_DIFF_BASE_SHA}"
-    merge_parent=$(git show -s --pretty=format:%H "${CI_MERGE_REQUEST_DIFF_BASE_SHA}^2")
+    merge_parent=$(git show -s --pretty=format:%H "${CI_MERGE_REQUEST_DIFF_BASE_SHA}^2" || echo "not_found")
 else
     # This script is running in a master_branch pipelines.
     # Attempt to fetch cache from the predecessor of this commit.
     git fetch origin "${CI_COMMIT_BRANCH}" --depth 2
-    merge_parent=$(git show -s --pretty=format:%H HEAD^2)
+    merge_parent=$(git show -s --pretty=format:%H HEAD^2 || echo "not_found")
 fi
 
 # Build image
