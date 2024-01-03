@@ -166,9 +166,17 @@ let make_kernel_logger event ?log_kernel_debug_file logs_dir =
     Lwt_io.of_fd ~close:(fun () -> Lwt_unix.close fd) ~mode:Lwt_io.Output fd
   in
   let kernel_debug msg =
-    let* () = Lwt_io.write chan msg in
-    let* () = Lwt_io.flush chan in
-    let* () = event msg in
+    Lwt.async (fun () ->
+        let* () =
+          Lwt_io.(
+            atomic
+              (fun chan ->
+                let* () = write chan msg in
+                Lwt_io.flush chan)
+              chan)
+        in
+        let* () = event msg in
+        return_unit) ;
     return_unit
   in
   return (kernel_debug, fun () -> Lwt_io.close chan)
