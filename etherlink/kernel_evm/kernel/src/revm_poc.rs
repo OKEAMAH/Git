@@ -5,13 +5,18 @@
 use std::convert::Infallible;
 
 use evm_execution::{
-    account_storage::{account_path, EthereumAccount, EthereumAccountStorage},
+    account_storage::{
+        account_path, AccountState, AccountStorageError, EthereumAccount,
+        EthereumAccountStorage,
+    },
     storage::blocks::get_block_hash,
 };
+use hashbrown::HashMap;
 use primitive_types::{H160, H256, U256};
-use revm::primitives::db::Database;
+use revm::{primitives::db::Database, DatabaseCommit};
 use revm_primitives::{
-    ruint::Uint, AccountInfo, Address, Bytecode, Bytes, FixedBytes, B256, U256 as RU256,
+    ruint::Uint, Account, AccountInfo, Address, Bytecode, Bytes, FixedBytes, B256,
+    U256 as RU256,
 };
 use tezos_ethereum::block::BlockConstants;
 use tezos_smart_rollup_host::runtime::Runtime;
@@ -137,6 +142,75 @@ impl<'a, Host: Runtime> Database for EtherlinkDB<'a, Host> {
                 Ok(B256::from(block_hash))
             }
             _ => Ok(B256::ZERO),
+        }
+    }
+}
+
+fn reset_eth_account<Host: Runtime>(
+    host: &mut Host,
+    account: &mut EthereumAccount,
+) -> Result<(), AccountStorageError> {
+    account.set_nonce(host, U256::zero())?;
+    account.set_balance(host, U256::zero())?;
+    account.delete_code(host)?;
+    account.delete_storage(host)
+}
+
+fn set_eth_account_infos<Host: Runtime>(
+    host: &mut Host,
+    account: &mut EthereumAccount,
+    account_info: &AccountInfo,
+) -> Result<(), AccountStorageError> {
+    account.set_nonce(host, U256::from(account_info.nonce))?;
+    account.set_balance(host, U256(*account_info.balance.as_limbs()))?;
+    if let Some(code) = &account_info.code {
+        account.set_code(host, code.bytes())?;
+    }
+    Ok(())
+}
+
+impl<'a, Host: Runtime> DatabaseCommit for EtherlinkDB<'a, Host> {
+    fn commit(&mut self, changes: HashMap<Address, Account>) {
+        for (address, account) in changes {
+            if !account.is_touched() {
+                // This account was not affected by any EVM changes
+                // we can continue with the next account.
+                continue;
+            }
+
+            if account.is_selfdestructed() {
+                let mut eth_account = some_or_skip!(get_account_opt(self, address));
+                eth_account.set_account_state(AccountState::NotExisting);
+                ok_or_skip!(reset_eth_account(self.host, &mut eth_account));
+                continue;
+            }
+
+            let mut eth_account = some_or_skip!(get_account_opt(self, address));
+
+            ok_or_skip!(set_eth_account_infos(
+                self.host,
+                &mut eth_account,
+                &account.info
+            ));
+
+            let account_state = if account.is_created() {
+                ok_or_skip!(eth_account.delete_storage(self.host));
+                AccountState::StorageCleared
+            } else if eth_account.get_account_state() == AccountState::StorageCleared {
+                // Preserve old account state if it already exists
+                AccountState::StorageCleared
+            } else {
+                AccountState::Touched
+            };
+
+            eth_account.set_account_state(account_state);
+
+            for (key, value) in account.storage.into_iter() {
+                let index = u256_to_h256(ru256_to_u256(key));
+                let value = u256_to_h256(ru256_to_u256(value.present_value()));
+
+                ok_or_skip!(eth_account.set_storage_checked(self.host, &index, &value));
+            }
         }
     }
 }
