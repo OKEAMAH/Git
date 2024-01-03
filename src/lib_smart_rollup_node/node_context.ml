@@ -150,7 +150,7 @@ let processing_lockfile_path ~data_dir =
 
 let gc_lockfile_path ~data_dir = Filename.concat data_dir "gc_lock"
 
-let make_kernel_logger event ?log_kernel_debug_file logs_dir =
+let make_kernel_logger _event ?log_kernel_debug_file logs_dir =
   let open Lwt_syntax in
   let path =
     match log_kernel_debug_file with
@@ -175,7 +175,6 @@ let make_kernel_logger event ?log_kernel_debug_file logs_dir =
                 Lwt_io.flush chan)
               chan)
         in
-        let* () = event msg in
         return_unit) ;
     return_unit
   in
