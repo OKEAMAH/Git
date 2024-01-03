@@ -2462,8 +2462,7 @@ let first_published_level_is_global _protocol sc_rollup_node sc_rollup node
   in
   unit
 
-(* TODO: https://gitlab.com/tezos/tezos/-/issues/4373 *)
-let _test_reinject_failed_commitment ~protocol:_ ~kind =
+let test_reinject_failed_commitment ~kind =
   let commitment_period = 3 in
   test_full_scenario
     ~kind
@@ -5767,9 +5766,7 @@ let register ~kind ~protocols =
   bailout_mode_recover_bond_starting_no_commitment_staked ~kind protocols ;
   custom_mode_empty_operation_kinds ~kind protocols ;
 
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/4373
-     Uncomment this test as soon as the issue done.
-     test_reinject_failed_commitment protocols ~kind ; *)
+  test_reinject_failed_commitment protocols ~kind ;
   test_late_rollup_node protocols ~kind ;
   test_late_rollup_node_2 protocols ~kind ;
   test_interrupt_rollup_node protocols ~kind ;
