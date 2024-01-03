@@ -44,7 +44,19 @@ macro_rules! some_or_skip {
 pub struct EtherlinkDB<'a, Host: Runtime> {
     pub host: &'a mut Host,
     pub evm_account_storage: &'a mut EthereumAccountStorage,
-    pub block: BlockConstants,
+    pub block: &'a BlockConstants,
+}
+
+pub fn evm_db<'a, Host: Runtime>(
+    host: &'a mut Host,
+    evm_account_storage: &'a mut EthereumAccountStorage,
+    block: &'a BlockConstants,
+) -> EtherlinkDB<'a, Host> {
+    EtherlinkDB {
+        host,
+        evm_account_storage,
+        block,
+    }
 }
 
 fn get_account_opt<Host: Runtime>(
