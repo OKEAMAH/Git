@@ -155,7 +155,18 @@ module Lpc = Indexed_store.Make_singleton (struct
   let name = "lpc"
 end)
 
-(** Versioned slot headers *)
+(** Versioned slot headers:
+
+DAL structure in SORU:
+
+Nested association table:
+
+Block_hash.t |-> { Slot_index.t |-> Dal.Slot_header.t }
+
+Where Dal.Slot_header.t is {id : id; commitment : Commitment.t}
+and  id is {published_level : int32; index : Slot_index.t}
+
+*)
 module Dal_slots_headers =
   Irmin_store.Make_nested_map
     (struct
@@ -187,7 +198,15 @@ module Dal_slots_headers =
           Octez_smart_rollup.Dal.Slot_header.versioned_encoding
     end)
 
-(** Versioned Confirmed DAL slots history *)
+(** Versioned Confirmed DAL slots history:
+
+DAL structure in SORU:
+
+Append only association table:
+
+Block_hash.t |-> The DAL skip list of attested slots since activation
+
+*)
 module Dal_confirmed_slots_history =
   Irmin_store.Make_append_only_map
     (struct
@@ -210,7 +229,16 @@ module Dal_confirmed_slots_history =
           Octez_smart_rollup.Dal.Slot_history.versioned_encoding
     end)
 
-(** Versioned Confirmed DAL slots histories cache. *)
+(** Versioned Confirmed DAL slots histories cache.
+
+DAL structure in SORU:
+
+Append only association table:
+
+Block_hash.t |-> The cache of the DAL skip list associating to each pointer the
+cell's content.
+
+*)
 module Dal_confirmed_slots_histories =
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/4390
      Store single history points in map instead of whole history. *)

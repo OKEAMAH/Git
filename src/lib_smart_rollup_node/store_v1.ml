@@ -70,15 +70,31 @@ module Messages =
       end
     end)
 
+(*
+DAL structure in SORU:
+ -> Moved to DAL node
+*)
 module Dal_pages = struct
   type removed_in_v1
 end
 
+(*
+DAL structure in SORU:
+ -> Moved to DAL node
+*)
 module Dal_processed_slots = struct
   type removed_in_v1
 end
 
-(** Store attestation statuses for DAL slots on L1. *)
+(** Store attestation statuses for DAL slots on L1.
+
+DAL structure in SORU:
+
+Nested association table:
+
+Block_hash.t |-> { Slot_index.t |-> [`Confirmed | `Unconfirmed] }
+
+*)
 module Dal_slots_statuses =
   Irmin_store.Make_nested_map
     (struct
