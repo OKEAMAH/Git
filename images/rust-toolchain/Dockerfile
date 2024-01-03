@@ -23,20 +23,9 @@ RUN apt-get update && \
     build-essential \
     git \
     autoconf automake autotools-dev libtool xutils-dev clang \
-    sccache && \
+    sccache \
+    pkg-config openssl libssl-dev && \
     rm -rf /var/lib/apt/lists/*
-
-ENV SSL_VERSION=1.0.2u
-
-# hadolint ignore=DL3003
-RUN curl https://www.openssl.org/source/openssl-$SSL_VERSION.tar.gz -O && \
-    tar -xzf openssl-$SSL_VERSION.tar.gz && \
-    cd openssl-$SSL_VERSION && ./config && make depend && make install && \
-    cd .. && rm -rf openssl-$SSL_VERSION*
-
-ENV OPENSSL_LIB_DIR=/usr/local/ssl/lib \
-    OPENSSL_INCLUDE_DIR=/usr/local/ssl/include \
-    OPENSSL_STATIC=1
 
 # install toolchain
 RUN curl https://sh.rustup.rs --silent --show-error --fail | \
