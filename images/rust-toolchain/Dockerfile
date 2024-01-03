@@ -23,8 +23,7 @@ RUN apt-get update && \
     build-essential \
     git \
     autoconf automake autotools-dev libtool xutils-dev clang \
-    sccache \
-    pkg-config openssl libssl-dev && \
+    sccache && \
     rm -rf /var/lib/apt/lists/*
 
 # install toolchain
