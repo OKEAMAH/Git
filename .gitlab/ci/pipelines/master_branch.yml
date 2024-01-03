@@ -1,5 +1,6 @@
 include:
   # Stage: build
+  - .gitlab/ci/jobs/build/build_rust_toolchain.yml
   - .gitlab/ci/jobs/build/static_x86_64_experimental.yml
   - .gitlab/ci/jobs/build/static_arm64_experimental.yml
   - .gitlab/ci/jobs/build/arm64.yml
