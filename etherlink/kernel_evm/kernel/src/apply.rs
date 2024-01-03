@@ -15,6 +15,12 @@ use evm_execution::handler::ExecutionOutcome;
 use evm_execution::precompiles::PrecompileBTreeMap;
 use evm_execution::run_transaction;
 use primitive_types::{H160, U256};
+use revm::EVM;
+use revm_primitives::ruint::Uint;
+use revm_primitives::{
+    Address, BlockEnv, Bytes, CfgEnv, CreateScheme, Env, FixedBytes, SpecId, TransactTo,
+    TxEnv,
+};
 use tezos_data_encoding::enc::BinWriter;
 use tezos_ethereum::block::BlockConstants;
 use tezos_ethereum::transaction::TransactionHash;
@@ -36,9 +42,10 @@ use tezos_smart_rollup_host::runtime::Runtime;
 use crate::error::Error;
 use crate::inbox::{Deposit, Transaction, TransactionContent};
 use crate::indexable_storage::IndexableStorage;
+use crate::revm_poc::{evm_db, EtherlinkDB};
 use crate::storage::{index_account, read_ticketer};
 use crate::tick_model::constants::MAX_TRANSACTION_GAS_LIMIT;
-use crate::{tick_model, CONFIG};
+use crate::{tick_model, CHAIN_ID, CONFIG};
 
 // This implementation of `Transaction` is used to share the logic of
 // transaction receipt and transaction object making. The functions
@@ -285,6 +292,23 @@ pub struct TransactionResult {
     estimated_ticks_used: u64,
 }
 
+fn cfgenv() -> CfgEnv {
+    let mut cfg = CfgEnv::default();
+    // By property of #[non_exhaustive] we can't create a custom structure
+    // outside the crate where the structure was defined.
+    // We need this hackish way of doing to have a custom config environment.
+    cfg.chain_id = u64::from(CHAIN_ID);
+    cfg.spec_id = SpecId::SHANGHAI;
+    // By default:
+    // disable_balance_check: false,
+    // disable_block_gas_limit: false,
+    // disable_eip3607: false,
+    // disable_gas_refund: false,
+    // disable_base_fee: false,
+    // optimism: false,
+    cfg
+}
+
 fn apply_ethereum_transaction_common<Host: Runtime>(
     host: &mut Host,
     block_constants: &BlockConstants,
@@ -330,6 +354,77 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
             return Err(Error::InvalidRunTransaction(err));
         }
     };
+
+    let tx_chain_id = match transaction.chain_id {
+        Some(chain_id) => match u64::try_from(chain_id) {
+            Ok(chain_id) => Ok(Some(chain_id)),
+            Err(_) => Err(Error::InvalidConversion),
+        },
+        None => Ok(None),
+    }?;
+
+    let tx_nonce = match u64::try_from(transaction.nonce) {
+        Ok(nonce) => Ok(nonce),
+        Err(_) => Err(Error::InvalidConversion),
+    }?;
+
+    let transact_to = if let Some(to) = to {
+        TransactTo::Call(Address(FixedBytes(to.0)))
+    } else {
+        // TODO: Investigation needed.
+        // By default not using CREATE2 w/ salt, but we probably
+        // should have some sort of distinction.
+        TransactTo::Create(CreateScheme::Create)
+    };
+
+    let tx = TxEnv {
+        caller: Address(FixedBytes(caller.0)),
+        gas_limit: transaction.gas_limit,
+        gas_price: <Uint<256, 4>>::from_limbs(block_constants.gas_price.0),
+        transact_to,
+        value: <Uint<256, 4>>::from_limbs(transaction.value.0),
+        data: Bytes::from(transaction.data.clone()),
+        nonce: Some(tx_nonce),
+        chain_id: tx_chain_id,
+        // Unused for now.
+        access_list: vec![],
+        // Fee model not implemented yet.
+        gas_priority_fee: None,
+        // Incorporated as part of the Cancun upgrade via EIP-4844.
+        // Ignored for now.
+        blob_hashes: vec![],
+        // Incorporated as part of the Cancun upgrade via EIP-4844.
+        // Ignored for now.
+        max_fee_per_blob_gas: None,
+    };
+
+    let cfg = cfgenv();
+
+    let block = BlockEnv {
+        number: <Uint<256, 4>>::from_limbs(block_constants.number.0),
+        coinbase: Address::default(),
+        timestamp: <Uint<256, 4>>::from_limbs(block_constants.timestamp.0),
+        gas_limit: <Uint<256, 4>>::from(block_constants.gas_limit),
+        basefee: <Uint<256, 4>>::from_limbs(block_constants.base_fee_per_gas.0),
+        difficulty: <Uint<256, 4>>::ZERO,
+        prevrandao: None,
+        // Incorporated as part of the Cancun upgrade via EIP-4844.
+        // Set to None for now.
+        blob_excess_gas_and_price: None,
+    };
+
+    let env = Env { cfg, block, tx };
+
+    let mut evm: EVM<EtherlinkDB<Host>> = EVM::with_env(env);
+    evm.database(evm_db(host, evm_account_storage, block_constants));
+
+    match evm.transact_commit() {
+        Ok(_outcome) => {
+            // success, halt, revert
+            // return outcome for interpretation
+        }
+        Err(e) => log!(host, Error, "{e}"),
+    }
 
     let (gas_used, estimated_ticks_used) = match &execution_outcome {
         Some(execution_outcome) => {
