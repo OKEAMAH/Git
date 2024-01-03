@@ -1,0 +1,48 @@
+commit a14484832da5cc28db862876245e580d2e877d34
+Author: Thomas Letan <lthms@nomadic-labs.com>
+Date:   Wed Jan 3 09:15:14 2024 +0100
+
+    1MTPS: More efficient logs for the rollup node
+    
+    This patch should not be merged in tezos/tezos upstream. It is a ad-hoc
+    specialization of the rollup node to get more efficient logging.
+    
+      1. Do not emit events when the kernel calls `kernel_run`
+      2. Prints logs asynchronously (but atomically)
+    
+    Point 2. means logs can potentially be printed in a different order,
+    but it's okay because the pixel updates are sent atomically.
+
+diff --git a/src/lib_smart_rollup_node/node_context.ml b/src/lib_smart_rollup_node/node_context.ml
+index 5006d5b6358..395364aeb4f 100644
+--- a/src/lib_smart_rollup_node/node_context.ml
++++ b/src/lib_smart_rollup_node/node_context.ml
+@@ -150,7 +150,7 @@ let processing_lockfile_path ~data_dir =
+ 
+ let gc_lockfile_path ~data_dir = Filename.concat data_dir "gc_lock"
+ 
+-let make_kernel_logger event ?log_kernel_debug_file logs_dir =
++let make_kernel_logger _event ?log_kernel_debug_file logs_dir =
+   let open Lwt_syntax in
+   let path =
+     match log_kernel_debug_file with
+@@ -166,9 +166,16 @@ let make_kernel_logger event ?log_kernel_debug_file logs_dir =
+     Lwt_io.of_fd ~close:(fun () -> Lwt_unix.close fd) ~mode:Lwt_io.Output fd
+   in
+   let kernel_debug msg =
+-    let* () = Lwt_io.write chan msg in
+-    let* () = Lwt_io.flush chan in
+-    let* () = event msg in
++    Lwt.async (fun () ->
++        let* () =
++          Lwt_io.(
++            atomic
++              (fun chan ->
++                let* () = write chan msg in
++                Lwt_io.flush chan)
++              chan)
++        in
++        return_unit) ;
+     return_unit
+   in
+   return (kernel_debug, fun () -> Lwt_io.close chan)

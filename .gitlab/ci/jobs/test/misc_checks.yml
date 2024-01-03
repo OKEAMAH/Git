@@ -100,6 +100,26 @@ oc.check_lift_limits_patch:
     - git apply src/bin_tps_evaluation/lift_limits.patch
     - dune build @src/proto_alpha/lib_protocol/check
 
+oc.check_1mtps_demo_patch:
+  extends:
+    - .test_template
+  # These tests are not flaky at all so we overwrite the retry value
+  retry: 0
+  needs: [trigger]
+  rules:
+    - changes:
+        - scripts/1mtps-demo/specialize-rollup-node.patch
+        - src/lib_smart_rollup_node/node_context.ml
+        - .gitlab/**/*
+        - .gitlab-ci.yml
+      when: on_success
+  script:
+    # Check that the patch only modifies the expected file.
+    # If not, the rules above have to be updated.
+    - '[ $(git apply --numstat src/bin_tps_evaluation/lift_limits.patch | cut -f3) = "src/lib_smart_rollup_node/node_context.ml" ]'
+    - git apply scripts/1mtps-demo/specialize-rollup-node.patch
+    - dune build @src/lib_smart_rollup_node/check
+
 commit_titles:
   extends:
     - .default_settings_template
