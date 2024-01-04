@@ -2873,11 +2873,12 @@ module Dal : sig
       Bounded_history_repr.S with type key = hash and type value = t
 
     val add_confirmed_slot_headers_no_cache :
-      t -> Slot.Header.t list -> t tzresult
+      t -> Raw_level.t -> Slot.Header.t list -> t tzresult
 
     val add_confirmed_slot_headers :
       t ->
       History_cache.t ->
+      Raw_level.t ->
       Slot.Header.t list ->
       (t * History_cache.t) tzresult
 

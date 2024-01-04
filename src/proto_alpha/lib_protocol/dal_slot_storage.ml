@@ -52,14 +52,22 @@ let get_slot_headers_history ctxt =
   | None -> Dal_slot_repr.History.genesis
   | Some slots_history -> slots_history
 
-let update_skip_list ctxt ~confirmed_slot_headers =
+let update_skip_list ctxt ~confirmed_slot_headers ~level_attested =
   let open Lwt_result_syntax in
   let* slots_history = get_slot_headers_history ctxt in
   let*? slots_history =
     Dal_slot_repr.History.add_confirmed_slot_headers_no_cache
       slots_history
+      level_attested
       confirmed_slot_headers
   in
+  (* TODO: If we store the ptr here as well, we'll re-construct the skip list's
+     cache just by inspecting the context. Alternatively, we could expose the
+     function that computes the hash from the cell's content. But then, we
+     should link against the protocol.
+
+     Maybe we could just store both the skip list (last cell) and its pointer in
+     a single entry of the storage? *)
   let*! ctxt = Storage.Dal.Slot.History.add ctxt slots_history in
   return ctxt
 
@@ -69,17 +77,20 @@ let finalize_pending_slot_headers ctxt =
   let Constants_parametric_repr.{dal; _} = Raw_context.constants ctxt in
   match Raw_level_repr.(sub raw_level dal.attestation_lag) with
   | None -> return (ctxt, Dal_attestation_repr.empty)
-  | Some level_attested -> (
+  | Some level_attested ->
       let* seen_slots = Storage.Dal.Slot.Headers.find ctxt level_attested in
-      match seen_slots with
-      | None -> return (ctxt, Dal_attestation_repr.empty)
-      | Some seen_slots ->
-          let rev_attested_slot_headers, attestation =
-            compute_attested_slot_headers ctxt seen_slots
-          in
-          let attested_slot_headers = List.rev rev_attested_slot_headers in
-          let* ctxt =
-            update_skip_list ctxt ~confirmed_slot_headers:attested_slot_headers
-          in
-          let*! ctxt = Storage.Dal.Slot.Headers.remove ctxt level_attested in
-          return (ctxt, attestation))
+      let* ctxt, attestation, confirmed_slot_headers =
+        match seen_slots with
+        | None -> return (ctxt, Dal_attestation_repr.empty, [])
+        | Some seen_slots ->
+            let rev_attested_slot_headers, attestation =
+              compute_attested_slot_headers ctxt seen_slots
+            in
+            let attested_slot_headers = List.rev rev_attested_slot_headers in
+            let*! ctxt = Storage.Dal.Slot.Headers.remove ctxt level_attested in
+            return (ctxt, attestation, attested_slot_headers)
+      in
+      let* ctxt =
+        update_skip_list ctxt ~confirmed_slot_headers ~level_attested
+      in
+      return (ctxt, attestation)

@@ -219,7 +219,20 @@ module History : sig
   (** Encoding of the datatype. *)
   val encoding : t Data_encoding.t
 
-  (** First cell of this skip list. *)
+  (** The genesis skip list that contains one dummy cell. This cell has
+      {!Raw_level_repr.root} as published level and no attested slots. Since Dal
+      is not necessiraly activated in genesis block (e.g. this will be the case
+      on mainnet) the skip list is reset at the first call to
+      {!add_confirmed_slot_headers} to enfoce the invariant of having cells of
+      successive levels in the skip list.
+
+      So, a skip list is initialized with this genesis cell. It's then replaced
+      with a growing (non-dummy) skip list as soon as an
+      {!add_confirmed_slot_headers} with a level bigger than
+      {!Raw_level_repr.root} is performed. This allows us activating Dal at any
+      level and having a contiguous skip list (w.r.t. L1 levels). This
+      representation allows us producing simpler proofs with a bounded history
+      cache. *)
   val genesis : t
 
   (** Returns the hash of an history. *)
@@ -235,15 +248,32 @@ module History : sig
   module History_cache :
     Bounded_history_repr.S with type key = hash and type value = t
 
-  (** [add_confirmed_slots hist cache slot_headers] updates the given structure
-      [hist] with the list of [slot_headers]. The given [cache] is also updated to
-      add successive values of [cell] to it. *)
-  val add_confirmed_slot_headers :
-    t -> History_cache.t -> Header.t list -> (t * History_cache.t) tzresult
+  (** [add_confirmed_slots hist cache published_level slot_headers] updates the
+      given structure [hist] with the list of [slot_headers]. The given [cache]
+      is also updated to add successive values of [cell] to it.
 
-  (** [add_confirmed_slot_headers_no_cache cell slot_headers] same as
-     {!add_confirmed_slot_headers}, but no cache is updated. *)
-  val add_confirmed_slot_headers_no_cache : t -> Header.t list -> t tzresult
+
+      This function checks the following pre-conditions before updating the
+      list:
+
+      - The given [published_level] should match all the levels of the slots in
+      [slot_headers], if any;
+
+      - [published_level] is the successor the last inserted cell's level.
+
+      - [slot_headers] is sorted in increasing order w.r.t. slots indices.
+  *)
+  val add_confirmed_slot_headers :
+    t ->
+    History_cache.t ->
+    Raw_level_repr.t ->
+    Header.t list ->
+    (t * History_cache.t) tzresult
+
+  (** Similiar to {!add_confirmed_slot_headers}, but not cache is provided or
+      updated. *)
+  val add_confirmed_slot_headers_no_cache :
+    t -> Raw_level_repr.t -> Header.t list -> t tzresult
 
   (** [equal a b] returns true iff a is equal to b. *)
   val equal : t -> t -> bool
@@ -291,6 +321,9 @@ module History : sig
       should be provided, as they are not needed to construct a non-confirmation
       proof.
 
+      Note that, in case the level of the page is far in the past (i.e. the Dal
+      skip list was not populated yet) should be handled by the caller.
+
       [dal_parameters] is used when verifying that/if the page is part of
       the candidate slot (if any).
   *)
@@ -322,7 +355,14 @@ module History : sig
     | Unexpected_page_size of {expected_size : int; page_size : int}
 
   module Internal_for_tests : sig
-    val content : t -> Header.t
+    (** The content of a cell in the DAL skip list. We don't store the slot
+        headers directly to refactor the common [published_level] and save
+        space. This is important for refutation proofs, as they have to fit in
+        an L1 operation. *)
+    type cell_content = Unattested of Header.id | Attested of Header.t
+
+    (** Returns the content of the last cell in the given skip list. *)
+    val content : t -> cell_content
 
     (** [proof_statement_is serialized_proof expected] will return [true] if
         the deserialized proof and the [expected] proof shape match and [false]
