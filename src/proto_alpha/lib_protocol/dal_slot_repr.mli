@@ -219,7 +219,12 @@ module History : sig
   (** Encoding of the datatype. *)
   val encoding : t Data_encoding.t
 
-  (** First cell of this skip list. *)
+  (** The genesis skip list that contains one dummy cell. This cell has
+      {!Raw_level_repr.root} as published level and no attested slots. Since Dal
+      is not necessiraly activated in genesis block (e.g. this will be the case
+      on mainnet) the skip list is reset at the first call to
+      {!add_confirmed_slot_headers} to enfoce the invariant of having cells of
+      successive levels in the skip list. *)
   val genesis : t
 
   (** Returns the hash of an history. *)
@@ -235,15 +240,32 @@ module History : sig
   module History_cache :
     Bounded_history_repr.S with type key = hash and type value = t
 
-  (** [add_confirmed_slots hist cache slot_headers] updates the given structure
-      [hist] with the list of [slot_headers]. The given [cache] is also updated to
-      add successive values of [cell] to it. *)
-  val add_confirmed_slot_headers :
-    t -> History_cache.t -> Header.t list -> (t * History_cache.t) tzresult
+  (** [add_confirmed_slots hist cache published_level slot_headers] updates the
+      given structure [hist] with the list of [slot_headers]. The given [cache]
+      is also updated to add successive values of [cell] to it.
 
-  (** [add_confirmed_slot_headers_no_cache cell slot_headers] same as
-     {!add_confirmed_slot_headers}, but no cache is updated. *)
-  val add_confirmed_slot_headers_no_cache : t -> Header.t list -> t tzresult
+
+      This function checks the following pre-conditions before updating the
+      list:
+
+      - The given [published_level] should match all the levels of the slots in
+      [slot_headers], if any;
+
+      - [published_level] is the successor the last inserted cell's level.
+
+      - [slot_headers] is sorted in increasing order w.r.t. slots indices.
+  *)
+  val add_confirmed_slot_headers :
+    t ->
+    History_cache.t ->
+    Raw_level_repr.t ->
+    Header.t list ->
+    (t * History_cache.t) tzresult
+
+  (** Similiar to {!add_confirmed_slot_headers}, but not cache is provided or
+      updated. *)
+  val add_confirmed_slot_headers_no_cache :
+    t -> Raw_level_repr.t -> Header.t list -> t tzresult
 
   (** [equal a b] returns true iff a is equal to b. *)
   val equal : t -> t -> bool

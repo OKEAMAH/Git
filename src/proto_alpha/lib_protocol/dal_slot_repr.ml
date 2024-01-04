@@ -70,21 +70,6 @@ module Header = struct
   let equal {id; commitment} s2 =
     slot_id_equal id s2.id && Commitment.equal commitment s2.commitment
 
-  let compare_slot_id {published_level; index} s2 =
-    let c = Raw_level_repr.compare published_level s2.published_level in
-    if Compare.Int.(c <> 0) then c
-    else Dal_slot_index_repr.compare index s2.index
-
-  let zero_id =
-    {
-      (* We don't expect to have any published slot at level
-         Raw_level_repr.root. *)
-      published_level = Raw_level_repr.root;
-      index = Dal_slot_index_repr.zero;
-    }
-
-  let zero = {id = zero_id; commitment = Commitment.zero}
-
   let id_encoding =
     let open Data_encoding in
     conv
@@ -227,14 +212,7 @@ end
 
 module History = struct
   (* History is represented via a skip list. The content of the cell
-     is the hash of a merkle proof. *)
-
-  (* A leaf of the merkle tree is a slot. *)
-  module Leaf = struct
-    type t = Header.t
-
-    let to_bytes = Data_encoding.Binary.to_bytes_exn Header.encoding
-  end
+     is the list of headers attested for a given level. *)
 
   module Content_prefix = struct
     let (_prefix : string) = "dash1"
@@ -250,7 +228,6 @@ module History = struct
   end
 
   module Content_hash = Blake2B.Make (Base58) (Content_prefix)
-  module Merkle_list = Merkle_list.Make (Leaf) (Content_hash)
 
   (* Pointers of the skip lists are used to encode the content and the
      backpointers. *)
@@ -289,6 +266,62 @@ module History = struct
         | _ -> None)
       (fun () -> Add_element_in_slots_skip_list_violates_ordering)
 
+  module Content = struct
+    type t = {
+      published_level : Raw_level_repr.t;
+      slot_headers : (Commitment.t * Dal_slot_index_repr.t) list;
+    }
+    (* TODO: We could store the list of Dal_slot_index_repr.t as a bitset to
+       save space. With 256 slots max, we could use ~256 bits instead of ~256
+       bytes (divide by 8). Do we want such an optimization? If yes, in this MR?
+       The skip list or Merkle list solution we plan also optimize this part. *)
+
+    let encoding =
+      let open Data_encoding in
+      conv
+        (fun {published_level; slot_headers} -> (published_level, slot_headers))
+        (fun (published_level, slot_headers) -> {published_level; slot_headers})
+        (obj2
+           (req "published_level" Raw_level_repr.encoding)
+           (req
+              "slot_headers"
+              (list
+                 (obj2
+                    (req "slot_commitment" Commitment.encoding)
+                    (req "slot_index" Dal_slot_index_repr.encoding)))))
+
+    let equal t1 {published_level; slot_headers} =
+      Raw_level_repr.equal t1.published_level published_level
+      && List.equal
+           (fun (c1, i1) (c2, i2) ->
+             Dal_slot_index_repr.equal i1 i2 && Commitment.equal c1 c2)
+           t1.slot_headers
+           slot_headers
+
+    let zero = {published_level = Raw_level_repr.root; slot_headers = []}
+
+    let pp =
+      let pp_pair fmt (commitment, index) =
+        Format.fprintf
+          fmt
+          "(%a, %a)"
+          Commitment.pp
+          commitment
+          Dal_slot_index_repr.pp
+          index
+      in
+      fun fmt {published_level; slot_headers} ->
+        Format.fprintf
+          fmt
+          "{published_level:%a; slot_headers:[%a]}"
+          Raw_level_repr.pp
+          published_level
+          (Format.pp_print_list
+             ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@ ")
+             pp_pair)
+          slot_headers
+  end
+
   module Skip_list = struct
     include Skip_list.Make (Skip_list_parameters)
 
@@ -300,40 +333,39 @@ module History = struct
         `compare` function during the list traversal to quickly (in log(size))
         reach the target if any.
 
-        In our case, we will store one slot per cell in the skip list and
-        maintain that the list is well sorted (and without redundancy) w.r.t.
-        the [compare_slot_id] function.
+        In our case, we will add one cell per L1 level to the skip list
+        containing the list of attested slots published at that level.
 
         Below, we redefine the [next] function (that allows adding elements
         on top of the list) to enforce that the constructed skip list is
         well-sorted. We also define a wrapper around the search function to
         guarantee that it can only be called with the adequate compare function.
-    *)
 
+        The function assumes that the slots indices of the list in [elt] are
+        well ordered. *)
     let next ~prev_cell ~prev_cell_ptr elt =
       let open Result_syntax in
       let* () =
-        error_when
-          (Compare.Int.( <= )
-             (Header.compare_slot_id
-                elt.Header.id
-                (content prev_cell).Header.id)
+        error_unless
+          (Compare.Int.( = )
+             (Raw_level_repr.compare
+                elt.Content.published_level
+                (Raw_level_repr.succ
+                   (content prev_cell).Content.published_level))
              0)
           Add_element_in_slots_skip_list_violates_ordering
       in
       return @@ next ~prev_cell ~prev_cell_ptr elt
 
-    let search ~deref ~cell ~target_id =
-      Lwt.search ~deref ~cell ~compare:(fun slot ->
-          Header.compare_slot_id slot.Header.id target_id)
+    let search ~deref ~cell ~target_level =
+      Lwt.search ~deref ~cell ~compare:(fun Content.{published_level; _} ->
+          Raw_level_repr.compare published_level target_level)
   end
 
   module V1 = struct
-    (* The content of a cell is the hash of all the slot commitments
-       represented as a merkle list. *)
     (* TODO/DAL: https://gitlab.com/tezos/tezos/-/issues/3765
        Decide how to store attested slots in the skip list's content. *)
-    type content = Header.t
+    type content = Content.t
 
     (* A pointer to a cell is the hash of its content and all the back
        pointers. *)
@@ -343,22 +375,38 @@ module History = struct
 
     type t = history
 
+    let genesis : t = Skip_list.genesis Content.zero
+
     let history_encoding =
-      Skip_list.encoding Pointer_hash.encoding Header.encoding
+      let open Data_encoding in
+      union
+        ~tag_size:`Uint8
+        [
+          case
+            ~title:"legacy"
+            (Tag 0)
+            (Data_encoding.Fixed.bytes Hex 57)
+            (fun _ -> None)
+            (fun _ -> genesis);
+          case
+            ~title:"new"
+            (Tag 1)
+            (Skip_list.encoding Pointer_hash.encoding Content.encoding)
+            (fun x -> Some x)
+            (fun x -> x);
+        ]
 
     let equal_history : history -> history -> bool =
-      Skip_list.equal Pointer_hash.equal Header.equal
+      Skip_list.equal Pointer_hash.equal Content.equal
 
     let encoding = history_encoding
 
     let equal : t -> t -> bool = equal_history
 
-    let genesis : t = Skip_list.genesis Header.zero
-
     let hash cell =
       let current_slot = Skip_list.content cell in
       let back_pointers_hashes = Skip_list.back_pointers cell in
-      Data_encoding.Binary.to_bytes_exn Header.encoding current_slot
+      Data_encoding.Binary.to_bytes_exn Content.encoding current_slot
       :: List.map Pointer_hash.to_bytes back_pointers_hashes
       |> Pointer_hash.hash_bytes
 
@@ -369,7 +417,7 @@ module History = struct
         "@[hash : %a@;%a@]"
         Pointer_hash.pp
         history_hash
-        (Skip_list.pp ~pp_content:Header.pp ~pp_ptr:Pointer_hash.pp)
+        (Skip_list.pp ~pp_content:Content.pp ~pp_ptr:Pointer_hash.pp)
         history
 
     module History_cache =
@@ -388,22 +436,58 @@ module History = struct
           let equal = equal_history
         end)
 
-    let add_confirmed_slot_header (t, cache) slot_header =
-      let open Result_syntax in
-      let prev_cell_ptr = hash t in
-      let* cache = History_cache.remember prev_cell_ptr t cache in
-      let* new_cell = Skip_list.next ~prev_cell:t ~prev_cell_ptr slot_header in
-      return (new_cell, cache)
+    (* check that the slots' levels are equal to [published_level] and that teir
+       indices are well ordered. *)
+    let check_same_level_and__well_ordered published_level = function
+      | [] -> true
+      | Header.{id = {published_level = pl; index}; _} :: l ->
+          Raw_level_repr.equal published_level pl
+          && fst
+             @@ List.fold_left
+                  (fun (well_ordered, idx)
+                       Header.{id = {published_level = pl; index = idx'}; _} ->
+                    ( well_ordered
+                      && Raw_level_repr.equal published_level pl
+                      && Compare.Int.( < )
+                           (Dal_slot_index_repr.compare idx idx')
+                           0,
+                      idx' ))
+                  (true, index)
+                  l
 
-    let add_confirmed_slot_headers (t : t) cache slot_headers =
-      List.fold_left_e add_confirmed_slot_header (t, cache) slot_headers
+    let add_confirmed_slot_header (t, cache) published_level slot_headers =
+      let open Result_syntax in
+      let* () =
+        error_unless
+          (check_same_level_and__well_ordered published_level slot_headers)
+          Add_element_in_slots_skip_list_violates_ordering
+      in
+      let prev_cell_ptr = hash t in
+      let slot_headers =
+        List.map
+          (fun Header.{commitment; id = {index; _}} -> (commitment, index))
+          slot_headers
+      in
+      let slot_headers = Content.{published_level; slot_headers} in
+      let* cache = History_cache.remember prev_cell_ptr t cache in
+      if equal t genesis then
+        (* If this is the first real cell of DAL, replace dummy genesis with it. *)
+        return (Skip_list.genesis slot_headers, cache)
+      else
+        let* new_cell =
+          Skip_list.next ~prev_cell:t ~prev_cell_ptr slot_headers
+        in
+        return (new_cell, cache)
+
+    let add_confirmed_slot_headers (t : t) cache published_level slot_headers =
+      add_confirmed_slot_header (t, cache) published_level slot_headers
 
     let add_confirmed_slot_headers_no_cache =
       let open Result_syntax in
       let no_cache = History_cache.empty ~capacity:0L in
-      fun t slots ->
+      fun t published_level slots ->
         let+ cell, (_ : History_cache.t) =
-          List.fold_left_e add_confirmed_slot_header (t, no_cache) slots
+          add_confirmed_slot_header (t, no_cache) published_level slots
         in
         cell
 
@@ -613,7 +697,6 @@ module History = struct
     let pp_inclusion_proof = Format.pp_print_list pp_history
 
     let pp_history_opt = Format.pp_print_option pp_history
-
     let pp_proof ~serialized fmt p =
       if serialized then Format.pp_print_string fmt (Bytes.to_string p)
       else
