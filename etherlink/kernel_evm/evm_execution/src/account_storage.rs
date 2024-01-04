@@ -72,6 +72,21 @@ pub struct StorageEffect {
     pub to_default: bool,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum AccountState {
+    /// Before Spurious Dragon hardfork there was a difference between empty and not existing.
+    /// And we are flagging it here.
+    NotExisting,
+    /// EVM touched this account. For newer hardfork this means it can be cleared/removed from state.
+    Touched,
+    /// EVM cleared storage of this account, mostly by selfdestruct, we don't ask database for storage slots
+    /// and assume they are U256::ZERO
+    StorageCleared,
+    /// EVM didn't interacted with this account
+    #[default]
+    None,
+}
+
 /// An Ethereum account
 ///
 /// This struct defines the storage interface for interacting with Ethereum accounts
@@ -94,11 +109,16 @@ pub struct StorageEffect {
 #[derive(Debug, PartialEq)]
 pub struct EthereumAccount {
     path: OwnedPath,
+    // Virtual state in the context of the current EVM execution.
+    state: AccountState,
 }
 
 impl From<OwnedPath> for EthereumAccount {
     fn from(path: OwnedPath) -> Self {
-        Self { path }
+        Self {
+            path,
+            state: AccountState::None,
+        }
     }
 }
 
@@ -230,6 +250,14 @@ impl EthereumAccount {
 
         host.store_write(&path, &new_value_bytes, 0)
             .map_err(AccountStorageError::from)
+    }
+
+    pub fn get_account_state(&mut self) -> AccountState {
+        self.state
+    }
+
+    pub fn set_account_state(&mut self, state: AccountState) {
+        self.state = state;
     }
 
     pub fn set_nonce(
