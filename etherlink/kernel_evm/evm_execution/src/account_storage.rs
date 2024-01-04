@@ -299,6 +299,24 @@ impl EthereumAccount {
         }
     }
 
+    pub fn raw_storage_path(&self) -> Result<OwnedPath, AccountStorageError> {
+        concat(&self.path, &STORAGE_ROOT_PATH).map_err(AccountStorageError::from)
+    }
+
+    pub fn delete_storage(
+        &self,
+        host: &mut impl Runtime,
+    ) -> Result<(), AccountStorageError> {
+        let storage_path = self.raw_storage_path()?;
+        if let Some(ValueType::Value | ValueType::ValueWithSubtree) =
+            host.store_has(&storage_path)?
+        {
+            host.store_delete(&storage_path)
+                .map_err(AccountStorageError::from)?
+        }
+        Ok(())
+    }
+
     /// Get the path to an index in durable storage for an account.
     fn storage_path(&self, index: &H256) -> Result<OwnedPath, AccountStorageError> {
         let storage_path = concat(&self.path, &STORAGE_ROOT_PATH)?;
