@@ -18,6 +18,24 @@ use tezos_smart_rollup_host::runtime::Runtime;
 
 use crate::storage::get_code_by_hash;
 
+macro_rules! ok_or_skip {
+    ($res:expr) => {
+        match $res {
+            Ok(val) => val,
+            Err(_) => continue,
+        }
+    };
+}
+
+macro_rules! some_or_skip {
+    ($res:expr) => {
+        match $res {
+            Some(val) => val,
+            None => continue,
+        }
+    };
+}
+
 pub struct EtherlinkDB<'a, Host: Runtime> {
     pub host: &'a mut Host,
     pub evm_account_storage: &'a mut EthereumAccountStorage,
