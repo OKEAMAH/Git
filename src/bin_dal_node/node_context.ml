@@ -117,7 +117,7 @@ type error += Node_not_ready
 
 let () =
   register_error_kind
-    `Permanent
+    `Temporary
     ~id:"dal.node.not.ready"
     ~title:"DAL Node not ready"
     ~description:"DAL node is starting. It's not ready to respond to RPCs."
