@@ -33,6 +33,10 @@ fn get_account_opt<Host: Runtime>(
     }
 }
 
+fn ru256_to_u256(value: RU256) -> U256 {
+    U256(*value.as_limbs())
+}
+
 fn u256_to_h256(value: U256) -> H256 {
     let mut ret = H256::zero();
     value.to_big_endian(ret.as_bytes_mut());
