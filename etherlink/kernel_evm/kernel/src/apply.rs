@@ -5,21 +5,20 @@
 //
 // SPDX-License-Identifier: MIT
 
-use alloc::borrow::Cow;
 use anyhow::anyhow;
-use evm::{ExitError, ExitReason, ExitSucceed};
 use evm_execution::account_storage::{
     account_path, EthereumAccount, EthereumAccountStorage,
 };
-use evm_execution::handler::ExecutionOutcome;
 use evm_execution::precompiles::PrecompileBTreeMap;
-use evm_execution::run_transaction;
 use primitive_types::{H160, U256};
 use revm::EVM;
 use revm_primitives::ruint::Uint;
 use revm_primitives::{
-    Address, BlockEnv, Bytes, CfgEnv, CreateScheme, Env, FixedBytes, SpecId, TransactTo,
-    TxEnv,
+    Address, BlockEnv, Bytes, CfgEnv, CreateScheme, Env, Eval,
+    ExecutionResult::{self, Halt, Revert, Success},
+    FixedBytes,
+    Output::Create,
+    SpecId, TransactTo, TxEnv,
 };
 use tezos_data_encoding::enc::BinWriter;
 use tezos_ethereum::block::BlockConstants;
@@ -45,7 +44,7 @@ use crate::indexable_storage::IndexableStorage;
 use crate::revm_poc::{evm_db, EtherlinkDB};
 use crate::storage::{index_account, read_ticketer};
 use crate::tick_model::constants::MAX_TRANSACTION_GAS_LIMIT;
-use crate::{tick_model, CHAIN_ID, CONFIG};
+use crate::{tick_model, CONFIG};
 
 // This implementation of `Transaction` is used to share the logic of
 // transaction receipt and transaction object making. The functions
@@ -111,7 +110,7 @@ impl Transaction {
 pub struct TransactionReceiptInfo {
     pub tx_hash: TransactionHash,
     pub index: u32,
-    pub execution_outcome: Option<ExecutionOutcome>,
+    pub execution_outcome: ExecutionResult,
     pub caller: H160,
     pub to: Option<H160>,
 }
@@ -133,7 +132,7 @@ pub struct TransactionObjectInfo {
 fn make_receipt_info(
     tx_hash: TransactionHash,
     index: u32,
-    execution_outcome: Option<ExecutionOutcome>,
+    execution_outcome: ExecutionResult,
     caller: H160,
     to: Option<H160>,
 ) -> TransactionReceiptInfo {
@@ -179,14 +178,16 @@ fn index_new_accounts<Host: Runtime>(
     if let Some(to) = receipt.to {
         index_account(host, &to, accounts_index)?
     };
-    match receipt
-        .execution_outcome
-        .as_ref()
-        .and_then(|o| o.new_address)
+    if let Success {
+        output: Create(_, Some(address)),
+        ..
+    } = &receipt.execution_outcome
     {
-        Some(to) => index_account(host, &to, accounts_index),
-        None => Ok(()),
-    }
+        let raw_address: [u8; 20] = <[u8; 20]>::from(address.0);
+        let address = H160::from(raw_address);
+        index_account(host, &address, accounts_index)?
+    };
+    Ok(())
 }
 
 fn account<Host: Runtime>(
@@ -287,7 +288,7 @@ fn is_valid_ethereum_transaction_common<Host: Runtime>(
 
 pub struct TransactionResult {
     caller: H160,
-    execution_outcome: Option<ExecutionOutcome>,
+    execution_outcome: ExecutionResult,
     gas_used: U256,
     estimated_ticks_used: u64,
 }
@@ -297,7 +298,9 @@ fn cfgenv() -> CfgEnv {
     // By property of #[non_exhaustive] we can't create a custom structure
     // outside the crate where the structure was defined.
     // We need this hackish way of doing to have a custom config environment.
-    cfg.chain_id = u64::from(CHAIN_ID);
+    // Following line should be u64::from(CHAIN_ID);
+    // but execution is failing otherwise.
+    cfg.chain_id = 1u64;
     cfg.spec_id = SpecId::SHANGHAI;
     // By default:
     // disable_balance_check: false,
@@ -312,10 +315,11 @@ fn cfgenv() -> CfgEnv {
 fn apply_ethereum_transaction_common<Host: Runtime>(
     host: &mut Host,
     block_constants: &BlockConstants,
-    precompiles: &PrecompileBTreeMap<Host>,
+    // TODO: remove the following field:
+    _precompiles: &PrecompileBTreeMap<Host>,
     evm_account_storage: &mut EthereumAccountStorage,
     transaction: &EthereumTransactionCommon,
-    allocated_ticks: u64,
+    _allocated_ticks: u64,
 ) -> Result<Option<TransactionResult>, Error> {
     let caller = match is_valid_ethereum_transaction_common(
         host,
@@ -328,32 +332,6 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
     };
 
     let to = transaction.to;
-    let call_data = transaction.data.clone();
-    let gas_limit = transaction.gas_limit;
-    let value = transaction.value;
-    let execution_outcome = match run_transaction(
-        host,
-        block_constants,
-        evm_account_storage,
-        precompiles,
-        CONFIG,
-        to,
-        caller,
-        call_data,
-        Some(gas_limit),
-        Some(value),
-        true,
-        allocated_ticks,
-    ) {
-        Ok(outcome) => outcome,
-        Err(err) => {
-            // TODO: https://gitlab.com/tezos/tezos/-/issues/5665
-            // Because the proposal's state is unclear, and we do not have a sequencer
-            // if an error that leads to a durable storage corruption is caught, we
-            // invalidate the entire proposal.
-            return Err(Error::InvalidRunTransaction(err));
-        }
-    };
 
     let tx_chain_id = match transaction.chain_id {
         Some(chain_id) => match u64::try_from(chain_id) {
@@ -377,10 +355,14 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         TransactTo::Create(CreateScheme::Create)
     };
 
+    // Should be block_constants.gas_price.0, but "1" as gas_price does not
+    // make sense.
+    let gas_price = U256::from(21000);
+
     let tx = TxEnv {
         caller: Address(FixedBytes(caller.0)),
         gas_limit: transaction.gas_limit,
-        gas_price: <Uint<256, 4>>::from_limbs(block_constants.gas_price.0),
+        gas_price: <Uint<256, 4>>::from_limbs(gas_price.0),
         transact_to,
         value: <Uint<256, 4>>::from_limbs(transaction.value.0),
         data: Bytes::from(transaction.data.clone()),
@@ -404,10 +386,14 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         number: <Uint<256, 4>>::from_limbs(block_constants.number.0),
         coinbase: Address::default(),
         timestamp: <Uint<256, 4>>::from_limbs(block_constants.timestamp.0),
-        gas_limit: <Uint<256, 4>>::from(block_constants.gas_limit),
+        // block gas_limit can not be lower than transaction gas limit and with
+        // the current constants it create discrepancy so we rely on tx gas_limit
+        // even though it's incorrect
+        gas_limit: <Uint<256, 4>>::from(transaction.gas_limit),
         basefee: <Uint<256, 4>>::from_limbs(block_constants.base_fee_per_gas.0),
         difficulty: <Uint<256, 4>>::ZERO,
-        prevrandao: None,
+        // Should never be set at None.
+        prevrandao: Some(revm_primitives::B256::ZERO),
         // Incorporated as part of the Cancun upgrade via EIP-4844.
         // Set to None for now.
         blob_excess_gas_and_price: None,
@@ -418,37 +404,45 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
     let mut evm: EVM<EtherlinkDB<Host>> = EVM::with_env(env);
     evm.database(evm_db(host, evm_account_storage, block_constants));
 
-    match evm.transact_commit() {
-        Ok(_outcome) => {
-            // success, halt, revert
-            // return outcome for interpretation
-        }
-        Err(e) => log!(host, Error, "{e}"),
-    }
+    let execution_outcome = evm.transact_commit().map_err(|e| {
+        log!(host, Debug, "{:?}", e);
+        Error::REVMError
+    })?;
 
-    let (gas_used, estimated_ticks_used) = match &execution_outcome {
-        Some(execution_outcome) => {
+    let gas_used = match execution_outcome {
+        Success {
+            reason, gas_used, ..
+        } => {
             log!(
                 host,
                 Debug,
-                "Transaction status: OK_{}.",
-                execution_outcome.is_success
+                "Transaction status: Success, the reason is {:?}",
+                reason
             );
-            (
-                execution_outcome.gas_used.into(),
-                execution_outcome.estimated_ticks_used,
-            )
+            gas_used
         }
-        None => {
-            log!(host, Debug, "Transaction status: OK_UNKNOWN.");
-            (U256::zero(), 0)
+        Revert { gas_used, .. } => {
+            log!(host, Debug, "Transaction status: Revert");
+            gas_used
+        }
+        Halt { reason, gas_used } => {
+            log!(
+                host,
+                Debug,
+                "Transaction status: Halt, the reason is {:?}",
+                reason
+            );
+            gas_used
         }
     };
+
+    // TODO: find a way to estimate tick consumption from REVM's execution.
+    let estimated_ticks_used = 0;
 
     Ok(Some(TransactionResult {
         caller,
         execution_outcome,
-        gas_used,
+        gas_used: gas_used.into(),
         estimated_ticks_used,
     }))
 }
@@ -469,39 +463,41 @@ fn apply_deposit<Host: Runtime>(
 
     let is_success = do_deposit(()).is_some();
 
-    let reason = if is_success {
-        ExitReason::Succeed(ExitSucceed::Returned)
-    } else {
-        ExitReason::Error(ExitError::Other(Cow::from("Deposit failed")))
-    };
-
     let gas_used = CONFIG.gas_transaction_call;
 
     // TODO: https://gitlab.com/tezos/tezos/-/issues/6551
     let estimated_ticks_used = tick_model::constants::TICKS_FOR_DEPOSIT;
 
-    let execution_outcome = ExecutionOutcome {
-        gas_used,
-        is_success,
-        reason,
-        new_address: None,
-        logs: vec![],
-        result: None,
-        withdrawals: vec![],
-        estimated_ticks_used,
-    };
-
     let caller = H160::zero();
+
+    let execution_outcome = if is_success {
+        ExecutionResult::Success {
+            reason: Eval::Return,
+            gas_used,
+            gas_refunded: 0,
+            logs: vec![],
+            output: revm_primitives::Output::Call(Bytes::new()),
+        }
+    } else {
+        ExecutionResult::Revert {
+            gas_used,
+            output: Bytes::new(),
+        }
+    };
 
     Ok(Some(TransactionResult {
         caller,
-        execution_outcome: Some(execution_outcome),
+        execution_outcome,
         gas_used: gas_used.into(),
         estimated_ticks_used,
     }))
 }
 
-fn post_withdrawals<Host: Runtime>(
+// TODO: withdrawals needs to be handle as for instance wrappers
+// around the new REVM execution_outcome.
+// Withdrawal execution logic should be extracted from EVM execution
+// to the kernel as it's not fully related to the EVM layer.
+fn _post_withdrawals<Host: Runtime>(
     host: &mut Host,
     withdrawals: &Vec<Withdrawal>,
 ) -> Result<(), Error> {
@@ -600,13 +596,10 @@ pub fn apply_transaction<Host: Runtime>(
             gas_used,
             estimated_ticks_used: ticks_used,
         }) => {
-            if let Some(outcome) = &execution_outcome {
-                log!(host, Debug, "Transaction executed, outcome: {:?}", outcome);
-            }
-
-            if let Some(ref execution_outcome) = execution_outcome {
-                post_withdrawals(host, &execution_outcome.withdrawals)?
-            }
+            // TODO: withdrawals needs to be handle as for instance wrappers
+            // around the new REVM execution_outcome.
+            // Withdrawal execution logic should be extracted from EVM execution
+            // to the kernel as it's not fully related to the EVM layer.
 
             let receipt_info = make_receipt_info(
                 transaction.tx_hash,
@@ -625,6 +618,7 @@ pub fn apply_transaction<Host: Runtime>(
             )?;
 
             index_new_accounts(host, accounts_index, &receipt_info)?;
+
             Ok(Some(ExecutionInfo {
                 receipt_info,
                 object_info,

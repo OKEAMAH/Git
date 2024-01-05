@@ -13,8 +13,10 @@ use crate::storage;
 use crate::storage::{EVM_TRANSACTIONS_OBJECTS, EVM_TRANSACTIONS_RECEIPTS};
 use crate::tick_model;
 use anyhow::Context;
+use ethereum::Log;
 use evm_execution::account_storage::EVM_ACCOUNTS_PATH;
-use primitive_types::{H256, U256};
+use primitive_types::{H160, H256, U256};
+use revm_primitives::{ExecutionResult::Success, Output::Create};
 use rlp::{Decodable, DecoderError, Encodable};
 use std::collections::VecDeque;
 use tezos_ethereum::block::{BlockConstants, L2Block};
@@ -324,6 +326,21 @@ impl BlockInProgress {
         }
     }
 
+    // This is just dumb, but needed for compilation.
+    // The good approach is to use the revm_primitivess::Log inside
+    // IndexedLog.
+    fn revm_log_to_eth_log(log: revm_primitives::Log) -> Log {
+        let raw_address: [u8; 20] = <[u8; 20]>::from(log.address.0);
+        let address = H160::from(raw_address);
+        let topics = log.topics.iter().map(|topic| H256::from(topic.0)).collect();
+        let data = log.data.0.to_vec();
+        Log {
+            address,
+            topics,
+            data,
+        }
+    }
+
     pub fn make_receipt(
         &mut self,
         receipt_info: TransactionReceiptInfo,
@@ -346,16 +363,30 @@ impl BlockInProgress {
         } = self;
 
         match execution_outcome {
-            Some(outcome) => {
-                let log_iter = outcome.logs.into_iter();
+            Success {
+                logs,
+                gas_used,
+                output,
+                ..
+            } => {
+                let log_iter = logs.into_iter();
                 let logs: Vec<IndexedLog> = log_iter
                     .enumerate()
-                    .map(|(i, log)| IndexedLog {
-                        log,
-                        index: i as u64 + logs_offset,
+                    .map(|(i, log)| {
+                        let log = Self::revm_log_to_eth_log(log);
+                        IndexedLog {
+                            log,
+                            index: i as u64 + logs_offset,
+                        }
                     })
                     .collect();
                 self.logs_offset += logs.len() as u64;
+                let contract_address = if let Create(_, Some(address)) = output {
+                    let raw_address: [u8; 20] = <[u8; 20]>::from(address.0);
+                    Some(H160::from(raw_address))
+                } else {
+                    None
+                };
                 TransactionReceipt {
                     hash,
                     index,
@@ -364,19 +395,15 @@ impl BlockInProgress {
                     to,
                     cumulative_gas_used: cumulative_gas,
                     effective_gas_price,
-                    gas_used: U256::from(outcome.gas_used),
-                    contract_address: outcome.new_address,
+                    gas_used: U256::from(gas_used),
+                    contract_address,
                     logs_bloom: TransactionReceipt::logs_to_bloom(&logs),
                     logs,
                     type_: TransactionType::Legacy,
-                    status: if outcome.is_success {
-                        TransactionStatus::Success
-                    } else {
-                        TransactionStatus::Failure
-                    },
+                    status: TransactionStatus::Success,
                 }
             }
-            None => TransactionReceipt {
+            _ => TransactionReceipt {
                 hash,
                 index,
                 block_number,

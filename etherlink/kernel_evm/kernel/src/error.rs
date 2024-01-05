@@ -99,6 +99,8 @@ pub enum Error {
     Reboot,
     #[error(transparent)]
     Encoding(EncodingError),
+    #[error("Error during REVM's execution.")]
+    REVMError,
 }
 
 impl From<PathError> for StorageError {
