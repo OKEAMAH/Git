@@ -126,7 +126,7 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
         Some
           (("GIT_STRATEGY", enc_git_strategy strategy)
           :: Option.value ~default:[] variables)
-    | None -> None
+    | None -> variables
   in
   {
     name;
