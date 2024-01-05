@@ -44,19 +44,9 @@ type reports = {dotenv : string option; junit : string option}
 
 type image = Image of string
 
-type artifacts = {
-  expire_in : string;
-  paths : string list;
-  reports : reports;
-  when_ : string;
-  expose_as : string option;
-}
+type when_artifact = Always | On_success | On_failure
 
-type default = {image : image option; interruptible : bool option}
-
-type cache = {key : string; paths : string list}
-
-type timeout =
+type time_interval =
   | Seconds of int
   | Minutes of int
   | Hours of int
@@ -64,6 +54,18 @@ type timeout =
   | Weeks of int
   | Months of int
   | Years of int
+
+type artifacts = {
+  expire_in : time_interval option;
+  paths : string list;
+  reports : reports;
+  when_ : when_artifact option;
+  expose_as : string option;
+}
+
+type default = {image : image option; interruptible : bool option}
+
+type cache = {key : string; paths : string list}
 
 type service = {name : string}
 
@@ -85,7 +87,7 @@ type job = {
   services : service list option;
   stage : string option;
   variables : variables option;
-  timeout : timeout option;
+  timeout : time_interval option;
   tags : string list option;
 }
 

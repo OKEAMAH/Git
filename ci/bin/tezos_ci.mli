@@ -122,7 +122,7 @@ val job :
   ?services:Gitlab_ci.Types.service list ->
   ?variables:Gitlab_ci.Types.variables ->
   ?rules:Gitlab_ci.Types.job_rule list ->
-  ?timeout:Gitlab_ci.Types.timeout ->
+  ?timeout:Gitlab_ci.Types.time_interval ->
   ?tags:string list ->
   ?git_strategy:git_strategy ->
   stage:Stage.t ->

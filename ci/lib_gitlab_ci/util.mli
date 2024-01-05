@@ -46,3 +46,17 @@ val include_rule :
   ?when_:when_workflow ->
   unit ->
   include_rule
+
+(* [artifacts paths] Construct an [artifacts:] clause storing [paths].
+
+   - [expire_in:] is omitted if [expire_in] is [None].
+   - [reports:] is omitted if [reports] is [None].
+   - [when:] is omitted if [when_] is [None].
+   - [expose_as:] is omitted if [expose_as] is [None]. *)
+val artifacts :
+  ?expire_in:time_interval ->
+  ?reports:reports ->
+  ?when_:when_artifact ->
+  ?expose_as:string ->
+  string list ->
+  artifacts

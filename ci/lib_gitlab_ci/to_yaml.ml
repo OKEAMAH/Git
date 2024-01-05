@@ -38,6 +38,11 @@ let enc_when_workflow : when_workflow -> value = function
   | Always -> `String "always"
   | Never -> `String "never"
 
+let enc_when_artifact : when_artifact -> value = function
+  | Always -> `String "always"
+  | On_failure -> `String "on_failure"
+  | On_success -> `String "on_success"
+
 let enc_workflow_rule : workflow_rule -> value =
  fun {changes; if_; variables; when_} ->
   obj_flatten
@@ -85,6 +90,17 @@ let enc_default ({image; interruptible} : default) : value =
   obj_flatten
     [opt "image" enc_image image; opt "interruptible" bool interruptible]
 
+let enc_time_interval interval =
+  `String
+    (match interval with
+    | Seconds x -> string_of_int x ^ " seconds"
+    | Minutes x -> string_of_int x ^ " minutes"
+    | Hours x -> string_of_int x ^ " hours"
+    | Days x -> string_of_int x ^ " days"
+    | Weeks x -> string_of_int x ^ " weeks"
+    | Months x -> string_of_int x ^ " months"
+    | Years x -> string_of_int x ^ " years")
+
 let enc_report : reports -> value =
  fun {dotenv; junit} ->
   obj_flatten [opt "dotenv" string dotenv; opt "junit" string junit]
@@ -93,10 +109,10 @@ let enc_artifacts : artifacts -> value =
  fun {expire_in; paths; reports; when_; expose_as} ->
   obj_flatten
     [
-      key "expire_in" string expire_in;
+      opt "expire_in" enc_time_interval expire_in;
       key "paths" strings paths;
       key "reports" enc_report reports;
-      key "when" string when_;
+      opt "when" enc_when_artifact when_;
       opt "expose_as" string expose_as;
     ]
 
@@ -108,17 +124,6 @@ let enc_service ({name} : service) : value =
   obj_flatten [key "name" string name]
 
 let enc_services (ss : service list) : value = array enc_service ss
-
-let enc_interval interval =
-  `String
-    (match interval with
-    | Seconds x -> string_of_int x ^ " seconds"
-    | Minutes x -> string_of_int x ^ " minutes"
-    | Hours x -> string_of_int x ^ " hours"
-    | Days x -> string_of_int x ^ " days"
-    | Weeks x -> string_of_int x ^ " weeks"
-    | Months x -> string_of_int x ^ " months"
-    | Years x -> string_of_int x ^ " years")
 
 let enc_job : job -> value =
  fun {
@@ -149,7 +154,7 @@ let enc_job : job -> value =
       opt "needs" strings needs;
       opt "dependencies" strings dependencies;
       opt "allow_failure" bool allow_failure;
-      opt "timeout" enc_interval timeout;
+      opt "timeout" enc_time_interval timeout;
       opt "cache" enc_cache cache;
       opt "interruptible" bool interruptible;
       opt "script" strings script;
