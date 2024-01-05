@@ -3,8 +3,8 @@ include:
   - .gitlab/ci/jobs/build/oc.build:static-x86_64-linux-binaries-experimental.yml
   - .gitlab/ci/jobs/build/oc.build:static-arm64-linux-binaries-experimental.yml
   - .gitlab/ci/jobs/build/arm64.yml
-  - .gitlab/ci/jobs/build/docker_amd64_experimental.yml
-  - .gitlab/ci/jobs/build/docker_arm64_experimental.yml
+  - .gitlab/ci/jobs/build/oc.docker:amd64-experimental.yml
+  - .gitlab/ci/jobs/build/oc.docker:arm64-experimental.yml
 
   # Stage: test_coverage
   - .gitlab/ci/jobs/coverage/coverage_default.yml
