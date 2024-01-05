@@ -27,7 +27,7 @@ module Stages = struct
 
   let _sanity = Stage.register "sanity"
 
-  let _build = Stage.register "build"
+  let build = Stage.register "build"
 
   let _test = Stage.register "test"
 
@@ -126,7 +126,7 @@ module Images = struct
       ~image_path:
         "${build_deps_image_name}:runtime-build-test-dependencies--${build_deps_image_version}"
 
-  let _runtime_build_dependencies =
+  let runtime_build_dependencies =
     Image.register
       ~name:"runtime_build_dependencies"
       ~image_path:
@@ -171,6 +171,22 @@ module Images = struct
   let alpine =
     Image.register ~name:"alpine" ~image_path:("alpine:" ^ alpine_version)
 end
+
+let before_script ?(take_ownership = false) ?(source_version = false)
+    ?(eval_opam = false) ?(init_python_venv = false) ?(install_js_deps = false)
+    before_script =
+  let toggle t x = if t then [x] else [] in
+  (* FIXME: https://gitlab.com/tezos/tezos/-/issues/2865 *)
+  toggle take_ownership "./scripts/ci/take_ownership.sh"
+  @ toggle source_version ". ./scripts/version.sh"
+    (* TODO: this must run in the before_script of all jobs that use the opam environment.
+       how to enforce? *)
+  @ toggle eval_opam "eval $(opam env)"
+  (* Load the environment poetry previously created in the docker image.
+     Give access to the Python dependencies/executables *)
+  @ toggle init_python_venv ". $HOME/.venv/bin/activate"
+  @ toggle install_js_deps ". ./scripts/install_build_deps.js.sh"
+  @ before_script
 
 (* Define the [trigger] job *)
 let trigger =
@@ -222,6 +238,60 @@ let job_docker_promote_to_latest ~ci_docker_hub : job =
     ~name:"docker:promote_to_latest"
     ~variables:[("CI_DOCKER_HUB", Bool.to_string ci_docker_hub)]
     ["./scripts/ci/docker_promote_to_latest.sh"]
+
+(* This version of the job builds both released and experimental executables.
+   It is used in the following pipelines:
+   - Before merging: check whether static executables still compile,
+     i.e. that we do pass the -static flag and that when we do it does compile
+   - Master branch: executables (including experimental ones) are used in some test networks
+   Variants:
+   - an arm64 variant exist, but is only used in the master branch pipeline
+     (no need to test that we pass the -static flag twice)
+   - released variants exist, that are used in release tag pipelines
+     (they do not build experimental executables) *)
+let job_build_static_binaries ~arch ?(external_ = false) ?(release = false)
+    ?(needs_trigger = false) () =
+  let arch_string =
+    match arch with Tezos_ci.Amd64 -> "x86_64" | Arm64 -> "arm64"
+  in
+  let name = "oc.build:static-" ^ arch_string ^ "-linux-binaries" in
+  let filename_suffix = if release then "release" else "experimental" in
+  let artifacts =
+    (* Extend the lifespan to prevent failure for external tools using artifacts. *)
+    let expire_in = if release then Some (Days 90) else None in
+    artifacts ?expire_in ["octez-binaries/$ARCH/*"]
+  in
+  let executable_files =
+    "script-inputs/released-executables"
+    ^ if not release then " script-inputs/experimental-executables" else ""
+  in
+  let dependencies =
+    (* Even though not many tests depend on static executables, some
+       of those that do are limiting factors in the total duration of
+       pipelines. So when requested through [needs_trigger] we start
+       this job as early as possible, without waiting for
+       sanity_ci. *)
+    if needs_trigger then Dependent [Job trigger] else Staged
+  in
+  let job =
+    job
+      ~stage:Stages.build
+      ~arch
+      ~name
+      ~image:Images.runtime_build_dependencies
+      ~before_script:(before_script ~take_ownership:true ~eval_opam:true [])
+      ~variables:[("ARCH", arch_string); ("EXECUTABLE_FILES", executable_files)]
+      ~dependencies
+      ~artifacts
+      ["./scripts/ci/build_static_binaries.sh"]
+  in
+  if external_ then job_external ~filename_suffix job else job
+
+let _job_static_arm64_experimental =
+  job_build_static_binaries ~external_:true ~arch:Arm64 ()
+
+let _job_static_x86_64_experimental =
+  job_build_static_binaries ~external_:true ~arch:Amd64 ~needs_trigger:true ()
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
