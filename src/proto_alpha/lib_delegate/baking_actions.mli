@@ -58,7 +58,7 @@ type action =
       signed_dal_attestation :
         (consensus_key * public_key_hash)
         * packed_operation
-        * Dal.Attestation.t
+        * Dal.Attestation.operation
         * int32;
     }
   | Update_to_level of level_update

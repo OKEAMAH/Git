@@ -326,9 +326,11 @@ let sign_dal_attestations (cctxt : #Protocol_client_context.full) chain_id
      handle concurrent requests *)
   let shell = {Tezos_base.Operation.branch} in
   List.filter_map_es
-    (fun (((consensus_key, _) as delegate), consensus_content, published_level) ->
+    (fun ( ((consensus_key, _) as delegate),
+           dal_operation_content,
+           published_level ) ->
       let watermark = Operation.(to_watermark (Dal_attestation chain_id)) in
-      let contents = Single (Dal_attestation consensus_content) in
+      let contents = Single (Dal_attestation dal_operation_content) in
       let unsigned_operation = (shell, Contents_list contents) in
       let unsigned_operation_bytes =
         Data_encoding.Binary.to_bytes_exn
@@ -352,10 +354,7 @@ let sign_dal_attestations (cctxt : #Protocol_client_context.full) chain_id
           in
           let operation : Operation.packed = {shell; protocol_data} in
           return_some
-            ( delegate,
-              operation,
-              consensus_content.Dal.Attestation.attestation,
-              published_level ))
+            (delegate, operation, dal_operation_content, published_level))
     attestations
 
 let authorize_consensus_votes kind (cctxt : #Protocol_client_context.full)

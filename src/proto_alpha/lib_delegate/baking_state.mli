@@ -201,7 +201,7 @@ type forge_event =
   | Dal_attestation_ready of
       (consensus_key_and_delegate
       * packed_operation
-      * Dal.Attestation.t
+      * Dal.Attestation.operation
       * int32)
   | Block_ready of prepared_block
 

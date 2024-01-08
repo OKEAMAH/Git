@@ -387,7 +387,7 @@ type forge_event =
   | Dal_attestation_ready of
       (consensus_key_and_delegate
       * packed_operation
-      * Dal.Attestation.t
+      * Dal.Attestation.operation
       * int32)
   | Block_ready of prepared_block
 
@@ -488,10 +488,22 @@ let forge_event_encoding =
       (req "round" Round.encoding)
   in
   let dal_attestation_encoding =
+    let dal_operation_content_encoding : Dal.Attestation.operation encoding =
+      conv
+        (fun {Dal.Attestation.attestation; level; round; slot} ->
+          (attestation, level, round, slot))
+        (fun (attestation, level, round, slot) ->
+          {attestation; level; round; slot})
+        (obj4
+           (req "attestation" Dal.Attestation.encoding)
+           (req "level" Raw_level.encoding)
+           (req "round" Round.encoding)
+           (req "slot" Slot.encoding))
+    in
     obj4
       (req "delegate" consensus_key_and_delegate_encoding)
       (req "consensus_operation" (dynamic_size packed_operation_encoding))
-      (req "dal_attestation" Dal.Attestation.encoding)
+      (req "dal_operation_content" dal_operation_content_encoding)
       (req "published_level" int32)
   in
   let prepared_block_encoding =

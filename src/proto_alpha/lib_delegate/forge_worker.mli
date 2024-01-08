@@ -30,7 +30,10 @@ val sign_dal_attestations :
   Chain_id.t ->
   branch:Block_hash.t ->
   (consensus_key_and_delegate * Dal.Attestation.operation * int32) list ->
-  (consensus_key_and_delegate * packed_operation * Dal.Attestation.t * int32)
+  (consensus_key_and_delegate
+  * packed_operation
+  * Dal.Attestation.operation
+  * int32)
   list
   tzresult
   Lwt.t
