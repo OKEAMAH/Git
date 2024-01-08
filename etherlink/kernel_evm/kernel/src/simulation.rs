@@ -7,6 +7,7 @@
 // Module containing most Simulation related code, in one place, to be deleted
 // when the proxy node simulates directly
 
+use crate::fees::simulation_add_gas_for_fees;
 use crate::{error::Error, error::StorageError, storage};
 
 use crate::{
@@ -131,7 +132,14 @@ impl Evaluation {
             allocated_ticks,
         )
         .map_err(Error::Simulation)?;
-        Ok(outcome)
+
+        if let Some(outcome) = outcome {
+            let outcome = simulation_add_gas_for_fees(outcome, &block_fees, gas_price)
+                .map_err(Error::Simulation)?;
+            Ok(Some(outcome))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -222,12 +230,8 @@ impl TxValidation {
                 tx_data_size,
             );
 
-        let gas_price = if let Ok(gas_price) = transaction.overall_gas_price(&block_fees)
-        {
-            gas_price
-        } else {
-            block_fees.base_fee_per_gas()
-        };
+        // We focus on available ticks here, rather than gas.
+        let gas_limit = transaction.gas_limit_with_fees();
 
         match run_transaction(
             host,
@@ -238,8 +242,8 @@ impl TxValidation {
             transaction.to,
             *caller,
             transaction.data.clone(),
-            Some(transaction.execution_gas_limit()), // gas could be omitted
-            gas_price,
+            Some(gas_limit), // gas could be omitted
+            block_fees.base_fee_per_gas(),
             Some(transaction.value),
             false,
             allocated_ticks,
@@ -877,6 +881,7 @@ mod tests {
     #[test]
     fn test_tx_validation_gas_price() {
         let mut host = MockHost::default();
+        let block_fees = crate::retrieve_block_fees(&mut host).unwrap();
 
         let transaction = EthereumTransactionCommon::new(
             TransactionType::Eip1559,
@@ -884,7 +889,7 @@ mod tests {
             U256::from(0),
             U256::zero(),
             U256::from(1),
-            21000,
+            21000 + block_fees.gas_for_fees(U256::one()).as_u64(),
             Some(H160::zero()),
             U256::zero(),
             vec![],
@@ -914,6 +919,7 @@ mod tests {
             )
             .unwrap();
         let result = simulation.run(&mut host);
+        println!("{result:?}");
         assert!(result.is_ok());
         assert_eq!(TxValidationOutcome::MaxGasFeeTooLow, result.unwrap());
     }

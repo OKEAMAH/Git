@@ -52,6 +52,7 @@ pub enum DurableStorageError {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ArithmeticErrorKind {
     FeeOverflow,
+    FeeUnderflow,
 }
 
 /// Errors when processing Ethereum transactions
