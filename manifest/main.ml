@@ -2818,10 +2818,15 @@ let tezt_ethereum =
     ~bisect_ppx:No
     ~deps:
       [
-        tezt_lib |> open_ |> open_ ~m:"Base";
+        tezt_wrapper |> open_ |> open_ ~m:"Base";
         tezt_performance_regression |> open_;
         octez_crypto;
         tezt_tezos |> open_;
+      ]
+    ~npm_deps:
+      [
+        Npm.make "eth-cli" (Version (V.exactly "2.0.2"))
+        (* evm tezt tests require eth cli tool for querying evm node. *);
       ]
     ~release_status:Unreleased
 

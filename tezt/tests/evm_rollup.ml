@@ -12,7 +12,7 @@
    -------
    Component:    Smart Optimistic Rollups: EVM Kernel
    Requirement:  make -f kernels.mk build
-                 npm install eth-cli
+                 npm install
    Invocation:   dune exec tezt/tests/main.exe -- --file evm_rollup.ml
 *)
 open Sc_rollup_helpers
@@ -402,9 +402,7 @@ let setup_past_genesis
   let* _level = next_evm_level ~evm_node ~sc_rollup_node ~node ~client in
   return full_setup
 
-let register_test ?config ~title ~tags ?(admin = None) ?uses ?commitment_period
-    ?challenge_window ?bootstrap_accounts ?(past_genesis = false) ~setup_mode f
-    =
+let register_test ~title ~tags ?(admin = None) ?(eth_cli = true) ~setup_mode f =
   let extra_tag =
     match setup_mode with
     | Setup_proxy _ -> "proxy"
@@ -413,11 +411,13 @@ let register_test ?config ~title ~tags ?(admin = None) ?uses ?commitment_period
   let uses =
     Option.value
       ~default:(fun _protocol ->
+      List.append
         [
           Constant.octez_smart_rollup_node;
           Constant.octez_evm_node;
           Constant.smart_rollup_installer;
-        ])
+        ]
+        (if eth_cli then [Constant.eth_cli] else []))
       uses
   in
   Protocol.register_test
@@ -465,7 +465,7 @@ let register_proxy ?config ~title ~tags ?uses ?admin ?commitment_period
     ~setup_mode:(Setup_proxy {devmode = true})
 
 let register_both ~title ~tags ?uses ?admin ?commitment_period ?challenge_window
-    ?bootstrap_accounts ?(past_genesis = false) ?config ?time_between_blocks f
+    ?bootstrap_accounts ?(past_genesis = false) ?config ?time_between_blocks ?eth_cli f
     protocols =
   let register =
     register_test
@@ -477,6 +477,7 @@ let register_both ~title ~tags ?uses ?admin ?commitment_period ?challenge_window
       ?commitment_period
       ?challenge_window
       ?bootstrap_accounts
+      ?eth_cli
       f
       protocols
       ~past_genesis
@@ -1472,7 +1473,7 @@ let test_l2_transfer =
   let test_f ~protocol:_ ~evm_setup = transfer ~evm_setup () in
   let title = "Check L2 transfers are applied" in
   let tags = ["evm"; "l2_transfer"] in
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_chunked_transaction =
   let test_f ~protocol:_ ~evm_setup =
@@ -1480,7 +1481,7 @@ let test_chunked_transaction =
   in
   let title = "Check L2 chunked transfers are applied" in
   let tags = ["evm"; "l2_transfer"; "chunked"] in
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_rpc_txpool_content =
   register_both
@@ -1755,7 +1756,7 @@ let test_eth_call_large =
   in
   let title = "eth_call with a large amount of data" in
   let tags = ["evm"; "eth_call"; "simulate"; "large"] in
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_estimate_gas =
   let test_f ~protocol:_ ~evm_setup =
@@ -1768,7 +1769,7 @@ let test_estimate_gas =
 
   let title = "eth_estimateGas for contract creation" in
   let tags = ["evm"; "eth_estimategas"; "simulate"] in
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_estimate_gas_additionnal_field =
   let test_f ~protocol:_ ~evm_setup =
@@ -1790,7 +1791,7 @@ let test_estimate_gas_additionnal_field =
   in
   let title = "eth_estimateGas allows additional fields" in
   let tags = ["evm"; "eth_estimategas"; "simulate"; "remix"] in
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_eth_call_storage_contract =
   let test_f ~protocol:_ ~evm_setup:({evm_node; endpoint; _} as evm_setup) =
@@ -1855,7 +1856,7 @@ let test_eth_call_storage_contract =
   in
   let title = "Call a view" in
   let tags = ["evm"; "eth_call"; "simulate"] in
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_eth_call_storage_contract_proxy =
   register_proxy
@@ -1946,7 +1947,7 @@ let test_eth_call_storage_contract_eth_cli =
   let title = "Call a view through an ethereum client" in
   let tags = ["evm"; "eth_call"; "simulate"] in
 
-  register_both ~title ~tags test_f
+  register_both ~eth_cli:false ~title ~tags test_f
 
 let test_preinitialized_evm_kernel =
   let administrator_key_path = Durable_storage_path.admin in

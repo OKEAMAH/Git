@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
 (* Copyright (c) 2020 Metastate AG <hello@metastate.dev>                     *)
+(* Copyright (c) 2024 Trilitech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -53,6 +54,8 @@ let octez_smart_rollup_node =
   Uses.make ~tag:"smart_rollup_node" ~path:"./octez-smart-rollup-node"
 
 let octez_evm_node = Uses.make ~tag:"evm_node" ~path:"./octez-evm-node"
+
+let eth_cli = Uses.make ~tag:"eth_cli" ~path:"./node_modules/eth-cli/bin/run"
 
 let octez_signer = Uses.make ~tag:"signer" ~path:"./octez-signer"
 

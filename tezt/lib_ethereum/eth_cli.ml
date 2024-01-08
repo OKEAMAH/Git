@@ -3,6 +3,7 @@
 (* Open Source License                                                       *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
 (* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2024 Trilitech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -24,7 +25,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let path = "eth"
+let path = project_root // Uses.path Constant.eth_cli
 
 let spawn_command_and_read_string ?expect_failure command =
   let process = Process.spawn path command in
