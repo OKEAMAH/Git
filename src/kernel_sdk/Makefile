@@ -20,10 +20,23 @@ ifneq ($(NATIVE_TARGET),)
 NATIVE_OPT := --target "$(NATIVE_TARGET)"
 endif
 
-RISCV_OPTS = --target riscv64gc-unknown-none-elf --no-default-features
+RISCV_OPTS = --target riscv64gc-unknown-hermit --no-default-features
 RISCV_OPTS_ALPHA = $(RISCV_OPTS) --features proto-alpha
 
 SDK_VERSION := "0.2.2"
+
+.PHONY: riscv-check
+riscv-check:
+	@cargo check -p tezos-smart-rollup-constants $(RISCV_OPTS)
+	@cargo check -p tezos-smart-rollup-core $(RISCV_OPTS_ALPHA)
+	@cargo check -p tezos-smart-rollup-host $(RISCV_OPTS_ALPHA)
+	@cargo check -p tezos-smart-rollup-debug $(RISCV_OPTS_ALPHA)
+	@cargo check -p tezos-smart-rollup-panic-hook $(RISCV_OPTS_ALPHA)
+	@cargo check -p tezos-smart-rollup-entrypoint $(RISCV_OPTS_ALPHA)
+	@cargo check -p tezos-smart-rollup-encoding $(RISCV_OPTS_ALPHA)
+	# @cargo check -p tezos-smart-rollup-storage $(RISCV_OPTS_ALPHA)
+	# @cargo check -p tezos-smart-rollup-mock $(RISCV_OPTS_ALPHA)
+	@cargo check -p tezos-smart-rollup $(RISCV_OPTS) --features proto-alpha-no-mock
 
 .PHONY: check
 check: installer-template publish-check doc riscv-check
@@ -49,20 +62,6 @@ publish-check: installer-template
 	@cargo check -p tezos-smart-rollup-installer-config
 	@cargo check -p tezos-smart-rollup-installer
 	@cargo check -p tezos-smart-rollup
-
-.PHONY: riscv-check
-riscv-check:
-	@cargo check -p tezos-smart-rollup-constants $(RISCV_OPTS)
-	@cargo check -p tezos-smart-rollup-core $(RISCV_OPTS_ALPHA)
-	@cargo check -p tezos-smart-rollup-host $(RISCV_OPTS_ALPHA)
-	@cargo check -p tezos-smart-rollup-debug $(RISCV_OPTS_ALPHA)
-	@cargo check -p tezos-smart-rollup-panic-hook $(RISCV_OPTS_ALPHA)
-	@cargo check -p tezos-smart-rollup-entrypoint $(RISCV_OPTS_ALPHA)
-	@cargo check -p tezos-smart-rollup-encoding $(RISCV_OPTS_ALPHA)
-	# @cargo check -p tezos-smart-rollup-storage $(RISCV_OPTS_ALPHA)
-	# @cargo check -p tezos-smart-rollup-mock $(RISCV_OPTS_ALPHA)
-	@cargo check -p tezos-smart-rollup $(RISCV_OPTS) --features proto-alpha-no-mock
-
 
 .PHONY: build
 build: installer-template
@@ -91,7 +90,7 @@ doc:
 
 .PHONY: build-deps
 build-deps:
-	@rustup target add wasm32-unknown-unknown riscv64gc-unknown-none-elf $(NATIVE_TARGET)
+	@rustup target add wasm32-unknown-unknown $(NATIVE_TARGET)
 
 .PHONY: build-dev-deps
 build-dev-deps: build-deps
