@@ -89,6 +89,8 @@ type dependency =
   | Job of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
 
+type dependencies = Staged | Independent | Dependent of dependency list
+
 type git_strategy = Fetch | Clone | No_strategy
 
 let enc_git_strategy = function
@@ -97,7 +99,7 @@ let enc_git_strategy = function
   | No_strategy -> "none"
 
 let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
-    ?cache ?image ?interruptible ?(dependencies = []) ?services ?variables
+    ?cache ?image ?interruptible ?(dependencies = Staged) ?services ?variables
     ?rules ?timeout ?(tags = []) ?git_strategy ~stage ~name script :
     Gitlab_ci.Types.job =
   let tags =
@@ -106,19 +108,23 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
   let stage = Some (Stage.name stage) in
   let script = Some script in
   let needs, dependencies =
-    let to_opt = function [] -> None | xs -> Some xs in
-    let rec loop (needs, dependencies) = function
-      | Job j :: deps -> loop (j.name :: needs, dependencies) deps
-      | Artifacts j :: deps ->
-          loop (j.name :: needs, j.name :: dependencies) deps
-      | [] ->
-          (* Note that [dependencies] is always filled, because we want to
-             fetch no dependencies by default ([dependencies = Some
-             []]), whereas the absence of [dependencies = None] would
-             fetch all the dependencies of the preceding jobs. *)
-          (to_opt @@ List.rev needs, Some (List.rev dependencies))
-    in
-    loop ([], []) dependencies
+    match dependencies with
+    | Staged -> (None, Some [])
+    | Independent -> (Some [], Some [])
+    | Dependent dependencies ->
+        let to_opt = function [] -> None | xs -> Some xs in
+        let rec loop (needs, dependencies) = function
+          | Job j :: deps -> loop (j.name :: needs, dependencies) deps
+          | Artifacts j :: deps ->
+              loop (j.name :: needs, j.name :: dependencies) deps
+          | [] ->
+              (* Note that [dependencies] is always filled, because we want to
+                 fetch no dependencies by default ([dependencies = Some
+                 []]), whereas the absence of [dependencies = None] would
+                 fetch all the dependencies of the preceding jobs. *)
+              (to_opt @@ List.rev needs, Some (List.rev dependencies))
+        in
+        loop ([], []) dependencies
   in
   let variables =
     match git_strategy with

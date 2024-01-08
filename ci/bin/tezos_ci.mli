@@ -71,7 +71,7 @@ end
 (** Represents architectures. *)
 type arch = Amd64 | Arm64
 
-(** Job dependencies.
+(** A job dependency.
 
     - A job that depends on [Job j] will not start until [j] finishes.
 
@@ -80,6 +80,14 @@ type arch = Amd64 | Arm64
 type dependency =
   | Job of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
+
+(** Job dependencies.
+
+    - A [Staged] job implements the default GitLab CI behavior of running once all
+    jobs in the previous stage have terminated.
+    - An [Independent] job runs immediately, regardless of its stage. This corresponds to setting [needs: []].
+    - An [Dependent deps] job runs once all the jobs in [deps] have terminated. *)
+type dependencies = Staged | Independent | Dependent of dependency list
 
 (** Values for the [GIT_STRATEGY] variable.
 
@@ -118,7 +126,7 @@ val job :
   ?cache:Gitlab_ci.Types.cache ->
   ?image:Image.t ->
   ?interruptible:bool ->
-  ?dependencies:dependency list ->
+  ?dependencies:dependencies ->
   ?services:Gitlab_ci.Types.service list ->
   ?variables:Gitlab_ci.Types.variables ->
   ?rules:Gitlab_ci.Types.job_rule list ->
