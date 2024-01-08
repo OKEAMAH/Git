@@ -115,6 +115,10 @@ val metadata_encoding : metadata Data_encoding.t
 (** Equality on {!block} *)
 val equal : t -> t -> bool
 
+(** Encoding for {!t} (and {!block}) which uses the compressed mode for 
+    consensus operations. *)
+val encoded_block_encoding : t Data_encoding.t
+
 (** Encoding for {!t} (and {!block}).
 
     {b Important} An encoded block is prefixed by 4 bytes which stands

@@ -39,8 +39,16 @@ module Metrics = struct
   let hash = Registerer.Registered.hash
 end
 
+module Shell = struct
+  include Plugin.Shell
+
+  let hash = Registerer.Registered.hash
+end
+
 let () = Protocol_plugin.register_validation_plugin (module Validation)
 
 let () = Protocol_plugin.register_rpc (module RPC)
 
 let () = Protocol_plugin.register_metrics (module Metrics)
+
+let () = Protocol_plugin.register_shell (module Shell)

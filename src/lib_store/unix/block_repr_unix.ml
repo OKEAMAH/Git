@@ -26,46 +26,51 @@
 open Block_repr
 
 let decode_block_repr encoding block_bytes =
-  try Data_encoding.Binary.of_bytes_exn encoding block_bytes
-  with _ ->
-    (* If the decoding fails, try with the legacy block_repr encoding
+  (* First, try with the compressed consensus_operations version of the
+     block encoding *)
+  try Data_encoding.Binary.of_bytes_exn encoded_block_encoding block_bytes
+  with _ -> (
+    (* If the decoding fails, try with the non-compressed operations encoding *)
+    try Data_encoding.Binary.of_bytes_exn encoding block_bytes
+    with _ ->
+      (* If the decoding fails, try with the legacy block_repr encoding
        *)
-    let legacy_block =
-      Data_encoding.Binary.of_bytes_exn legacy_encoding block_bytes
-    in
-    let legacy_metadata = legacy_block.legacy_metadata in
-    let metadata =
-      match legacy_metadata with
-      | Some metadata ->
-          let {
-            legacy_message;
-            legacy_max_operations_ttl;
-            legacy_last_allowed_fork_level;
-            legacy_block_metadata;
-            legacy_operations_metadata;
-          } =
-            metadata
-          in
-          let operations_metadata =
-            (List.map (List.map (fun x -> Block_validation.Metadata x)))
-              legacy_operations_metadata
-          in
-          Some
-            ({
-               message = legacy_message;
-               max_operations_ttl = legacy_max_operations_ttl;
-               last_preserved_block_level = legacy_last_allowed_fork_level;
-               block_metadata = legacy_block_metadata;
-               operations_metadata;
-             }
-              : metadata)
-      | None -> None
-    in
-    {
-      hash = legacy_block.legacy_hash;
-      contents = legacy_block.legacy_contents;
-      metadata;
-    }
+      let legacy_block =
+        Data_encoding.Binary.of_bytes_exn legacy_encoding block_bytes
+      in
+      let legacy_metadata = legacy_block.legacy_metadata in
+      let metadata =
+        match legacy_metadata with
+        | Some metadata ->
+            let {
+              legacy_message;
+              legacy_max_operations_ttl;
+              legacy_last_allowed_fork_level;
+              legacy_block_metadata;
+              legacy_operations_metadata;
+            } =
+              metadata
+            in
+            let operations_metadata =
+              (List.map (List.map (fun x -> Block_validation.Metadata x)))
+                legacy_operations_metadata
+            in
+            Some
+              ({
+                 message = legacy_message;
+                 max_operations_ttl = legacy_max_operations_ttl;
+                 last_preserved_block_level = legacy_last_allowed_fork_level;
+                 block_metadata = legacy_block_metadata;
+                 operations_metadata;
+               }
+                : metadata)
+        | None -> None
+      in
+      {
+        hash = legacy_block.legacy_hash;
+        contents = legacy_block.legacy_contents;
+        metadata;
+      })
 
 (* FIXME handle I/O errors *)
 let read_next_block_exn fd =
