@@ -118,12 +118,22 @@ let encoded_operations_encoding : encoded_operations Data_encoding.t =
          (function
            | Raw operations ->
                Data_encoding.Binary.to_bytes_exn raw_op_encoding operations
-           | Compressed bytes ->
-               Bytes.concat Bytes.empty [Bytes.make 1 magic_byte; bytes])
+           | Compressed bytes -> Bytes.cat (Bytes.make 1 magic_byte) bytes)
          (fun b ->
-           if Bytes.length b > 0 then
-             if Bytes.get b 0 = magic_byte then Compressed b
-             else Raw (Data_encoding.Binary.of_bytes_exn raw_op_encoding b)
+           let length = Bytes.length in
+           if length b > 0 then
+             if Bytes.get b 0 = magic_byte then
+               (* Get rid of the magic_byte *)
+               let data = Bytes.sub b 1 (length b - 1) in
+               Compressed data
+             else
+               let b =
+                 let size =
+                   Data_encoding.Binary.to_bytes_exn int31 (length b)
+                 in
+                 Bytes.cat size b
+               in
+               Raw (Data_encoding.Binary.of_bytes_exn raw_op_encoding b)
            else Raw [])
          bytes)
     ~json:
@@ -259,7 +269,7 @@ let legacy_metadata_encoding : legacy_metadata Data_encoding.t =
           (req "legacy_block_metadata" bytes)
           (req "legacy_operations_metadata" (list (list bytes))))
 
-let _encoded_block_encoding =
+let encoded_block_encoding =
   let open Data_encoding in
   def "store.encoded_block_repr"
   @@ conv
@@ -457,16 +467,27 @@ let check_block_consistency ?genesis_hash ?pred_block block protocol_levels =
   in
   match operations block with
   | Raw operations -> check_raw_operations_hash operations
-  | Compressed _ -> (
+  | Compressed b -> (
       let protocol_level = proto_level block in
       let protocol_info_opt : Store_types.Protocol_levels.protocol_info option =
         Store_types.Protocol_levels.find protocol_level protocol_levels
       in
       match protocol_info_opt with
       | None -> tzfail (Cannot_find_protocol protocol_level)
-      | Some _ ->
-          (* TBD *)
-          assert false)
+      | Some {protocol; _} ->
+          let* uncompressed_operations =
+            match Protocol_plugin.find_shell protocol with
+            | Some (module Shell_plugin) ->
+                return
+                @@ Data_encoding.Binary.of_bytes_exn
+                     Shell_plugin.refactoring_encoding
+                     b
+            | None ->
+                (* There should never be a case where we uncompress Compressed
+                   operations, but we do not have a refactoring_encoding *)
+                tzfail (Uncompress_without_plugin {protocol_hash = protocol})
+          in
+          check_raw_operations_hash uncompressed_operations)
 
 let convert_legacy_metadata (legacy_metadata : legacy_metadata) : metadata =
   let {

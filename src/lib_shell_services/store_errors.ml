@@ -42,6 +42,7 @@ type error +=
       expected : Operation_list_list_hash.t;
       got : Operation_list_list_hash.t;
     }
+  | Uncompress_without_plugin of {protocol_hash : Protocol_hash.t}
 
 let () =
   register_error_kind
@@ -189,7 +190,23 @@ let () =
     (function
       | Inconsistent_operations_hash {expected; got} -> Some (expected, got)
       | _ -> None)
-    (fun (expected, got) -> Inconsistent_operations_hash {expected; got})
+    (fun (expected, got) -> Inconsistent_operations_hash {expected; got}) ;
+  register_error_kind
+    `Permanent
+    ~id:"store.uncompress_without_plugin"
+    ~title:"No plugin to uncompress"
+    ~description:"No plugin was found. Could not uncompress operations."
+    ~pp:(fun ppf protocol_hash ->
+      Format.fprintf
+        ppf
+        "Could not find plugin to uncompress for protocol %a."
+        Protocol_hash.pp
+        protocol_hash)
+    Data_encoding.(obj1 (req "protocol_hash" Protocol_hash.encoding))
+    (function
+      | Uncompress_without_plugin {protocol_hash} -> Some protocol_hash
+      | _ -> None)
+    (fun protocol_hash -> Uncompress_without_plugin {protocol_hash})
 
 type cemented_store_inconsistency =
   | Missing_cycle of {low_cycle : string; high_cycle : string}

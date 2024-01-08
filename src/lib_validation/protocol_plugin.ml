@@ -137,6 +137,12 @@ module type METRICS = sig
     unit Lwt.t
 end
 
+module type SHELL = sig
+  val hash : Protocol_hash.t
+
+  val refactoring_encoding : Operation.t list list Data_encoding.t
+end
+
 module Undefined_metrics_plugin (Proto : sig
   val hash : Protocol_hash.t
 end) =
@@ -152,6 +158,9 @@ let rpc_table : (module RPC) Protocol_hash.Table.t =
 let metrics_table : (module METRICS) Protocol_hash.Table.t =
   Protocol_hash.Table.create 5
 
+let shell_table : (module SHELL) Protocol_hash.Table.t =
+  Protocol_hash.Table.create 5
+
 let register_rpc (module Rpc : RPC) =
   assert (not (Protocol_hash.Table.mem rpc_table Rpc.Proto.hash)) ;
   Protocol_hash.Table.add rpc_table Rpc.Proto.hash (module Rpc)
@@ -159,9 +168,14 @@ let register_rpc (module Rpc : RPC) =
 let register_metrics (module Metrics : METRICS) =
   Protocol_hash.Table.replace metrics_table Metrics.hash (module Metrics)
 
+let register_shell (module Shell : SHELL) =
+  Protocol_hash.Table.replace shell_table Shell.hash (module Shell)
+
 let find_rpc = Protocol_hash.Table.find rpc_table
 
 let find_metrics = Protocol_hash.Table.find metrics_table
+
+let find_shell = Protocol_hash.Table.find shell_table
 
 let safe_find_metrics hash =
   match find_metrics hash with

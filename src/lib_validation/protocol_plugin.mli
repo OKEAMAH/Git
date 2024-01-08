@@ -180,6 +180,14 @@ module type METRICS = sig
     unit Lwt.t
 end
 
+(** This is a module that is used to refactor the list of operations
+    and thus to decrease the memory usage of consensus operations. *)
+module type SHELL = sig
+  val hash : Protocol_hash.t
+
+  val refactoring_encoding : Operation.t list list Data_encoding.t
+end
+
 (** Emtpy metrics module. All metrics are -1. *)
 module Undefined_metrics_plugin (P : sig
   val hash : Protocol_hash.t
@@ -194,6 +202,9 @@ val register_rpc : (module RPC) -> unit
 
 (** Register a metrics plugin module *)
 val register_metrics : (module METRICS) -> unit
+
+(** Register a SHELL plugin module *)
+val register_shell : (module SHELL) -> unit
 
 (** Retrieves the registered protocol with the provided hash and wraps it
     together with its validation plugin.
@@ -215,6 +226,9 @@ val find_rpc : Protocol_hash.t -> (module RPC) option
 
 (** Looks for a metrics plugin module for a specific protocol *)
 val find_metrics : Protocol_hash.t -> (module METRICS) option
+
+(** Looks for a shell plugin module for a specific protocol *)
+val find_shell : Protocol_hash.t -> (module SHELL) option
 
 (** Same as [find_metrics] but returns [Undefined_metrics_plugin] if not found *)
 val safe_find_metrics : Protocol_hash.t -> (module METRICS) Lwt.t

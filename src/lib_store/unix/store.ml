@@ -310,11 +310,19 @@ module Block = struct
               Stored_data.get chain_state.protocol_levels_data
             in
             match Protocol_levels.find protocol_level proto_levels with
-            | None -> assert false
-            | Some proto_hash ->
-                let find_plugin_uncompress _ = assert false in
-                let uncompress_f _ = find_plugin_uncompress proto_hash in
-                return (uncompress_f b))
+            | None -> tzfail (Cannot_find_protocol protocol_level)
+            | Some {protocol; _} -> (
+                match Protocol_plugin.find_shell protocol with
+                | Some (module Shell_plugin) ->
+                    return
+                    @@ Data_encoding.Binary.of_bytes_exn
+                         Shell_plugin.refactoring_encoding
+                         b
+                | None ->
+                    (* There should never be a case where we uncompress Compressed
+                       operations, but we do not have a refactoring_encoding *)
+                    tzfail
+                      (Uncompress_without_plugin {protocol_hash = protocol})))
 
   let read_block {block_store; chain_state; _} ?(distance = 0) hash =
     let open Lwt_result_syntax in
@@ -475,6 +483,23 @@ module Block = struct
                operations_data_lengths = to_string ops_metadata;
              } ))
 
+  let protocol_hash chain_store block =
+    let open Lwt_result_syntax in
+    Shared.use chain_store.chain_state (fun chain_state ->
+        let*! protocol_levels =
+          Stored_data.get chain_state.protocol_levels_data
+        in
+        let open Protocol_levels in
+        let proto_level = Block_repr.proto_level block in
+        match find proto_level protocol_levels with
+        | Some {protocol; _} -> return protocol
+        | None -> tzfail (Cannot_find_protocol proto_level))
+
+  let protocol_hash_exn chain_store block =
+    let open Lwt_syntax in
+    let* r = protocol_hash chain_store block in
+    match r with Ok ph -> Lwt.return ph | Error _ -> Lwt.fail Not_found
+
   let store_block chain_store ~block_header ~operations validation_result =
     let open Lwt_result_syntax in
     let {
@@ -606,10 +631,30 @@ module Block = struct
             }
         in
         let block = {Block_repr.hash; contents; metadata} in
+        let*! (encoded_operations : Block_repr.encoded_operations) =
+          Lwt.catch
+            (fun () ->
+              let*! protocol_hash = protocol_hash_exn chain_store block in
+              Lwt.return
+              @@
+              match Protocol_plugin.find_shell protocol_hash with
+              | Some (module Shell_plugin) ->
+                  let b =
+                    Data_encoding.Binary.to_bytes_exn
+                      Shell_plugin.refactoring_encoding
+                      operations
+                  in
+                  Block_repr.Compressed b
+              | None -> Block_repr.Raw operations)
+            (fun _ -> Lwt.return @@ Block_repr.Raw operations)
+        in
         let* () =
           Block_store.store_block
             chain_store.block_store
-            block
+            {
+              block with
+              contents = {contents with operations = encoded_operations};
+            }
             resulting_context_hash
         in
         let*! () =
@@ -778,23 +823,6 @@ module Block = struct
             return (status, forked_hash_opt))
     | Forking _ -> return (status, Some (Block_repr.hash block))
     | Not_running -> return (status, None)
-
-  let protocol_hash chain_store block =
-    let open Lwt_result_syntax in
-    Shared.use chain_store.chain_state (fun chain_state ->
-        let*! protocol_levels =
-          Stored_data.get chain_state.protocol_levels_data
-        in
-        let open Protocol_levels in
-        let proto_level = Block_repr.proto_level block in
-        match find proto_level protocol_levels with
-        | Some {protocol; _} -> return protocol
-        | None -> tzfail (Cannot_find_protocol proto_level))
-
-  let protocol_hash_exn chain_store block =
-    let open Lwt_syntax in
-    let* r = protocol_hash chain_store block in
-    match r with Ok ph -> Lwt.return ph | Error _ -> Lwt.fail Not_found
 
   (** Operations on invalid blocks *)
 
