@@ -68,7 +68,7 @@ fn compute<Host: Runtime>(
     // iteration over all remaining transaction in the block
     while block_in_progress.has_tx() {
         // is reboot necessary ?
-        if block_in_progress.would_overflow() {
+        if block_in_progress.would_overflow(&block_constants.block_fees) {
             // TODO: https://gitlab.com/tezos/tezos/-/issues/6094
             // there should be an upper bound on gasLimit
             return Ok(ComputationResult::RebootNeeded);
@@ -370,9 +370,13 @@ mod tests {
 
     const DUMMY_CHAIN_ID: U256 = U256::one();
     const DUMMY_BASE_FEE_PER_GAS: u64 = 21000u64;
+    const DUMMY_BASE_FEE: u64 = 0u64;
 
     fn dummy_block_fees() -> BlockFees {
-        BlockFees::new(DUMMY_BASE_FEE_PER_GAS.into())
+        BlockFees::new(
+            U256::from(DUMMY_BASE_FEE_PER_GAS),
+            U256::from(DUMMY_BASE_FEE),
+        )
     }
 
     fn dummy_eth_gen_transaction(
@@ -1139,7 +1143,7 @@ mod tests {
         // Ensures the caller has enough balance to pay for the fees, but not
         // the transaction itself, otherwise the transaction will not even be
         // taken into account.
-        let fees = U256::from(21000) * tx.execution_gas_limit();
+        let fees = U256::from(21000) * tx.gas_limit_with_fees();
         set_balance(&mut host, &mut evm_account_storage, &caller, fees);
 
         // Prepare a invalid transaction, i.e. with not enough funds.

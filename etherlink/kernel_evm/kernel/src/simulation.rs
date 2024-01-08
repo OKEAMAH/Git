@@ -9,6 +9,7 @@
 
 use crate::tick_model::constants::MAX_TRANSACTION_GAS_LIMIT;
 use crate::{error::Error, error::StorageError, storage};
+use evm_execution::EthereumError;
 
 use crate::{
     current_timestamp, parsable, parsing, retrieve_block_fees, retrieve_chain_id,
@@ -136,7 +137,21 @@ impl Evaluation {
             allocated_ticks,
         )
         .map_err(Error::Simulation)?;
-        Ok(outcome)
+
+        // XXXEmma proper function
+        if let Some(mut outcome) = outcome {
+            let gas_for_fees = block_fees.gas_for_fees(gas_price);
+            if gas_for_fees > U256::from(u64::MAX) {
+                return Err(Error::Simulation(EthereumError::GasLimitOverflow(
+                    gas_for_fees,
+                )));
+            }
+            outcome.gas_used = outcome.gas_used.saturating_add(gas_for_fees.as_u64());
+
+            Ok(Some(outcome))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -226,13 +241,13 @@ impl TxValidation {
         if tx.chain_id.is_some() && tx.chain_id != Some(chain_id) {
             return Ok(TxValidationOutcome::InvalidChainId);
         }
-        // Check if the gas limit is not too high
-        if tx.execution_gas_limit() > MAX_TRANSACTION_GAS_LIMIT {
-            return Ok(TxValidationOutcome::GasLimitTooHigh);
-        }
         // Check if the gas price is high enough
         if tx.max_fee_per_gas < block_fees.base_fee_per_gas() {
             return Ok(TxValidationOutcome::MaxGasFeeTooLow);
+        }
+        // Check if the gas limit is not too high
+        if tx.execution_gas_limit(&block_fees)? > MAX_TRANSACTION_GAS_LIMIT {
+            return Ok(TxValidationOutcome::GasLimitTooHigh);
         }
         // TODO: #6498
         // check PRE_PAY condition
@@ -830,6 +845,7 @@ mod tests {
     #[test]
     fn test_tx_validation_gas_price() {
         let mut host = MockHost::default();
+        let block_fees = crate::retrieve_block_fees(&mut host).unwrap();
 
         let transaction = EthereumTransactionCommon::new(
             TransactionType::Eip1559,
@@ -837,7 +853,7 @@ mod tests {
             U256::from(0),
             U256::zero(),
             U256::from(1),
-            21000,
+            21000 + block_fees.gas_for_fees(U256::one()).as_u64(),
             Some(H160::zero()),
             U256::zero(),
             vec![],
@@ -867,6 +883,7 @@ mod tests {
             )
             .unwrap();
         let result = simulation.run(&mut host);
+        println!("{result:?}");
         assert!(result.is_ok());
         assert_eq!(TxValidationOutcome::MaxGasFeeTooLow, result.unwrap());
     }

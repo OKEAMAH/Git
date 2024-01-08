@@ -283,7 +283,7 @@ mod test {
     }
 
     fn dummy_first_block() -> BlockConstants {
-        let block_fees = BlockFees::new(U256::from(12345));
+        let block_fees = BlockFees::new(U256::from(12345), U256::from(500_000));
         BlockConstants::first_block(U256::zero(), U256::one(), block_fees)
     }
 
@@ -1971,7 +1971,7 @@ mod test {
         let chain_id = U256::from(42);
         let mut chain_id_bytes = [0u8; 32];
         chain_id.to_big_endian(&mut chain_id_bytes);
-        let block_fees = BlockFees::new(U256::from(54321));
+        let block_fees = BlockFees::new(U256::from(54321), U256::from(1000));
         let block = BlockConstants::first_block(U256::zero(), chain_id, block_fees);
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_evm_account_storage().unwrap();
@@ -2043,7 +2043,7 @@ mod test {
         let base_fee_per_gas = U256::from(23000);
         let mut base_fee_per_gas_bytes = [0u8; 32];
         base_fee_per_gas.to_big_endian(&mut base_fee_per_gas_bytes);
-        let block_fees = BlockFees::new(base_fee_per_gas);
+        let block_fees = BlockFees::new(base_fee_per_gas, U256::zero());
         let block = BlockConstants::first_block(U256::zero(), U256::one(), block_fees);
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_evm_account_storage().unwrap();
@@ -2287,7 +2287,7 @@ mod test {
         // Arrange
         let mut mock_runtime = MockHost::default();
         let base_fee_per_gas = U256::from(23000);
-        let block_fees = BlockFees::new(base_fee_per_gas);
+        let block_fees = BlockFees::new(base_fee_per_gas, U256::zero());
         let block = BlockConstants::first_block(U256::zero(), U256::one(), block_fees);
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_evm_account_storage().unwrap();
@@ -2344,7 +2344,7 @@ mod test {
         // Arrange
         let mut mock_runtime = MockHost::default();
         let base_fee_per_gas = U256::from(23000);
-        let block_fees = BlockFees::new(base_fee_per_gas);
+        let block_fees = BlockFees::new(base_fee_per_gas, U256::zero());
         let block = BlockConstants::first_block(U256::zero(), U256::one(), block_fees);
         let precompiles = precompiles::precompile_set::<MockHost>();
         let mut evm_account_storage = init_evm_account_storage().unwrap();
@@ -2398,7 +2398,7 @@ mod test {
 
     fn first_block() -> BlockConstants {
         let base_fee_per_gas = U256::from(23000);
-        let block_fees = BlockFees::new(base_fee_per_gas);
+        let block_fees = BlockFees::new(base_fee_per_gas, U256::zero());
         BlockConstants::first_block(U256::zero(), U256::one(), block_fees)
     }
 

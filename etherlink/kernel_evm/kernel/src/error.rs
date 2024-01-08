@@ -99,6 +99,8 @@ pub enum Error {
     Reboot,
     #[error(transparent)]
     Encoding(EncodingError),
+    #[error("{0}")]
+    Other(#[from] anyhow::Error),
 }
 
 impl From<PathError> for StorageError {

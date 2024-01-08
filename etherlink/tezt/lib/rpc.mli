@@ -20,6 +20,8 @@ val get_block_by_number :
   Evm_node.t ->
   (Block.t, error) result Lwt.t
 
+val get_gas_price : Evm_node.t -> Int32.t Lwt.t
+
 module Syntax : sig
   val ( let*@ ) : ('a, error) result Lwt.t -> ('a -> 'c Lwt.t) -> 'c Lwt.t
 

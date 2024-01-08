@@ -580,7 +580,7 @@ let run ?(legacy = false) ?(restart = false) ?mode ?event_level
       let final_mode =
         match mode with Some m -> string_of_mode m | None -> default_mode
       in
-      ["run"; final_mode] @ cmd @ make_arguments arguments
+      ["run"; final_mode] @ cmd @ make_arguments arguments @ ["--log-kernel-debug"; "--log-kernel-debug-file"; "/home/emma/sources/tezos/kernel.log"]
   in
   let* () =
     do_runlike_command

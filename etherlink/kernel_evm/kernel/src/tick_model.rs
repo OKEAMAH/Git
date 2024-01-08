@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+use tezos_ethereum::block::BlockFees;
 use tezos_ethereum::transaction::IndexedLog;
 
 use crate::inbox::Transaction;
@@ -108,13 +109,16 @@ pub mod constants {
     pub const TRANSFERT_OBJ_SIZE: u64 = 347;
 }
 
-fn estimate_ticks_for_transaction(transaction: &Transaction) -> u64 {
+fn estimate_ticks_for_transaction(
+    transaction: &Transaction,
+    fees: &BlockFees,
+) -> Result<u64, anyhow::Error> {
     let tx_data_size = transaction.data_size();
     match &transaction.content {
-        crate::inbox::TransactionContent::Deposit(_) => constants::TICKS_FOR_DEPOSIT,
+        crate::inbox::TransactionContent::Deposit(_) => Ok(constants::TICKS_FOR_DEPOSIT),
         crate::inbox::TransactionContent::Ethereum(eth) => {
-            average_ticks_of_gas(eth.execution_gas_limit())
-                .saturating_add(ticks_of_transaction_overhead(tx_data_size))
+            Ok(average_ticks_of_gas(eth.execution_gas_limit(fees)?)
+                .saturating_add(ticks_of_transaction_overhead(tx_data_size)))
         }
     }
 }
@@ -149,9 +153,16 @@ fn ticks_of_transaction_overhead(tx_data_size: u64) -> u64 {
 }
 
 /// Check that a transaction can fit inside the tick limit
-pub fn estimate_would_overflow(estimated_ticks: u64, transaction: &Transaction) -> bool {
-    estimate_ticks_for_transaction(transaction).saturating_add(estimated_ticks)
-        > constants::MAX_ALLOWED_TICKS
+pub fn estimate_would_overflow(
+    estimated_ticks: u64,
+    transaction: &Transaction,
+    fees: &BlockFees,
+) -> bool {
+    let Ok(ticks) = estimate_ticks_for_transaction(transaction, fees) else {
+        return true;
+    };
+
+    ticks.saturating_add(estimated_ticks) > constants::MAX_ALLOWED_TICKS
 }
 
 /// An invalid transaction could not be transmitted to the VM, eg. the nonce

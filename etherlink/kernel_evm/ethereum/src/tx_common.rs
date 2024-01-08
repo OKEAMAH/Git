@@ -555,23 +555,6 @@ impl EthereumTransactionCommon {
         }
     }
 
-    /// Returns overall_gas_price of the transaction.
-    ///
-    /// *NB* this is not the gas price used _for execution_, but rather the gas price that
-    /// should be reported in the transaction receipt.
-    pub fn overall_gas_price(
-        &self,
-        block_fees: &BlockFees,
-    ) -> Result<U256, anyhow::Error> {
-        let block_base_fee_per_gas = block_fees.base_fee_per_gas();
-
-        if self.max_fee_per_gas >= block_base_fee_per_gas {
-            Ok(block_base_fee_per_gas)
-        } else {
-            Err(anyhow::anyhow!("Underflow when calculating gas price"))
-        }
-    }
-
     /// Returns the gas limit for executing this transaction.
     ///
     /// This is strictly lower than the gas limit set by the user, as additional gas is required
@@ -579,7 +562,28 @@ impl EthereumTransactionCommon {
     ///
     /// The user pre-pays this (in addition to the flat fee & data availability fee) prior to execution.
     /// If execution does not use all of the execution gas limit, they will be partially refunded.
-    pub fn execution_gas_limit(&self) -> u64 {
+    pub fn execution_gas_limit(&self, fees: &BlockFees) -> Result<u64, anyhow::Error> {
+        let (mut gas_for_fees, unpaid_fees) =
+            fees.flat_fee().div_mod(self.max_fee_per_gas);
+
+        if unpaid_fees != U256::zero() {
+            gas_for_fees += U256::one();
+        }
+
+        if gas_for_fees > U256::from(u64::MAX) {
+            return Err(anyhow::anyhow!("Gas for fees larger than u64::MAX"));
+        }
+
+        self.gas_limit
+            .checked_sub(gas_for_fees.as_u64())
+            .ok_or_else(|| anyhow::anyhow!("Gas for fees larger than gas limit"))
+    }
+
+    /// Returns the total gas limit for this transaction, including execution and fees.
+    ///
+    /// If only the limit for _execution_ is needed, see [`execution_gas_limit`].
+    #[inline(always)]
+    pub const fn gas_limit_with_fees(&self) -> u64 {
         self.gas_limit
     }
 }

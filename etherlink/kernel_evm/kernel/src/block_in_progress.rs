@@ -18,7 +18,7 @@ use evm_execution::account_storage::EVM_ACCOUNTS_PATH;
 use primitive_types::{H256, U256};
 use rlp::{Decodable, DecoderError, Encodable};
 use std::collections::VecDeque;
-use tezos_ethereum::block::{BlockConstants, L2Block};
+use tezos_ethereum::block::{BlockConstants, BlockFees, L2Block};
 use tezos_ethereum::rlp_helpers::*;
 use tezos_ethereum::transaction::{
     IndexedLog, TransactionObject, TransactionReceipt, TransactionStatus,
@@ -320,11 +320,13 @@ impl BlockInProgress {
         !self.tx_queue.is_empty()
     }
 
-    pub fn would_overflow(&self) -> bool {
+    pub fn would_overflow(&self, block_fees: &BlockFees) -> bool {
         match self.tx_queue.front() {
-            Some(transaction) => {
-                tick_model::estimate_would_overflow(self.estimated_ticks, transaction)
-            }
+            Some(transaction) => tick_model::estimate_would_overflow(
+                self.estimated_ticks,
+                transaction,
+                block_fees,
+            ),
             None => false, // should not happen, but false is a safe value anyway
         }
     }

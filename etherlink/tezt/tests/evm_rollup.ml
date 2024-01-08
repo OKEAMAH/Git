@@ -86,16 +86,17 @@ let check_tx_failed ~endpoint ~tx =
    We apply a flat base fee to every tx - which is paid through an
    increase in estimate gas used at the given price.
 *)
-let check_tx_gas_for_flat_fee ~flat_fee ~gas_price ~gas_used =
-  let expected_gas_used = 21000l in
-  let gas_for_flat_fee = Z.of_int32 (Int32.sub gas_used expected_gas_used) in
-  let gas_price = gas_price |> Z.of_int32 in
-  (* integer division truncates - so we make sure to take ceil(a/b) not floor(a/b).
-     otherwise we'd end up with very slightly less gas than needed to cover the
-     flat fee. *)
-  let actual_gas_for_flat_fee = Wei.cdiv flat_fee gas_price in
-  Check.((actual_gas_for_flat_fee = Wei.to_wei_z gas_for_flat_fee) Wei.typ)
-    ~error_msg:"Unexpected flat fee"
+let check_tx_gas_for_flat_fee ~flat_fee ~expected_execution_gas ~gas_price ~gas_used ~base_fee_per_gas =
+  (* execution gas fee *)
+  let expected_gas_used = Z.of_int expected_execution_gas in
+  let expected_base_fee_per_gas = Z.of_int32 base_fee_per_gas in
+  let execution_gas_fee = Z.mul expected_gas_used expected_base_fee_per_gas in
+  Printf.printf "egf: %s\n" (Z.to_string execution_gas_fee);
+  (* total fee 'in gas' *)
+  let expected_total_fee = Z.add (Wei.of_wei_z flat_fee) execution_gas_fee in
+  let expected_gas_used = Z.cdiv expected_total_fee (Z.of_int32 gas_price) |> Z.to_int64 in
+  Check.((expected_gas_used = Int64.of_int32 gas_used) int64)
+     ~error_msg: "unexpected gas in receipt (expected %L, actual %R)"
 
 let check_status_n_logs ~endpoint ~status ~logs ~tx =
   let* receipt = Eth_cli.get_receipt ~endpoint ~tx in
@@ -1386,7 +1387,9 @@ let make_transfer ?data ~value ~sender ~receiver full_evm_setup =
       receiver_balance_after;
     }
 
-let transfer ?data ~flat_fee ~evm_setup () =
+let transfer ?data ~flat_fee ~expected_execution_gas ~evm_setup () =
+  let* base_fee_per_gas = Rpc.get_gas_price evm_setup.evm_node in
+  Printf.printf "base_fee_per_gas: %s\n" (Int32.to_string base_fee_per_gas);
   let sender, receiver =
     (Eth_account.bootstrap_accounts.(0), Eth_account.bootstrap_accounts.(1))
   in
@@ -1436,25 +1439,27 @@ let transfer ?data ~flat_fee ~evm_setup () =
     ~error_msg:"Unexpected transaction's receiver" ;
   Check.((tx_object.value = value) Wei.typ)
     ~error_msg:"Unexpected transaction's value" ;
-  if Option.is_none data then
-    check_tx_gas_for_flat_fee ~flat_fee ~gas_used ~gas_price ;
+  (* if Option.is_none data then *)
+    check_tx_gas_for_flat_fee ~flat_fee ~expected_execution_gas ~gas_used ~gas_price ~base_fee_per_gas;
   unit
 
 let test_l2_transfer =
-  let flat_fee = Wei.zero in
-  let test_f ~protocol:_ ~evm_setup = transfer ~evm_setup ~flat_fee () in
+  let flat_fee = Wei.of_eth_string "0.000123" in
+  let expected_execution_gas = 21000 in
+  let test_f ~protocol:_ ~evm_setup = transfer ~evm_setup ~flat_fee ~expected_execution_gas () in
   let title = "Check L2 transfers are applied" in
   let tags = ["evm"; "l2_transfer"] in
-  register_both ~title ~tags test_f
+  register_both ~title ~tags ~flat_fee test_f
 
 let test_chunked_transaction =
-  let flat_fee = Wei.zero in
+  let flat_fee = Wei.of_eth_string "0.005" in
+  let expected_execution_gas = 117000 in
   let test_f ~protocol:_ ~evm_setup =
-    transfer ~data:("0x" ^ String.make 12_000 'a') ~flat_fee ~evm_setup ()
+    transfer ~data:("0x" ^ String.make 12_000 'a') ~flat_fee ~evm_setup ~expected_execution_gas ()
   in
   let title = "Check L2 chunked transfers are applied" in
   let tags = ["evm"; "l2_transfer"; "chunked"] in
-  register_both ~title ~tags test_f
+  register_both ~title ~tags ~flat_fee test_f
 
 let test_rpc_txpool_content =
   register_both
