@@ -9,9 +9,9 @@ open Types
 
 let default ?image ?interruptible () : default = {image; interruptible}
 
-let job_rule ?changes ?if_ ?variables ?(when_ : when_ = On_success) () :
-    job_rule =
-  {changes; if_; variables; when_}
+let job_rule ?changes ?if_ ?variables ?(when_ : when_ = On_success)
+    ?allow_failure () : job_rule =
+  {changes; if_; variables; when_; allow_failure}
 
 let workflow_rule ?changes ?if_ ?variables ?(when_ : when_workflow = Always) ()
     : workflow_rule =

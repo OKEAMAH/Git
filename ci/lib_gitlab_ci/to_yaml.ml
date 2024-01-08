@@ -54,12 +54,13 @@ let enc_workflow_rule : workflow_rule -> value =
     ]
 
 let enc_job_rule : job_rule -> value =
- fun {changes; if_; variables; when_} ->
+ fun {changes; if_; variables; when_; allow_failure} ->
   obj_flatten
     [
       opt "changes" strings changes;
       opt "if" enc_if if_;
       opt "variables" enc_variables variables;
+      opt "allow_failure" bool allow_failure;
       key "when" enc_when when_;
     ]
 

@@ -23,6 +23,7 @@ type job_rule = {
   if_ : If.t option;
   variables : variables option;
   when_ : when_;
+  allow_failure : bool option;
 }
 
 (** Represents a workflow rule. *)
