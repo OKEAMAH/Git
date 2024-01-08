@@ -20,8 +20,6 @@ pub fn entry(host: &mut impl Runtime) {
             .expect("Failed to parse inbox message");
         debug_msg!(host, "{:#?}\n", msg);
     }
-
-    panic!("Abort");
 }
 
 kernel_entry!(entry);
