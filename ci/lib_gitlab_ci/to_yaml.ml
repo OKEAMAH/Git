@@ -60,8 +60,8 @@ let enc_job_rule : job_rule -> value =
       opt "changes" strings changes;
       opt "if" enc_if if_;
       opt "variables" enc_variables variables;
-      opt "allow_failure" bool allow_failure;
       key "when" enc_when when_;
+      opt "allow_failure" bool allow_failure;
     ]
 
 let enc_include_rule : include_rule -> value =
