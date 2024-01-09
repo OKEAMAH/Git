@@ -924,6 +924,7 @@ version = "0.0.0"
 dependencies = [
  "jstz_kernel",
  "tezos-smart-rollup",
+ "tezos-smart-rollup-entrypoint",
 ]
 
 [[package]]
@@ -1828,6 +1829,7 @@ dependencies = [
  "tezos-smart-rollup-core",
  "tezos-smart-rollup-debug",
  "tezos-smart-rollup-host",
+ "tezos-smart-rollup-mock",
  "tezos-smart-rollup-panic-hook",
 ]
 

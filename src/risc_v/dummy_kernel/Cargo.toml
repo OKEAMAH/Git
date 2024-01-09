@@ -7,6 +7,12 @@ edition = "2021"
 version = "0.5.2"
 default-features = false
 
+[dependencies.tezos-smart-rollup-entrypoint]
+path = "../../kernel_sdk/entrypoint"
+version = "0.2.2"
+default-features = false
+features = ["host-with-in-memory-storage", "proto-alpha"]
+
 [dependencies.tezos-smart-rollup]
 path = "../../kernel_sdk/sdk"
 version = "0.2.2"
