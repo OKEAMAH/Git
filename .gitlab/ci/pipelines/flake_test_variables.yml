@@ -1,17 +1,20 @@
 variables:
   TZ_FLAKE_TEST:
+    # By default, run no TZ_FLAKE_TEST.
     value: ""
     options:
       - "tezt"
       - "unit"
       - "unit_js"
+      # Note that the default value of a variable (the contents of
+      # [value:] above) must be present in [options:].
       - ""
     description: >
       Launch a flake detection pipeline of the given kind. Valid values are:
       (1) 'tezt': creates a pipeline containing 'build_x86_64*' and 'build_kernels', and a number of identical jobs running tezt with the tests specified by 'TZ_FLAKE_TEST_TESTS'.
       (2) 'unit': creates a pipeline containing a number of identical jobs runnning 'dune build <TZ_FLAKE_TEST_TESTS>'.
-      (3) 'unit_js: like 'unit', but initializes JS first. Useful to test 'runtest_js' / 'runtezt_js' targets.
-      (4) '': empty value disables flake detection.
+      (3) 'unit_js': like 'unit', but initializes JS first. Useful to test 'runtest_js' / 'runtezt_js' targets.
+      (4) '': the empty value is set in regular 'before_merging' pipelines and disables flake detection.
   TZ_FLAKE_TEST_TESTS:
     value: ""
     description: >
