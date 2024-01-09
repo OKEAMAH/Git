@@ -336,10 +336,13 @@ fn ripemd160_precompile<Host: Runtime>(
     })
 }
 
+/// The maximum number of withdrawals we can produce per level, given that each
+/// withdrawal take up one outbox message.
+const MAXIMUM_WITHDRAWALS: usize = 100;
+
 /// Implementation of Etherelink specific withdrawals precompiled contract.
 fn withdrawal_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
-
     input: &[u8],
     _context: &Context,
     _is_static: bool,
@@ -356,6 +359,16 @@ fn withdrawal_precompile<Host: Runtime>(
     }
 
     // TODO check gas_limit if it can't cover the cost, bail out
+
+    if (handler.outbox_count()? + 1) > MAXIMUM_WITHDRAWALS {
+        log!(
+            handler.borrow_host(),
+            Info,
+            "Too many outbox messages for withdrawal"
+        );
+
+        return Ok(revert_withdrawal());
+    }
 
     let Some(transfer) = transfer else {
         log!(handler.borrow_host(), Info, "Withdrawal precompiled contract: no transfer");
@@ -549,6 +562,7 @@ mod tests {
             input.to_vec(),
             gas_limit,
             is_static,
+            0,
         )
     }
 
@@ -578,6 +592,7 @@ mod tests {
             result: Some(expected_hash),
             withdrawals: vec![],
             estimated_ticks_used: 75_000,
+            outbox_counter: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -609,6 +624,7 @@ mod tests {
             result: Some(expected_hash),
             withdrawals: vec![],
             estimated_ticks_used: 70_000,
+            outbox_counter: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -663,6 +679,7 @@ mod tests {
                 amount: 100.into(),
             }],
             estimated_ticks_used: 1_000_000,
+            outbox_counter: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -719,6 +736,7 @@ mod tests {
             }],
             // TODO (#6426): estimate the ticks consumption of precompiled contracts
             estimated_ticks_used: 1_000_000,
+            outbox_counter: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -755,6 +773,7 @@ mod tests {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 1_000_000,
+            outbox_counter: 0,
         };
 
         assert_eq!(Ok(expected), result);
@@ -779,6 +798,7 @@ mod tests {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 1_000_000,
+            outbox_counter: 0,
         };
 
         let result = execute_precompiled(target, input, transfer, Some(25000));

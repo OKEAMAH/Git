@@ -131,6 +131,7 @@ pub fn run_transaction<'a, Host>(
     value: Option<U256>,
     pay_for_gas: bool,
     allocated_ticks: u64,
+    outbox_counter: usize,
 ) -> Result<Option<handler::ExecutionOutcome>, EthereumError>
 where
     Host: Runtime,
@@ -156,10 +157,24 @@ where
 
     if (!pay_for_gas) || handler.pre_pay_transactions(caller, gas_limit)? {
         let result = if let Some(address) = address {
-            handler.call_contract(caller, address, value, call_data, gas_limit, false)?
+            handler.call_contract(
+                caller,
+                address,
+                value,
+                call_data,
+                gas_limit,
+                false,
+                outbox_counter,
+            )?
         } else {
             // This is a create-contract transaction
-            handler.create_contract(caller, value, call_data, gas_limit)?
+            handler.create_contract(
+                caller,
+                value,
+                call_data,
+                gas_limit,
+                outbox_counter,
+            )?
         };
 
         handler.increment_nonce(caller)?;
@@ -175,6 +190,7 @@ where
         if pay_for_gas {
             log!(host, Info, "Caller was unable to pre-pay the transaction")
         };
+
         Ok(None)
     }
 }
@@ -312,6 +328,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -323,6 +340,7 @@ mod test {
             result: None,
             withdrawals: vec![],
             estimated_ticks_used: 0,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -375,6 +393,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -386,6 +405,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 0,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -432,6 +452,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -443,6 +464,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 55427,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -486,6 +508,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let new_address =
@@ -519,6 +542,7 @@ mod test {
             Some(U256::zero()),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
         assert!(result2.is_ok(), "execution should have succeeded");
         let result = result2.unwrap();
@@ -546,6 +570,7 @@ mod test {
             Some(U256::zero()),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
         assert!(result3.is_ok(), "execution should have succeeded");
         let result = result3.unwrap();
@@ -572,6 +597,7 @@ mod test {
             Some(U256::zero()),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
         assert!(result2.is_ok(), "execution should have succeeded");
         let result = result2.unwrap();
@@ -624,6 +650,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         assert!(result.is_ok());
@@ -672,6 +699,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -683,6 +711,7 @@ mod test {
             result: None,
             withdrawals: vec![],
             estimated_ticks_used: 0,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -723,6 +752,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000; // base cost
@@ -737,6 +767,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 0,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -867,6 +898,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -882,6 +914,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 59271,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -928,6 +961,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -943,6 +977,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 65039,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -990,6 +1025,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         // Assert
@@ -1002,6 +1038,7 @@ mod test {
             result: None,
             withdrawals: vec![],
             estimated_ticks_used: 0,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -1045,6 +1082,7 @@ mod test {
             Some(U256::from(100)),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -1056,6 +1094,7 @@ mod test {
             result: None,
             withdrawals: vec![],
             estimated_ticks_used: 0,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -1101,6 +1140,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -1117,6 +1157,7 @@ mod test {
             result: Some(vec![1u8; 32]),
             withdrawals: vec![],
             estimated_ticks_used: 42_000 + 35 * 32,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -1158,6 +1199,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         // Assert
@@ -1173,6 +1215,7 @@ mod test {
             result: Some(hex::decode(expected_address).unwrap()),
             withdrawals: vec![],
             estimated_ticks_used: 30_000_000,
+            outbox_counter: 0,
         }));
 
         assert_eq!(expected_result, result);
@@ -1268,6 +1311,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         // Assert
@@ -1344,6 +1388,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -1362,6 +1407,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 962434148,
+            outbox_counter: 0,
         }));
 
         // assert that call succeeds
@@ -1435,6 +1481,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -1454,6 +1501,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 441347264,
+            outbox_counter: 0,
         }));
 
         // assert that call succeeds
@@ -1548,6 +1596,7 @@ mod test {
             None,
             true,
             1_000_000_000,
+            0,
         );
 
         let log_record1 = Log {
@@ -1574,6 +1623,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 1017247,
+            outbox_counter: 0,
         }));
 
         assert_eq!(result, expected_result);
@@ -1658,6 +1708,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let log_record1 = Log {
@@ -1678,6 +1729,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 614707,
+            outbox_counter: 0,
         }));
 
         assert_eq!(result, expected_result);
@@ -1757,6 +1809,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
         let expected_gas = 21000 // base cost
         + 30124; // execution gas cost (taken at face value from tests)
@@ -1769,6 +1822,7 @@ mod test {
             result: Some(vec![]),
             withdrawals: vec![],
             estimated_ticks_used: 23749485,
+            outbox_counter: 0,
         }));
 
         assert_eq!(result, expected_result);
@@ -1873,6 +1927,7 @@ mod test {
             None,
             true,
             10_000_000_000,
+            0,
         );
 
         let expected_result = Ok(Some(ExecutionOutcome {
@@ -1884,6 +1939,7 @@ mod test {
             result: None,
             withdrawals: vec![],
             estimated_ticks_used: 9512509485,
+            outbox_counter: 0,
         }));
 
         assert_eq!(result, expected_result);
@@ -1959,6 +2015,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -1974,6 +2031,7 @@ mod test {
             result: Some(chain_id_bytes.into()),
             withdrawals: vec![],
             estimated_ticks_used: 224101,
+            outbox_counter: 0,
         }));
         assert_eq!(result, expected_result);
     }
@@ -2029,6 +2087,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_gas = 21000 // base cost
@@ -2044,6 +2103,7 @@ mod test {
             result: Some(base_fee_per_gas_bytes.into()),
             withdrawals: vec![],
             estimated_ticks_used: 224101,
+            outbox_counter: 0,
         }));
         assert_eq!(result, expected_result);
     }
@@ -2104,6 +2164,7 @@ mod test {
             Some(U256::from(100)),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let expected_result = Err(EthereumError::EthereumAccountError(
@@ -2151,6 +2212,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let result = unwrap_outcome!(result);
@@ -2203,6 +2265,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let result = unwrap_outcome!(&result, false);
@@ -2262,6 +2325,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         // Assert
@@ -2319,6 +2383,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         // Assert
@@ -2370,6 +2435,7 @@ mod test {
             None,
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         )
     }
 
@@ -2467,6 +2533,7 @@ mod test {
             None,
             true,
             10_000_000_000,
+            0,
         );
 
         let result = unwrap_outcome!(&result, false);
@@ -2528,6 +2595,7 @@ mod test {
             None,
             true,
             10_000_000_000,
+            0,
         );
 
         let result = unwrap_outcome!(&result, false);
@@ -2571,6 +2639,7 @@ mod test {
             Some(transaction_value),
             true,
             DUMMY_ALLOCATED_TICKS,
+            0,
         );
 
         let result = unwrap_outcome!(result);

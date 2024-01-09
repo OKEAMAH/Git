@@ -5,6 +5,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+use crate::outbox_counter::reset_outbox_counter;
 use crate::parsing::{Input, InputResult, MAX_SIZE_PER_CHUNK};
 use crate::sequencer_blueprint::SequencerBlueprint;
 use crate::simulation;
@@ -350,6 +351,7 @@ pub fn read_inbox<Host: Runtime>(
                 return Ok(None);
             }
             InputResult::Input(Input::Info(info)) => {
+                reset_outbox_counter(host)?;
                 store_last_info_per_level_timestamp(host, info.predecessor_timestamp)?;
             }
             InputResult::Input(Input::Deposit(deposit)) => {

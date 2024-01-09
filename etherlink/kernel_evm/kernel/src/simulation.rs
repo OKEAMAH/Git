@@ -120,6 +120,7 @@ impl Evaluation {
             self.value,
             false,
             allocated_ticks,
+            0_usize,
         )
         .map_err(Error::Simulation)?;
         Ok(outcome)
@@ -546,6 +547,7 @@ mod tests {
             Some(transaction_value),
             false,
             DUMMY_ALLOCATED_TICKS,
+            0_usize,
         );
         assert!(outcome.is_ok(), "contract should have been created");
         let outcome = outcome.unwrap();

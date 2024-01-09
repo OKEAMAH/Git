@@ -46,6 +46,7 @@ mod indexable_storage;
 mod linked_list;
 mod migration;
 mod mock_internal;
+mod outbox_counter;
 mod parsing;
 mod safe_storage;
 mod sequencer_blueprint;

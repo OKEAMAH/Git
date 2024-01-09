@@ -221,6 +221,7 @@ fn execute_transaction(
         transaction_value,
         pay_for_gas,
         u64::MAX, // don't account for ticks during the test
+        0,        // disregard outbox for EVM evaluation
     )
 }
 
