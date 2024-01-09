@@ -170,7 +170,7 @@ fn ecrecover_precompile<Host: Runtime>(
 ) -> Result<PrecompileOutcome, EthereumError> {
     log!(handler.borrow_host(), Info, "Calling ecrecover precompile");
 
-    // check that enough ressources to execute (gas / ticks) are available
+    // check that enough resources to execute (gas / ticks) are available
     let estimated_ticks = fail_if_too_much!(tick_model::ticks_of_ecrecover(), handler);
     let cost = 3000;
     if let Err(err) = handler.record_cost(cost) {
@@ -1081,6 +1081,68 @@ mod tests {
             hex::encode(expected_output),
             hex::encode(outcome.result.unwrap())
         );
+    }
+
+    #[test]
+    fn test_blake2f_invalid_empty() {
+        // act
+        let input = [0; 0];
+        let result =
+            execute_precompiled(H160::from_low_u64_be(9), &input, None, Some(25000));
+
+        // assert
+        // expected outcome is OK and empty output
+
+        assert!(result.is_ok());
+        let outcome = result.unwrap();
+        assert!(outcome.is_success);
+        assert_eq!(Some(vec![]), outcome.result);
+    }
+
+    #[test]
+    fn text_blake2f_invalid_flag() {
+        let input = hex::decode(
+            "0000000c48c9bdf267e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d182e6ad7f520e511f6c3e2b8c68059b6bbd41fbab\
+            d9831f79217e1319cde05b616263000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000000000000000000000000000000300000000000000000000000000000002"
+        ).unwrap();
+
+        let result =
+            execute_precompiled(H160::from_low_u64_be(9), &input, None, Some(25000));
+
+        assert!(result.is_ok());
+        let outcome = result.unwrap();
+        assert!(outcome.is_success);
+        assert_eq!(Some(vec![]), outcome.result);
+    }
+
+    #[test]
+    fn test_blake2f_input_spec() {
+        let input = hex::decode(
+            "0000000c\
+            48c9bdf267e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d182e6ad7f520e\
+            511f6c3e2b8c68059b6bbd41fbabd9831f79217e1319cde05b\
+            616263000000000000000000000000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000\
+            03000000000000000000000000000000\
+            01"
+                ).unwrap();
+        let result =
+            execute_precompiled(H160::from_low_u64_be(9), &input, None, Some(25000));
+
+        assert!(result.is_ok());
+        let outcome = result.unwrap();
+        println!("{}", outcome.gas_used);
+        assert!(outcome.is_success);
+
+        let expected = hex::decode(
+                "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
+                    );
+
+        assert_eq!(expected.ok(), outcome.result);
     }
 
     struct ModexpTestCase {
