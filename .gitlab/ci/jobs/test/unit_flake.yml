@@ -4,7 +4,7 @@ oc.unit:x86_64:
   extends: .oc.unit_test_template_x86_64
   # no need for artifacts
   artifacts: null
-  # remove dependency on build_x86_64
+  # no need for dependencies
   needs: []
   # TODO: would be nice to make this parametric but it is not possible
   parallel: 100

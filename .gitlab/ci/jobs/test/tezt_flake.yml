@@ -20,7 +20,7 @@ tezt:
     - echo "Running flakiness test for targets TZ_FLAKE_TEST_TESTS=${TZ_FLAKE_TEST_TESTS}, TZ_FLAKE_TEST_LOOP_COUNT=${TZ_FLAKE_TEST_LOOP_COUNT:-1}"
     # xargs is used here to allow TZ_FLAKE_TEST_OPTS and
     # TZ_FLAKE_TEST_TESTS to contain multiple arguments that
-    # potentiallt contains spaces, e.g. `TZ_FLAKE_TEST_TESTS="--title
+    # potentially contains spaces, e.g. `TZ_FLAKE_TEST_TESTS="--title
     # 'My test'"`.
     - echo ${TZ_FLAKE_TEST_OPTS:-'--keep-going -j 4 --global-timeout 1800'}
            ${TZ_FLAKE_TEST_TESTS} | xargs -n 9999 -s 9999 -x _build/default/tezt/tests/main.exe

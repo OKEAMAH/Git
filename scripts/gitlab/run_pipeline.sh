@@ -14,7 +14,7 @@ usage() {
     echo "PRIVATE_TOKEN, PROJECT and BRANCH can also be set through the environment variables of the same name."
     echo "A GitLab private token must be supplied, either through --private-token or PRIVATE_TOKEN."
     echo "By default, the BRANCH is current branch of the repo in the current working directory, if any."
-    echo "Likewise, the the script will attempt to infer the GitLab project from the remote/pushRemote of the current branch."
+    echo "Likewise, the script will attempt to infer the GitLab project from the remote/pushRemote of the current branch."
     echo
     exit 1
 }
