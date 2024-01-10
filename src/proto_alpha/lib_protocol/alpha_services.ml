@@ -191,19 +191,18 @@ module Snapshot_index = struct
           Alpha_context.Constants.blocks_per_stake_snapshot ctxt
         in
         let blocks_per_cycle = Alpha_context.Constants.blocks_per_cycle ctxt in
-        let preserved_cycles =
-          Int32.of_int (Alpha_context.Constants.preserved_cycles ctxt)
+        let cycles_delay =
+          Int32.of_int (Alpha_context.Constants.consensus_rights_delay ctxt)
         in
         let cycle =
           match cycle with
           | None -> Level.(current ctxt).cycle
           | Some cycle -> cycle
         in
-        if Compare.Int32.(Cycle.to_int32 cycle <= Int32.succ preserved_cycles)
-        then
+        if Compare.Int32.(Cycle.to_int32 cycle <= Int32.succ cycles_delay) then
           (* Early cycles are corner cases, fail if requested *)
           tzfail
-            (No_available_snapshots {min_cycle = Int32.add preserved_cycles 2l})
+            (No_available_snapshots {min_cycle = Int32.add cycles_delay 2l})
         else
           let max_snapshot_index =
             Int32.div blocks_per_cycle blocks_per_stake_snapshot |> Int32.to_int
