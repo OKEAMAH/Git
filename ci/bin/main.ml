@@ -235,9 +235,7 @@ let () =
   register
     "non_release_tag_test"
     If.(not_on_tezos_namespace && push && has_tag_not_match any_release_tag_re) ;
-  register
-    "schedule_extended_test"
-    If.(scheduled && var "TZ_SCHEDULE_KIND" == str "EXTENDED_TESTS")
+  register "schedule_extended_test" schedule_extended_tests
 
 (* Split pipelines and writes image templates *)
 let config =

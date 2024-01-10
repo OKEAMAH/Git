@@ -27,6 +27,9 @@ let push = pipeline_source_eq Push
 
 let scheduled = pipeline_source_eq Schedule
 
+let schedule_extended_tests =
+  scheduled && var "TZ_SCHEDULE_KIND" == str "EXTENDED_TESTS"
+
 let on_master = Predefined_vars.ci_commit_branch == str "master"
 
 let on_branch branch = Predefined_vars.ci_commit_branch == str branch

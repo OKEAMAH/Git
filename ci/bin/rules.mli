@@ -23,6 +23,9 @@ val push : If.t
 (** A rule that is true if [CI_PIPELINE_SOURCE] is [scheduled]. *)
 val scheduled : If.t
 
+(** TODO: *)
+val schedule_extended_tests : If.t
+
 (** A rule that is true if [CI_COMMIT_BRANCH] is a given branch. *)
 val on_branch : string -> If.t
 
