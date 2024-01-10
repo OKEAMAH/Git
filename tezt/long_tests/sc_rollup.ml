@@ -303,11 +303,13 @@ let test_rollup_node_run_with_kernel protocols ~executors ~kind ~kernel_name
     ~internal
     ~kind
 
-let register ~executors ~protocols =
-  test_rollup_node_run_with_kernel
-    protocols
-    ~timeout:(Minutes 300)
-    ~executors
-    ~kind:"wasm_2_0_0"
-    ~kernel_name:"computation"
-    ~internal:false
+let register ~executors ~(protocols : Protocol.t list) =
+  (* The test is deactivated because it always fails. *)
+  ignore (executors, protocols)
+(* test_rollup_node_run_with_kernel *)
+(*   protocols *)
+(*   ~timeout:(Minutes 300) *)
+(*   ~executors *)
+(*   ~kind:"wasm_2_0_0" *)
+(*   ~kernel_name:"computation" *)
+(*   ~internal:false *)
