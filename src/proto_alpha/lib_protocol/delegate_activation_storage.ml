@@ -59,6 +59,7 @@ let set_active ctxt delegate =
   let open Lwt_result_syntax in
   let* inactive = is_inactive ctxt delegate in
   let current_cycle = (Raw_context.current_level ctxt).cycle in
+  let tolerance = Constants_storage.tolerated_inactivity_period ctxt in
   let consensus_rights_delay = Constants_storage.consensus_rights_delay ctxt in
   (* We allow a number of cycles before a delegate is deactivated as follows:
      - if the delegate is active, we give it at least `1 + consensus_rights_delay`
@@ -74,11 +75,10 @@ let set_active ctxt delegate =
   in
   let last_active_cycle =
     match current_last_active_cycle with
-    | None -> Cycle_repr.add current_cycle (2 * consensus_rights_delay)
+    | None -> Cycle_repr.add current_cycle (tolerance + consensus_rights_delay)
     | Some current_last_active_cycle ->
         let delay =
-          if inactive then 1 + (2 * consensus_rights_delay)
-          else 1 + consensus_rights_delay
+          if inactive then tolerance + consensus_rights_delay else tolerance
         in
         let updated = Cycle_repr.add current_cycle delay in
         Cycle_repr.max current_last_active_cycle updated
