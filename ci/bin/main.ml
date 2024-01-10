@@ -198,6 +198,17 @@ let before_script ?(take_ownership = false) ?(source_version = false)
   @ toggle install_js_deps ". ./scripts/install_build_deps.js.sh"
   @ before_script
 
+let job_enable_coverage (job : job) =
+  let variables =
+    Option.value ~default:[] job.variables
+    @ [
+        ("COVERAGE_OPTIONS", "--instrument-with bisect_ppx");
+        ("BISECT_FILE", "$CI_PROJECT_DIR/_coverage_output/");
+        ("SLACK_COVERAGE_CHANNEL", "C02PHBE7W73");
+      ]
+  in
+  {job with variables = Some variables}
+
 (* Define the [trigger] job *)
 let trigger =
   job
@@ -637,6 +648,134 @@ let release_tag_pipeline ?(test = false) release_tag_pipeline_type =
   match (test, release_tag_pipeline_type) with
   | false, Release_tag -> [job_opam_release]
   | _ -> []
+
+let arm64_build_extra =
+  [
+    "src/bin_tps_evaluation/main_tps_evaluation.exe";
+    "src/bin_octogram/octogram_main.exe tezt/tests/main.exe";
+  ]
+
+let amd64_build_extra =
+  [
+    "src/bin_tps_evaluation/main_tps_evaluation.exe";
+    "src/bin_octogram/octogram_main.exe";
+    "tezt/tests/main.exe";
+    "contrib/octez_injector_server/octez_injector_server.exe";
+  ]
+
+let job_build_dynamic_binaries ?rules ~arch ?(external_ = false)
+    ?(release = false) ?(needs_trigger = false) () =
+  let arch_string =
+    match arch with Tezos_ci.Amd64 -> "x86_64" | Arm64 -> "arm64"
+  in
+  let name =
+    sf
+      "oc.build_%s-%s"
+      arch_string
+      (if release then "released" else "exp-dev-extra")
+  in
+  let executable_files =
+    if release then "script-inputs/released-executables"
+    else "script-inputs/experimental-executables script-inputs/dev-executables"
+  in
+  let build_extra =
+    match (release, arch) with
+    | true, _ -> None
+    | false, Amd64 -> Some amd64_build_extra
+    | false, Arm64 -> Some arm64_build_extra
+  in
+  let variables =
+    [
+      ("ARCH", arch_string);
+      ("EXECUTABLE_FILES", executable_files);
+      (* We fix the value of GIT_{SHORTREF,DATETIME,VERSION} (these are
+         read by src/lib_version and output by the binaries `--version`
+         option). Fixing these values on development builds improves
+         cache usage. *)
+      ("GIT_SHORTREF", "00000000");
+      ("GIT_DATETIME", "1970-01-01 00:00:00 +0000%");
+      ("GIT_VERSION", "dev");
+    ]
+    @
+    match build_extra with
+    | Some build_extra -> [("BUILD_EXTRA", String.concat " " build_extra)]
+    | None -> []
+  in
+  let artifacts =
+    artifacts
+      ~name:"build-$ARCH-$CI_COMMIT_REF_SLUG"
+      ~when_:On_success
+      ~expire_in:(Days 1)
+      (* TODO: [paths] can be refined based on [release] *)
+      [
+        "octez-*";
+        "src/proto_*/parameters/*.json";
+        "_build/default/src/lib_protocol_compiler/bin/main_native.exe";
+        "_build/default/tezt/tests/main.exe";
+        "_build/default/contrib/octez_injector_server/octez_injector_server.exe";
+      ]
+  in
+  let dependencies =
+    (* Even though not many tests depend on static executables, some
+       of those that do are limiting factors in the total duration of
+       pipelines. So when requested through [needs_trigger] we start
+       this job as early as possible, without waiting for
+       sanity_ci. *)
+    if needs_trigger then Dependent [Job trigger] else Staged
+  in
+  let job =
+    job
+      ?rules
+      ~stage:Stages.build
+      ~arch
+      ~name
+      ~image:Images.runtime_build_dependencies
+      ~before_script:
+        (before_script
+           ~take_ownership:true
+           ~source_version:true
+           ~eval_opam:true
+           [])
+      ~variables
+      ~dependencies
+      ~artifacts
+      ["./scripts/ci/build_full_unreleased.sh"]
+  in
+  let job =
+    (* Disable coverage for arm64 *)
+    if arch = Amd64 then job_enable_coverage job else job
+  in
+  if external_ then job_external job else job
+
+let build_arm_rules =
+  [
+    job_rule ~if_:Rules.schedule_extended_tests ~when_:Always ();
+    job_rule ~if_:Rules.(has_mr_label "ci--arm64") ~when_:On_success ();
+    job_rule
+      ~changes:["src/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
+      ~when_:Manual
+      ~allow_failure:Yes
+      ();
+  ]
+
+(* Write external files for build_arm64_jobs *)
+let _job_build_arm64_release =
+  job_build_dynamic_binaries
+    ~external_:true
+    ~arch:Arm64
+    ~needs_trigger:false
+    ~release:true
+    ~rules:build_arm_rules
+    ()
+
+let _job_build_arm64_exp_dev_extra =
+  job_build_dynamic_binaries
+    ~external_:true
+    ~arch:Arm64
+    ~needs_trigger:false
+    ~release:false
+    ~rules:build_arm_rules
+    ()
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
