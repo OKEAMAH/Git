@@ -158,3 +158,9 @@ val adaptive_issuance_rewards_params :
 val adaptive_issuance_autostaking_enable : Raw_context.t -> bool
 
 val direct_ticket_spending_enable : Raw_context.t -> bool
+
+(** The following accessor are not actual parameters, but constants that
+    derives from the protocol parameter     *)
+
+(** Delay in cycle before the current state of the stake impact the issuance.*)
+val issuance_modification_delay : Raw_context.t -> int
