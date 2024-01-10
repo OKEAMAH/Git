@@ -3,6 +3,15 @@
 This document describes the operating principles of the source code
 around the CI.
 
+# Job file names
+
+ - If a job file contains the definition of a single GitLab CI job,
+   then the file should have the same name as the job.
+ - If a job file defines several jobs sharing a common descriptive
+   prefix, then the file should be named after that prefix.
+ - If there is no such common prefix, or if it is not descriptive, an
+   arbitrary by descriptive name can be used.
+
 # Implementation of job `script`s
 
 These rules also apply to `before_script` and `after_script`.
