@@ -35,8 +35,8 @@
   variables:
     ARCH: ""
   before_script:
-    - eval $(opam env)
     - ./scripts/ci/take_ownership.sh
+    - eval $(opam env)
   script:
     - ./scripts/ci/build_static_binaries.sh
   artifacts:
