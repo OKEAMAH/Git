@@ -59,13 +59,13 @@ let set_active ctxt delegate =
   let open Lwt_result_syntax in
   let* inactive = is_inactive ctxt delegate in
   let current_cycle = (Raw_context.current_level ctxt).cycle in
-  let preserved_cycles = Constants_storage.preserved_cycles ctxt in
+  let consensus_rights_delay = Constants_storage.consensus_rights_delay ctxt in
   (* We allow a number of cycles before a delegate is deactivated as follows:
-     - if the delegate is active, we give it at least `1 + preserved_cycles`
+     - if the delegate is active, we give it at least `1 + consensus_rights_delay`
      after the current cycle before to be deactivated.
      - if the delegate is new or inactive, we give it additionally
-     `preserved_cycles` because the delegate needs this number of cycles to
-     receive rights, so `1 + 2 * preserved_cycles` in total. *)
+     `consensus_rights_delay` because the delegate needs this number of cycles to
+     receive rights, so `1 + 2 * consensus_rights_delay` in total. *)
   let delegate_contract = Contract_repr.Implicit delegate in
   let* current_last_active_cycle =
     Storage.Contract.Delegate_last_cycle_before_deactivation.find
@@ -74,10 +74,11 @@ let set_active ctxt delegate =
   in
   let last_active_cycle =
     match current_last_active_cycle with
-    | None -> Cycle_repr.add current_cycle (1 + (2 * preserved_cycles))
+    | None -> Cycle_repr.add current_cycle (2 * consensus_rights_delay)
     | Some current_last_active_cycle ->
         let delay =
-          if inactive then 1 + (2 * preserved_cycles) else 1 + preserved_cycles
+          if inactive then 1 + (2 * consensus_rights_delay)
+          else 1 + consensus_rights_delay
         in
         let updated = Cycle_repr.add current_cycle delay in
         Cycle_repr.max current_last_active_cycle updated
