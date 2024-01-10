@@ -44,5 +44,8 @@ val has_tag_match : string -> If.t
 (** A rule that is true if [CI_COMMIT_TAG] is defined but does not matches the given regexp. *)
 val has_tag_not_match : string -> If.t
 
+(** TODO *)
+val has_mr_label : string -> If.t
+
 (** A rule that is true if [CI_MERGE_REQUEST_ASSIGNEES] equals [nomadic-margebot]. *)
 val assigned_to_marge_bot : If.t

@@ -45,3 +45,6 @@ let has_tag_not_match tag =
 
 let assigned_to_marge_bot =
   Predefined_vars.ci_merge_request_assignees =~! "/nomadic-margebot/"
+
+let has_mr_label label =
+  Predefined_vars.ci_merge_request_labels =~ "/(?:^|[,])" ^ label ^ "(?:$|[,])/"
