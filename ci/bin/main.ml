@@ -31,7 +31,7 @@ module Stages = struct
 
   let _test = Stage.register "test"
 
-  let _test_coverage = Stage.register "test_coverage"
+  let test_coverage = Stage.register "test_coverage"
 
   let _packaging = Stage.register "packaging"
 
@@ -776,6 +776,52 @@ let _job_build_arm64_exp_dev_extra =
     ~release:false
     ~rules:build_arm_rules
     ()
+
+let job_enable_coverage_report job : job =
+  let coverage = "/Coverage: ([^%]+%)/" in
+  let artifacts =
+    match job.artifacts with
+    | Some _ -> assert false
+    | None ->
+        artifacts
+          ~expose_as:"Coverage report"
+          ~reports:
+            (reports
+               ~coverage_report:
+                 {
+                   coverage_format = Cobertura;
+                   path = "_coverage_report/cobertura.xml";
+                 }
+               ())
+          ~expire_in:(Days 15)
+          ~when_:Always
+          ["_coverage_report/"; "$BISECT_FILE"]
+  in
+  {job with artifacts = Some artifacts; coverage = Some coverage}
+
+let _unified_coverage_default : job =
+  job_external ~directory:"coverage" ~filename_suffix:"default"
+  @@ job_enable_coverage @@ job_enable_coverage_report
+  @@ job
+       ~image:Images.runtime_build_test_dependencies
+       ~name:"oc.unified_coverage"
+       ~stage:Stages.test_coverage
+       ~variables:
+         [
+           ("PROJECT", Predefined_vars.(show ci_project_path));
+           ("DEFAULT_BRANCH", Predefined_vars.(show ci_commit_sha));
+         ]
+       ~allow_failure:Yes
+       [
+         (* sets COVERAGE_OUTPUT *)
+         ". ./scripts/version.sh";
+         (* On the project default branch, we fetch coverage from the last merged MR *)
+         "mkdir -p _coverage_report";
+         "dune exec scripts/ci/download_coverage/download.exe -- -a \
+          from=last-merged-pipeline --info --log-file \
+          _coverage_report/download_coverage.log";
+         "./scripts/ci/report_coverage.sh";
+       ]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
