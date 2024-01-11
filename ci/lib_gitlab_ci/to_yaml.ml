@@ -94,12 +94,19 @@ let enc_default ({image; interruptible} : default) : value =
 let enc_time_interval interval =
   `String
     (match interval with
+    | Seconds 1 -> "1 second"
     | Seconds x -> string_of_int x ^ " seconds"
+    | Minutes 1 -> "1 minute"
     | Minutes x -> string_of_int x ^ " minutes"
+    | Hours 1 -> "1 hour"
     | Hours x -> string_of_int x ^ " hours"
+    | Days 1 -> "1 day"
     | Days x -> string_of_int x ^ " days"
+    | Weeks 1 -> "1 week"
     | Weeks x -> string_of_int x ^ " weeks"
+    | Months 1 -> "1 month"
     | Months x -> string_of_int x ^ " months"
+    | Years 1 -> "1 year"
     | Years x -> string_of_int x ^ " years")
 
 let enc_report : reports -> value =
