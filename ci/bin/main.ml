@@ -35,7 +35,7 @@ module Stages = struct
 
   let _packaging = Stage.register "packaging"
 
-  let _doc = Stage.register "doc"
+  let doc = Stage.register "doc"
 
   let prepare_release = Stage.register "prepare_release"
 
@@ -144,7 +144,7 @@ module Images = struct
       ~image_path:
         "${build_deps_image_name}:runtime-client-libs-dependencies--${build_deps_image_version}"
 
-  let _rust_toolchain =
+  let rust_toolchain =
     Image.register
       ~name:"rust_toolchain"
       ~image_path:
@@ -314,10 +314,8 @@ let job_build_static_binaries ~arch ?(external_ = false) ?(release = false)
   in
   if external_ then job_external ~filename_suffix job else job
 
-let _job_static_arm64_experimental =
-  job_build_static_binaries ~external_:true ~arch:Arm64 ()
-
-let _job_static_x86_64_experimental =
+(* Used in [before_merging] pipeline. *)
+let job_static_x86_64_experimental =
   job_build_static_binaries ~external_:true ~arch:Amd64 ~needs_trigger:true ()
 
 (** Type of Docker build jobs.
@@ -398,48 +396,11 @@ let job_docker_build ?rules ~arch ?(external_ = false) docker_build_type : job =
   if external_ then job_external ~directory:"build" ~filename_suffix job
   else job
 
-let changeset_octez_docker_changes_or_master =
-  [
-    "scripts/**/*";
-    "script-inputs/**/*";
-    "src/**/*";
-    "tezt/**/*";
-    "vendors/**/*";
-    "dune";
-    "dune-project";
-    "dune-workspace";
-    "opam";
-    "Makefile";
-    "kernels.mk";
-    "build.Dockerfile";
-    "Dockerfile";
-    ".gitlab/**/*";
-    ".gitlab-ci.yml";
-  ]
-
-let rules_octez_docker_changes_or_master =
-  [
-    job_rule ~if_:Rules.on_master ();
-    job_rule ~changes:changeset_octez_docker_changes_or_master ();
-  ]
-
-let job_docker_amd64_experimental : job =
-  job_docker_build
-    ~external_:true
-    ~rules:rules_octez_docker_changes_or_master
-    ~arch:Amd64
-    Experimental
-
+(* Used in [before_merging] pipeline *)
 let _job_docker_amd64_test_manual : job =
   job_docker_build ~external_:true ~arch:Amd64 Test_manual
 
-let job_docker_arm64_experimental : job =
-  job_docker_build
-    ~external_:true
-    ~rules:rules_octez_docker_changes_or_master
-    ~arch:Arm64
-    Experimental
-
+(* Used in [before_merging] pipeline *)
 let _job_docker_arm64_test_manual : job =
   job_docker_build ~external_:true ~arch:Arm64 Test_manual
 
@@ -458,21 +419,6 @@ let job_docker_merge_manifests ~ci_docker_hub ~job_docker_amd64
     ~dependencies:(Dependent [Job job_docker_amd64; Job job_docker_arm64])
     ~variables:[("CI_DOCKER_HUB", Bool.to_string ci_docker_hub)]
     ["./scripts/ci/docker_merge_manifests.sh"]
-
-(* This external definition is used in the [master_branch] pipeline *)
-let _job_docker_merge_manifests_release =
-  job_external ~filename_suffix:"release"
-  @@ job_docker_merge_manifests
-       ~ci_docker_hub:true
-         (* TODO: In theory, actually uses either release or
-            experimental variant of docker jobs depending on
-            pipeline. In practice, this does not matter as these jobs
-            have the same name in the generated files
-            ([oc.build:ARCH]). However, when the merge_manifest jobs
-            are generated directly in the [master_branch] pipeline,
-            the correcty variant must be used. *)
-       ~job_docker_amd64:job_docker_amd64_experimental
-       ~job_docker_arm64:job_docker_arm64_experimental
 
 type bin_package_target = Dpkg | Rpm
 
@@ -759,7 +705,9 @@ let build_arm_rules =
   ]
 
 (* Write external files for build_arm64_jobs *)
-let _job_build_arm64_release =
+
+(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+let job_build_arm64_release =
   job_build_dynamic_binaries
     ~external_:true
     ~arch:Arm64
@@ -768,7 +716,8 @@ let _job_build_arm64_release =
     ~rules:build_arm_rules
     ()
 
-let _job_build_arm64_exp_dev_extra =
+(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+let job_build_arm64_exp_dev_extra =
   job_build_dynamic_binaries
     ~external_:true
     ~arch:Arm64
@@ -799,29 +748,20 @@ let job_enable_coverage_report job : job =
   in
   {job with artifacts = Some artifacts; coverage = Some coverage}
 
-let _unified_coverage_default : job =
-  job_external ~directory:"coverage" ~filename_suffix:"default"
-  @@ job_enable_coverage @@ job_enable_coverage_report
-  @@ job
-       ~image:Images.runtime_build_test_dependencies
-       ~name:"oc.unified_coverage"
-       ~stage:Stages.test_coverage
-       ~variables:
-         [
-           ("PROJECT", Predefined_vars.(show ci_project_path));
-           ("DEFAULT_BRANCH", Predefined_vars.(show ci_commit_sha));
-         ]
-       ~allow_failure:Yes
-       [
-         (* sets COVERAGE_OUTPUT *)
-         ". ./scripts/version.sh";
-         (* On the project default branch, we fetch coverage from the last merged MR *)
-         "mkdir -p _coverage_report";
-         "dune exec scripts/ci/download_coverage/download.exe -- -a \
-          from=last-merged-pipeline --info --log-file \
-          _coverage_report/download_coverage.log";
-         "./scripts/ci/report_coverage.sh";
-       ]
+let changeset_octez_docs =
+  [
+    "scripts/**/*/";
+    "script-inputs/**/*/";
+    "src/**/*";
+    "tezt/**/*";
+    "vendors/**/*";
+    "dune";
+    "dune-project";
+    "dune-workspace";
+    "docs/**/*";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+  ]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
@@ -851,7 +791,107 @@ let () =
     "latest_release_test"
     If.(not_on_tezos_namespace && push && on_branch "latest-release-test")
     ~jobs:[job_docker_promote_to_latest ~ci_docker_hub:false] ;
-  register "master_branch" If.(on_tezos_namespace && push && on_branch "master") ;
+  register
+    "master_branch"
+    If.(on_tezos_namespace && push && on_branch "master")
+    ~jobs:
+      (let job_docker_amd64 : job = job_docker_build ~arch:Amd64 Experimental in
+       let job_docker_arm64 : job = job_docker_build ~arch:Arm64 Experimental in
+       (* Here we use this hack to publish the Octez documentation on
+          {{:gitlab.io}} because we want to publish the doc for the project
+          [tezos] under {{:https://tezos.gitlab.io}} and not
+          {{:https://tezos.gitlab.io/tezos}} The latter follows the GitLab
+          URL convention of
+          [https://<projectname_space>.gitlab.io/<project_name>/].
+
+          Notice that we push only if [CI_COMMIT_REF_NAME] is really [master].
+          This allows to test the release workflow *)
+       let publish_documentation =
+         job
+           ~name:"publish:documentation"
+           ~image:Images.runtime_build_test_dependencies
+           ~stage:Stages.doc
+           ~dependencies:(Dependent [])
+           ~before_script:
+             (before_script
+                ~eval_opam:true
+                  (* Load the environment poetry previously created in the docker image.
+                     Give access to the Python dependencies/executables. *)
+                ~init_python_venv:true
+                [
+                  {|echo "${CI_PK_GITLAB_DOC}" > ~/.ssh/id_ed25519|};
+                  {|echo "${CI_KH}" > ~/.ssh/known_hosts|};
+                  {|chmod 400 ~/.ssh/id_ed25519|};
+                ])
+           ~interruptible:false
+           ~rules:[job_rule ~changes:changeset_octez_docs ~when_:On_success ()]
+           ["./scripts/ci/doc_publish.sh"]
+       in
+       let unified_coverage_default =
+         job_enable_coverage @@ job_enable_coverage_report
+         @@ job
+              ~image:Images.runtime_build_test_dependencies
+              ~name:"oc.unified_coverage"
+              ~stage:Stages.test_coverage
+              ~variables:
+                [
+                  ("PROJECT", Predefined_vars.(show ci_project_path));
+                  ("DEFAULT_BRANCH", Predefined_vars.(show ci_commit_sha));
+                ]
+              ~allow_failure:Yes
+              [
+                (* sets COVERAGE_OUTPUT *)
+                ". ./scripts/version.sh";
+                (* On the project default branch, we fetch coverage from the last merged MR *)
+                "mkdir -p _coverage_report";
+                "dune exec scripts/ci/download_coverage/download.exe -- -a \
+                 from=last-merged-pipeline --info --log-file \
+                 _coverage_report/download_coverage.log";
+                "./scripts/ci/report_coverage.sh";
+              ]
+       in
+       (* Smart Rollup: Kernel SDK
+
+          See [src/kernel_sdk/RELEASE.md] for more information. *)
+       let publish_kernel_sdk =
+         job
+           ~name:"publish_kernel_sdk"
+           ~image:Images.rust_toolchain
+           ~stage:Stages.manual
+           ~when_:Manual
+           ~allow_failure:Yes
+           ~dependencies:(Dependent [])
+           ~interruptible:false
+           ~variables:
+             [("CARGO_HOME", Predefined_vars.(show ci_project_dir) // "cargo")]
+           ~cache:[{key = "kernels"; paths = ["cargo/"]}]
+           [
+             "make -f kernels.mk publish-sdk-deps";
+             (* Manually set SSL_CERT_DIR as default setting points to empty dir *)
+             "SSL_CERT_DIR=/etc/ssl/certs CC=clang make -f kernels.mk \
+              publish-sdk";
+           ]
+       in
+       [
+         (* Stage: build *)
+         job_static_x86_64_experimental;
+         job_build_static_binaries ~arch:Arm64 ();
+         job_build_arm64_release;
+         job_build_arm64_exp_dev_extra;
+         job_docker_amd64;
+         job_docker_arm64;
+         (* Stage: test_coverage *)
+         unified_coverage_default;
+         (* Stage: doc *)
+         publish_documentation;
+         (* Stage: prepare_release *)
+         job_docker_merge_manifests
+           ~ci_docker_hub:true
+           ~job_docker_amd64
+           ~job_docker_arm64;
+         (* Stage: manual *)
+         publish_kernel_sdk;
+       ]) ;
   register
     "release_tag"
     If.(on_tezos_namespace && push && has_tag_match release_tag_re)
