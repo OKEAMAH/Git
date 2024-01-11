@@ -62,3 +62,10 @@ val artifacts :
   ?name:string ->
   string list ->
   artifacts
+
+val reports :
+  ?dotenv:string ->
+  ?junit:string ->
+  ?coverage_report:coverage_report ->
+  unit ->
+  reports

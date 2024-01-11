@@ -41,7 +41,15 @@ type include_rule = {
   when_ : when_workflow;
 }
 
-type reports = {dotenv : string option; junit : string option}
+type coverage_format = Cobertura
+
+type coverage_report = {coverage_format : coverage_format; path : string}
+
+type reports = {
+  dotenv : string option;
+  junit : string option;
+  coverage_report : coverage_report option;
+}
 
 type image = Image of string
 
@@ -92,6 +100,7 @@ type job = {
   timeout : time_interval option;
   tags : string list option;
   when_ : when_ option;
+  coverage : string option;
 }
 
 type workflow = {rules : workflow_rule list; name : string option}

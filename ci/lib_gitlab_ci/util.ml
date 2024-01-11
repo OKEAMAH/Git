@@ -23,9 +23,17 @@ let include_rule ?changes ?if_ ?(when_ : when_workflow = Always) () :
 
 let artifacts ?expire_in ?reports ?when_ ?expose_as ?name paths =
   (match (reports, paths) with
-  | Some {dotenv = None; junit = None}, [] ->
+  | Some {dotenv = None; junit = None; coverage_report = None}, [] ->
       failwith
         "Attempted to register an artifact with no reports or paths -- this \
          doesn't make any sense"
   | _ -> ()) ;
   {expire_in; paths; reports; when_; expose_as; name}
+
+let reports ?dotenv ?junit ?coverage_report () =
+  (match (dotenv, junit, coverage_report) with
+  | None, None, None ->
+      failwith
+        "Attempted to register a empty [reports] -- this doesn't make any sense"
+  | _ -> ()) ;
+  {dotenv; junit; coverage_report}

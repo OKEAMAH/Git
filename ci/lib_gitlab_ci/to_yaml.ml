@@ -109,9 +109,25 @@ let enc_time_interval interval =
     | Years 1 -> "1 year"
     | Years x -> string_of_int x ^ " years")
 
+let enc_coverage : coverage_report -> value =
+ fun {coverage_format; path} ->
+  obj_flatten
+    [
+      key
+        "coverage_format"
+        (function Cobertura -> `String "cobertura")
+        coverage_format;
+      key "path" string path;
+    ]
+
 let enc_report : reports -> value =
- fun {dotenv; junit} ->
-  obj_flatten [opt "dotenv" string dotenv; opt "junit" string junit]
+ fun {dotenv; junit; coverage_report} ->
+  obj_flatten
+    [
+      opt "dotenv" string dotenv;
+      opt "junit" string junit;
+      opt "coverage_report" enc_coverage coverage_report;
+    ]
 
 let enc_artifacts : artifacts -> value =
  fun {expire_in; paths; reports; when_; expose_as; name} ->
@@ -153,6 +169,7 @@ let enc_job : job -> value =
        timeout;
        tags;
        when_;
+       coverage;
      } ->
   obj_flatten
     [
@@ -173,6 +190,7 @@ let enc_job : job -> value =
       opt "variables" enc_variables variables;
       opt "artifacts" enc_artifacts artifacts;
       opt "when" enc_when when_;
+      opt "coverage" string coverage;
     ]
 
 let enc_includes : include_ list -> value =

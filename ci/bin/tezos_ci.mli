@@ -134,6 +134,7 @@ val job :
   ?tags:string list ->
   ?git_strategy:git_strategy ->
   ?when_:Gitlab_ci.Types.when_ ->
+  ?coverage:string ->
   stage:Stage.t ->
   name:string ->
   string list ->
