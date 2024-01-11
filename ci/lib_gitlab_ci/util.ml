@@ -28,9 +28,4 @@ let artifacts ?expire_in ?reports ?when_ ?expose_as paths =
         "Attempted to register an artifact with no reports or paths -- this \
          doesn't make any sense"
   | _ -> ()) ;
-  let reports =
-    match reports with
-    | Some reports -> reports
-    | None -> {dotenv = None; junit = None}
-  in
   {expire_in; paths; reports; when_; expose_as}

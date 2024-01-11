@@ -59,7 +59,7 @@ type time_interval =
 type artifacts = {
   expire_in : time_interval option;
   paths : string list;
-  reports : reports;
+  reports : reports option;
   when_ : when_artifact option;
   expose_as : string option;
 }

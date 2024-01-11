@@ -112,7 +112,7 @@ let enc_artifacts : artifacts -> value =
     [
       opt "expire_in" enc_time_interval expire_in;
       key "paths" strings paths;
-      key "reports" enc_report reports;
+      opt "reports" enc_report reports;
       opt "when" enc_when_artifact when_;
       opt "expose_as" string expose_as;
     ]
