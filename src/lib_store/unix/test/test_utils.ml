@@ -436,7 +436,7 @@ let make_raw_block ?min_lpbl ?(max_operations_ttl = default_max_operations_ttl)
       contents =
         {
           header;
-          operations;
+          operations = Raw operations;
           block_metadata_hash =
             (if Random.bool () then Some Block_metadata_hash.zero else None);
           operations_metadata_hashes =
@@ -510,7 +510,12 @@ let store_raw_block chain_store ?resulting_context (raw_block : Block_repr.t) =
     Store.Block.store_block
       chain_store
       ~block_header:(Block_repr.header raw_block)
-      ~operations:(Block_repr.operations raw_block)
+      ~operations:
+        (match Block_repr.operations raw_block with
+        | Raw ops -> ops
+        | Compressed _ ->
+            (* This will not happen because the [make_raw_block] only creates "Raw" operations *)
+            assert false)
       validation_result
   in
   match r with

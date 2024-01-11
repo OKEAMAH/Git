@@ -25,9 +25,11 @@
 
 open Store_errors
 
+type encoded_operations = Raw of Operation.t list list | Compressed of bytes
+
 type contents = {
   header : Block_header.t;
-  operations : Operation.t list list;
+  operations : encoded_operations;
   block_metadata_hash : Block_metadata_hash.t option;
   operations_metadata_hashes : Operation_metadata_hash.t list list option;
 }
@@ -82,7 +84,7 @@ let create_genesis_block ~genesis context =
   let contents =
     {
       header;
-      operations = [];
+      operations = Raw [];
       block_metadata_hash = None;
       operations_metadata_hashes = None;
     }
@@ -98,6 +100,70 @@ let create_genesis_block ~genesis context =
       }
   in
   {hash = genesis.block; contents; metadata}
+
+let raw_operations_encoding : encoded_operations Data_encoding.t =
+  let open Data_encoding in
+  conv
+    (function Raw oprerations -> oprerations | Compressed _ -> assert false)
+    (fun operations -> Raw operations)
+    (list (list (dynamic_size Operation.encoding)))
+
+let encoded_operations_encoding : encoded_operations Data_encoding.t =
+  let open Data_encoding in
+  let raw_op_encoding = list (list (dynamic_size Operation.encoding)) in
+  let magic_byte = Char.chr 0xff in
+  splitted
+    ~binary:
+      (conv
+         (function
+           | Raw operations ->
+               Data_encoding.Binary.to_bytes_exn raw_op_encoding operations
+           | Compressed bytes ->
+               Bytes.concat Bytes.empty [Bytes.make 1 magic_byte; bytes])
+         (fun b ->
+           if Bytes.length b > 0 then
+             if Bytes.get b 0 = magic_byte then Compressed b
+             else Raw (Data_encoding.Binary.of_bytes_exn raw_op_encoding b)
+           else Raw [])
+         bytes)
+    ~json:
+      (union
+      @@ [
+           case
+             ~title:"Raw operations"
+             (Tag 0)
+             (obj1 (req "raw" raw_op_encoding))
+             (function Raw ops -> Some ops | _ -> None)
+             (fun ops -> Raw ops);
+           case
+             ~title:"Compressed operations"
+             (Tag 1)
+             (obj1 (req "compressed" bytes))
+             (function Compressed b -> Some b | _ -> None)
+             (fun b -> Compressed b);
+         ])
+
+let encoded_contents_encoding =
+  let open Data_encoding in
+  def "store.block_repr.encoded_contents"
+  @@ conv
+       (fun {
+              header;
+              operations;
+              block_metadata_hash;
+              operations_metadata_hashes;
+            } ->
+         (header, operations, block_metadata_hash, operations_metadata_hashes))
+       (fun (header, operations, block_metadata_hash, operations_metadata_hashes)
+            ->
+         {header; operations; block_metadata_hash; operations_metadata_hashes})
+       (obj4
+          (req "header" (dynamic_size Block_header.encoding))
+          (req "operations" encoded_operations_encoding)
+          (opt "block_metadata_hash" Block_metadata_hash.encoding)
+          (opt
+             "operations_metadata_hashes"
+             (list (list Operation_metadata_hash.encoding))))
 
 let contents_encoding =
   let open Data_encoding in
@@ -115,7 +181,7 @@ let contents_encoding =
          {header; operations; block_metadata_hash; operations_metadata_hashes})
        (obj4
           (req "header" (dynamic_size Block_header.encoding))
-          (req "operations" (list (list (dynamic_size Operation.encoding))))
+          (req "operations" raw_operations_encoding)
           (opt "block_metadata_hash" Block_metadata_hash.encoding)
           (opt
              "operations_metadata_hashes"
@@ -193,6 +259,19 @@ let legacy_metadata_encoding : legacy_metadata Data_encoding.t =
           (req "legacy_block_metadata" bytes)
           (req "legacy_operations_metadata" (list (list bytes))))
 
+let _encoded_block_encoding =
+  let open Data_encoding in
+  def "store.encoded_block_repr"
+  @@ conv
+       (fun {hash; contents; metadata} -> (hash, contents, metadata))
+       (fun (hash, contents, metadata) -> {hash; contents; metadata})
+       (dynamic_size
+          ~kind:`Uint30
+          (obj3
+             (req "hash" Block_hash.encoding)
+             (req "contents" encoded_contents_encoding)
+             (varopt "metadata" metadata_encoding)))
+
 let encoding =
   let open Data_encoding in
   def "store.block_repr"
@@ -243,10 +322,16 @@ let with_metadata
   [@@ocaml.inline]
 
 let contents_equal c1 c2 =
+  let encoded_operations_eq eo1 eo2 =
+    match (eo1, eo2) with
+    | Compressed b, Compressed b' -> Bytes.equal b b'
+    | Raw os, Raw os' -> List.equal (List.equal Operation.equal) os os'
+    | _ -> false
+  in
   with_contents c1 @@ fun h1 o1 b1 omh1 ->
   with_contents c2 @@ fun h2 o2 b2 omh2 ->
   Block_header.equal h1 h2
-  && List.equal (List.equal Operation.equal) o1 o2
+  && encoded_operations_eq o1 o2
   && Option.equal Block_metadata_hash.equal b1 b2
   && Option.equal
        (List.equal (List.equal Operation_metadata_hash.equal))
@@ -319,7 +404,7 @@ let block_metadata metadata = metadata.block_metadata
 
 let operations_metadata metadata = metadata.operations_metadata
 
-let check_block_consistency ?genesis_hash ?pred_block block =
+let check_block_consistency ?genesis_hash ?pred_block block protocol_levels =
   let open Lwt_result_syntax in
   let block_header = header block in
   let block_hash = hash block in
@@ -353,21 +438,35 @@ let check_block_consistency ?genesis_hash ?pred_block block =
                computed_hash = predecessor block;
              })
   in
-  let computed_operations_hash =
-    Operation_list_list_hash.compute
-      (List.map
-         Operation_list_hash.compute
-         (List.map (List.map Operation.hash) (operations block)))
+  let check_raw_operations_hash operations =
+    let computed_operations_hash =
+      Operation_list_list_hash.compute
+        (List.map
+           Operation_list_hash.compute
+           (List.map (List.map Operation.hash) operations))
+    in
+    let* () =
+      fail_unless
+        (Operation_list_list_hash.equal
+           computed_operations_hash
+           (operations_hash block))
+        (Store_errors.Inconsistent_operations_hash
+           {expected = operations_hash block; got = computed_operations_hash})
+    in
+    return_unit
   in
-  let* () =
-    fail_unless
-      (Operation_list_list_hash.equal
-         computed_operations_hash
-         (operations_hash block))
-      (Store_errors.Inconsistent_operations_hash
-         {expected = operations_hash block; got = computed_operations_hash})
-  in
-  return_unit
+  match operations block with
+  | Raw operations -> check_raw_operations_hash operations
+  | Compressed _ -> (
+      let protocol_level = proto_level block in
+      let protocol_info_opt : Store_types.Protocol_levels.protocol_info option =
+        Store_types.Protocol_levels.find protocol_level protocol_levels
+      in
+      match protocol_info_opt with
+      | None -> tzfail (Cannot_find_protocol protocol_level)
+      | Some _ ->
+          (* TBD *)
+          assert false)
 
 let convert_legacy_metadata (legacy_metadata : legacy_metadata) : metadata =
   let {

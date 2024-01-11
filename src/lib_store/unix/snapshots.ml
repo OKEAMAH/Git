@@ -3126,6 +3126,7 @@ module type IMPORTER = sig
   val restore_floating_blocks :
     t ->
     Block_hash.t ->
+    protocol_levels:Protocol_levels.protocol_info Protocol_levels.t ->
     (unit tzresult Lwt.t * Block_repr.block Lwt_stream.t) tzresult Lwt.t
 
   val close : t -> unit Lwt.t
@@ -3432,7 +3433,7 @@ module Raw_importer : IMPORTER = struct
     let* () = Lwt_utils_unix.copy_file ~src ~dst in
     return_ok_unit
 
-  let restore_floating_blocks t genesis_hash =
+  let restore_floating_blocks t genesis_hash ~protocol_levels =
     let open Lwt_result_syntax in
     let floating_blocks_file =
       Naming.(snapshot_floating_blocks_file t.snapshot_dir |> file_path)
@@ -3453,7 +3454,11 @@ module Raw_importer : IMPORTER = struct
         else
           let*! block, len_read = Block_repr_unix.read_next_block_exn fd in
           let* () =
-            Block_repr.check_block_consistency ~genesis_hash ?pred_block block
+            Block_repr.check_block_consistency
+              ~genesis_hash
+              ?pred_block
+              block
+              protocol_levels
           in
           let*! () = bounded_push#push block in
           loop (nb_bytes_left - len_read)
@@ -3809,7 +3814,7 @@ module Tar_importer : IMPORTER = struct
     in
     return_unit
 
-  let restore_floating_blocks t genesis_hash =
+  let restore_floating_blocks t genesis_hash ~protocol_levels =
     let open Lwt_result_syntax in
     let*! o =
       Onthefly.get_file
@@ -3830,7 +3835,11 @@ module Tar_importer : IMPORTER = struct
               Block_repr_unix.read_next_block_exn floating_blocks_file_fd
             in
             let* () =
-              Block_repr.check_block_consistency ~genesis_hash ?pred_block block
+              Block_repr.check_block_consistency
+                ~genesis_hash
+                ?pred_block
+                block
+                protocol_levels
             in
             let*! () = bounded_push#push block in
             loop Int64.(sub nb_bytes_left (of_int len_read))
@@ -3888,7 +3897,7 @@ module Make_snapshot_importer (Importer : IMPORTER) : Snapshot_importer = struct
   let close = Importer.close
 
   let restore_cemented_blocks ?(check_consistency = true) ~dst_chain_dir
-      ~genesis_hash ~progress_display_mode snapshot_importer =
+      ~genesis_hash ~progress_display_mode snapshot_importer ~protocol_levels =
     let open Lwt_result_syntax in
     let*! () = Importer.restore_cemented_indexes snapshot_importer in
     let* cemented_files = Importer.load_cemented_files snapshot_importer in
@@ -3954,14 +3963,18 @@ module Make_snapshot_importer (Importer : IMPORTER) : Snapshot_importer = struct
                 Cemented_block_store.check_indexes_consistency
                   ~post_step:notify
                   ~genesis_hash
-                  cemented_store)
+                  cemented_store
+                  ~protocol_levels)
       else return_unit
     in
     Cemented_block_store.close cemented_store ;
     return_unit
 
-  let read_floating_blocks snapshot_importer ~genesis_hash =
-    Importer.restore_floating_blocks snapshot_importer genesis_hash
+  let read_floating_blocks snapshot_importer ~genesis_hash ~protocol_levels =
+    Importer.restore_floating_blocks
+      snapshot_importer
+      genesis_hash
+      ~protocol_levels
 
   let restore_protocols snapshot_importer progress_display_mode =
     let open Lwt_result_syntax in
@@ -4360,9 +4373,13 @@ module Make_snapshot_importer (Importer : IMPORTER) : Snapshot_importer = struct
         ~dst_chain_dir
         ~genesis_hash:genesis.block
         ~progress_display_mode
+        ~protocol_levels
     in
     let* reading_thread, floating_blocks_stream =
-      read_floating_blocks snapshot_importer ~genesis_hash:genesis.block
+      read_floating_blocks
+        snapshot_importer
+        ~genesis_hash:genesis.block
+        ~protocol_levels
     in
     let {
       Block_validation.validation_store;
@@ -4375,7 +4392,7 @@ module Make_snapshot_importer (Importer : IMPORTER) : Snapshot_importer = struct
     let contents =
       {
         Block_repr.header = block_data.block_header;
-        operations = block_data.operations;
+        operations = Raw block_data.operations;
         block_metadata_hash = snd block_metadata;
         operations_metadata_hashes =
           (match ops_metadata with
