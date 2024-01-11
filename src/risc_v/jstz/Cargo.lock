@@ -922,14 +922,15 @@ dependencies = [
 name = "jstz"
 version = "0.0.0"
 dependencies = [
+ "bincode",
  "jstz_kernel",
  "tezos-smart-rollup",
+ "tezos_crypto_rs",
 ]
 
 [[package]]
 name = "jstz_api"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "base64 0.21.5",
  "boa_engine",
@@ -951,7 +952,6 @@ dependencies = [
 [[package]]
 name = "jstz_core"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "bincode",
  "boa_engine",
@@ -966,7 +966,6 @@ dependencies = [
 [[package]]
 name = "jstz_crypto"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -978,7 +977,6 @@ dependencies = [
 [[package]]
 name = "jstz_kernel"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "bincode",
  "boa_engine",
@@ -997,7 +995,6 @@ dependencies = [
 [[package]]
 name = "jstz_proto"
 version = "0.1.0"
-source = "git+https://github.com/victor-dumitrescu/jstz.git?rev=8783f9076396776380de5a4e1152d82648c7654c#8783f9076396776380de5a4e1152d82648c7654c"
 dependencies = [
  "boa_engine",
  "boa_gc",
