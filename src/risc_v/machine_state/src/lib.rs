@@ -2,10 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
+#![feature(portable_simd)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
 pub mod backend;
 pub mod bus;
+pub mod cow_backend;
 pub mod csregisters;
 pub mod memory_backend;
 mod mode;

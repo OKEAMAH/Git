@@ -3,6 +3,12 @@ name = "risc-v-machine-state"
 version = "0.0.0"
 edition = "2021"
 
+[dependencies]
+libc = "0.2.152"
+tempfile = "3.9.0"
+memmap2 = "0.9.3"
+blake2b_simd = "1.0.2"
+
 [dev-dependencies.rand]
 version = "0.8.5"
 
