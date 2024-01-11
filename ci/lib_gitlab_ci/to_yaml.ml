@@ -144,6 +144,7 @@ let enc_job : job -> value =
        variables;
        timeout;
        tags;
+       when_;
      } ->
   obj_flatten
     [
@@ -163,6 +164,7 @@ let enc_job : job -> value =
       opt "services" enc_services services;
       opt "variables" enc_variables variables;
       opt "artifacts" enc_artifacts artifacts;
+      opt "when" enc_when when_;
     ]
 
 let enc_includes : include_ list -> value =

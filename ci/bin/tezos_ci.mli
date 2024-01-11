@@ -133,6 +133,7 @@ val job :
   ?timeout:Gitlab_ci.Types.time_interval ->
   ?tags:string list ->
   ?git_strategy:git_strategy ->
+  ?when_:Gitlab_ci.Types.when_ ->
   stage:Stage.t ->
   name:string ->
   string list ->

@@ -100,7 +100,7 @@ let enc_git_strategy = function
 
 let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
     ?cache ?image ?interruptible ?(dependencies = Staged) ?services ?variables
-    ?rules ?timeout ?(tags = []) ?git_strategy ~stage ~name script :
+    ?rules ?timeout ?(tags = []) ?git_strategy ?when_ ~stage ~name script :
     Gitlab_ci.Types.job =
   let tags =
     Some ((match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64") :: tags)
@@ -152,4 +152,5 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
     variables;
     timeout;
     tags;
+    when_;
   }

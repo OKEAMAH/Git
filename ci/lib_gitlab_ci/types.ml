@@ -90,6 +90,7 @@ type job = {
   variables : variables option;
   timeout : time_interval option;
   tags : string list option;
+  when_ : when_ option;
 }
 
 type workflow = {rules : workflow_rule list; name : string option}
