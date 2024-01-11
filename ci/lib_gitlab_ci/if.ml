@@ -7,15 +7,19 @@
 
 open Base
 
-type term = Var of string | Str of string | Null
+type var = Var of string
+
+let show_var = function Var n -> "$" ^ n
+
+type term = Str of string | Null
 
 type t =
   | And of (t * t)
   | Or of (t * t)
-  | Eq of (term * term)
-  | Match of (term * string)
-  | Unmatch of (term * string)
-  | Neq of (term * term)
+  | Eq of (var * term)
+  | Match of (var * string)
+  | Unmatch of (var * string)
+  | Neq of (var * term)
 
 let rec encode expr =
   let prio = function
@@ -37,20 +41,18 @@ let rec encode expr =
     let s = encode sub_expr in
     if prio expr < prio sub_expr then "(" ^ s ^ ")" else s
   in
-  let encode_term = function
-    | Null -> "null"
-    | Var n -> "$" ^ n
-    | Str s -> sf {|"%s"|} s
-  in
+  let encode_term = function Null -> "null" | Str s -> sf {|"%s"|} s in
   match expr with
   | And (a, b) -> sf "%s && %s" (paren_opt a) (paren_opt b)
   | Or (a, b) -> sf "%s || %s" (paren_opt a) (paren_opt b)
-  | Eq (a, b) -> sf "%s == %s" (encode_term a) (encode_term b)
-  | Neq (a, b) -> sf "%s != %s" (encode_term a) (encode_term b)
-  | Match (a, b) -> sf "%s =~ %s" (encode_term a) b
-  | Unmatch (a, b) -> sf "%s !~ %s" (encode_term a) b
+  | Eq (a, b) -> sf "%s == %s" (show_var a) (encode_term b)
+  | Neq (a, b) -> sf "%s != %s" (show_var a) (encode_term b)
+  | Match (a, b) -> sf "%s =~ %s" (show_var a) b
+  | Unmatch (a, b) -> sf "%s !~ %s" (show_var a) b
 
 let var n = Var n
+
+(* let var n = n *)
 
 let eq a b = Eq (a, b)
 

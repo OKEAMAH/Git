@@ -8,6 +8,12 @@
 (** Predicates for GitLab [if:] expression, as used in [rules:] clauses. *)
 type t
 
+(** TODO *)
+type var
+
+(** TODO *)
+val show_var : var -> string
+
 (** Terms for predicates in GitLab [if:] clauses. *)
 type term
 
@@ -15,7 +21,7 @@ type term
 val encode : t -> string
 
 (** [var name] is the [if:] expression [$name]. *)
-val var : string -> term
+val var : string -> var
 
 (** [str s] is the [if:] expression ["s"]. *)
 val str : string -> term
@@ -26,12 +32,12 @@ val null : term
 (** Equality in [if:]-expressions.
 
     Example: [var "foo" == str "bar"] translates to [$foo == "bar"]. *)
-val ( == ) : term -> term -> t
+val ( == ) : var -> term -> t
 
 (** Inequality in [if:]-expressions.
 
     Example: [var "foo" != str "bar"] translates to [$foo != "bar"]. *)
-val ( != ) : term -> term -> t
+val ( != ) : var -> term -> t
 
 (** Conjunction of [if:]-expressions. *)
 val ( && ) : t -> t -> t
@@ -42,9 +48,9 @@ val ( || ) : t -> t -> t
 (** Pattern match on [if:]-expressions.
 
     Example: [var "foo" =~ str "/bar/"] translates to [$foo =~ "/bar/"]. *)
-val ( =~ ) : term -> string -> t
+val ( =~ ) : var -> string -> t
 
 (** Negated pattern match on [if:]-expressions.
 
     Example: [var "foo" =~! str "/bar/"] translates to [$foo !~ "/bar/"]. *)
-val ( =~! ) : term -> string -> t
+val ( =~! ) : var -> string -> t
