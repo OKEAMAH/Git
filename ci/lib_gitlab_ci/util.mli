@@ -59,5 +59,6 @@ val artifacts :
   ?reports:reports ->
   ?when_:when_artifact ->
   ?expose_as:string ->
+  ?name:string ->
   string list ->
   artifacts

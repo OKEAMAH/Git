@@ -107,9 +107,10 @@ let enc_report : reports -> value =
   obj_flatten [opt "dotenv" string dotenv; opt "junit" string junit]
 
 let enc_artifacts : artifacts -> value =
- fun {expire_in; paths; reports; when_; expose_as} ->
+ fun {expire_in; paths; reports; when_; expose_as; name} ->
   obj_flatten
     [
+      opt "name" string name;
       opt "expire_in" enc_time_interval expire_in;
       key "paths" strings paths;
       opt "reports" enc_report reports;

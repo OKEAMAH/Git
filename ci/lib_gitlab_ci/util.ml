@@ -21,11 +21,11 @@ let include_rule ?changes ?if_ ?(when_ : when_workflow = Always) () :
     include_rule =
   {changes; if_; when_}
 
-let artifacts ?expire_in ?reports ?when_ ?expose_as paths =
+let artifacts ?expire_in ?reports ?when_ ?expose_as ?name paths =
   (match (reports, paths) with
   | Some {dotenv = None; junit = None}, [] ->
       failwith
         "Attempted to register an artifact with no reports or paths -- this \
          doesn't make any sense"
   | _ -> ()) ;
-  {expire_in; paths; reports; when_; expose_as}
+  {expire_in; paths; reports; when_; expose_as; name}

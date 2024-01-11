@@ -62,6 +62,7 @@ type artifacts = {
   reports : reports option;
   when_ : when_artifact option;
   expose_as : string option;
+  name : string option;
 }
 
 type default = {image : image option; interruptible : bool option}
