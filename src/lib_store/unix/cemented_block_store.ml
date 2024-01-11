@@ -964,7 +964,7 @@ let iter_cemented_file f ({file; _} as cemented_blocks_file) =
         (Printexc.to_string exn))
 
 let check_indexes_consistency ?(post_step = fun () -> Lwt.return_unit)
-    ?genesis_hash cemented_store =
+    ?genesis_hash cemented_store ~protocol_levels =
   let open Lwt_result_syntax in
   match cemented_store.cemented_blocks_files with
   | None -> return_unit
@@ -1042,6 +1042,7 @@ let check_indexes_consistency ?(post_step = fun () -> Lwt.return_unit)
                         ?genesis_hash
                         ?pred_block
                         block
+                        protocol_levels
                     in
                     let level = Block_repr.level block in
                     let hash = Block_repr.hash block in

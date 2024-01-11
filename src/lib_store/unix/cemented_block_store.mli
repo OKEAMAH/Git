@@ -297,4 +297,6 @@ val check_indexes_consistency :
   ?post_step:(unit -> unit Lwt.t) ->
   ?genesis_hash:Block_hash.t ->
   t ->
+  protocol_levels:
+    Store_types.Protocol_levels.protocol_info Store_types.Protocol_levels.t ->
   unit tzresult Lwt.t

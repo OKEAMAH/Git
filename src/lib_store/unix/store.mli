@@ -285,6 +285,10 @@ module Block : sig
   (** The type alias for a block. *)
   type block = t
 
+  (** All the blocks from [read_block] should have the [operations] field
+      as `Raw` *)
+  type read_block = block
+
   (** The type for block's metadata. *)
   type metadata = Block_repr.metadata = {
     message : string option;

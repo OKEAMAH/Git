@@ -29,12 +29,14 @@ open Store_types
 
 (** {1 Type definitions and encodings} *)
 
+type encoded_operations = Raw of Operation.t list list | Compressed of bytes
+
 (** The type for the effective [contents] of a block is its header and
     the [operations] it contains. Their metadata hashes are also
     present. *)
 type contents = {
   header : Block_header.t;
-  operations : Operation.t list list;
+  operations : encoded_operations;
   block_metadata_hash : Block_metadata_hash.t option;
   operations_metadata_hashes : Operation_metadata_hash.t list list option;
 }
@@ -102,6 +104,8 @@ val legacy_encoding : legacy_block Data_encoding.t
     contains metadata. *)
 val create_genesis_block : genesis:Genesis.t -> Context_hash.t -> t
 
+val encoded_operations_encoding : encoded_operations Data_encoding.t
+
 (** Encoding for {!type-contents}. *)
 val contents_encoding : contents Data_encoding.t
 
@@ -134,7 +138,7 @@ val hash : t -> Block_hash.t
 
 (** [operations block] returns the list of list of operations
     contained in the [block]. *)
-val operations : t -> Operation.t list list
+val operations : t -> encoded_operations
 
 (** {2 Block header accessors} *)
 
@@ -191,7 +195,11 @@ val operations_metadata :
     - Are the stored operations hashes consistent regarding the stored
       operations hashes? *)
 val check_block_consistency :
-  ?genesis_hash:Block_hash.t -> ?pred_block:t -> t -> unit tzresult Lwt.t
+  ?genesis_hash:Block_hash.t ->
+  ?pred_block:t ->
+  t ->
+  Protocol_levels.protocol_info Protocol_levels.t ->
+  unit tzresult Lwt.t
 
 (** [decode_metadata data] decodes metadata from [data] encoded either
     with the new encoding or the legacy one. *)
