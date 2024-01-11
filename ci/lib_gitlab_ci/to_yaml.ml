@@ -181,7 +181,7 @@ let enc_job : job -> value =
       opt "dependencies" strings dependencies;
       opt "allow_failure" bool allow_failure;
       opt "timeout" enc_time_interval timeout;
-      opt "cache" enc_cache cache;
+      opt "cache" (array enc_cache) cache;
       opt "interruptible" bool interruptible;
       opt "script" strings script;
       opt "after_script" strings after_script;

@@ -123,7 +123,7 @@ val job :
   ?allow_failure:bool ->
   ?artifacts:Gitlab_ci.Types.artifacts ->
   ?before_script:string list ->
-  ?cache:Gitlab_ci.Types.cache ->
+  ?cache:Gitlab_ci.Types.cache list ->
   ?image:Image.t ->
   ?interruptible:bool ->
   ?dependencies:dependencies ->

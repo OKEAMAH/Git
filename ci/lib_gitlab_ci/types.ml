@@ -87,7 +87,7 @@ type job = {
   allow_failure : bool option;
   artifacts : artifacts option;
   before_script : string list option;
-  cache : cache option;
+  cache : cache list option;
   image : image option;
   interruptible : bool option;
   needs : string list option;
