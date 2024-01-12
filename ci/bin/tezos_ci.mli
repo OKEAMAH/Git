@@ -136,6 +136,7 @@ val job :
   ?when_:Gitlab_ci.Types.when_ ->
   ?coverage:string ->
   ?retry:int ->
+  ?parallel:int ->
   stage:Stage.t ->
   name:string ->
   string list ->

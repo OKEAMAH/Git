@@ -178,6 +178,7 @@ let enc_job : job -> value =
        when_;
        coverage;
        retry;
+       parallel;
      } ->
   obj_flatten
     [
@@ -200,6 +201,7 @@ let enc_job : job -> value =
       opt "when" enc_when when_;
       opt "coverage" string coverage;
       opt "retry" int retry;
+      opt "parallel" int parallel;
     ]
 
 let enc_includes : include_ list -> value =
