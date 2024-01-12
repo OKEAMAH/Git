@@ -334,3 +334,17 @@ let job_external ?directory ?filename_suffix (job : Gitlab_ci.Types.job) :
     let config = [Gitlab_ci.Types.Job job] in
     Gitlab_ci.To_yaml.to_file ~header ~filename config ;
     job)
+
+let jobs_external ~path (jobs : Gitlab_ci.Types.job list) :
+    Gitlab_ci.Types.job list =
+  let filename = sf ".gitlab/ci/jobs/%s" path in
+  if String_set.mem filename !external_jobs then
+    failwith
+      (sf
+         "[job_external] attempted to write external job file %s twice."
+         filename)
+  else (
+    external_jobs := String_set.add filename !external_jobs ;
+    let config = List.map (fun job -> Gitlab_ci.Types.Job job) jobs in
+    Gitlab_ci.To_yaml.to_file ~header ~filename config ;
+    jobs)

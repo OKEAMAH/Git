@@ -188,9 +188,27 @@ val job :
 
     This allows migrating all the jobs of a given pipeline, and
     including the generated definition of those jobs in other
-    pipelines where it appears. *)
+    pipelines where it appears.
+
+    The returned job is the same as the input, for ease of chaining.
+*)
 val job_external :
   ?directory:string ->
   ?filename_suffix:string ->
   Gitlab_ci.Types.job ->
   Gitlab_ci.Types.job
+
+(** Generates a set of jobs to the same external file.
+
+    This function is meant to be used in the transition to CI-in-OCaml.
+    It writes {!header} and the given jobs to the file
+    [.gitlab/ci/jobs/PATH].
+
+    The use case is the same as [job_external] but for cases where it
+    is impractical to split a set of jobs into one file per job
+    (e.g. opam package test jobs).
+
+    The returned set of jobs is the same as the input, for ease of
+    chaining. *)
+val jobs_external :
+  path:string -> Gitlab_ci.Types.job list -> Gitlab_ci.Types.job list
