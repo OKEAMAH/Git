@@ -198,16 +198,18 @@ let before_script ?(take_ownership = false) ?(source_version = false)
   @ toggle install_js_deps ". ./scripts/install_build_deps.js.sh"
   @ before_script
 
-let job_enable_coverage (job : job) =
-  let variables =
-    Option.value ~default:[] job.variables
-    @ [
-        ("COVERAGE_OPTIONS", "--instrument-with bisect_ppx");
-        ("BISECT_FILE", "$CI_PROJECT_DIR/_coverage_output/");
-        ("SLACK_COVERAGE_CHANNEL", "C02PHBE7W73");
-      ]
-  in
+let job_append_variables variables (job : job) : job =
+  let variables = Option.value ~default:[] job.variables @ variables in
   {job with variables = Some variables}
+
+let job_enable_coverage (job : job) =
+  job_append_variables
+    [
+      ("COVERAGE_OPTIONS", "--instrument-with bisect_ppx");
+      ("BISECT_FILE", "$CI_PROJECT_DIR/_coverage_output/");
+      ("SLACK_COVERAGE_CHANNEL", "C02PHBE7W73");
+    ]
+    job
 
 (* Define the [trigger] job *)
 let trigger =
@@ -748,6 +750,11 @@ let job_enable_coverage_report job : job =
   in
   {job with artifacts = Some artifacts; coverage = Some coverage}
 
+let enable_sccache ?(sccache_dir = "$CI_PROJECT_DIR/_sccache") job =
+  job_append_variables
+    [("SCCACHE_DIR", sccache_dir); ("RUSTC_WRAPPER", "sccache")]
+    job
+
 let changeset_octez_docs =
   [
     "scripts/**/*/";
@@ -827,45 +834,44 @@ let _job_opam_prepare : job =
        ]
 
 let job_opam_package {name; group; batch_index} : job =
-  job
-    ~name:("opam:" ^ name)
-    ~image:Images.runtime_prebuild_dependencies
-    ~stage:Stages.packaging
-      (* FIXME: https://gitlab.com/nomadic-labs/tezos/-/issues/663
-         FIXME: https://gitlab.com/nomadic-labs/tezos/-/issues/664
-         At the time of writing, the opam tests were quite flaky.
-         Therefore, a retry was added. This should be removed once the
-         underlying tests have been fixed. *)
-    ~retry:2
-    ~dependencies:(Dependent [Artifacts _job_opam_prepare])
-    ~rules:(opam_rules ~only_marge_bot:(group = All) ~batch_index ())
-    ~variables:
-      [
-        (* See [.gitlab-ci.yml] for details on [RUNTEZTALIAS] *)
-        ("RUNTEZTALIAS", "true");
-        (* We store caches in [_build] for two reasons: (1) the [_build]
-           folder is excluded from opam's rsync. (2) gitlab ci cache
-           requires that cached files are in a sub-folder of the checkout. *)
-        ("SCCACHE_DIR", "$CI_PROJECT_DIR/_build/_sccache");
-        ("RUSTC_WRAPPER", "sccache");
-        ("package", name);
-      ]
-    ~before_script:(before_script ~eval_opam:true [])
-    [
-      "opam remote add dev-repo ./_opam-repo-for-release";
-      "opam install --yes ${package}.dev";
-      "opam reinstall --yes --with-test ${package}.dev";
-    ]
-    (* Stores logs in opam_logs for artifacts and outputs an excerpt on
-       failure. [after_script] runs in a separate shell and so requires
-       a second opam environment initialization. *)
-    ~after_script:
-      [
-        "eval $(opam env)";
-        "OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh";
-      ]
-    ~artifacts:(artifacts ~expire_in:(Weeks 1) ~when_:Always ["opam_logs/"])
-    ~cache:[{key = "opam-sccache"; paths = ["_build/_sccache"]}]
+  (* We store caches in [_build] for two reasons: (1) the [_build]
+     folder is excluded from opam's rsync. (2) gitlab ci cache
+     requires that cached files are in a sub-folder of the checkout. *)
+  enable_sccache ~sccache_dir:"$CI_PROJECT_DIR/_build/_sccache"
+  @@ job
+       ~name:("opam:" ^ name)
+       ~image:Images.runtime_prebuild_dependencies
+       ~stage:Stages.packaging
+         (* FIXME: https://gitlab.com/nomadic-labs/tezos/-/issues/663
+            FIXME: https://gitlab.com/nomadic-labs/tezos/-/issues/664
+            At the time of writing, the opam tests were quite flaky.
+            Therefore, a retry was added. This should be removed once the
+            underlying tests have been fixed. *)
+       ~retry:2
+       ~dependencies:(Dependent [Artifacts _job_opam_prepare])
+       ~rules:(opam_rules ~only_marge_bot:(group = All) ~batch_index ())
+       ~variables:
+         [
+           (* See [.gitlab-ci.yml] for details on [RUNTEZTALIAS] *)
+           ("RUNTEZTALIAS", "true");
+           ("package", name);
+         ]
+       ~before_script:(before_script ~eval_opam:true [])
+       [
+         "opam remote add dev-repo ./_opam-repo-for-release";
+         "opam install --yes ${package}.dev";
+         "opam reinstall --yes --with-test ${package}.dev";
+       ]
+       (* Stores logs in opam_logs for artifacts and outputs an excerpt on
+          failure. [after_script] runs in a separate shell and so requires
+          a second opam environment initialization. *)
+       ~after_script:
+         [
+           "eval $(opam env)";
+           "OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh";
+         ]
+       ~artifacts:(artifacts ~expire_in:(Weeks 1) ~when_:Always ["opam_logs/"])
+       ~cache:[{key = "opam-sccache"; paths = ["_build/_sccache"]}]
 
 let ci_opam_package_tests = "script-inputs/ci-opam-package-tests"
 

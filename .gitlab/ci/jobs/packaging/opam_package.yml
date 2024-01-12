@@ -49,9 +49,9 @@ opam:bls12-381:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: bls12-381
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: bls12-381
   artifacts:
     expire_in: 1 week
     paths:
@@ -106,9 +106,9 @@ opam:octez-accuser-Proxford:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-accuser-Proxford
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-accuser-Proxford
   artifacts:
     expire_in: 1 week
     paths:
@@ -163,9 +163,9 @@ opam:octez-accuser-PtNairob:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-accuser-PtNairob
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-accuser-PtNairob
   artifacts:
     expire_in: 1 week
     paths:
@@ -220,9 +220,9 @@ opam:octez-alcotezt:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-alcotezt
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-alcotezt
   artifacts:
     expire_in: 1 week
     paths:
@@ -277,9 +277,9 @@ opam:octez-baker-Proxford:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-baker-Proxford
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-baker-Proxford
   artifacts:
     expire_in: 1 week
     paths:
@@ -334,9 +334,9 @@ opam:octez-baker-PtNairob:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-baker-PtNairob
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-baker-PtNairob
   artifacts:
     expire_in: 1 week
     paths:
@@ -391,9 +391,9 @@ opam:octez-client:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-client
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-client
   artifacts:
     expire_in: 1 week
     paths:
@@ -448,9 +448,9 @@ opam:octez-codec:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-codec
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-codec
   artifacts:
     expire_in: 1 week
     paths:
@@ -505,9 +505,9 @@ opam:octez-crawler:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-crawler
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-crawler
   artifacts:
     expire_in: 1 week
     paths:
@@ -562,9 +562,9 @@ opam:octez-dac-client:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-dac-client
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-dac-client
   artifacts:
     expire_in: 1 week
     paths:
@@ -619,9 +619,9 @@ opam:octez-dac-node:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-dac-node
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-dac-node
   artifacts:
     expire_in: 1 week
     paths:
@@ -676,9 +676,9 @@ opam:octez-distributed-internal:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-distributed-internal
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-distributed-internal
   artifacts:
     expire_in: 1 week
     paths:
@@ -733,9 +733,9 @@ opam:octez-distributed-lwt-internal:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-distributed-lwt-internal
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-distributed-lwt-internal
   artifacts:
     expire_in: 1 week
     paths:
@@ -790,9 +790,9 @@ opam:octez-injector:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-injector
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-injector
   artifacts:
     expire_in: 1 week
     paths:
@@ -847,9 +847,9 @@ opam:octez-internal-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-internal-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-internal-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -904,9 +904,9 @@ opam:octez-l2-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-l2-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-l2-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -961,9 +961,9 @@ opam:octez-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1018,9 +1018,9 @@ opam:octez-node:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-node
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-node
   artifacts:
     expire_in: 1 week
     paths:
@@ -1075,9 +1075,9 @@ opam:octez-node-config:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-node-config
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-node-config
   artifacts:
     expire_in: 1 week
     paths:
@@ -1132,9 +1132,9 @@ opam:octez-proto-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-proto-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-proto-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1189,9 +1189,9 @@ opam:octez-protocol-000-Ps9mPmXa-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-000-Ps9mPmXa-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-000-Ps9mPmXa-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1246,9 +1246,9 @@ opam:octez-protocol-001-PtCJ7pwo-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-001-PtCJ7pwo-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-001-PtCJ7pwo-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1303,9 +1303,9 @@ opam:octez-protocol-002-PsYLVpVv-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-002-PsYLVpVv-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-002-PsYLVpVv-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1360,9 +1360,9 @@ opam:octez-protocol-003-PsddFKi3-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-003-PsddFKi3-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-003-PsddFKi3-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1417,9 +1417,9 @@ opam:octez-protocol-004-Pt24m4xi-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-004-Pt24m4xi-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-004-Pt24m4xi-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1474,9 +1474,9 @@ opam:octez-protocol-005-PsBabyM1-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-005-PsBabyM1-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-005-PsBabyM1-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1531,9 +1531,9 @@ opam:octez-protocol-006-PsCARTHA-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-006-PsCARTHA-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-006-PsCARTHA-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1588,9 +1588,9 @@ opam:octez-protocol-007-PsDELPH1-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-007-PsDELPH1-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-007-PsDELPH1-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1645,9 +1645,9 @@ opam:octez-protocol-008-PtEdo2Zk-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-008-PtEdo2Zk-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-008-PtEdo2Zk-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1702,9 +1702,9 @@ opam:octez-protocol-009-PsFLoren-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-009-PsFLoren-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-009-PsFLoren-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1759,9 +1759,9 @@ opam:octez-protocol-010-PtGRANAD-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-010-PtGRANAD-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-010-PtGRANAD-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1816,9 +1816,9 @@ opam:octez-protocol-011-PtHangz2-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-011-PtHangz2-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-011-PtHangz2-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1873,9 +1873,9 @@ opam:octez-protocol-012-Psithaca-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-012-Psithaca-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-012-Psithaca-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1930,9 +1930,9 @@ opam:octez-protocol-013-PtJakart-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-013-PtJakart-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-013-PtJakart-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -1987,9 +1987,9 @@ opam:octez-protocol-014-PtKathma-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-014-PtKathma-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-014-PtKathma-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2044,9 +2044,9 @@ opam:octez-protocol-015-PtLimaPt-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-015-PtLimaPt-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-015-PtLimaPt-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2101,9 +2101,9 @@ opam:octez-protocol-016-PtMumbai-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-016-PtMumbai-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-016-PtMumbai-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2158,9 +2158,9 @@ opam:octez-protocol-017-PtNairob-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-017-PtNairob-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-017-PtNairob-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2215,9 +2215,9 @@ opam:octez-protocol-018-Proxford-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-018-Proxford-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-018-Proxford-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2272,9 +2272,9 @@ opam:octez-protocol-alpha-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-alpha-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-alpha-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2329,9 +2329,9 @@ opam:octez-protocol-compiler:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-protocol-compiler
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-protocol-compiler
   artifacts:
     expire_in: 1 week
     paths:
@@ -2386,9 +2386,9 @@ opam:octez-proxy-server:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-proxy-server
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-proxy-server
   artifacts:
     expire_in: 1 week
     paths:
@@ -2443,9 +2443,9 @@ opam:octez-rpc-process:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-rpc-process
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-rpc-process
   artifacts:
     expire_in: 1 week
     paths:
@@ -2500,9 +2500,9 @@ opam:octez-shell-libs:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-shell-libs
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-shell-libs
   artifacts:
     expire_in: 1 week
     paths:
@@ -2557,9 +2557,9 @@ opam:octez-signer:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-signer
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-signer
   artifacts:
     expire_in: 1 week
     paths:
@@ -2614,9 +2614,9 @@ opam:octez-smart-rollup-node:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-node
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-node
   artifacts:
     expire_in: 1 week
     paths:
@@ -2671,9 +2671,9 @@ opam:octez-smart-rollup-node-Proxford:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-node-Proxford
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-node-Proxford
   artifacts:
     expire_in: 1 week
     paths:
@@ -2728,9 +2728,9 @@ opam:octez-smart-rollup-node-PtNairob:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-node-PtNairob
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-node-PtNairob
   artifacts:
     expire_in: 1 week
     paths:
@@ -2785,9 +2785,9 @@ opam:octez-smart-rollup-node-alpha:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-node-alpha
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-node-alpha
   artifacts:
     expire_in: 1 week
     paths:
@@ -2842,9 +2842,9 @@ opam:octez-smart-rollup-node-lib:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-node-lib
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-node-lib
   artifacts:
     expire_in: 1 week
     paths:
@@ -2899,9 +2899,9 @@ opam:octez-smart-rollup-wasm-debugger:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-wasm-debugger
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-wasm-debugger
   artifacts:
     expire_in: 1 week
     paths:
@@ -2956,9 +2956,9 @@ opam:octez-smart-rollup-wasm-debugger-lib:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-wasm-debugger-lib
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-wasm-debugger-lib
   artifacts:
     expire_in: 1 week
     paths:
@@ -3013,9 +3013,9 @@ opam:octez-smart-rollup-wasm-debugger-plugin:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-smart-rollup-wasm-debugger-plugin
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-smart-rollup-wasm-debugger-plugin
   artifacts:
     expire_in: 1 week
     paths:
@@ -3070,9 +3070,9 @@ opam:octez-version:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: octez-version
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: octez-version
   artifacts:
     expire_in: 1 week
     paths:
@@ -3127,9 +3127,9 @@ opam:tezos-benchmark:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-benchmark
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-benchmark
   artifacts:
     expire_in: 1 week
     paths:
@@ -3184,9 +3184,9 @@ opam:tezos-client-demo-counter:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-client-demo-counter
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-client-demo-counter
   artifacts:
     expire_in: 1 week
     paths:
@@ -3241,9 +3241,9 @@ opam:tezos-client-genesis:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-client-genesis
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-client-genesis
   artifacts:
     expire_in: 1 week
     paths:
@@ -3298,9 +3298,9 @@ opam:tezos-dac-client-lib:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-dac-client-lib
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-dac-client-lib
   artifacts:
     expire_in: 1 week
     paths:
@@ -3355,9 +3355,9 @@ opam:tezos-dac-lib:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-dac-lib
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-dac-lib
   artifacts:
     expire_in: 1 week
     paths:
@@ -3412,9 +3412,9 @@ opam:tezos-dac-node-lib:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-dac-node-lib
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-dac-node-lib
   artifacts:
     expire_in: 1 week
     paths:
@@ -3469,9 +3469,9 @@ opam:tezos-dal-node-lib:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-dal-node-lib
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-dal-node-lib
   artifacts:
     expire_in: 1 week
     paths:
@@ -3526,9 +3526,9 @@ opam:tezos-dal-node-services:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-dal-node-services
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-dal-node-services
   artifacts:
     expire_in: 1 week
     paths:
@@ -3583,9 +3583,9 @@ opam:tezos-openapi:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-openapi
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-openapi
   artifacts:
     expire_in: 1 week
     paths:
@@ -3640,9 +3640,9 @@ opam:tezos-protocol-000-Ps9mPmXa:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-000-Ps9mPmXa
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-000-Ps9mPmXa
   artifacts:
     expire_in: 1 week
     paths:
@@ -3697,9 +3697,9 @@ opam:tezos-protocol-001-PtCJ7pwo:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-001-PtCJ7pwo
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-001-PtCJ7pwo
   artifacts:
     expire_in: 1 week
     paths:
@@ -3754,9 +3754,9 @@ opam:tezos-protocol-002-PsYLVpVv:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-002-PsYLVpVv
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-002-PsYLVpVv
   artifacts:
     expire_in: 1 week
     paths:
@@ -3811,9 +3811,9 @@ opam:tezos-protocol-003-PsddFKi3:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-003-PsddFKi3
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-003-PsddFKi3
   artifacts:
     expire_in: 1 week
     paths:
@@ -3868,9 +3868,9 @@ opam:tezos-protocol-004-Pt24m4xi:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-004-Pt24m4xi
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-004-Pt24m4xi
   artifacts:
     expire_in: 1 week
     paths:
@@ -3925,9 +3925,9 @@ opam:tezos-protocol-005-PsBABY5H:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-005-PsBABY5H
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-005-PsBABY5H
   artifacts:
     expire_in: 1 week
     paths:
@@ -3982,9 +3982,9 @@ opam:tezos-protocol-005-PsBabyM1:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-005-PsBabyM1
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-005-PsBabyM1
   artifacts:
     expire_in: 1 week
     paths:
@@ -4039,9 +4039,9 @@ opam:tezos-protocol-006-PsCARTHA:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-006-PsCARTHA
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-006-PsCARTHA
   artifacts:
     expire_in: 1 week
     paths:
@@ -4096,9 +4096,9 @@ opam:tezos-protocol-007-PsDELPH1:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-007-PsDELPH1
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-007-PsDELPH1
   artifacts:
     expire_in: 1 week
     paths:
@@ -4153,9 +4153,9 @@ opam:tezos-protocol-008-PtEdo2Zk:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-008-PtEdo2Zk
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-008-PtEdo2Zk
   artifacts:
     expire_in: 1 week
     paths:
@@ -4210,9 +4210,9 @@ opam:tezos-protocol-008-PtEdoTez:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-008-PtEdoTez
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-008-PtEdoTez
   artifacts:
     expire_in: 1 week
     paths:
@@ -4267,9 +4267,9 @@ opam:tezos-protocol-009-PsFLoren:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-009-PsFLoren
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-009-PsFLoren
   artifacts:
     expire_in: 1 week
     paths:
@@ -4324,9 +4324,9 @@ opam:tezos-protocol-010-PtGRANAD:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-010-PtGRANAD
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-010-PtGRANAD
   artifacts:
     expire_in: 1 week
     paths:
@@ -4381,9 +4381,9 @@ opam:tezos-protocol-011-PtHangz2:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-011-PtHangz2
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-011-PtHangz2
   artifacts:
     expire_in: 1 week
     paths:
@@ -4438,9 +4438,9 @@ opam:tezos-protocol-012-Psithaca:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-012-Psithaca
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-012-Psithaca
   artifacts:
     expire_in: 1 week
     paths:
@@ -4495,9 +4495,9 @@ opam:tezos-protocol-013-PtJakart:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-013-PtJakart
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-013-PtJakart
   artifacts:
     expire_in: 1 week
     paths:
@@ -4552,9 +4552,9 @@ opam:tezos-protocol-014-PtKathma:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-014-PtKathma
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-014-PtKathma
   artifacts:
     expire_in: 1 week
     paths:
@@ -4609,9 +4609,9 @@ opam:tezos-protocol-015-PtLimaPt:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-015-PtLimaPt
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-015-PtLimaPt
   artifacts:
     expire_in: 1 week
     paths:
@@ -4666,9 +4666,9 @@ opam:tezos-protocol-016-PtMumbai:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-016-PtMumbai
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-016-PtMumbai
   artifacts:
     expire_in: 1 week
     paths:
@@ -4723,9 +4723,9 @@ opam:tezos-protocol-017-PtNairob:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-017-PtNairob
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-017-PtNairob
   artifacts:
     expire_in: 1 week
     paths:
@@ -4780,9 +4780,9 @@ opam:tezos-protocol-018-Proxford:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-018-Proxford
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-018-Proxford
   artifacts:
     expire_in: 1 week
     paths:
@@ -4837,9 +4837,9 @@ opam:tezos-protocol-alpha:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-alpha
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-alpha
   artifacts:
     expire_in: 1 week
     paths:
@@ -4894,9 +4894,9 @@ opam:tezos-protocol-demo-counter:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-demo-counter
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-demo-counter
   artifacts:
     expire_in: 1 week
     paths:
@@ -4951,9 +4951,9 @@ opam:tezos-protocol-demo-noops:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-demo-noops
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-demo-noops
   artifacts:
     expire_in: 1 week
     paths:
@@ -5008,9 +5008,9 @@ opam:tezos-protocol-genesis:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-protocol-genesis
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-protocol-genesis
   artifacts:
     expire_in: 1 week
     paths:
@@ -5065,9 +5065,9 @@ opam:tezos-proxy-server-config:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezos-proxy-server-config
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezos-proxy-server-config
   artifacts:
     expire_in: 1 week
     paths:
@@ -5122,9 +5122,9 @@ opam:tezt-tezos:
   - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
+    package: tezt-tezos
     SCCACHE_DIR: $CI_PROJECT_DIR/_build/_sccache
     RUSTC_WRAPPER: sccache
-    package: tezt-tezos
   artifacts:
     expire_in: 1 week
     paths:
