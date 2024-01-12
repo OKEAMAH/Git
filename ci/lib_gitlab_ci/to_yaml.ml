@@ -121,8 +121,7 @@ let enc_cache : cache -> value =
  fun {key = k; paths} ->
   obj_flatten [key "key" string k; key "paths" strings paths]
 
-let enc_service ({name} : service) : value =
-  obj_flatten [key "name" string name]
+let enc_service ({name} : service) : value = `String name
 
 let enc_services (ss : service list) : value = array enc_service ss
 
