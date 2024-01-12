@@ -2,6 +2,10 @@
 all:
 	(cd .. && . ./scripts/version.sh && dune exec ci/bin/main.exe)
 
+.PHONY: docker-all
+docker-all:
+	(root=$(shell pwd)/../; cd ../ && . ./scripts/version.sh && docker run -w$${root} -v$${root}:$${root} --entrypoint opam registry.gitlab.com/tezos/opam-repository:runtime-build-dependencies--$${opam_repository_tag} exec -- make -C ci all)
+
 # Used in the CI to verify that [.gitlab-ci.yml] is up to date.
 .PHONY: check
 check:
