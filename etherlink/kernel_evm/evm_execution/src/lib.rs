@@ -212,6 +212,8 @@ mod test {
     use std::str::FromStr;
     use std::vec;
     use tezos_ethereum::tx_common::EthereumTransactionCommon;
+    use tezos_ethereum::withdrawal::Withdrawal;
+    use tezos_smart_rollup_encoding::contract::Contract;
     use tezos_smart_rollup_mock::MockHost;
 
     // The compiled initialization code for the Ethereum demo contract given
@@ -2648,5 +2650,228 @@ mod test {
         let smart_contract = EthereumAccount::from_address(&address).unwrap();
 
         assert_eq!(smart_contract.nonce(&host).unwrap(), U256::one())
+    }
+
+    #[test]
+    fn limit_number_of_withdrawals() {
+        let mut mock_runtime = MockHost::default();
+        let block = dummy_first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+
+        let caller =
+            H160::from_str("0xd0bBEc6D2c628b7e2E6D5556daA14a5181b604C5").unwrap();
+
+        // address of withdrawal precompiled contract
+        let target = H160::from_low_u64_be(32u64);
+
+        let expected_withdrawal_target =
+            Contract::from_b58check("tz1RjtZUVeLhADFHDL8UwDZA6vjWWhojpu5w").unwrap();
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            10_000_000.into(),
+        );
+
+        let gas_limit = 100_000;
+
+        let transfer_value: U256 = 100.into();
+
+        let input: Vec<u8> = hex::decode(
+            "cda4fee2\
+                 0000000000000000000000000000000000000000000000000000000000000020\
+                 0000000000000000000000000000000000000000000000000000000000000024\
+                 747a31526a745a5556654c6841444648444c385577445a4136766a5757686f6a70753577\
+                 00000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap()
+        .to_vec();
+
+        for i in 0..200 {
+            let result = run_transaction(
+                &mut mock_runtime,
+                &block,
+                &mut evm_account_storage,
+                &precompiles,
+                CONFIG,
+                Some(target),
+                caller,
+                input.clone(),
+                Some(gas_limit),
+                Some(transfer_value),
+                true,
+                10_000_000_000,
+                i,
+            );
+
+            let expected_result: Result<Option<ExecutionOutcome>, EthereumError> =
+                if i < 100 {
+                    Ok(Some(ExecutionOutcome {
+                        gas_used: 22032,
+                        is_success: true,
+                        reason: ExitReason::Succeed(ExitSucceed::Returned),
+                        new_address: None,
+                        logs: vec![],
+                        result: Some(vec![]),
+                        withdrawals: vec![Withdrawal {
+                            target: expected_withdrawal_target.clone(),
+                            amount: transfer_value,
+                        }],
+                        estimated_ticks_used: 1000000,
+                        outbox_counter: i,
+                    }))
+                } else {
+                    // If there is 100 or more messages in the outbox, we cannot
+                    // make withdrawals. The transaction execution will accept any
+                    // number in the outbox though. The number only affects the
+                    // withdrawals precompiled contract.
+                    Ok(Some(ExecutionOutcome {
+                        gas_used: 22032,
+                        is_success: false,
+                        reason: ExitReason::Revert(ExitRevert::Reverted),
+                        new_address: None,
+                        logs: vec![],
+                        result: Some(vec![]),
+                        withdrawals: vec![],
+                        estimated_ticks_used: 1000000,
+                        outbox_counter: i,
+                    }))
+                };
+
+            assert_eq!(result, expected_result);
+        }
+    }
+
+    #[test]
+    fn multiple_withdrawals_are_limited_by_outbox() {
+        let mut mock_runtime = MockHost::default();
+        let block = dummy_first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+
+        let caller =
+            H160::from_str("0xd0bBEc6D2c628b7e2E6D5556daA14a5181b604C5").unwrap();
+
+        // address of withdrawal precompiled contract
+        let target = H160::from_low_u64_be(117u64);
+
+        set_balance(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            &caller,
+            10_000_000_000_i64.into(),
+        );
+
+        let gas_limit = 10_000_000;
+
+        // number of times we want to call the withdrawals contract
+        let repetitions = 50;
+
+        // we transfer 100 for each withdrawal
+        let transfer_value: U256 = (repetitions * 100).into();
+
+        // fixed call data for the withdrawals contract
+        let call_arg_size: u8 = 32 * 4 + 4;
+        let arg_data: &[u8] = &hex::decode(
+            "cda4fee2\
+                 0000000000000000000000000000000000000000000000000000000000000020\
+                 0000000000000000000000000000000000000000000000000000000000000024\
+                 747a31526a745a5556654c6841444648444c385577445a4136766a5757686f6a70753577\
+                 00000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+
+        // Make the EVM code, that puts the call data into memory so that we can use
+        // it as argument for the calls to the withdrawal contracts
+        let mut call_data_code_snippet = vec![];
+
+        call_data_code_snippet.push(Opcode::PUSH32.as_u8());
+        call_data_code_snippet.extend_from_slice(&arg_data[0..32]);
+        call_data_code_snippet.push(Opcode::PUSH1.as_u8());
+        call_data_code_snippet.push(0);
+        call_data_code_snippet.push(Opcode::MSTORE.as_u8());
+
+        call_data_code_snippet.push(Opcode::PUSH32.as_u8());
+        call_data_code_snippet.extend_from_slice(&arg_data[32..64]);
+        call_data_code_snippet.push(Opcode::PUSH1.as_u8());
+        call_data_code_snippet.push(32);
+        call_data_code_snippet.push(Opcode::MSTORE.as_u8());
+
+        call_data_code_snippet.push(Opcode::PUSH32.as_u8());
+        call_data_code_snippet.extend_from_slice(&arg_data[64..96]);
+        call_data_code_snippet.push(Opcode::PUSH1.as_u8());
+        call_data_code_snippet.push(64);
+        call_data_code_snippet.push(Opcode::MSTORE.as_u8());
+
+        call_data_code_snippet.push(Opcode::PUSH32.as_u8());
+        call_data_code_snippet.extend_from_slice(&arg_data[96..128]);
+        call_data_code_snippet.push(Opcode::PUSH1.as_u8());
+        call_data_code_snippet.push(96);
+        call_data_code_snippet.push(Opcode::MSTORE.as_u8());
+
+        call_data_code_snippet.push(Opcode::PUSH4.as_u8());
+        call_data_code_snippet.extend_from_slice(&arg_data[128..]);
+        call_data_code_snippet.push(Opcode::PUSH1.as_u8());
+        call_data_code_snippet.push(128);
+        call_data_code_snippet.push(Opcode::MSTORE.as_u8());
+
+        // The code to call the withdrawals precompiled contract. Assumes the
+        // call data is at location 0x0 in memory
+        let withdrawal_code_snippet = vec![
+            Opcode::PUSH1.as_u8(), // push return data size
+            0x00,
+            Opcode::PUSH1.as_u8(), // push return data offset
+            0x00,
+            Opcode::PUSH1.as_u8(), // push argument size
+            call_arg_size,
+            Opcode::PUSH1.as_u8(), // push arg location
+            0x00,
+            Opcode::PUSH1.as_u8(), // push value
+            100,
+            Opcode::PUSH1.as_u8(), // push address
+            0x20,
+            Opcode::PUSH4.as_u8(), // push gas limit
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,
+            Opcode::CALL.as_u8(), // call the withdrawal precompile
+        ];
+
+        // produce the code for the contract we wish to call. This contract first
+        // stores the call data for the withdrawals contract in memory. Then it calls
+        // with withdrawals contract repeatedly (number of calls set by above).
+        let mut code: Vec<u8> = vec![];
+
+        code.append(&mut call_data_code_snippet);
+        for _i in 0..repetitions {
+            code.append(&mut withdrawal_code_snippet.clone());
+        }
+
+        set_account_code(&mut mock_runtime, &mut evm_account_storage, &target, &code);
+
+        let result = run_transaction(
+            &mut mock_runtime,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            CONFIG,
+            Some(target),
+            caller,
+            vec![],
+            Some(gas_limit),
+            Some(transfer_value),
+            true,
+            10_000_000_000,
+            70,
+        );
+
+        let Ok(Some(result)) = result else {
+            panic!("We should get some result and it should be ok");
+        };
+
+        assert_eq!(result.withdrawals.len(), 30);
     }
 }

@@ -1193,7 +1193,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 result: Some(result),
                 withdrawals: last_layer.withdrawals,
                 estimated_ticks_used: self.estimated_ticks_used,
-                outbox_counter: 0,
+                outbox_counter: last_layer.outbox_counter,
             })
         } else {
             Err(EthereumError::InconsistentState(Cow::from(
@@ -1248,19 +1248,26 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             .rollback_transaction(self.host)
             .map_err(EthereumError::from)?;
 
-        let _ = self.transaction_data.pop();
-
-        Ok(ExecutionOutcome {
-            gas_used,
-            is_success: false,
-            reason,
-            new_address: None,
-            logs: vec![],
-            result,
-            withdrawals: vec![],
-            estimated_ticks_used: self.estimated_ticks_used,
-            outbox_counter: 0,
-        })
+        if let Some(last_layer) = self.transaction_data.pop() {
+            // we only need the outbox_counter from the `last_layer`. As a matter of
+            // principle, we should return the correct value even though we might
+            // throw it away later on..
+            Ok(ExecutionOutcome {
+                gas_used,
+                is_success: false,
+                reason,
+                new_address: None,
+                logs: vec![],
+                result,
+                withdrawals: vec![],
+                estimated_ticks_used: self.estimated_ticks_used,
+                outbox_counter: last_layer.outbox_counter,
+            })
+        } else {
+            Err(EthereumError::InconsistentState(Cow::from(
+                "The transaction data stack is empty when rolling back the initial transaction",
+            )))
+        }
     }
 
     /// End the initial transaction with either a commit or a rollback. The
