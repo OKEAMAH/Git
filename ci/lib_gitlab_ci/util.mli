@@ -21,6 +21,7 @@ val job_rule :
   ?variables:variables ->
   ?when_:when_ ->
   ?allow_failure:bool ->
+  ?start_in:time_interval ->
   unit ->
   job_rule
 

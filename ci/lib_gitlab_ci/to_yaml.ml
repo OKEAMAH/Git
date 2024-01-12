@@ -33,6 +33,7 @@ let enc_when : when_ -> value = function
   | Never -> `String "never"
   | On_success -> `String "on_success"
   | Manual -> `String "manual"
+  | Delayed -> `String "delayed"
 
 let enc_when_workflow : when_workflow -> value = function
   | Always -> `String "always"
@@ -53,8 +54,26 @@ let enc_workflow_rule : workflow_rule -> value =
       key "when" enc_when_workflow when_;
     ]
 
+let enc_time_interval interval =
+  `String
+    (match interval with
+    | Seconds 1 -> "1 second"
+    | Seconds x -> string_of_int x ^ " seconds"
+    | Minutes 1 -> "1 minute"
+    | Minutes x -> string_of_int x ^ " minutes"
+    | Hours 1 -> "1 hour"
+    | Hours x -> string_of_int x ^ " hours"
+    | Days 1 -> "1 day"
+    | Days x -> string_of_int x ^ " days"
+    | Weeks 1 -> "1 week"
+    | Weeks x -> string_of_int x ^ " weeks"
+    | Months 1 -> "1 month"
+    | Months x -> string_of_int x ^ " months"
+    | Years 1 -> "1 year"
+    | Years x -> string_of_int x ^ " years")
+
 let enc_job_rule : job_rule -> value =
- fun {changes; if_; variables; when_; allow_failure} ->
+ fun {changes; if_; variables; when_; allow_failure; start_in} ->
   obj_flatten
     [
       opt "changes" strings changes;
@@ -62,6 +81,7 @@ let enc_job_rule : job_rule -> value =
       opt "variables" enc_variables variables;
       key "when" enc_when when_;
       opt "allow_failure" bool allow_failure;
+      opt "start_in" enc_time_interval start_in;
     ]
 
 let enc_include_rule : include_rule -> value =
@@ -90,24 +110,6 @@ let enc_image (Image image) = string image
 let enc_default ({image; interruptible} : default) : value =
   obj_flatten
     [opt "image" enc_image image; opt "interruptible" bool interruptible]
-
-let enc_time_interval interval =
-  `String
-    (match interval with
-    | Seconds 1 -> "1 second"
-    | Seconds x -> string_of_int x ^ " seconds"
-    | Minutes 1 -> "1 minute"
-    | Minutes x -> string_of_int x ^ " minutes"
-    | Hours 1 -> "1 hour"
-    | Hours x -> string_of_int x ^ " hours"
-    | Days 1 -> "1 day"
-    | Days x -> string_of_int x ^ " days"
-    | Weeks 1 -> "1 week"
-    | Weeks x -> string_of_int x ^ " weeks"
-    | Months 1 -> "1 month"
-    | Months x -> string_of_int x ^ " months"
-    | Years 1 -> "1 year"
-    | Years x -> string_of_int x ^ " years")
 
 let enc_coverage : coverage_report -> value =
  fun {coverage_format; path} ->

@@ -12,10 +12,19 @@
 type variables = (string * string) list
 
 (** Represents values of the [when:] field in job rules. *)
-type when_ = Always | Never | On_success | Manual
+type when_ = Always | Never | On_success | Manual | Delayed
 
 (** Represents values of the [when:] field in [workflow:] and [include:] rules. *)
 type when_workflow = Always | Never
+
+type time_interval =
+  | Seconds of int
+  | Minutes of int
+  | Hours of int
+  | Days of int
+  | Weeks of int
+  | Months of int
+  | Years of int
 
 (** Represents a job rule. *)
 type job_rule = {
@@ -24,6 +33,7 @@ type job_rule = {
   variables : variables option;
   when_ : when_;
   allow_failure : bool option;
+  start_in : time_interval option;
 }
 
 (** Represents a workflow rule. *)
@@ -54,15 +64,6 @@ type reports = {
 type image = Image of string
 
 type when_artifact = Always | On_success | On_failure
-
-type time_interval =
-  | Seconds of int
-  | Minutes of int
-  | Hours of int
-  | Days of int
-  | Weeks of int
-  | Months of int
-  | Years of int
 
 type artifacts = {
   expire_in : time_interval option;
