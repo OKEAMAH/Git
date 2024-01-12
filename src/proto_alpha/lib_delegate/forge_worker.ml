@@ -16,6 +16,59 @@ end
 
 open Baking_state
 
+module Delegate_signing_queue = struct
+  type t = {
+    delegate : consensus_key_and_delegate;
+    task_stream : (unit -> unit Lwt.t) Lwt_stream.t;
+    push : (unit -> unit Lwt.t) option -> unit;
+    worker : unit Lwt.t;
+  }
+
+  let start_worker task_stream =
+    let open Lwt_syntax in
+    let rec loop () =
+      let* task = Lwt_stream.get task_stream in
+      match task with
+      | None -> (* End of stream *) return_unit
+      | Some task ->
+          let* () = task () in
+          loop ()
+    in
+    loop ()
+
+  let create delegate =
+    let task_stream, push = Lwt_stream.create () in
+    let worker = start_worker task_stream in
+    {delegate; task_stream; push; worker}
+
+  let cancel_pending_tasks state =
+    Lwt_stream.junk_while (fun _ -> true) state.task_stream
+
+  let wait_all_tasks_and_close state =
+    state.push None ;
+    state.worker
+
+  let _cancel_all_tasks_and_close state =
+    let open Lwt_syntax in
+    let* () = cancel_pending_tasks state in
+    wait_all_tasks_and_close state
+
+  let push_task ~(on_error : tztrace -> unit Lwt.t)
+      (f : unit -> unit tzresult Lwt.t) state =
+    let open Lwt_result_syntax in
+    let task () =
+      let*! r =
+        protect
+          ~on_error:(fun trace ->
+            let*! () = on_error trace in
+            return_unit)
+          f
+      in
+      match r with Error _err -> assert false | Ok () -> Lwt.return_unit
+    in
+    state.push (Some task)
+end
+
 module Operations_source = struct
   type error +=
     | Failed_operations_fetch of {
@@ -533,6 +586,8 @@ type worker = {
   push_task : forge_request option -> unit;
   push_event : forge_event option -> unit;
   event_stream : forge_event Lwt_stream.t;
+  delegate_signing_queues :
+    Delegate_signing_queue.t Signature.Public_key_hash.Table.t;
 }
 
 type t = worker
@@ -543,12 +598,142 @@ let get_event_stream state = state.event_stream
 
 let shutdown state = state.push_task None
 
+let forge_and_sign_consensus_vote kind cctxt chain_id ~branch delegate
+    consensus_content =
+  let open Lwt_result_syntax in
+  let event =
+    match kind with
+    | `Preattestation -> Events.signing_preattestation
+    | `Attestation -> Events.signing_attestation
+  in
+  let*! () = Events.(emit event delegate) in
+  match kind with
+  | `Attestation ->
+      forge_and_sign_consensus_vote
+        kind
+        cctxt
+        chain_id
+        ~branch
+        delegate
+        consensus_content
+        (Single (Attestation consensus_content))
+  | `Preattestation ->
+      forge_and_sign_consensus_vote
+        kind
+        cctxt
+        chain_id
+        ~branch
+        delegate
+        consensus_content
+        (Single (Preattestation consensus_content))
+
+let get_or_create_queue worker delegate =
+  match
+    Signature.Public_key_hash.Table.find_opt
+      worker.delegate_signing_queues
+      (snd delegate)
+  with
+  | None ->
+      let queue = Delegate_signing_queue.create delegate in
+      Signature.Public_key_hash.Table.add
+        worker.delegate_signing_queues
+        (snd delegate)
+        queue ;
+      queue
+  | Some queue -> queue
+
+let handle_consensus_signing_request worker cctxt ?force chain_id ~branch kind
+    consensus_operations =
+  let open Lwt_result_syntax in
+  let* filtered_preattestations =
+    (* Hypothesis: all consensus votes have the same round and level *)
+    let consensus_content_opt =
+      List.hd consensus_operations |> Option.map snd
+    in
+    match consensus_content_opt with
+    | None -> return_nil
+    | Some consensus_content ->
+        authorize_consensus_votes
+          kind
+          cctxt
+          ?force
+          chain_id
+          consensus_operations
+          consensus_content
+  in
+  List.iter
+    (fun (delegate, consensus_content) ->
+      let task () =
+        let* signed_consensus_opt =
+          forge_and_sign_consensus_vote
+            kind
+            cctxt
+            chain_id
+            ~branch
+            delegate
+            consensus_content
+        in
+        match signed_consensus_opt with
+        | None -> return_unit
+        | Some signed_consensus ->
+            (match kind with
+            | `Preattestation ->
+                worker.push_event (Some (Preattestation_ready signed_consensus))
+            | `Attestation ->
+                worker.push_event (Some (Attestation_ready signed_consensus))) ;
+            return_unit
+      in
+      let queue = get_or_create_queue worker delegate in
+      Delegate_signing_queue.push_task
+        ~on_error:(fun _err -> Lwt.return_unit)
+        task
+        queue)
+    filtered_preattestations ;
+  return_unit
+
+let handle_dal_attestations worker cctxt chain_id ~branch dal_attestations =
+  let open Lwt_result_syntax in
+  List.iter
+    (fun ((delegate, _, _) as dal_attestation) ->
+      let task () =
+        let* signed_dal_attestation =
+          sign_dal_attestations cctxt chain_id ~branch [dal_attestation]
+        in
+        List.iter
+          (fun signed_dal_attestation ->
+            worker.push_event
+              (Some (Dal_attestation_ready signed_dal_attestation)))
+          signed_dal_attestation ;
+        return_unit
+      in
+      let queue = get_or_create_queue worker delegate in
+      Delegate_signing_queue.push_task
+        ~on_error:(fun _err -> Lwt.return_unit)
+        task
+        queue)
+    dal_attestations
+
+let handle_forge_block worker baking_state block_to_bake =
+  let open Lwt_result_syntax in
+  let task () =
+    let* prepared_block = prepare_block baking_state block_to_bake in
+    worker.push_event (Some (Block_ready prepared_block)) ;
+    return_unit
+  in
+  let queue = get_or_create_queue worker block_to_bake.delegate in
+  Delegate_signing_queue.push_task
+    ~on_error:(fun _err -> Lwt.return_unit)
+    task
+    queue
+
 let start (baking_state : Baking_state.global_state) =
   let open Lwt_result_syntax in
   let task_stream, push_task = Lwt_stream.create () in
   let event_stream, push_event = Lwt_stream.create () in
-  let state : worker = {push_task; push_event; event_stream} in
-  let push_event x = push_event (Some x) in
+  let delegate_signing_queues = Signature.Public_key_hash.Table.create 13 in
+  let state : worker =
+    {push_task; push_event; event_stream; delegate_signing_queues}
+  in
   let cctxt = baking_state.cctxt in
   let chain_id = baking_state.chain_id in
   let config = baking_state.config in
@@ -558,39 +743,28 @@ let start (baking_state : Baking_state.global_state) =
     in
     let process_request = function
       | Forge_and_sign_preattestations (branch, preattestations) ->
-          let* signed_preattestations =
-            sign_preattestations
-              cctxt
-              ~force:config.force
-              chain_id
-              ~branch
-              preattestations
-          in
-          List.iter
-            (fun preattestation ->
-              push_event (Preattestation_ready preattestation))
-            signed_preattestations ;
-          return_unit
+          handle_consensus_signing_request
+            state
+            cctxt
+            ~force:config.force
+            chain_id
+            ~branch
+            `Preattestation
+            preattestations
       | Forge_and_sign_attestations (branch, attestations) ->
-          let* signed_attestations =
-            sign_attestations cctxt ~force:false chain_id ~branch attestations
-          in
-          List.iter
-            (fun attestation -> push_event (Attestation_ready attestation))
-            signed_attestations ;
-          return_unit
+          handle_consensus_signing_request
+            state
+            cctxt
+            ~force:config.force
+            chain_id
+            ~branch
+            `Attestation
+            attestations
       | Forge_and_sign_dal_attestations (branch, dal_attestations) ->
-          let* signed_dal_attestations =
-            sign_dal_attestations cctxt chain_id ~branch dal_attestations
-          in
-          List.iter
-            (fun signed_dal_attestation ->
-              push_event (Dal_attestation_ready signed_dal_attestation))
-            signed_dal_attestations ;
+          handle_dal_attestations state cctxt chain_id ~branch dal_attestations ;
           return_unit
       | Forge_and_sign_block block_to_bake ->
-          let* prepared_block = prepare_block baking_state block_to_bake in
-          push_event (Block_ready prepared_block) ;
+          handle_forge_block state baking_state block_to_bake ;
           return_unit
     in
     match forge_request_opt with
