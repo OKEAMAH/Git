@@ -53,6 +53,7 @@ tezos-smart-rollup-mock.workspace = true
 tezos_data_encoding.workspace = true
 
 [features]
+strict = []
 default = ["evm_execution"]
 testing = ["rand", "proptest"]
 evm_execution = []
