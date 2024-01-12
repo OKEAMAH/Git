@@ -100,8 +100,8 @@ let enc_git_strategy = function
 
 let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
     ?cache ?image ?interruptible ?(dependencies = Staged) ?services ?variables
-    ?rules ?timeout ?(tags = []) ?git_strategy ?when_ ?coverage ~stage ~name
-    script : Gitlab_ci.Types.job =
+    ?rules ?timeout ?(tags = []) ?git_strategy ?when_ ?coverage ?retry ~stage
+    ~name script : Gitlab_ci.Types.job =
   let tags =
     Some ((match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64") :: tags)
   in
@@ -134,6 +134,15 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
           :: Option.value ~default:[] variables)
     | None -> variables
   in
+  (match retry with
+  | Some retry when retry < 0 || retry > 2 ->
+      failwith
+        (sf
+           "Invalid [retry] value '%d' for job [%s]: retry greater or equal to \
+            zero and less than or equal to 2"
+           retry
+           name)
+  | _ -> ()) ;
   {
     name;
     after_script;
@@ -154,4 +163,5 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
     tags;
     when_;
     coverage;
+    retry;
   }

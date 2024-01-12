@@ -102,6 +102,7 @@ type job = {
   tags : string list option;
   when_ : when_ option;
   coverage : string option;
+  retry : int option;
 }
 
 type workflow = {rules : workflow_rule list; name : string option}

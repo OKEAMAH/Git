@@ -21,6 +21,8 @@ let array f value = `A (List.map f value)
 
 let strings ss : value = array string ss
 
+let int i = float (float_of_int i)
+
 (* Translation elements *)
 
 let enc_if expr = string @@ If.encode expr
@@ -172,6 +174,7 @@ let enc_job : job -> value =
        tags;
        when_;
        coverage;
+       retry;
      } ->
   obj_flatten
     [
@@ -193,6 +196,7 @@ let enc_job : job -> value =
       opt "artifacts" enc_artifacts artifacts;
       opt "when" enc_when when_;
       opt "coverage" string coverage;
+      opt "retry" int retry;
     ]
 
 let enc_includes : include_ list -> value =
