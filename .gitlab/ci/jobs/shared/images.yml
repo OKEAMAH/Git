@@ -9,8 +9,14 @@
   image: debian:bookworm
 .image_template__docker:
   image: ${CI_REGISTRY}/tezos/docker-images/ci-docker:v1.9.0
+.image_template__fedora_37:
+  image: fedora:37
 .image_template__fedora_39:
   image: fedora:39
+.image_template__opam_debian_bullseye:
+  image: ocaml/opam:debian-11
+.image_template__opam_ubuntu_focal:
+  image: ocaml/opam:ubuntu-20.04
 .image_template__runtime_build_dependencies:
   image: ${build_deps_image_name}:runtime-build-dependencies--${build_deps_image_version}
 .image_template__runtime_build_test_dependencies:
@@ -23,3 +29,7 @@
   image: ${build_deps_image_name}:runtime-prebuild-dependencies--${build_deps_image_version}
 .image_template__rust_toolchain:
   image: ${build_deps_image_name}:rust-toolchain--${build_deps_image_version}
+.image_template__ubuntu_focal:
+  image: public.ecr.aws/lts/ubuntu:20.04_stable
+.image_template__ubuntu_jammy:
+  image: public.ecr.aws/lts/ubuntu:22.04_stable

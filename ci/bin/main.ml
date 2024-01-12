@@ -29,7 +29,7 @@ module Stages = struct
 
   let build = Stage.register "build"
 
-  let _test = Stage.register "test"
+  let test = Stage.register "test"
 
   let test_coverage = Stage.register "test_coverage"
 
@@ -179,7 +179,29 @@ module Images = struct
   let debian_bookworm =
     Image.register ~name:"debian_bookworm" ~image_path:"debian:bookworm"
 
+  let ubuntu_focal =
+    Image.register
+      ~name:"ubuntu_focal"
+      ~image_path:"public.ecr.aws/lts/ubuntu:20.04_stable"
+
+  let ubuntu_jammy =
+    Image.register
+      ~name:"ubuntu_jammy"
+      ~image_path:"public.ecr.aws/lts/ubuntu:22.04_stable"
+
+  let fedora_37 = Image.register ~name:"fedora_37" ~image_path:"fedora:37"
+
   let fedora_39 = Image.register ~name:"fedora_39" ~image_path:"fedora:39"
+
+  let opam_ubuntu_focal =
+    Image.register
+      ~name:"opam_ubuntu_focal"
+      ~image_path:"ocaml/opam:ubuntu-20.04"
+
+  let opam_debian_bullseye =
+    Image.register
+      ~name:"opam_debian_bullseye"
+      ~image_path:"ocaml/opam:debian-11"
 end
 
 let before_script ?(take_ownership = false) ?(source_version = false)
@@ -953,6 +975,99 @@ let _job_build_kernels : job =
            {key = "kernels"; paths = ["cargo/"]};
            {key = "kernels-sccache"; paths = ["_sccache"]};
          ]
+
+type install_octez_distribution = Ubuntu_focal | Ubuntu_jammy | Fedora_37
+
+let all_install_octez_distribution = [Ubuntu_focal; Ubuntu_jammy; Fedora_37]
+
+let image_of_distribution = function
+  | Ubuntu_focal -> Images.ubuntu_focal
+  | Ubuntu_jammy -> Images.ubuntu_jammy
+  | Fedora_37 -> Images.fedora_37
+
+let _jobs_install_octez : job list =
+  let changeset_install_jobs =
+    ["docs/introduction/install*.sh"; "docs/introduction/compile*.sh"]
+  in
+  let install_octez_rules =
+    [
+      job_rule ~if_:Rules.schedule_extended_tests ~when_:Always ();
+      job_rule
+        ~if_:Rules.merge_request
+        ~changes:changeset_install_jobs
+        ~when_:On_success
+        ();
+      job_rule ~when_:Manual ~allow_failure:Yes ();
+    ]
+  in
+  let dependencies = Dependent [Job trigger] in
+  let job_install_bin ?(rc = false) distribution =
+    let distribution_string =
+      match distribution with
+      | Ubuntu_focal | Ubuntu_jammy -> "ubuntu"
+      | Fedora_37 -> "fedora"
+    in
+    let name : string =
+      sf
+        "oc.install_%s_%s_%s"
+        (if rc then "bin_rc" else "bin")
+        distribution_string
+        (match distribution with
+        | Ubuntu_focal -> "focal"
+        | Ubuntu_jammy -> "jammy"
+        | Fedora_37 -> "37")
+    in
+    let script =
+      sf "./docs/introduction/install-bin-%s.sh" distribution_string
+      ^ if rc then " rc" else ""
+    in
+    job
+      ~name
+      ~image:(image_of_distribution distribution)
+      ~dependencies
+      ~rules:install_octez_rules
+      ~stage:Stages.test
+      [script]
+  in
+  let job_install_opam_focal =
+    job
+      ~name:"oc.install_opam_focal"
+      ~image:Images.opam_ubuntu_focal
+      ~dependencies
+      ~when_:Manual (* temporarily disable until these jobs are optimized *)
+      ~allow_failure:Yes
+      ~stage:Stages.test
+      ~variables:[("OPAMJOBS", "4")]
+      ["./docs/introduction/install-opam.sh"]
+  in
+  let job_compile_sources_bullseye ~name ~project ~branch =
+    job
+      ~name
+      ~image:Images.opam_debian_bullseye
+      ~dependencies
+      ~rules:install_octez_rules
+      ~stage:Stages.test
+      [sf "./docs/introduction/compile-sources.sh %s %s" project branch]
+  in
+  jobs_external ~path:"test/install_octez.yml"
+  (* Test installing binary / binary RC distributions in all distributions *)
+  @@ List.map job_install_bin all_install_octez_distribution
+  @ List.map (job_install_bin ~rc:true) all_install_octez_distribution
+  (* Test installing through opam *)
+  @ [job_install_opam_focal]
+  (* Test compiling from source *)
+  @ [
+      (* Test compiling the [latest-release] branch on Bullseye *)
+      job_compile_sources_bullseye
+        ~name:"oc.compile_release_sources_bullseye"
+        ~project:"tezos/tezos"
+        ~branch:"latest-release";
+      (* Test compiling the [master] branch on Bullseye *)
+      job_compile_sources_bullseye
+        ~name:"oc.compile_sources_bullseye"
+        ~project:"${CI_MERGE_REQUEST_SOURCE_PROJECT_PATH:-tezos/tezos}"
+        ~branch:"${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-master}";
+    ]
 
 (* Fetch records for Tezt generated on the last merge request pipeline
    on the most recently merged MR and makes them available in artifacts
