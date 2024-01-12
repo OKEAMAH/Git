@@ -124,7 +124,6 @@ val job :
   ?artifacts:Gitlab_ci.Types.artifacts ->
   ?before_script:string list ->
   ?cache:Gitlab_ci.Types.cache list ->
-  ?image:Image.t ->
   ?interruptible:bool ->
   ?dependencies:dependencies ->
   ?services:Gitlab_ci.Types.service list ->
@@ -137,6 +136,7 @@ val job :
   ?coverage:string ->
   ?retry:int ->
   ?parallel:int ->
+  image:Image.t ->
   stage:Stage.t ->
   name:string ->
   string list ->

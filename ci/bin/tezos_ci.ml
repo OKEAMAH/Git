@@ -99,11 +99,14 @@ let enc_git_strategy = function
   | No_strategy -> "none"
 
 let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
-    ?cache ?image ?interruptible ?(dependencies = Staged) ?services ?variables
-    ?rules ?timeout ?(tags = []) ?git_strategy ?when_ ?coverage ?retry ?parallel
-    ~stage ~name script : Gitlab_ci.Types.job =
+    ?cache ?interruptible ?(dependencies = Staged) ?services ?variables ?rules
+    ?timeout ?tags ?git_strategy ?when_ ?coverage ?retry ?parallel ~image ~stage
+    ~name script : Gitlab_ci.Types.job =
   let tags =
-    Some ((match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64") :: tags)
+    Some
+      (match tags with
+      | None -> [(match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64")]
+      | Some tags -> tags)
   in
   let stage = Some (Stage.name stage) in
   let script = Some script in
@@ -150,7 +153,7 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
     artifacts;
     before_script;
     cache;
-    image;
+    image = Some image;
     interruptible;
     needs;
     dependencies;
