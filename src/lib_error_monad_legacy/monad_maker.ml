@@ -1,27 +1,12 @@
 (*****************************************************************************)
 (*                                                                           *)
-(* Open Source License                                                       *)
+(* SPDX-License-Identifier: MIT                                              *)
 (* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
-(*                                                                           *)
-(* Permission is hereby granted, free of charge, to any person obtaining a   *)
-(* copy of this software and associated documentation files (the "Software"),*)
-(* to deal in the Software without restriction, including without limitation *)
-(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
-(* and/or sell copies of the Software, and to permit persons to whom the     *)
-(* Software is furnished to do so, subject to the following conditions:      *)
-(*                                                                           *)
-(* The above copyright notice and this permission notice shall be included   *)
-(* in all copies or substantial portions of the Software.                    *)
-(*                                                                           *)
-(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
-(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
-(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
-(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
-(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
-(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
-(* DEALINGS IN THE SOFTWARE.                                                 *)
+(* Copyright (c) 2023 Trilitech <contact@trili.tech>                         *)
 (*                                                                           *)
 (*****************************************************************************)
+
+open Tezos_error_monad
 
 module type S = sig
   (** for substitution *)
@@ -107,6 +92,48 @@ module type S = sig
 
   val classify_trace : tztrace -> Error_classification.t
 
+  module Legacy_monad_globals : sig
+    val return : 'a -> ('a, 'e) result Lwt.t
+
+    val return_unit : (unit, 'e) result Lwt.t
+
+    val return_none : ('a option, 'e) result Lwt.t
+
+    val return_some : 'a -> ('a option, 'e) result Lwt.t
+
+    val return_nil : ('a list, 'e) result Lwt.t
+
+    val return_true : (bool, 'e) result Lwt.t
+
+    val return_false : (bool, 'e) result Lwt.t
+
+    val ( >>= ) : 'a Lwt.t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
+
+    val ( >|= ) : 'a Lwt.t -> ('a -> 'b) -> 'b Lwt.t
+
+    val ok : 'a -> ('a, 'e) result
+
+    val error : 'e -> ('a, 'e trace) result
+
+    val ( >>? ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
+
+    val ( >|? ) : ('a, 'e) result -> ('a -> 'b) -> ('b, 'e) result
+
+    val fail : 'e -> ('a, 'e trace) result Lwt.t
+
+    val ( >>=? ) :
+      ('a, 'e) result Lwt.t ->
+      ('a -> ('b, 'e) result Lwt.t) ->
+      ('b, 'e) result Lwt.t
+
+    val ( >|=? ) : ('a, 'e) result Lwt.t -> ('a -> 'b) -> ('b, 'e) result Lwt.t
+
+    val ( >>?= ) :
+      ('a, 'e) result -> ('a -> ('b, 'e) result Lwt.t) -> ('b, 'e) result Lwt.t
+
+    val ( >|?= ) : ('a, 'e) result -> ('a -> 'b Lwt.t) -> ('b, 'e) result Lwt.t
+  end
+
   val pp_print_trace : Format.formatter -> tztrace -> unit
 
   val pp_print_top_error_of_trace : Format.formatter -> tztrace -> unit
@@ -191,6 +218,35 @@ struct
     let tzall = Monad.Lwt_traced_result_syntax.all
 
     let tzjoin = Monad.Lwt_traced_result_syntax.join
+  end
+
+  module Legacy_monad_globals = struct
+    (* we default to exposing the combined monad syntax everywhere.
+       We do the bulk of this by including [Lwt_traced_result_syntax] directly. *)
+    include Monad.Lwt_traced_result_syntax
+
+    (* Some globals that Lwtreslib does not expose but that the Tezos code uses a
+       lot. *)
+    let ( >>= ) = Monad.Lwt_syntax.( let* )
+
+    let ( >|= ) = Monad.Lwt_syntax.( let+ )
+
+    let ( >>? ) = Monad.Result_syntax.( let* )
+
+    let ( >|? ) = Monad.Result_syntax.( let+ )
+
+    let ok = Monad.Result_syntax.return
+
+    let error = Monad.Traced_result_syntax.fail
+
+    let ( >>=? ) = Monad.Lwt_result_syntax.( let* )
+
+    let ( >|=? ) = Monad.Lwt_result_syntax.( let+ )
+
+    let ( >>?= ) = Monad.Lwt_result_syntax.( let*? )
+
+    let ( >|?= ) r f =
+      match r with Error _ as e -> Lwt.return e | Ok o -> Lwt_result.ok (f o)
   end
 
   (* default (traced-everywhere) helper types *)

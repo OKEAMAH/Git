@@ -1,0 +1,19 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name tezos_error_monad_legacy)
+ (public_name octez-libs.error-monad-legacy)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  octez-libs.stdlib
+  data-encoding
+  lwt-canceler
+  lwt
+  octez-libs.lwt-result-stdlib
+  octez-libs.error-monad)
+ (js_of_ocaml)
+ (flags
+  (:standard)
+  -open Tezos_stdlib
+  -open Data_encoding))
