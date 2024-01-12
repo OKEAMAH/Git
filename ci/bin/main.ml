@@ -755,6 +755,17 @@ let enable_sccache ?(sccache_dir = "$CI_PROJECT_DIR/_sccache") job =
     [("SCCACHE_DIR", sccache_dir); ("RUSTC_WRAPPER", "sccache")]
     job
 
+let changeset_octez =
+  [
+    "src/**/*";
+    "etherlink/**/*";
+    "tezt/**/*";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+    "michelson_test_scripts/**/*";
+    "tzt_reference_test_suite/**/*";
+  ]
+
 let changeset_octez_docs =
   [
     "scripts/**/*/";
@@ -902,6 +913,46 @@ let make_opam_packages (packages : opam_package list) : job list =
   jobs_external ~path:"packaging/opam_package.yml" jobs
 
 let (_jobs_opam_package : job list) = make_opam_packages read_opam_packages
+
+let enable_kernels job =
+  job_append_variables
+    [
+      ("CC", "clang");
+      ("CARGO_HOME", "$CI_PROJECT_DIR/cargo");
+      ("NATIVE_TARGET", "x86_64-unknown-linux-musl");
+    ]
+    job
+
+let _job_build_kernels : job =
+  job_external @@ enable_kernels @@ enable_sccache
+  @@ job
+       ~name:"oc.build_kernels"
+       ~image:Images.rust_toolchain
+       ~stage:Stages.build
+       ~dependencies:(Dependent [Job trigger])
+       ~rules:[job_rule ~changes:changeset_octez ()]
+       ["make -f kernels.mk build"]
+       ~artifacts:
+         (artifacts
+            ~name:"build-kernels-$CI_COMMIT_REF_SLUG"
+            ~expire_in:(Days 1)
+            ~when_:On_success
+            [
+              "evm_kernel.wasm";
+              "smart-rollup-installer";
+              "sequenced_kernel.wasm";
+              "tx_kernel.wasm";
+              "tx_kernel_dal.wasm";
+              "dal_echo_kernel.wasm";
+              "risc-v-sandbox";
+              "risc-v-dummy.elf";
+              "src/risc_v/tests/inline_asm/rv64-inline-asm-tests";
+            ])
+       ~cache:
+         [
+           {key = "kernels"; paths = ["cargo/"]};
+           {key = "kernels-sccache"; paths = ["_sccache"]};
+         ]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
