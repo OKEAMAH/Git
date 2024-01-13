@@ -347,7 +347,17 @@ module History : sig
     | Unexpected_page_size of {expected_size : int; page_size : int}
 
   module Internal_for_tests : sig
-    val content : t -> Header.t
+    (** The content of a cell in the DAL skip list. We don't store the slot
+        headers directly to refactor the common [published_level] and save
+        space. This is important for refutation proofs, as they have to fit in
+        an L1 operation. *)
+    type cell_content = {
+      published_level : Raw_level_repr.t;
+      slot_headers : (Commitment.t * Dal_slot_index_repr.t) list;
+    }
+
+    (** Returns the content of the last cell in the given skip list. *)
+    val content : t -> cell_content
 
     (** [proof_statement_is serialized_proof expected] will return [true] if
         the deserialized proof and the [expected] proof shape match and [false]

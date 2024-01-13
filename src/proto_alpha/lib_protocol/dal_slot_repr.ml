@@ -952,6 +952,11 @@ module History = struct
       verify_proof_repr dal_params page_id snapshot proof_repr
 
     module Internal_for_tests = struct
+      type cell_content = Content.t = {
+        published_level : Raw_level_repr.t;
+        slot_headers : (Commitment.t * Dal_slot_index_repr.t) list;
+      }
+
       let content = Skip_list.content
 
       let proof_statement_is serialized_proof expected =
