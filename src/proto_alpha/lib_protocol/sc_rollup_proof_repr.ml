@@ -237,21 +237,28 @@ module Dal_helpers = struct
   (* FIXME/DAL: https://gitlab.com/tezos/tezos/-/issues/3997
      The current DAL refutation integration is not resilient to DAL parameters
      changes when upgrading the protocol. The code needs to be adapted. *)
-  let valid_published_level ~dal_attestation_lag ~origination_level
-      ~commit_inbox_level ~published_level =
+  let valid_published_level ~dal_activation_level ~dal_attestation_lag
+      ~origination_level ~commit_inbox_level ~published_level =
     (* [dal_attestation_lag] is supposed to be positive. *)
     let open Raw_level_repr in
+    let dal_was_activated =
+      match dal_activation_level with
+      | None -> false
+      | Some dal_activation_level -> published_level > dal_activation_level
+    in
     let not_too_old = published_level > origination_level in
+
     let not_too_recent =
       add published_level dal_attestation_lag <= commit_inbox_level
     in
-    not_too_old && not_too_recent
+    dal_was_activated && not_too_old && not_too_recent
 
-  let verify ~metadata ~dal_attestation_lag ~commit_inbox_level dal_parameters
-      page_id dal_snapshot proof =
+  let verify ~metadata ~dal_activation_level ~dal_attestation_lag
+      ~commit_inbox_level dal_parameters page_id dal_snapshot proof =
     let open Result_syntax in
     if
       valid_published_level
+        ~dal_activation_level
         ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
         ~dal_attestation_lag
         ~commit_inbox_level
@@ -268,11 +275,13 @@ module Dal_helpers = struct
       return_some (Sc_rollup_PVM_sig.Reveal (Dal_page input))
     else return_none
 
-  let produce ~metadata ~dal_attestation_lag ~commit_inbox_level dal_parameters
-      page_id ~page_info ~get_history confirmed_slots_history =
+  let produce ~metadata ~dal_activation_level ~dal_attestation_lag
+      ~commit_inbox_level dal_parameters page_id ~page_info ~get_history
+      confirmed_slots_history =
     let open Lwt_result_syntax in
     if
       valid_published_level
+        ~dal_activation_level
         ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
         ~dal_attestation_lag
         ~commit_inbox_level
@@ -295,8 +304,9 @@ end
 
 let valid (type state proof output)
     ~(pvm : (state, proof, output) Sc_rollups.PVM.implementation) ~metadata
-    snapshot commit_inbox_level dal_snapshot dal_parameters ~dal_attestation_lag
-    ~dal_number_of_slots ~is_reveal_enabled (proof : proof t) =
+    snapshot commit_inbox_level dal_snapshot dal_parameters
+    ~dal_activation_level ~dal_attestation_lag ~dal_number_of_slots
+    ~is_reveal_enabled (proof : proof t) =
   let open Lwt_result_syntax in
   let (module P) = pvm in
   let origination_level = metadata.Sc_rollup_metadata_repr.origination_level in
@@ -325,6 +335,7 @@ let valid (type state proof output)
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
         Dal_helpers.verify
           ~metadata
+          ~dal_activation_level
           dal_parameters
           ~dal_attestation_lag
           ~commit_inbox_level
@@ -431,6 +442,8 @@ module type PVM_with_context_and_state = sig
     val dal_attestation_lag : int
 
     val dal_number_of_slots : int
+
+    val dal_activation_level : Raw_level_repr.t option
   end
 end
 
@@ -497,6 +510,7 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
         let open Dal_with_history in
         Dal_helpers.produce
           ~metadata
+          ~dal_activation_level
           dal_parameters
           ~dal_attestation_lag
           ~commit_inbox_level
