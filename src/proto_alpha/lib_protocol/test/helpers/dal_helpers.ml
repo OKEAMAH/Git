@@ -83,8 +83,6 @@ struct
 
   let level_one = Raw_level_repr.(succ root)
 
-  let level_ten = Raw_level_repr.(of_int32_exn 10l)
-
   (* Helper functions. *)
 
   let get_history cache h = Hist.History_cache.find h cache |> Lwt.return
@@ -139,13 +137,17 @@ struct
 
   let no_data = Some (fun ~default_char:_ _ -> None)
 
-  let mk_page_info ?(default_char = 'x') ?level ?(page_index = P.Index.zero)
-      ?(custom_data = None) (slot : S.Header.t) polynomial =
+  let mk_page_info ?(default_char = 'x') ?level ?slot_index
+      ?(page_index = P.Index.zero) ?(custom_data = None) (slot : S.Header.t)
+      polynomial =
     let open Result_syntax in
     let level =
       match level with None -> slot.id.published_level | Some level -> level
     in
-    let page_id = mk_page_id level slot.id.index page_index in
+    let slot_index =
+      match slot_index with None -> slot.id.index | Some index -> index
+    in
+    let page_id = mk_page_id level slot_index page_index in
     let* page_proof = dal_mk_prove_page polynomial page_id in
     match custom_data with
     | None ->
