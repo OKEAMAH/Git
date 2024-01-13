@@ -313,6 +313,9 @@ module History : sig
       should be provided, as they are not needed to construct a non-confirmation
       proof.
 
+      Note that, in case the level of the page is far in the past (i.e. the Dal
+      skip list was not populated yet) should be handled by the caller.
+
       [dal_parameters] is used when verifying that/if the page is part of
       the candidate slot (if any).
   *)
