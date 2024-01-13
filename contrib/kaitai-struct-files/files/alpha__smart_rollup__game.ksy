@@ -57,20 +57,21 @@ types:
       type: s4
   content_0:
     seq:
-    - id: level
+    - id: published_level
       type: s4
-    - id: index
-      type: u1
-    - id: commitment
-      size: 48
+    - id: slot_headers
+      type: slot_headers_0
   dal_snapshot:
     seq:
-    - id: index
-      type: n
-    - id: content
-      type: content_0
-    - id: back_pointers
-      type: back_pointers_2
+    - id: dal_snapshot_tag
+      type: u1
+      enum: dal_snapshot_tag
+    - id: legacy
+      size: 57
+      if: (dal_snapshot_tag == dal_snapshot_tag::legacy)
+    - id: new
+      type: new
+      if: (dal_snapshot_tag == dal_snapshot_tag::new)
   dissecting:
     seq:
     - id: dissection
@@ -138,6 +139,14 @@ types:
       type: b1be
     - id: payload
       type: b7be
+  new:
+    seq:
+    - id: index
+      type: n
+    - id: content
+      type: content_0
+    - id: back_pointers
+      type: back_pointers_2
   refuted_stop_chunk:
     seq:
     - id: state_tag
@@ -148,10 +157,33 @@ types:
       if: (state_tag == bool::true)
     - id: tick
       type: n
+  slot_headers:
+    seq:
+    - id: slot_headers_entries
+      type: slot_headers_entries
+      repeat: eos
+  slot_headers_0:
+    seq:
+    - id: len_slot_headers
+      type: u4
+      valid:
+        max: 1073741823
+    - id: slot_headers
+      type: slot_headers
+      size: len_slot_headers
+  slot_headers_entries:
+    seq:
+    - id: slot_commitment
+      size: 48
+    - id: slot_index
+      type: u1
 enums:
   bool:
     0: false
     255: true
+  dal_snapshot_tag:
+    0: legacy
+    1: new
   game_state_tag:
     0: dissecting
     1: final_move
