@@ -192,6 +192,7 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
            if that is done, do not set Storage.Tenderbake.First_level_of_protocol.
            /!\ this storage is also use to add the smart rollup
                inbox migration message. see `sc_rollup_inbox_storage`. *)
+        Logging.log_string Notice "\nSTITCHING!\n" ;
         let*? level = Raw_level_repr.of_int32 level in
         let* ctxt =
           Storage.Tenderbake.First_level_of_protocol.update ctxt level
@@ -200,6 +201,20 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
         let* ctxt =
           Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
         in
+        (*         let preserved_cycles = *)
+        (*           Constants_storage.blocks_preservation_cycles ctxt *)
+        (*         in *)
+        (*         let consensus_rights_delay = *)
+        (*           Constants_storage.consensus_rights_delay ctxt *)
+        (*         in *)
+        (*         let* ctxt = *)
+        (*           Stake_storage.cleanup_values_for_protocol_p *)
+        (*             ctxt *)
+        (*             ~preserved_cycles *)
+        (*             ~consensus_rights_delay *)
+        (*             ~new_cycle *)
+        (*         in *)
+        (*         let* ctxt =  cleanup_values ... *)
         return (ctxt, [])
   in
   let* ctxt =
