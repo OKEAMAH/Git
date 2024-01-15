@@ -153,6 +153,10 @@ let fmt_cli = external_sublib fmt "fmt.cli"
 
 let fmt_tty = external_sublib fmt "fmt.tty"
 
+let grpc_lwt = external_lib "grpc-lwt" V.(at_least "0.2.0")
+
+let h2_lwt_unix = external_lib "h2-lwt-unix" V.(at_least "0.11.0")
+
 let hacl_star =
   external_lib
     ~js_compatible:true
@@ -8373,7 +8377,7 @@ let evm_node_lib_prod_encoding =
     ~deps:
       [octez_base |> open_ ~m:"TzPervasives"; octez_scoru_wasm_debugger_plugin]
 
-let _evm_node_sequencer_protobuf =
+let evm_node_sequencer_protobuf =
   let protobuf_rules =
     Dune.[protobuf_rule "narwhal"; protobuf_rule "exporter"]
   in
@@ -8385,6 +8389,20 @@ let _evm_node_sequencer_protobuf =
        protobuf definitions"
     ~deps:[ocaml_protoc_compiler]
     ~dune:protobuf_rules
+
+let evm_node_lib_sequencer_client =
+  octez_evm_node_lib
+    "evm_node_lib_sequencer_client"
+    ~path:"etherlink/bin_evm_node/lib_sequencer_client"
+    ~synopsis:" A client library for interacting with the sequencer"
+    ~deps:
+      [
+        octez_base |> open_ ~m:"TzPervasives";
+        grpc_lwt;
+        h2_lwt_unix;
+        lwt_unix;
+        evm_node_sequencer_protobuf |> open_;
+      ]
 
 let evm_node_lib_prod =
   octez_evm_node_lib
@@ -8509,6 +8527,7 @@ let _evm_node =
         evm_node_lib_dev;
         evm_node_lib_dev_encoding |> open_;
         evm_node_config |> open_;
+        evm_node_lib_sequencer_client |> open_;
       ]
     ~bisect_ppx:Yes
 

@@ -39,6 +39,8 @@ depends: [
   "eqaf"
   "ezjsonm" { >= "1.3.0" }
   "fmt" { >= "0.8.7" }
+  "grpc-lwt" { >= "0.2.0" }
+  "h2-lwt-unix" { >= "0.11.0" }
   "hacl-star" { >= "0.7.1" & < "0.8" }
   "hacl-star-raw"
   "hashcons"

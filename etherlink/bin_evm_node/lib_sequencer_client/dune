@@ -1,0 +1,17 @@
+; This file was automatically generated, do not edit.
+; Edit file manifest/main.ml instead.
+
+(library
+ (name evm_node_lib_sequencer_client)
+ (public_name octez-evm-node-libs.evm_node_lib_sequencer_client)
+ (instrumentation (backend bisect_ppx))
+ (libraries
+  octez-libs.base
+  grpc-lwt
+  h2-lwt-unix
+  lwt.unix
+  octez-evm-node-libs.evm_node_sequencer_protobuf)
+ (flags
+  (:standard)
+  -open Tezos_base.TzPervasives
+  -open Evm_node_sequencer_protobuf))

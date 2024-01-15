@@ -13,6 +13,9 @@ depends: [
   "octez-libs"
   "octez-smart-rollup-wasm-debugger-plugin"
   "ocaml-protoc-plugin" { >= "4.5.0" }
+  "grpc-lwt" { >= "0.2.0" }
+  "h2-lwt-unix" { >= "0.11.0" }
+  "lwt" { >= "5.7.0" }
   "octez-version"
   "lwt-exit"
   "octez-l2-libs"
