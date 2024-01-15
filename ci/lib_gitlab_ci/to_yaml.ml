@@ -17,7 +17,10 @@ let obj_flatten fields = `O (List.concat fields)
 
 let key name f value : (string * value) list = [(name, f value)]
 
-let array f value = `A (List.map f value)
+let array f values = `A (List.map f values)
+
+let array1 f values =
+  match values with [value] -> f value | _ -> array f values
 
 let strings ss : value = array string ss
 
@@ -186,7 +189,7 @@ let enc_job : job -> value =
       opt "dependencies" strings dependencies;
       opt "allow_failure" bool allow_failure;
       opt "timeout" enc_time_interval timeout;
-      opt "cache" (array enc_cache) cache;
+      opt "cache" (array1 enc_cache) cache;
       opt "interruptible" bool interruptible;
       opt "script" strings script;
       opt "after_script" strings after_script;
