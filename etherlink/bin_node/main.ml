@@ -877,6 +877,34 @@ let observer_command =
   in
   return_unit
 
+let tx_data_param =
+  Tezos_clic.param
+    ~name:"tx-data"
+    ~desc:"Raw transaction to send to the DSN."
+    Params.string
+
+let send_dsn_message_command =
+  let open Tezos_clic in
+  command
+    ~desc:"Send a tx to the distributed sequencer network"
+    (args2 rpc_addr_arg rpc_port_arg)
+    (prefixes ["send"; "dsn"; "message"] @@ tx_data_param @@ stop)
+    (fun (rpc_addr_arg, rpc_port_arg) tx_data () ->
+      let open Lwt_result_syntax in
+      let open Evm_node_lib_sequencer_client in
+      let rpc_addr = Option.value ~default:"127.0.0.1" rpc_addr_arg in
+      let rpc_port = Option.value ~default:80 rpc_port_arg in
+      let* http2_connection = Dsn.make rpc_addr rpc_port in
+      let*! () = Lwt_io.printf "Http2 connection established\n" in
+      let* () =
+        Dsn.submit_transaction
+          ~timeout:5
+          http2_connection
+          (String.to_bytes tx_data)
+      in
+      let*! () = Lwt_io.printf "Transaction included in batch\n" in
+      return_unit)
+
 let make_prod_messages ~smart_rollup_address s =
   let open Lwt_result_syntax in
   let open Evm_node_lib_prod in
@@ -1020,6 +1048,7 @@ let commands =
     chunker_command;
     make_upgrade_command;
     init_from_rollup_node_command;
+    send_dsn_message_command;
   ]
 
 let global_options = Tezos_clic.no_options
