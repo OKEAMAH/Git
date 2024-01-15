@@ -7,6 +7,8 @@
   image: ${CI_REGISTRY}/tezos/docker-images/ci-release:v1.1.0
 .image_template__debian_bookworm:
   image: debian:bookworm
+.image_template__debian_bullseye:
+  image: debian:bullseye
 .image_template__docker:
   image: ${CI_REGISTRY}/tezos/docker-images/ci-docker:v1.9.0
 .image_template__fedora_37:

@@ -179,6 +179,9 @@ module Images = struct
   let debian_bookworm =
     Image.register ~name:"debian_bookworm" ~image_path:"debian:bookworm"
 
+  let debian_bullseye =
+    Image.register ~name:"debian_bullseye" ~image_path:"debian:bullseye"
+
   let ubuntu_focal =
     Image.register
       ~name:"ubuntu_focal"
@@ -420,11 +423,11 @@ let job_docker_build ?rules ~arch ?(external_ = false) docker_build_type : job =
   if external_ then job_external ~directory:"build" ~filename_suffix job
   else job
 
-(* Used in [before_merging] pipeline *)
+(* Used in external [before_merging] pipeline *)
 let _job_docker_amd64_test_manual : job =
   job_docker_build ~external_:true ~arch:Amd64 Test_manual
 
-(* Used in [before_merging] pipeline *)
+(* Used in external [before_merging] pipeline *)
 let _job_docker_arm64_test_manual : job =
   job_docker_build ~external_:true ~arch:Arm64 Test_manual
 
@@ -747,7 +750,7 @@ let build_x86_64_rules =
 
 (* Write external files for build_{arm64, x86_64} jobs *)
 
-(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+(* Used in external [before_merging] pipelines *)
 let job_build_arm64_release =
   job_build_dynamic_binaries
     ~external_:true
@@ -757,7 +760,7 @@ let job_build_arm64_release =
     ~rules:build_arm_rules
     ()
 
-(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+(* Used in external [before_merging] pipelines *)
 let job_build_arm64_exp_dev_extra =
   job_build_dynamic_binaries
     ~external_:true
@@ -767,7 +770,7 @@ let job_build_arm64_exp_dev_extra =
     ~rules:build_arm_rules
     ()
 
-(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+(* Used in external [before_merging] pipelines *)
 let job_build_x86_64_release =
   job_build_dynamic_binaries
     ~external_:true
@@ -875,7 +878,7 @@ let opam_rules ~only_marge_bot ?batch_index () =
     job_rule ~when_:Never ();
   ]
 
-let _job_opam_prepare : job =
+let job_opam_prepare : job =
   job_external
   @@ job
        ~name:"opam:prepare"
@@ -907,7 +910,7 @@ let job_opam_package {name; group; batch_index} : job =
             Therefore, a retry was added. This should be removed once the
             underlying tests have been fixed. *)
        ~retry:2
-       ~dependencies:(Dependent [Artifacts _job_opam_prepare])
+       ~dependencies:(Dependent [Artifacts job_opam_prepare])
        ~rules:(opam_rules ~only_marge_bot:(group = All) ~batch_index ())
        ~variables:
          [
@@ -960,7 +963,7 @@ let make_opam_packages (packages : opam_package list) : job list =
   let jobs = List.map job_opam_package packages in
   jobs_external ~path:"packaging/opam_package.yml" jobs
 
-let (_jobs_opam_package : job list) = make_opam_packages read_opam_packages
+let jobs_opam_package : job list = make_opam_packages read_opam_packages
 
 let enable_kernels job =
   job_append_variables
@@ -1011,7 +1014,7 @@ let image_of_distribution = function
   | Ubuntu_jammy -> Images.ubuntu_jammy
   | Fedora_37 -> Images.fedora_37
 
-let _jobs_install_octez : job list =
+let jobs_install_octez : job list =
   let changeset_install_jobs =
     ["docs/introduction/install*.sh"; "docs/introduction/compile*.sh"]
   in
@@ -1223,30 +1226,65 @@ let job_tezt ?rules ?parallel ?(tags = ["gcp_tezt"]) ~name ~tezt_tests
       "./scripts/ci/merge_coverage.sh";
     ]
 
-let _job_tezt_flaky : job =
-  let tezt_flaky_dependencies =
+let job_documentation_linkcheck =
+  job_external
+  @@ job
+       ~name:"documentation:linkcheck"
+       ~image:Images.runtime_build_test_dependencies
+       ~stage:Stages.doc
+       ~dependencies:(Dependent [])
+       ~rules:
+         [
+           job_rule ~if_:Rules.schedule_extended_tests ~when_:Always ();
+           job_rule ~if_:(Rules.has_mr_label "ci--docs") ();
+           job_rule ~when_:Manual ();
+         ]
+       ~before_script:
+         (before_script
+            ~source_version:true
+            ~eval_opam:true
+            ~init_python_venv:true
+            [])
+       ~allow_failure:Yes
+       ["make all"; "make -C docs redirectcheck"; "make -C docs linkcheck"]
+
+let job_install_python ~name ~image =
+  job
+    ~name
+    ~image
+    ~stage:Stages.doc
+    ~dependencies:(Dependent [Job trigger])
+    ~rules:
+      [
+        job_rule ~if_:Rules.schedule_extended_tests ~when_:Always ();
+        job_rule
+          ~if_:Rules.merge_request
+          ~changes:["docs/developer/install-python-debian-ubuntu.sh"]
+          ~when_:On_success
+          ();
+        job_rule ~if_:(Rules.has_mr_label "ci--docs") ();
+        job_rule ~when_:Manual ~allow_failure:Yes ();
+      ]
     [
-      job_build_x86_64_release;
-      job_build_x86_64_exp_dev_extra;
-      job_build_kernels;
-      job_tezt_fetch_records;
+      "./docs/developer/install-python-debian-ubuntu.sh \
+       ${CI_MERGE_REQUEST_SOURCE_PROJECT_PATH:-tezos/tezos} \
+       ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-master}";
     ]
-  in
-  job_external @@ job_enable_coverage
-  @@ job_tezt
-       ~name:"tezt_flaky"
-       ~tezt_tests:"flaky"
-         (* To handle flakiness, consider tweaking [~tezt_parallel] (passed to
-            Tezt's '--job-count'), and [~tezt_retry] (passed to Tezt's
-            '--retry') *)
-       ~retry:2
-       ~tezt_retry:3
-       ~tezt_parallel:1
-       ~parallel:1
-       ~dependencies:
-         (Dependent
-            (List.map (fun job -> Artifacts job) tezt_flaky_dependencies))
-       ()
+
+let jobs_install_python =
+  jobs_external
+    ~path:"doc/oc.install_python.yml"
+    [
+      job_install_python
+        ~name:"oc.install_python_focal"
+        ~image:Images.ubuntu_focal;
+      job_install_python
+        ~name:"oc.install_python_jammy"
+        ~image:Images.ubuntu_jammy;
+      job_install_python
+        ~name:"oc.install_python_bullseye"
+        ~image:Images.debian_bullseye;
+    ]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
@@ -1397,7 +1435,44 @@ let () =
     "non_release_tag_test"
     If.(not_on_tezos_namespace && push && has_non_release_tag)
     ~jobs:(release_tag_pipeline ~test:true Non_release_tag) ;
-  register "schedule_extended_test" schedule_extended_tests
+  register
+    "schedule_extended_test"
+    schedule_extended_tests
+    ~jobs:
+      (let tezt_flaky_dependencies =
+         [
+           job_build_x86_64_release;
+           job_build_x86_64_exp_dev_extra;
+           job_build_kernels;
+           job_tezt_fetch_records;
+         ]
+       in
+       let job_tezt_flaky : job =
+         job_enable_coverage
+         @@ job_tezt
+              ~name:"tezt_flaky"
+              ~tezt_tests:"flaky"
+                (* To handle flakiness, consider tweaking [~tezt_parallel] (passed to
+                   Tezt's '--job-count'), and [~tezt_retry] (passed to Tezt's
+                   '--retry') *)
+              ~retry:2
+              ~tezt_retry:3
+              ~tezt_parallel:1
+              ~parallel:1
+              ~dependencies:
+                (Dependent
+                   (List.map (fun job -> Artifacts job) tezt_flaky_dependencies))
+              ()
+       in
+       [job_build_arm64_release; job_build_arm64_exp_dev_extra]
+       (* These jobs are necessary to run flaky tezts *)
+       @ tezt_flaky_dependencies
+       (* Stage: packaging *)
+       @ (job_opam_prepare :: jobs_opam_package)
+       (* Stage: test *)
+       @ jobs_install_octez (* Flaky tezts *)
+       @ [job_tezt_flaky; job_documentation_linkcheck]
+       @ jobs_install_python)
 
 (* Split pipelines and writes image templates *)
 let config =
