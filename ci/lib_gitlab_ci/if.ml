@@ -52,8 +52,6 @@ let rec encode expr =
 
 let var n = Var n
 
-(* let var n = n *)
-
 let eq a b = Eq (a, b)
 
 let neq a b = Neq (a, b)
