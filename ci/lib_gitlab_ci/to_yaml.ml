@@ -19,6 +19,11 @@ let key name f value : (string * value) list = [(name, f value)]
 
 let array f values = `A (List.map f values)
 
+(* Equivalent to [array f values] unless [values] is a singleton [x],
+   in which case it is encoded as [f x].
+
+   This is useful for more succint encoding of fields like [cache:]
+   that can either take an array of values, or a single value. *)
 let array1 f values =
   match values with [value] -> f value | _ -> array f values
 
