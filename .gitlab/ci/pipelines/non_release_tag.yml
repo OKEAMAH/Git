@@ -87,7 +87,6 @@ oc.build:dpkg:amd64:
   needs: []
   dependencies: []
   script:
-  - . ./scripts/version.sh
   - wget https://sh.rustup.rs/rustup-init.sh
   - chmod +x rustup-init.sh
   - ./rustup-init.sh --profile minimal --default-toolchain  $recommended_rust_version
@@ -99,6 +98,7 @@ oc.build:dpkg:amd64:
   - eval $(opam env)
   - make $TARGET
   before_script:
+  - . ./scripts/version.sh
   - apt update
   - apt-get install -y rsync git m4 build-essential patch unzip wget opam jq bc autoconf
     cmake libev-dev libffi-dev libgmp-dev libhidapi-dev pkg-config zlib1g-dev
@@ -121,7 +121,6 @@ oc.build:rpm:amd64:
   needs: []
   dependencies: []
   script:
-  - . ./scripts/version.sh
   - wget https://sh.rustup.rs/rustup-init.sh
   - chmod +x rustup-init.sh
   - ./rustup-init.sh --profile minimal --default-toolchain  $recommended_rust_version
@@ -133,6 +132,7 @@ oc.build:rpm:amd64:
   - eval $(opam env)
   - make $TARGET
   before_script:
+  - . ./scripts/version.sh
   - dnf update -y
   - dnf install -y libev-devel gmp-devel hidapi-devel libffi-devel zlib-devel libpq-devel
     m4 perl git pkg-config rpmdevtools python3-devel python3-setuptools wget opam

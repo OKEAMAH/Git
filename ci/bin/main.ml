@@ -452,7 +452,7 @@ let job_docker_merge_manifests ~ci_docker_hub ~job_docker_amd64
 
 type bin_package_target = Dpkg | Rpm
 
-let job_build_bin_package ~arch ~target : job =
+let job_build_bin_package ?(manual = false) ~arch ~target () : job =
   let arch_string =
     match arch with Tezos_ci.Amd64 -> "amd64" | Arm64 -> "arm64"
   in
@@ -472,29 +472,34 @@ let job_build_bin_package ~arch ~target : job =
       [artifact_path]
   in
   let before_script =
-    match target with
-    | Dpkg ->
-        [
-          "apt update";
-          "apt-get install -y rsync git m4 build-essential patch unzip wget \
-           opam jq bc autoconf cmake libev-dev libffi-dev libgmp-dev \
-           libhidapi-dev pkg-config zlib1g-dev";
-        ]
-    | Rpm ->
-        [
-          "dnf update -y";
-          "dnf install -y libev-devel gmp-devel hidapi-devel libffi-devel \
-           zlib-devel libpq-devel m4 perl git pkg-config rpmdevtools \
-           python3-devel python3-setuptools wget opam rsync which cargo \
-           autoconf mock systemd systemd-rpm-macros cmake python3-wheel \
-           python3-tox-current-env gcc-c++";
-        ]
+    before_script
+      ~source_version:true
+      (match target with
+      | Dpkg ->
+          [
+            "apt update";
+            "apt-get install -y rsync git m4 build-essential patch unzip wget \
+             opam jq bc autoconf cmake libev-dev libffi-dev libgmp-dev \
+             libhidapi-dev pkg-config zlib1g-dev";
+          ]
+      | Rpm ->
+          [
+            "dnf update -y";
+            "dnf install -y libev-devel gmp-devel hidapi-devel libffi-devel \
+             zlib-devel libpq-devel m4 perl git pkg-config rpmdevtools \
+             python3-devel python3-setuptools wget opam rsync which cargo \
+             autoconf mock systemd systemd-rpm-macros cmake python3-wheel \
+             python3-tox-current-env gcc-c++";
+          ])
   in
+  let stage = if manual then Stages.manual else Stages.build in
+  let when_ = if manual then Some Manual else None in
   job
+    ?when_
     ~name
     ~arch
     ~image
-    ~stage:Stages.build
+    ~stage
     ~dependencies:(Dependent [])
     ~variables:
       [
@@ -506,7 +511,6 @@ let job_build_bin_package ~arch ~target : job =
     ~artifacts
     ~before_script
     [
-      ". ./scripts/version.sh";
       "wget https://sh.rustup.rs/rustup-init.sh";
       "chmod +x rustup-init.sh";
       "./rustup-init.sh --profile minimal --default-toolchain  \
@@ -520,9 +524,22 @@ let job_build_bin_package ~arch ~target : job =
     ]
 
 let job_build_dpkg_amd64 =
-  job_build_bin_package ~target:Dpkg ~arch:Tezos_ci.Amd64
+  job_build_bin_package ~target:Dpkg ~arch:Tezos_ci.Amd64 ()
 
-let job_build_rpm_amd64 = job_build_bin_package ~target:Rpm ~arch:Tezos_ci.Amd64
+let job_build_rpm_amd64 =
+  job_build_bin_package ~target:Rpm ~arch:Tezos_ci.Amd64 ()
+
+let _job_build_bin_packages_manual =
+  let manual = true in
+  let arch = Tezos_ci.Amd64 in
+  jobs_external ~path:"build/bin_packages_manual.yml"
+  @@ [
+       job_build_bin_package ~manual ~arch ~target:Dpkg ();
+       job_build_bin_package ~manual ~arch ~target:Rpm ();
+     ]
+
+let _job_build_rpm_amd64 =
+  job_build_bin_package ~manual:true ~target:Rpm ~arch:Tezos_ci.Amd64
 
 (** Type of release tag pipelines.
 
