@@ -67,7 +67,8 @@ end
    round used when injecting DAL attestation operations. Note that it is
    normally not necessary to bake with a particular delegate, therefore there is
    no downside to set the case [`All] as the default. *)
-let bake_for ?(delegates = `All) ?count ?dal_node_endpoint client =
+let bake_for ?(delegates = `All) ?minimal_timestamp ?count ?dal_node_endpoint
+    client =
   let keys =
     match delegates with
     | `All ->
@@ -75,7 +76,12 @@ let bake_for ?(delegates = `All) ?count ?dal_node_endpoint client =
         []
     | `For keys -> keys
   in
-  Client.bake_for_and_wait client ~keys ?count ?dal_node_endpoint
+  Client.bake_for_and_wait
+    client
+    ~keys
+    ?count
+    ?dal_node_endpoint
+    ?minimal_timestamp
 
 module Client = struct
   include Client
@@ -4328,11 +4334,7 @@ module Test_dal_with_rollups_at_different_levels = struct
       let* () =
         let dal_node_endpoint = Option.map Helpers.endpoint dal_node in
         (* Empty set for keys means "bake for all delegates". *)
-        Client.bake_for_and_wait
-          ?dal_node_endpoint
-          ~keys:[]
-          ~minimal_timestamp:false
-          client
+        bake_for ?dal_node_endpoint ~minimal_timestamp:false client
       in
       cont ()
 
