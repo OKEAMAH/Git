@@ -89,7 +89,7 @@ type dependency =
   | Job of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
 
-type dependencies = Staged | Independent | Dependent of dependency list
+type dependencies = Staged | Dependent of dependency list
 
 type git_strategy = Fetch | Clone | No_strategy
 
@@ -113,9 +113,7 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
   let needs, dependencies =
     match dependencies with
     | Staged -> (None, Some [])
-    | Independent -> (Some [], Some [])
     | Dependent dependencies ->
-        let to_opt = function [] -> None | xs -> Some xs in
         let rec loop (needs, dependencies) = function
           | Job j :: deps -> loop (j.name :: needs, dependencies) deps
           | Artifacts j :: deps ->
@@ -125,7 +123,7 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
                  fetch no dependencies by default ([dependencies = Some
                  []]), whereas the absence of [dependencies = None] would
                  fetch all the dependencies of the preceding jobs. *)
-              (to_opt @@ List.rev needs, Some (List.rev dependencies))
+              (Some (List.rev needs), Some (List.rev dependencies))
         in
         loop ([], []) dependencies
   in

@@ -85,9 +85,9 @@ type dependency =
 
     - A [Staged] job implements the default GitLab CI behavior of running once all
     jobs in the previous stage have terminated.
-    - An [Independent] job runs immediately, regardless of its stage. This corresponds to setting [needs: []].
-    - An [Dependent deps] job runs once all the jobs in [deps] have terminated. *)
-type dependencies = Staged | Independent | Dependent of dependency list
+    - An [Dependent deps] job runs once all the jobs in [deps] have terminated.
+      To have a job run immediately, set [Dependent []] *)
+type dependencies = Staged | Dependent of dependency list
 
 (** Values for the [GIT_STRATEGY] variable.
 
