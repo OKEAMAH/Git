@@ -462,29 +462,38 @@ module History = struct
                   (true, index)
                   l
 
-    let add_confirmed_slot_header (t, cache) published_level slot_headers =
-      let open Result_syntax in
-      let* () =
-        error_unless
-          (check_same_level_and__well_ordered published_level slot_headers)
-          Add_element_in_slots_skip_list_violates_ordering
+    let add_confirmed_slot_header =
+      let sl_genesis_level =
+        (Skip_list.content genesis).Content.published_level
       in
-      let prev_cell_ptr = hash t in
-      let slot_headers =
-        List.map
-          (fun Header.{commitment; id = {index; _}} -> (commitment, index))
-          slot_headers
-      in
-      let slot_headers = Content.{published_level; slot_headers} in
-      let* cache = History_cache.remember prev_cell_ptr t cache in
-      if equal t genesis then
-        (* If this is the first real cell of DAL, replace dummy genesis with it. *)
-        return (Skip_list.genesis slot_headers, cache)
-      else
-        let* new_cell =
-          Skip_list.next ~prev_cell:t ~prev_cell_ptr slot_headers
+      fun (t, cache) published_level slot_headers ->
+        let open Result_syntax in
+        let* () =
+          error_unless
+            (check_same_level_and__well_ordered published_level slot_headers)
+            Add_element_in_slots_skip_list_violates_ordering
         in
-        return (new_cell, cache)
+        let prev_cell_ptr = hash t in
+        let slot_headers =
+          List.map
+            (fun Header.{commitment; id = {index; _}} -> (commitment, index))
+            slot_headers
+        in
+        let slot_headers = Content.{published_level; slot_headers} in
+        let* cache = History_cache.remember prev_cell_ptr t cache in
+        if
+          Raw_level_repr.equal
+            (Skip_list.content t).published_level
+            sl_genesis_level
+        then
+          (* If this is the first real cell of DAL, replace dummy genesis with
+             it. *)
+          return (Skip_list.genesis slot_headers, cache)
+        else
+          let* new_cell =
+            Skip_list.next ~prev_cell:t ~prev_cell_ptr slot_headers
+          in
+          return (new_cell, cache)
 
     let add_confirmed_slot_headers (t : t) cache published_level slot_headers =
       add_confirmed_slot_header (t, cache) published_level slot_headers
