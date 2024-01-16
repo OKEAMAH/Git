@@ -25,7 +25,7 @@ let default = default ~interruptible:true ()
 module Stages = struct
   let trigger = Stage.register "trigger"
 
-  let _sanity = Stage.register "sanity"
+  let sanity = Stage.register "sanity"
 
   let build = Stage.register "build"
 
@@ -1285,6 +1285,23 @@ let jobs_install_python =
         ~name:"oc.install_python_bullseye"
         ~image:Images.debian_bullseye;
     ]
+
+let _job_sanity_ci =
+  job_external
+  @@ job
+       ~name:"sanity_ci"
+       ~image:Images.runtime_build_dependencies
+       ~stage:Stages.sanity
+       ~before_script:(before_script ~take_ownership:true ~eval_opam:true [])
+       [
+         "make -C manifest check";
+         "./scripts/lint.sh --check-gitlab-ci-yml";
+         (* Check that the opam-repo images' Alpine version corresponds to
+            the value in scripts/version.sh. *)
+         "./scripts/ci/check_alpine_version.sh";
+         (* Check that .gitlab-ci.yml is up to date. *)
+         "make -C ci check";
+       ]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
