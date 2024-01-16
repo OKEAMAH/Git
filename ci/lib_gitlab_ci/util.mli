@@ -64,6 +64,11 @@ val artifacts :
   string list ->
   artifacts
 
+(* Construct an [reports:] clause for [artifacts:].
+
+   - [dotenv:] is omitted if [dotenv] is [None].
+   - [junit:] is omitted if [junit] is [None].
+   - [coverage_report:] is omitted if [coverage_report] is [None]. *)
 val reports :
   ?dotenv:string ->
   ?junit:string ->
