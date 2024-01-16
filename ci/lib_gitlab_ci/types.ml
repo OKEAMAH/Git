@@ -102,6 +102,15 @@ type job = {
   tags : string list option;
   when_ : when_ option;
   coverage : string option;
+      (** Note: the job field [coverage] is not to be confused with
+          {!coverage_report}.
+          {{:https://docs.gitlab.com/ee/ci/yaml/#coverage}This
+          coverage field} is used to specify a regular expression that
+          can be used to capture coverage information from the job's
+          trace.  On the other hand, {!coverage_report} is used to
+          expose the captured coverage information as a report in a
+          job's artifacts
+          ({{:https://docs.gitlab.com/ee/ci/yaml/artifacts_reports.html#artifactsreportscoverage_report}ref}). *)
   retry : int option;
   parallel : int option;
 }
