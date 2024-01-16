@@ -211,7 +211,9 @@ let rec handle_proposal ~is_proposal_applied state (new_proposal : proposal) =
   *)
   (* We need to avoid to send preattestations, if we are in phases were
      preattestations have been sent already. This is needed to avoid switching
-     back from Awaiting_attestations to Awaiting_preattestations. *)
+     back from Awaiting_attestations to Awaiting_preattestations.
+     Hypothesis: a fresh round's initial phase is Idle
+  *)
   let may_preattest state proposal =
     match state.round_state.current_phase with
     | Idle -> preattest state proposal
@@ -617,7 +619,11 @@ let propose_block_action state delegate round ~last_proposal =
 let end_of_round state current_round =
   let open Lwt_syntax in
   let new_round = Round.succ current_round in
-  let new_round_state = {state.round_state with current_round = new_round} in
+  (* We initialize the round's phase to Idle for the [handle_proposal]
+     transition to trigger the preattestation action. *)
+  let new_round_state =
+    {state.round_state with current_round = new_round; current_phase = Idle}
+  in
   let new_state = {state with round_state = new_round_state} in
   (* we need to check if we need to bake for this round or not *)
   match
@@ -630,10 +636,6 @@ let end_of_round state current_round =
             no_proposal_slot
             (current_round, state.level_state.current_level, new_round))
       in
-      (* We don't have any delegate that may propose a new block for
-         this round -- We will wait for preattestations when the next
-         level block arrive. Meanwhile, we are idle *)
-      let new_state = update_current_phase new_state Idle in
       do_nothing new_state
   | Some {consensus_key_and_delegate; _} ->
       let latest_proposal = state.level_state.latest_proposal in
