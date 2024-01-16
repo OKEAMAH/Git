@@ -139,8 +139,7 @@ let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
   | Some retry when retry < 0 || retry > 2 ->
       failwith
         (sf
-           "Invalid [retry] value '%d' for job [%s]: retry greater or equal to \
-            zero and less than or equal to 2"
+           "Invalid [retry] value '%d' for job [%s]: must be 0, 1 or 2."
            retry
            name)
   | _ -> ()) ;
