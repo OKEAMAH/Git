@@ -200,7 +200,7 @@ pub fn read_optional_rlp<T: Decodable>(
     host: &impl Runtime,
     path: &impl Path,
 ) -> Result<Option<T>, anyhow::Error> {
-    if let Some(ValueType::Value) = host.store_has(path)? {
+    if let Some(ValueType::Value | ValueType::ValueWithSubtree) = host.store_has(path)? {
         let elt = read_rlp(host, path)?;
         Ok(Some(elt))
     } else {
