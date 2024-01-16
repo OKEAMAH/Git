@@ -53,7 +53,9 @@ val include_rule :
    - [expire_in:] is omitted if [expire_in] is [None].
    - [reports:] is omitted if [reports] is [None].
    - [when:] is omitted if [when_] is [None].
-   - [expose_as:] is omitted if [expose_as] is [None]. *)
+   - [expose_as:] is omitted if [expose_as] is [None].
+
+   At least one of [paths] or [reports] must be non-empty. *)
 val artifacts :
   ?expire_in:time_interval ->
   ?reports:reports ->
