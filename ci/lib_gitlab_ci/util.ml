@@ -10,16 +10,8 @@ open Types
 let default ?image ?interruptible () : default = {image; interruptible}
 
 let job_rule ?changes ?if_ ?variables ?(when_ : when_ = On_success)
-    ?allow_failure ?start_in () : job_rule =
-  (* Alternatively, this restriction can be encoded in the type system
-     by making [start_in] a parameter of the [Delayed] constructor.
-     However, that would be a step away from Octez-agnosticism of [lib_gitlab_ci]. *)
-  (match (start_in, when_) with
-  | None, _ -> ()
-  | Some _, Delayed -> ()
-  | Some _, _ ->
-      failwith "[job_rule] cannot set [start_in] if [when_] is not [Delayed]") ;
-  {changes; if_; variables; when_; allow_failure; start_in}
+    ?allow_failure () : job_rule =
+  {changes; if_; variables; when_; allow_failure}
 
 let workflow_rule ?changes ?if_ ?variables ?(when_ : when_workflow = Always) ()
     : workflow_rule =

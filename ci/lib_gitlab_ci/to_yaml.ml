@@ -43,7 +43,7 @@ let enc_when : when_ -> value = function
   | Never -> `String "never"
   | On_success -> `String "on_success"
   | Manual -> `String "manual"
-  | Delayed -> `String "delayed"
+  | Delayed _ -> `String "delayed"
 
 let enc_when_workflow : when_workflow -> value = function
   | Always -> `String "always"
@@ -83,7 +83,10 @@ let enc_time_interval interval =
     | Years x -> string_of_int x ^ " years")
 
 let enc_job_rule : job_rule -> value =
- fun {changes; if_; variables; when_; allow_failure; start_in} ->
+ fun {changes; if_; variables; when_; allow_failure} ->
+  let start_in =
+    match when_ with Delayed start_in -> Some start_in | _ -> None
+  in
   obj_flatten
     [
       opt "changes" strings changes;
