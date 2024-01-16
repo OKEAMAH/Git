@@ -23,7 +23,10 @@ val push : If.t
 (** A rule that is true if [CI_PIPELINE_SOURCE] is [scheduled]. *)
 val scheduled : If.t
 
-(** TODO: *)
+(** A rule that is true for scheduled extended test pipelines.
+
+    Such pipelines have [CI_PIPELINE_SOURCE] set to [scheduled] and
+    [TZ_SCHEDULE_KIND] set to [EXTENDED_TESTS]. *)
 val schedule_extended_tests : If.t
 
 (** A rule that is true if [CI_COMMIT_BRANCH] is a given branch. *)
