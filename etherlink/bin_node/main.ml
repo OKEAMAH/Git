@@ -905,6 +905,41 @@ let send_dsn_message_command =
       let*! () = Lwt_io.printf "Transaction included in batch\n" in
       return_unit)
 
+let monitor_dsn_preblocks =
+  let open Tezos_clic in
+  command
+    ~desc:"Monitor dsn preblocks"
+    (args2 rpc_addr_arg rpc_port_arg)
+    (prefixes ["monitor"; "dsn"; "preblocks"] @@ stop)
+    (fun (rpc_addr_arg, rpc_port_arg) () ->
+      let open Lwt_result_syntax in
+      let open Evm_node_lib_sequencer_client in
+      let rpc_addr = Option.value ~default:"127.0.0.1" rpc_addr_arg in
+      let rpc_port = Option.value ~default:80 rpc_port_arg in
+      let* http2_connection = Dsn.make rpc_addr rpc_port in
+      let*! () = Lwt_io.printf "Http2 connection established\n" in
+      let* stream = Dsn.monitor_preblocks http2_connection ~since:0 in
+      let*! () = Lwt_io.printf "Starting monitoring preblocks\n" in
+      let*! () =
+        Lwt_stream.iter_s
+          (function
+            | Ok preblock ->
+                let*! () =
+                  Lwt_io.printf
+                    "Received preblock with %d transactions\n"
+                    (List.length preblock)
+                in
+                List.iter_s
+                  (fun tx ->
+                    Lwt_io.printf
+                      "Received transaction %s\n"
+                      (Bytes.to_string tx))
+                  preblock
+            | Error _err -> Stdlib.failwith "Error receiving preblock")
+          stream
+      in
+      return_unit)
+
 let make_prod_messages ~smart_rollup_address s =
   let open Lwt_result_syntax in
   let open Evm_node_lib_prod in
@@ -1049,6 +1084,7 @@ let commands =
     make_upgrade_command;
     init_from_rollup_node_command;
     send_dsn_message_command;
+    monitor_dsn_preblocks;
   ]
 
 let global_options = Tezos_clic.no_options
