@@ -1,32 +1,36 @@
-# Fetch records for Tezt generated on the last merge request pipeline
-# on the most recently merged MR and makes them available in artifacts
-# for future merge request pipelines.
+# This file was automatically generated, do not edit.
+# Edit file ci/bin/main.ml instead.
+
 oc.tezt:fetch-records:
-  extends:
-    - .default_settings_template
-    - .image_template__runtime_build_dependencies
-    - .rules__octez_changes
-    - .tags_template__build
+  image: ${build_deps_image_name}:runtime-build-dependencies--${build_deps_image_version}
   stage: build
-  before_script:
-    - ./scripts/ci/take_ownership.sh
-    - . ./scripts/version.sh
-    - eval $(opam env)
-  script:
-    - dune exec scripts/ci/update_records/update.exe -- --log-file tezt-fetch-records.log --test-arg from=last-merged-pipeline --info
-  after_script:
-    - ./scripts/ci/filter_corrupted_records.sh
-  # Allow failure of this job, since Tezt can use the records stored
-  # in the repo as backup for balancing.
+  tags:
+  - gcp
+  rules:
+  - changes:
+    - src/**/*
+    - etherlink/**/*
+    - tezt/**/*
+    - .gitlab/**/*
+    - .gitlab-ci.yml
+    - michelson_test_scripts/**/*
+    - tzt_reference_test_suite/**/*
+    when: on_success
+  dependencies: []
   allow_failure: true
+  script:
+  - dune exec scripts/ci/update_records/update.exe -- --log-file tezt-fetch-records.log
+    --test-arg from=last-merged-pipeline --info
+  after_script:
+  - ./scripts/ci/filter_corrupted_records.sh
+  before_script:
+  - ./scripts/ci/take_ownership.sh
+  - . ./scripts/version.sh
+  - eval $(opam env)
   artifacts:
-    paths:
-      - tezt-fetch-records.log
-      - tezt/records/*.json
-      # Keep broken records for debugging
-      - tezt/records/*.json.broken
-    # Always store artifacts to have the logs for debugging
-    when: always
-    # These artifacts are only used within this pipeline, so they
-    # don't need a long expiration time.
     expire_in: 4 hours
+    paths:
+    - tezt-fetch-records.log
+    - tezt/records/*.json
+    - tezt/records/*.json.broken
+    when: always

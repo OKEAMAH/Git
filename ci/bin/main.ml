@@ -954,6 +954,41 @@ let _job_build_kernels : job =
            {key = "kernels-sccache"; paths = ["_sccache"]};
          ]
 
+(* Fetch records for Tezt generated on the last merge request pipeline
+   on the most recently merged MR and makes them available in artifacts
+   for future merge request pipelines. *)
+let _job_tezt_fetch_records : job =
+  job_external
+  @@ job
+       ~name:"oc.tezt:fetch-records"
+       ~image:Images.runtime_build_dependencies
+       ~stage:Stages.build
+       ~before_script:
+         (before_script
+            ~take_ownership:true
+            ~source_version:true
+            ~eval_opam:true
+            [])
+       ~rules:[job_rule ~changes:changeset_octez ()]
+       [
+         "dune exec scripts/ci/update_records/update.exe -- --log-file \
+          tezt-fetch-records.log --test-arg from=last-merged-pipeline --info";
+       ]
+       ~after_script:["./scripts/ci/filter_corrupted_records.sh"]
+         (* Allow failure of this job, since Tezt can use the records
+            stored in the repo as backup for balancing. *)
+       ~allow_failure:Yes
+       ~artifacts:
+         (artifacts
+            ~expire_in:(Hours 4)
+            ~when_:Always
+            [
+              "tezt-fetch-records.log";
+              "tezt/records/*.json";
+              (* Keep broken records for debugging *)
+              "tezt/records/*.json.broken";
+            ])
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
