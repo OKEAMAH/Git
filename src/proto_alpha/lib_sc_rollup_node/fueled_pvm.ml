@@ -260,8 +260,6 @@ module Make_fueled (F : Fuel.S) : FUELED_PVM with type fuel = F.t = struct
           | Some fuel ->
               go fuel (Int64.succ current_tick) failing_ticks next_state)
       | Needs_reveal (Request_dal_page page_id) -> (
-          (* TODO: check if this is correct. It's not correct if function 'go'
-             can process many levels at once. *)
           let* content_opt =
             Dal_pages_request.page_content
               ~inbox_level:(Int32.of_int level)

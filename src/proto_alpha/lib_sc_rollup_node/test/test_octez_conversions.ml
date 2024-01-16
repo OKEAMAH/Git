@@ -239,7 +239,6 @@ let gen_slot_headers =
         (fun i (h : Octez_smart_rollup.Dal.Slot_header.t) ->
           (* patch the published level to comply with the invariants *)
           let published_level = Int32.(add min_level (of_int i)) in
-          (* Have lists of generic size here *)
           let h = {h with id = {h.id with published_level}} in
           (published_level, [h]))
         l

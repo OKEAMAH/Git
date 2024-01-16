@@ -224,7 +224,15 @@ module History : sig
       is not necessiraly activated in genesis block (e.g. this will be the case
       on mainnet) the skip list is reset at the first call to
       {!add_confirmed_slot_headers} to enfoce the invariant of having cells of
-      successive levels in the skip list. *)
+      successive levels in the skip list.
+
+      So, a skip list is initialized with this genesis cell. It's then replaced
+      with a growing (non-dummy) skip list as soon as an
+      {!add_confirmed_slot_headers} with a level bigger than
+      {!Raw_level_repr.root} is performed. This allows us activating Dal at any
+      level and having a contiguous skip list (w.r.t. L1 levels). This
+      representation allows us producing simpler proofs with a bounded history
+      cache. *)
   val genesis : t
 
   (** Returns the hash of an history. *)

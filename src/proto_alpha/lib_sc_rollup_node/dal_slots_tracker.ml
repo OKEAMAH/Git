@@ -319,7 +319,6 @@ module Confirmed_slots_history = struct
     in
     let*? level = Raw_level.of_int32 level |> Environment.wrap_tzresult in
     let*? slots_history, slots_cache =
-      (* TODO: should bump encoding version in the rollup node?*)
       Dal.Slots_history.add_confirmed_slot_headers
         slots_history
         slots_cache

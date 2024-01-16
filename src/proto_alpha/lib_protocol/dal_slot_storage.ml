@@ -77,29 +77,20 @@ let finalize_pending_slot_headers ctxt =
   let Constants_parametric_repr.{dal; _} = Raw_context.constants ctxt in
   match Raw_level_repr.(sub raw_level dal.attestation_lag) with
   | None -> return (ctxt, Dal_attestation_repr.empty)
-  | Some level_attested -> (
+  | Some level_attested ->
       let* seen_slots = Storage.Dal.Slot.Headers.find ctxt level_attested in
-      match seen_slots with
-      | None ->
-          (* Update the skip list even when no slot is attested, except at level
-             0, which it already initialized in genesis (with no slots
-             attested). *)
-          let* ctxt =
-            if Raw_level_repr.(level_attested > root) then
-              update_skip_list ctxt ~confirmed_slot_headers:[] ~level_attested
-            else return ctxt
-          in
-          return (ctxt, Dal_attestation_repr.empty)
-      | Some seen_slots ->
-          let rev_attested_slot_headers, attestation =
-            compute_attested_slot_headers ctxt seen_slots
-          in
-          let attested_slot_headers = List.rev rev_attested_slot_headers in
-          let* ctxt =
-            update_skip_list
-              ctxt
-              ~confirmed_slot_headers:attested_slot_headers
-              ~level_attested
-          in
-          let*! ctxt = Storage.Dal.Slot.Headers.remove ctxt level_attested in
-          return (ctxt, attestation))
+      let* ctxt, attestation, confirmed_slot_headers =
+        match seen_slots with
+        | None -> return (ctxt, Dal_attestation_repr.empty, [])
+        | Some seen_slots ->
+            let rev_attested_slot_headers, attestation =
+              compute_attested_slot_headers ctxt seen_slots
+            in
+            let attested_slot_headers = List.rev rev_attested_slot_headers in
+            let*! ctxt = Storage.Dal.Slot.Headers.remove ctxt level_attested in
+            return (ctxt, attestation, attested_slot_headers)
+      in
+      let* ctxt =
+        update_skip_list ctxt ~confirmed_slot_headers ~level_attested
+      in
+      return (ctxt, attestation)

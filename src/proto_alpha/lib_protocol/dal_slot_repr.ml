@@ -271,10 +271,6 @@ module History = struct
       published_level : Raw_level_repr.t;
       slot_headers : (Commitment.t * Dal_slot_index_repr.t) list;
     }
-    (* TODO: We could store the list of Dal_slot_index_repr.t as a bitset to
-       save space. With 256 slots max, we could use ~256 bits instead of ~256
-       bytes (divide by 8). Do we want such an optimization? If yes, in this MR?
-       The skip list or Merkle list solution we plan also optimize this part. *)
 
     let encoding =
       let open Data_encoding in
@@ -357,6 +353,11 @@ module History = struct
       in
       return @@ next ~prev_cell ~prev_cell_ptr elt
 
+    (** To produce a valid proof, the function [search] below assumes that the
+        co-domain of the [deref] function (implemented as a lookup in a provided
+        history cache in {!produce_proof_repr} below) should contain all the
+        skip list' cells from level [target_level] to level
+        [cell.published_level]. *)
     let search ~deref ~cell ~target_level =
       Lwt.search ~deref ~cell ~compare:(fun Content.{published_level; _} ->
           Raw_level_repr.compare published_level target_level)
@@ -383,17 +384,23 @@ module History = struct
         ~tag_size:`Uint8
         [
           case
-            ~title:"legacy"
+            ~title:"dal_skip_list_legacy"
             (Tag 0)
-            (Data_encoding.Fixed.bytes Hex 57)
+            (obj2
+               (req "kind" (constant "dal_skip_list_legacy"))
+               (req "skip_list" (Data_encoding.Fixed.bytes Hex 57)))
             (fun _ -> None)
-            (fun _ -> genesis);
+            (fun ((), _) -> genesis);
           case
-            ~title:"new"
+            ~title:"dal_skip_list_v2"
             (Tag 1)
-            (Skip_list.encoding Pointer_hash.encoding Content.encoding)
-            (fun x -> Some x)
-            (fun x -> x);
+            (obj2
+               (req "kind" (constant "dal_skip_list_v2"))
+               (req
+                  "skip_list"
+                  (Skip_list.encoding Pointer_hash.encoding Content.encoding)))
+            (fun x -> Some ((), x))
+            (fun ((), x) -> x);
         ]
 
     let equal_history : history -> history -> bool =
@@ -573,7 +580,12 @@ module History = struct
               on L1. The fields are similar to {!Page_confirmed} case except
               that the list of attested slots in [target_cell] doesn't cantain
               the page's slot index as the page is not confirmed. In this case,
-              there is no page data or page proof to provide as well. *)
+              there is no page data or page proof to provide as well.
+
+              As said above, in case the level of the page is far in the past
+              (i.e. the skip list was not populated yet) should be handled by
+              the caller. In fact, the [proof_repr] type here only cover levels
+              where a new cell has been added to the skip list. *)
 
     let proof_repr_encoding =
       let open Data_encoding in
@@ -764,7 +776,7 @@ module History = struct
         - The DAL has been activated,
         - The level of page is after DAL activation level.
 
-        Under these assumptions, twe recall that we maintain an invariant
+        Under these assumptions, we recall that we maintain an invariant
         ensuring that we a have a cell in the skip list at every level after DAL
         activation. *)
     let produce_proof_repr dal_params page_id ~page_info ~get_history slots_hist
