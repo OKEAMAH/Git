@@ -1324,6 +1324,25 @@ let _job_docker_hadolint =
          ]
        ["hadolint build.Dockerfile"; "hadolint Dockerfile"]
 
+let changeset_ocaml_files =
+  ["src/**/*"; "tezt/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"; "devtools/**/*"]
+
+let _job_ocaml_check =
+  job_external
+  @@ job
+       ~name:"ocaml-check"
+       ~image:Images.runtime_build_dependencies
+       ~stage:Stages.build
+       ~dependencies:(Dependent [Job trigger])
+       ~rules:[job_rule ~changes:changeset_ocaml_files ()]
+       ~before_script:
+         (before_script
+            ~take_ownership:true
+            ~source_version:true
+            ~eval_opam:true
+            [])
+       ["dune build @check"]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
