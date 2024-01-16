@@ -13,7 +13,7 @@
 
 (** String representation of a variable with the sigil-sign.
 
-    A handy alias of [If.show_var]. *)
+    A handy alias of [If.encode_var]. *)
 val show : If.var -> string
 
 (** Corresponds to [CHAT_CHANNEL].

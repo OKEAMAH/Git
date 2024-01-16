@@ -9,7 +9,7 @@ open Base
 
 type var = Var of string
 
-let show_var = function Var n -> "$" ^ n
+let encode_var = function Var n -> "$" ^ n
 
 type term = Str of string | Null
 
@@ -17,9 +17,9 @@ type t =
   | And of (t * t)
   | Or of (t * t)
   | Eq of (var * term)
+  | Neq of (var * term)
   | Match of (var * string)
   | Unmatch of (var * string)
-  | Neq of (var * term)
 
 let rec encode expr =
   let prio = function
@@ -45,10 +45,10 @@ let rec encode expr =
   match expr with
   | And (a, b) -> sf "%s && %s" (paren_opt a) (paren_opt b)
   | Or (a, b) -> sf "%s || %s" (paren_opt a) (paren_opt b)
-  | Eq (a, b) -> sf "%s == %s" (show_var a) (encode_term b)
-  | Neq (a, b) -> sf "%s != %s" (show_var a) (encode_term b)
-  | Match (a, b) -> sf "%s =~ %s" (show_var a) b
-  | Unmatch (a, b) -> sf "%s !~ %s" (show_var a) b
+  | Eq (a, b) -> sf "%s == %s" (encode_var a) (encode_term b)
+  | Neq (a, b) -> sf "%s != %s" (encode_var a) (encode_term b)
+  | Match (a, b) -> sf "%s =~ %s" (encode_var a) b
+  | Unmatch (a, b) -> sf "%s !~ %s" (encode_var a) b
 
 let var n = Var n
 

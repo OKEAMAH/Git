@@ -7,7 +7,7 @@
 
 open If
 
-let show = If.show_var
+let show = If.encode_var
 
 let chat_channel = var "CHAT_CHANNEL"
 

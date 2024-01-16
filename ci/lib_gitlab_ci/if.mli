@@ -8,11 +8,13 @@
 (** Predicates for GitLab [if:] expression, as used in [rules:] clauses. *)
 type t
 
-(** TODO *)
+(** Variables for GitLab [if:] expressions. *)
 type var
 
-(** TODO *)
-val show_var : var -> string
+(** The string representation of a variable.
+
+    In other words, [encode_var @@ "foo"] translates to ["$foo"]. *)
+val encode_var : var -> string
 
 (** Terms for predicates in GitLab [if:] clauses. *)
 type term
