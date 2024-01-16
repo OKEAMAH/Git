@@ -89,13 +89,13 @@ impl<Id: Decodable, Elt> Decodable for Pointer<Id, Elt> {
             return Err(rlp::DecoderError::RlpInvalidLength);
         }
         let mut it = decoder.iter();
-        let id = decode_field(&next(&mut it)?, "id")?;
         let previous = decode_option(&next(&mut it)?, "previous")?;
-        let next = decode_option(&next(&mut it)?, "next")?;
+        let nx = decode_option(&next(&mut it)?, "next")?;
+        let id = decode_field(&next(&mut it)?, "id")?;
 
         Ok(Pointer {
             id,
-            next,
+            next: nx,
             previous,
             _type: PhantomData,
         })
@@ -105,9 +105,9 @@ impl<Id: Decodable, Elt> Decodable for Pointer<Id, Elt> {
 impl<Id: Encodable, Elt> Encodable for Pointer<Id, Elt> {
     fn rlp_append(&self, stream: &mut RlpStream) {
         stream.begin_list(3);
-        stream.append(&self.id);
         append_option(stream, &self.previous);
         append_option(stream, &self.next);
+        stream.append(&self.id);
     }
 }
 
@@ -240,7 +240,7 @@ where
     /// Only save the back and front pointers.
     fn save(&self, host: &mut impl Runtime) -> Result<()> {
         storage::store_rlp(self, host, &self.path)
-            .context("cannot load linked list from the storage")
+            .context("cannot save linked list from the storage")
     }
 
     /// Load the LinkedList from the durable storage.
