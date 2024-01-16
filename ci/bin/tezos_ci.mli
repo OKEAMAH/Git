@@ -116,7 +116,15 @@ val enc_git_strategy : git_strategy -> string
 
     - Translates each {!dependency} to [needs:] and [dependencies:]
     keywords as detailed in the documentation of {!dependency}.
-    - Adds [tags:] based on [arch]. *)
+    - Adds [tags:] based on [arch] and [tags]:
+
+      - If only [arch] is set to [Amd64] (resp. [Arm64]) then the tag
+        ["gcp"] (resp ["gcp_arm64"]) is set.
+      - If only [tags] is set, then it is passed as is to the job's [tags:]
+        field.
+      - Setting both [arch] and [tags] throws an error.
+      - Omitting both [arch] and [tags] is equivalent to setting
+        [~arch:Amd64] and omitting [tags]. *)
 val job :
   ?arch:arch ->
   ?after_script:string list ->

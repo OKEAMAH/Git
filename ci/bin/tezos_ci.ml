@@ -98,15 +98,22 @@ let enc_git_strategy = function
   | Clone -> "clone"
   | No_strategy -> "none"
 
-let job ?(arch = Amd64) ?after_script ?allow_failure ?artifacts ?before_script
-    ?cache ?interruptible ?(dependencies = Staged) ?services ?variables ?rules
-    ?timeout ?tags ?git_strategy ?when_ ?coverage ?retry ?parallel ~image ~stage
-    ~name script : Gitlab_ci.Types.job =
+let job ?arch ?after_script ?allow_failure ?artifacts ?before_script ?cache
+    ?interruptible ?(dependencies = Staged) ?services ?variables ?rules ?timeout
+    ?tags ?git_strategy ?when_ ?coverage ?retry ?parallel ~image ~stage ~name
+    script : Gitlab_ci.Types.job =
   let tags =
     Some
-      (match tags with
-      | None -> [(match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64")]
-      | Some tags -> tags)
+      (match (arch, tags) with
+      | Some arch, None ->
+          [(match arch with Amd64 -> "gcp" | Arm64 -> "gcp_arm64")]
+      | None, Some tags -> tags
+      | None, None ->
+          (* By default, we assume Amd64 runners as given by the [gcp] tag. *)
+          ["gcp"]
+      | Some _, Some _ ->
+          failwith
+            "[job] cannot specify both [arch] and [tags] at the same time.")
   in
   let stage = Some (Stage.name stage) in
   let script = Some script in
