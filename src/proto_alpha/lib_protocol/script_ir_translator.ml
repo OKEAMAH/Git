@@ -2065,7 +2065,7 @@ let normalized_lam_rec ~unparse_code_rec ~stack_depth ctxt kdescr code_field =
 (*
              Some values, such as operations, tickets, or big map ids, are used only
              internally and are not allowed to be forged by users.
-             In [parse_data], both [allow_forged_lazy_storage_id] and [allow_forged_lazy_storage_id] should be [false] for:
+             In [parse_data], both [allow_forged_tickets] and [allow_forged_lazy_storage_id] should be [false] for:
              - PUSH
              - UNPACK
              - storage on origination
@@ -2074,7 +2074,7 @@ let normalized_lam_rec ~unparse_code_rec ~stack_depth ctxt kdescr code_field =
              - storage after origination.
              For
              - user-provided script parameters 
-             [allow_forged_lazy_storage_id] should be [false] but [allow_forged_tickets] should be [true] as users are allowed to transfer tickets.
+             [allow_forged_lazy_storage_id] should be [false] but [allow_forged_tickets] should be [true] as users are allowed to transfer tickets. Checking ticket ownership is handled by the ticket table.
            *)
 
 let rec parse_data :
