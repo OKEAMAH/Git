@@ -205,6 +205,9 @@ module Images = struct
     Image.register
       ~name:"opam_debian_bullseye"
       ~image_path:"ocaml/opam:debian-11"
+
+  let hadolint =
+    Image.register ~name:"hadolint" ~image_path:"hadolint/hadolint:2.9.3-debian"
 end
 
 let before_script ?(take_ownership = false) ?(source_version = false)
@@ -1302,6 +1305,24 @@ let _job_sanity_ci =
          (* Check that .gitlab-ci.yml is up to date. *)
          "make -C ci check";
        ]
+
+let changeset_docker_files = ["build.Dockerfile"; "Dockerfile"]
+
+let _job_docker_hadolint =
+  job_external
+  @@ job
+       ~name:"docker:hadolint"
+       ~image:Images.hadolint
+       ~stage:Stages.sanity
+       ~rules:
+         [
+           job_rule
+             ~if_:Rules.merge_request
+             ~changes:changeset_docker_files
+             ~allow_failure:Yes
+             ();
+         ]
+       ["hadolint build.Dockerfile"; "hadolint Dockerfile"]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
