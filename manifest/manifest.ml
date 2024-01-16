@@ -1457,6 +1457,7 @@ module Target = struct
     ?license:string ->
     ?extra_authors:string list ->
     ?with_macos_security_framework:bool ->
+    ?empty_mli:bool ->
     path:string ->
     'a ->
     t option
@@ -1510,7 +1511,8 @@ module Target = struct
       ?synopsis ?description ?(time_measurement_ppx = false)
       ?(available : available = Always) ?(virtual_modules = [])
       ?default_implementation ?(cram = false) ?license ?(extra_authors = [])
-      ?(with_macos_security_framework = false) ~path names =
+      ?(with_macos_security_framework = false) ?(empty_mli = false) ~path names
+      =
     let conflicts = List.filter_map Fun.id conflicts in
     let deps = List.filter_map Fun.id deps in
     let opam_only_deps = List.filter_map Fun.id opam_only_deps in
@@ -1826,6 +1828,27 @@ module Target = struct
             name
       | _, _, _ :: _ -> assert false
       | _ -> []
+    in
+    let generate_mli_rule =
+      if empty_mli then
+        let modules = match modules with Modules l -> l | _ -> assert false in
+        let modules =
+          List.filter_map
+            (fun ml ->
+              let mli = ml ^ ".mli" in
+              if Sys.file_exists (path // mli) then None else Some mli)
+            modules
+        in
+        List.map
+          (fun target ->
+            Dune.target_rule
+              target
+              ~action:[S "with-stdout-to"; S "%{target}"; [S "echo"; S ""]])
+          modules
+      else []
+    in
+    let dune =
+      List.fold_left (fun acc x -> Dune.(x :: acc)) dune generate_mli_rule
     in
     let dune =
       List.fold_right (fun x dune -> Dune.(x :: dune)) runtest_rules dune
@@ -2172,6 +2195,7 @@ let tezt ~opam ~path ?js_compatible ?modes ?(lib_deps = []) ?(exe_deps = [])
         ~linkall:true
         ?flags
         ~dune
+        ~empty_mli:true
         tezt_local_test_lib_name)
   in
   let tezt_target =
@@ -2419,6 +2443,7 @@ module Sub_lib = struct
        ?license
        ?extra_authors
        ?with_macos_security_framework
+       ?empty_mli:_
        ~path
        public_name ->
     if Option.is_some opam then

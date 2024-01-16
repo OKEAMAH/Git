@@ -885,6 +885,7 @@ type 'a maker =
   ?license:string ->
   ?extra_authors:string list ->
   ?with_macos_security_framework:bool ->
+  ?empty_mli:bool ->
   path:string ->
   'a ->
   target
