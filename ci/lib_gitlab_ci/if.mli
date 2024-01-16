@@ -56,3 +56,12 @@ val ( =~ ) : var -> string -> t
 
     Example: [var "foo" =~! str "/bar/"] translates to [$foo !~ "/bar/"]. *)
 val ( =~! ) : var -> string -> t
+
+(** Negation of a predicate.
+
+    If [t] evaluates to true, then [not t] evaluates to false.  Note
+    that [if:] expressions have no native negation operator. Therefore
+    this function works by rewriting the expression using de Morgan's
+    laws and swapping (negated) operators for their (un)negated
+    counter-parts. *)
+val not : t -> t
