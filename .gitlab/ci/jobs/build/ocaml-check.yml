@@ -1,7 +1,8 @@
 ocaml-check:
   extends:
-    - .tags_template__build
-    - .oc.build
+    - .default_settings_template
+    - .image_template__runtime_build_dependencies
+  stage: build
   needs: [trigger]
   rules:
     - changes:
@@ -12,5 +13,9 @@ ocaml-check:
           - .gitlab-ci.yml
           - devtools/**/*
       when: on_success
+  before_script:
+    - ./scripts/ci/take_ownership.sh
+    - . ./scripts/version.sh
+    - eval $(opam env)
   script:
     - dune build @check
