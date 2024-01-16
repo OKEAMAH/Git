@@ -4361,6 +4361,11 @@ and parse_instr :
       let instr = {apply = (fun k -> IAmount (loc, k))} in
       let stack = Item_t (mutez_t, stack) in
       typed ctxt loc instr stack
+  | Prim (loc, I_CNT, [], annot), stack ->
+      let*? () = check_var_annot loc annot in
+      let instr = {apply = (fun k -> ICnt (loc, k))} in
+      let stack = Item_t (Int_t, stack) in
+      typed ctxt loc instr stack
   | Prim (loc, I_CHAIN_ID, [], annot), stack ->
       let*? () = check_var_annot loc annot in
       let instr = {apply = (fun k -> IChainId (loc, k))} in
@@ -4639,7 +4644,7 @@ and parse_instr :
            | I_EDIV | I_OR | I_AND | I_XOR | I_NOT | I_ABS | I_NEG | I_LSL
            | I_LSR | I_COMPARE | I_EQ | I_NEQ | I_LT | I_GT | I_LE | I_GE
            | I_TRANSFER_TOKENS | I_SET_DELEGATE | I_NOW | I_MIN_BLOCK_TIME
-           | I_IMPLICIT_ACCOUNT | I_AMOUNT | I_BALANCE | I_LEVEL
+           | I_IMPLICIT_ACCOUNT | I_AMOUNT | I_CNT | I_BALANCE | I_LEVEL
            | I_CHECK_SIGNATURE | I_HASH_KEY | I_SOURCE | I_SENDER | I_BLAKE2B
            | I_SHA256 | I_SHA512 | I_ADDRESS | I_RENAME | I_PACK | I_ISNAT
            | I_INT | I_SELF | I_CHAIN_ID | I_NEVER | I_VOTING_POWER
@@ -4745,6 +4750,7 @@ and parse_instr :
              I_CAR;
              I_CDR;
              I_CHECK_SIGNATURE;
+             I_CNT;
              I_COMPARE;
              I_CONCAT;
              I_CONS;

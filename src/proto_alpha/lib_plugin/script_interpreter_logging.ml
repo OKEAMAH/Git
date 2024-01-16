@@ -1325,6 +1325,15 @@ module Stack_utils = struct
                  continuation = k;
                  reconstruct = (fun k -> IAmount (loc, k));
                }
+      | ICnt (loc, k), s ->
+          let s = Item_t (int_t, s) in
+          return
+          @@ Ex_split_kinstr
+               {
+                 cont_init_stack = s;
+                 continuation = k;
+                 reconstruct = (fun k -> ICnt (loc, k));
+               }
       | ISapling_empty_state (loc, memo_size, k), s ->
           return
           @@ Ex_split_kinstr

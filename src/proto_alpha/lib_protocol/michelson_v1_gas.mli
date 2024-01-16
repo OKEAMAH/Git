@@ -371,6 +371,8 @@ module Cost_of : sig
 
     val amount : Gas.cost
 
+    val cnt : Gas.cost
+
     val chain_id : Gas.cost
 
     val unpack : bytes -> Gas.cost

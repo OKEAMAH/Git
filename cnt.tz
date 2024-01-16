@@ -1,4 +1,3 @@
 parameter unit ;
 storage int ;
-code { # This contract pushes counter and the counter is increased and pushed to the stack
-       DROP ; CNT ; NIL operation ; PAIR} ;
+code { DROP ; CNT ; NIL operation ; PAIR} ;

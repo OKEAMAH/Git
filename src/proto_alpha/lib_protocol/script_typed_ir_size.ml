@@ -604,6 +604,7 @@ and kinstr_size :
           (base1 loc k +! (word_size *? 2) +! Entrypoint.in_memory_size s)
     | ISelf_address (loc, k) -> ret_succ_adding accu (base1 loc k)
     | IAmount (loc, k) -> ret_succ_adding accu (base1 loc k)
+    | ICnt (loc, k) -> ret_succ_adding accu (base1 loc k)
     | ISapling_empty_state (loc, m, k) ->
         ret_succ_adding
           accu

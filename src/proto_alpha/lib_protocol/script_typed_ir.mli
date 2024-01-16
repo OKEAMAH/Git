@@ -947,6 +947,9 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
   | IAmount :
       Script.location * (Tez.t, 'a * 'S, 'r, 'F) kinstr
       -> ('a, 'S, 'r, 'F) kinstr
+  | ICnt :
+      Script.location * (z num, 'a * 'S, 'r, 'F) kinstr
+      -> ('a, 'S, 'r, 'F) kinstr
   | ISapling_empty_state :
       Script.location
       * Sapling.Memo_size.t

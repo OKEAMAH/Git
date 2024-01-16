@@ -366,6 +366,7 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
   | ISelf _ -> Interp_costs.self
   | ISelf_address _ -> Interp_costs.self_address
   | IAmount _ -> Interp_costs.amount
+  | ICnt _ -> Interp_costs.cnt
   | IDig (_, n, _, _) -> Interp_costs.dign n
   | IDug (_, n, _, _) -> Interp_costs.dugn n
   | IDipn (_, n, _, _, _) -> Interp_costs.dipn n

@@ -588,6 +588,7 @@ module Script : sig
     | I_CDR
     | I_CHAIN_ID
     | I_CHECK_SIGNATURE
+    | I_CNT
     | I_COMPARE
     | I_CONCAT
     | I_CONS

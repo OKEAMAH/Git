@@ -3285,6 +3285,13 @@ module Registration_section = struct
 
     let () =
       simple_time_alloc_benchmark
+        ~name:Interpreter_workload.N_ICnt
+        ~stack_type:(unit @$ bot)
+        ~kinstr:(ICnt (dummy_loc, halt))
+        ()
+
+    let () =
+      simple_time_alloc_benchmark
         ~name:Interpreter_workload.N_IChainId
         ~stack_type:(unit @$ bot)
         ~kinstr:(IChainId (dummy_loc, halt))

@@ -198,6 +198,7 @@ type instruction_name =
   | N_ISelf
   | N_ISelf_address
   | N_IAmount
+  | N_ICnt
   | N_ISapling_empty_state
   | N_ISapling_verify_update
   | N_IDig
@@ -401,6 +402,7 @@ let string_of_instruction_name : instruction_name -> string =
   | N_ISender -> "N_ISender"
   | N_ISelf -> "N_ISelf"
   | N_IAmount -> "N_IAmount"
+  | N_ICnt -> "N_ICnt"
   | N_IDig -> "N_IDig"
   | N_IDug -> "N_IDug"
   | N_IDipN -> "N_IDipN"
@@ -684,6 +686,7 @@ let all_instructions =
     N_IXor_bytes;
     N_INot_bytes;
     N_IUnit;
+    N_ICnt;
   ]
 
 (* Changing the ordering breaks the workload file compatibility *)
@@ -1084,6 +1087,8 @@ module Instructions = struct
 
   let amount = ir_sized_step N_IAmount nullary
 
+  let cnt = ir_sized_step N_ICnt nullary
+
   let dig depth = ir_sized_step N_IDig (unary "depth" depth)
 
   let dug depth = ir_sized_step N_IDug (unary "depth" depth)
@@ -1482,6 +1487,7 @@ let extract_ir_sized_step :
   | ISelf (_, _, _, _), _ -> Instructions.self
   | ISelf_address (_, _), _ -> Instructions.self_address
   | IAmount (_, _), _ -> Instructions.amount
+  | ICnt (_, _), _ -> Instructions.cnt
   | ISapling_empty_state (_, _, _), _ -> Instructions.sapling_empty_state
   | ISapling_verify_update (_, _), (transaction, (_state, _)) ->
       let inputs = Size.sapling_transaction_inputs transaction in

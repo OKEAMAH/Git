@@ -64,6 +64,7 @@ type prim =
   | I_CDR
   | I_CHAIN_ID
   | I_CHECK_SIGNATURE
+  | I_CNT
   | I_COMPARE
   | I_CONCAT
   | I_CONS
@@ -208,7 +209,7 @@ let namespace = function
   | D_Elt | D_False | D_Left | D_None | D_Pair | D_Right | D_Some | D_True
   | D_Unit | D_Lambda_rec ->
       Constant_namespace
-  | I_ABS | I_ADD | I_ADDRESS | I_AMOUNT | I_AND | I_APPLY | I_BALANCE
+  | I_ABS | I_ADD | I_ADDRESS | I_AMOUNT | I_CNT | I_AND | I_APPLY | I_BALANCE
   | I_BLAKE2B | I_CAR | I_CAST | I_CDR | I_CHAIN_ID | I_CHECK_SIGNATURE
   | I_COMPARE | I_CONCAT | I_CONS | I_CONTRACT | I_CREATE_ACCOUNT
   | I_CREATE_CONTRACT | I_DIG | I_DIP | I_DROP | I_DUG | I_DUP | I_VIEW | I_EDIV
@@ -277,6 +278,7 @@ let string_of_prim = function
   | I_CDR -> "CDR"
   | I_CHAIN_ID -> "CHAIN_ID"
   | I_CHECK_SIGNATURE -> "CHECK_SIGNATURE"
+  | I_CNT -> "CNT"
   | I_COMPARE -> "COMPARE"
   | I_CONCAT -> "CONCAT"
   | I_CONS -> "CONS"
@@ -441,6 +443,7 @@ let prim_of_string =
   | "COMPARE" -> return I_COMPARE
   | "CONCAT" -> return I_CONCAT
   | "CONS" -> return I_CONS
+  | "CNT" -> return I_CNT
   | "CREATE_ACCOUNT" -> return I_CREATE_ACCOUNT
   | "CREATE_CONTRACT" -> return I_CREATE_CONTRACT
   | "IMPLICIT_ACCOUNT" -> return I_IMPLICIT_ACCOUNT
@@ -792,7 +795,8 @@ let prim_encoding =
          ("LAMBDA_REC", I_LAMBDA_REC);
          ("TICKET", I_TICKET);
          ("BYTES", I_BYTES);
-         ("NAT", I_NAT)
+         ("NAT", I_NAT);
+         ("CNT", I_CNT)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *);
        ]

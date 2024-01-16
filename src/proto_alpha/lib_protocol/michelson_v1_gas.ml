@@ -453,6 +453,8 @@ module Cost_of = struct
 
     let chain_id = atomic_step_cost cost_N_IChainId
 
+    let cnt = atomic_step_cost cost_N_ICnt
+
     let ticket = atomic_step_cost cost_N_ITicket
 
     let read_ticket = atomic_step_cost cost_N_IRead_ticket

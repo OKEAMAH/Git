@@ -1368,6 +1368,19 @@ module Raw = struct
           | IAmount (_, k) ->
               let accu = sc.amount and stack = (accu, stack) in
               (step [@ocaml.tailcall]) g gas k ks accu stack
+          | ICnt (_, k) ->
+              let ctxt = update_context gas ctxt in
+              let* ctxt = Cnt.increase ctxt in
+              let* new_counter_int = Cnt.get ctxt in
+              let new_counter = Script_int.of_int32 new_counter_int in
+              let gas, ctxt = local_gas_counter_and_outdated_context ctxt in
+              (step [@ocaml.tailcall])
+                (ctxt, sc)
+                gas
+                k
+                ks
+                new_counter
+                (accu, stack)
           | IDig (_, _n, n', k) ->
               let (accu, stack), x =
                 interp_stack_prefix_preserving_operation

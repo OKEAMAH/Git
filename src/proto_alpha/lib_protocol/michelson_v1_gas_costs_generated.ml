@@ -500,6 +500,18 @@ let cost_N_IAmount_alloc = S.safe_int 15
 (* let time = 10. in let alloc = 12. in max 10 (max time alloc) *)
 let cost_N_IAmount_synthesized = S.safe_int 15
 
+(* model interpreter/N_ICnt *)
+(* max 10 10. *)
+let cost_N_ICnt = S.safe_int 10
+
+(* model interpreter/N_ICnt_alloc *)
+(* max 10 12. *)
+let cost_N_ICnt_alloc = S.safe_int 15
+
+(* model interpreter/N_ICnt_synthesized *)
+(* let time = 10. in let alloc = 12. in max 10 (max time alloc) *)
+let cost_N_ICnt_synthesized = S.safe_int 15
+
 (* model interpreter/N_IAnd *)
 (* max 10 10. *)
 let cost_N_IAnd = S.safe_int 10

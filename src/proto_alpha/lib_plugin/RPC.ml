@@ -1073,6 +1073,7 @@ module Scripts = struct
       | ISelf _ -> pp_print_string fmt "SELF"
       | ISelf_address _ -> pp_print_string fmt "SELF_ADDRESS"
       | IAmount _ -> pp_print_string fmt "AMOUNT"
+      | ICnt _ -> pp_print_string fmt "CNT"
       | ISapling_empty_state _ -> pp_print_string fmt "SAPLING_EMPTY_STATE"
       | ISapling_verify_update _ | ISapling_verify_update_deprecated _ ->
           pp_print_string fmt "SAPLING_VERIFY_UPDATE"

@@ -960,6 +960,9 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
   | IAmount :
       Script.location * (Tez.t, 'a * 'S, 'r, 'F) kinstr
       -> ('a, 'S, 'r, 'F) kinstr
+  | ICnt :
+      Script.location * (z num, 'a * 'S, 'r, 'F) kinstr
+      -> ('a, 'S, 'r, 'F) kinstr
   | ISapling_empty_state :
       Script.location
       * Sapling.Memo_size.t
@@ -1669,6 +1672,7 @@ let kinstr_location : type a s b f. (a, s, b, f) kinstr -> Script.location =
   | ISelf (loc, _, _, _) -> loc
   | ISelf_address (loc, _) -> loc
   | IAmount (loc, _) -> loc
+  | ICnt (loc, _) -> loc
   | ISapling_empty_state (loc, _, _) -> loc
   | ISapling_verify_update (loc, _) -> loc
   | ISapling_verify_update_deprecated (loc, _) -> loc
@@ -2248,6 +2252,7 @@ let kinstr_traverse i init f =
     | ISelf (_, _, _, k) -> (next [@ocaml.tailcall]) k
     | ISelf_address (_, k) -> (next [@ocaml.tailcall]) k
     | IAmount (_, k) -> (next [@ocaml.tailcall]) k
+    | ICnt (_, k) -> (next [@ocaml.tailcall]) k
     | ISapling_empty_state (_, _, k) -> (next [@ocaml.tailcall]) k
     | ISapling_verify_update (_, k) -> (next [@ocaml.tailcall]) k
     | ISapling_verify_update_deprecated (_, k) -> (next [@ocaml.tailcall]) k
