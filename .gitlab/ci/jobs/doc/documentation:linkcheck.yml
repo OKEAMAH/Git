@@ -9,7 +9,7 @@ documentation:linkcheck:
   rules:
   - if: $CI_PIPELINE_SOURCE == "schedule" && $TZ_SCHEDULE_KIND == "EXTENDED_TESTS"
     when: always
-  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|[,])ci--docs(?:$|[,])/
+  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|,)ci--docs(?:$|,)/
     when: on_success
   - when: manual
     allow_failure: true

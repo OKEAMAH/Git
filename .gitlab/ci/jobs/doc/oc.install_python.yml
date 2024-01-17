@@ -13,7 +13,7 @@ oc.install_python_focal:
     - docs/developer/install-python-debian-ubuntu.sh
     if: $CI_PIPELINE_SOURCE == "merge_request_event"
     when: on_success
-  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|[,])ci--docs(?:$|[,])/
+  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|,)ci--docs(?:$|,)/
     when: on_success
   - when: manual
     allow_failure: true
@@ -35,7 +35,7 @@ oc.install_python_jammy:
     - docs/developer/install-python-debian-ubuntu.sh
     if: $CI_PIPELINE_SOURCE == "merge_request_event"
     when: on_success
-  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|[,])ci--docs(?:$|[,])/
+  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|,)ci--docs(?:$|,)/
     when: on_success
   - when: manual
     allow_failure: true
@@ -57,7 +57,7 @@ oc.install_python_bullseye:
     - docs/developer/install-python-debian-ubuntu.sh
     if: $CI_PIPELINE_SOURCE == "merge_request_event"
     when: on_success
-  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|[,])ci--docs(?:$|[,])/
+  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|,)ci--docs(?:$|,)/
     when: on_success
   - when: manual
     allow_failure: true

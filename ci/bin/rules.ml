@@ -47,4 +47,4 @@ let triggered_by_marge_bot =
   Predefined_vars.gitlab_user_login == str "nomadic-margebot"
 
 let has_mr_label label =
-  Predefined_vars.ci_merge_request_labels =~ "/(?:^|[,])" ^ label ^ "(?:$|[,])/"
+  Predefined_vars.ci_merge_request_labels =~ "/(?:^|,)" ^ label ^ "(?:$|,)/"

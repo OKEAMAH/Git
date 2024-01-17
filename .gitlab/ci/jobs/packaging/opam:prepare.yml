@@ -10,7 +10,7 @@ opam:prepare:
   - if: $CI_PIPELINE_SOURCE == "schedule" && $TZ_SCHEDULE_KIND == "EXTENDED_TESTS"
     when: delayed
     start_in: 1 minute
-  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|[,])ci--opam(?:$|[,])/
+  - if: $CI_MERGE_REQUEST_LABELS =~ /(?:^|,)ci--opam(?:$|,)/
     when: delayed
     start_in: 1 minute
   - changes:
