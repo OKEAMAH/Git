@@ -25,10 +25,11 @@
 
 let originate_new_rollup ?(alias = "rollup")
     ?(boot_sector = Constant.wasm_echo_kernel_boot_sector)
-    ?(parameters_ty = "bytes") ~src client =
+    ?(parameters_ty = "bytes") ?force ~src client =
   let* rollup =
     Client.Sc_rollup.originate
       client
+      ?force
       ~wait:"2"
       ~alias
       ~src
@@ -41,8 +42,8 @@ let originate_new_rollup ?(alias = "rollup")
   return rollup
 
 let setup_l2_node ?preimages_dir ?(mode = Sc_rollup_node.Operator) ?runner ?name
-    ?loser_mode ?(log_kernel_debug = false) ?operator ?metrics_port client node
-    rollup =
+    ?loser_mode ?(log_kernel_debug = false) ?operator ?operators ?metrics_port
+    client node rollup =
   let rollup_node =
     Sc_rollup_node.create
       ?runner
@@ -50,6 +51,7 @@ let setup_l2_node ?preimages_dir ?(mode = Sc_rollup_node.Operator) ?runner ?name
       ?loser_mode
       ~base_dir:(Client.base_dir client)
       ?default_operator:operator
+      ?operators
       ?metrics_port
       mode
       node
@@ -76,6 +78,9 @@ let setup_l2_node ?preimages_dir ?(mode = Sc_rollup_node.Operator) ?runner ?name
   let* () = Sc_rollup_node.wait_for_ready rollup_node in
   Log.info "Smart rollup node started." ;
   return rollup_node
+
+let setup_evm_node rollup_node =
+  Evm_node.init ~rpc_port:8545 (Sc_rollup_node.endpoint rollup_node)
 
 let game_in_progress ~staker rollup_address client =
   let* game =
@@ -203,6 +208,28 @@ let get_or_gen_keys ~alias client =
     return @@ Account.parse_client_output ~alias ~client_output
   else Client.gen_and_show_keys ~alias client
 
+let gen_keys_then_transfer_tez ~giver:_ ?(amount = Tez.of_int 500) client n =
+  let* keys, _multiple_transfers_json_batch =
+    let str_amount = Tez.to_string amount in
+    fold n ([], []) (fun i (keys, json_batch_dest) ->
+        let* key = get_or_gen_keys client ~alias:("tezt_" ^ string_of_int i) in
+        let json_batch_dest =
+          `O
+            [("destination", `String key.alias); ("amount", `String str_amount)]
+          :: json_batch_dest
+        in
+        let keys = key :: keys in
+        return (keys, json_batch_dest))
+  in
+  (*   let*! () = *)
+  (*     Client.multiple_transfers *)
+  (*       ~giver *)
+  (*       ~json_batch:(JSON.encode_u (`A multiple_transfers_json_batch)) *)
+  (*       ~burn_cap:(Tez.of_int 10) *)
+  (*       client *)
+  (*   in *)
+  return keys
+
 let gen_tx_cmd cmd =
   Process.spawn
     ~name:"tx_gen"
@@ -230,6 +257,29 @@ let gen_transactions rollup_address nonce ~accounts_file =
          (String.trim output
          |> String.map (function '\n' -> ' ' | '\'' -> '"' | c -> c))
        |> as_list |> List.map as_string)
+
+let spam_oracle_transactions ~private_key evm_node ~accounts_file =
+  let evm_node_endpoint = Evm_node.endpoint evm_node in
+  let value =
+    gen_tx_cmd
+      [
+        "spam_oracle_transactions"; evm_node_endpoint; private_key; accounts_file;
+      ]
+  in
+  Runnable.{value; run = Process.check}
+
+let spam_transactions evm_node ~accounts_file ~nonce =
+  let evm_node_endpoint = Evm_node.endpoint evm_node in
+  let value =
+    gen_tx_cmd
+      [
+        "spam_transactions";
+        evm_node_endpoint;
+        accounts_file;
+        string_of_int nonce;
+      ]
+  in
+  Runnable.{value; run = Process.check}
 
 (** A smart rollup test, using latest evm kernel. It starts 1 operator
     rollup node, 2 batcher node, 1 accuser and 1 observer. It creates
@@ -281,6 +331,7 @@ let simple_use_case_rollup ~(testnet : unit -> Testnet.t) () =
       ~boot_sector
       ~alias:rollup_alias
       ~src:operator2.alias
+      ~force:true
       client
   in
   let* operator_node1 =
@@ -400,6 +451,135 @@ let simple_use_case_rollup ~(testnet : unit -> Testnet.t) () =
   in
   unit
 
+let fill_inbox_with_tx ~(testnet : unit -> Testnet.t) () =
+  let oracle_account_file = Temp.file "private_key.yaml" in
+  let number_of_oracle = 100 in
+  let number_of_account_per_oracle = 100 in
+  let*! () = gen_accounts number_of_oracle ~output:oracle_account_file in
+  let config_file = Temp.file "config.yaml" in
+  let*! () =
+    gen_config ~accounts_file:oracle_account_file ~output:config_file
+  in
+  let preimages_dir = Temp.dir "preimages" in
+  let* {boot_sector; _} =
+    Sc_rollup_helpers.prepare_installer_kernel
+      ~base_installee:"./"
+      ~preimages_dir
+      ~config:(`Path config_file)
+      "evm_kernel"
+  in
+  let testnet = testnet () in
+  let* client, node = Helpers.setup_octez_node ~testnet () in
+  let min_oracle_balance_batching = Tez.(of_mutez_int 50_000_000) in
+  let* oracle = get_or_gen_keys ~alias:"oracle" client in
+  let* () =
+    Lwt.join
+      [
+        Helpers.wait_for_funded_key
+          node
+          client
+          min_oracle_balance_batching
+          oracle;
+      ]
+  in
+  let* keys = gen_keys_then_transfer_tez ~giver:oracle.alias client 17 in
+  let* () =
+    Lwt.join
+    @@ List.map
+         (fun key ->
+           Helpers.wait_for_funded_key
+             node
+             client
+             min_oracle_balance_batching
+             key)
+         keys
+  in
+  let msg_sender, batchers =
+    match keys with hd :: rest -> (hd, rest) | _ -> assert false
+  in
+  let rollup_alias = "evm_rollup_huge_inbox_case" in
+  let* _rollup_address =
+    originate_new_rollup
+      ~boot_sector
+      ~alias:rollup_alias
+      ~src:msg_sender.alias
+      ~force:true
+      client
+  in
+  let* observer_node =
+    setup_l2_node
+      ~name:"rollup-observer"
+      ~mode:Sc_rollup_node.Observer
+      ~preimages_dir
+      ~log_kernel_debug:true
+      client
+      node
+      rollup_alias
+  in
+  let* batcher_node =
+    setup_l2_node
+      ~name:"rollup-batcher"
+      ~mode:Sc_rollup_node.Batcher
+      ~operators:
+        (List.map
+           (fun key -> (Sc_rollup_node.Batching, key.Account.alias))
+           batchers)
+      ~preimages_dir
+      ~log_kernel_debug:true
+      client
+      node
+      rollup_alias
+  in
+  let* evm_node = setup_evm_node batcher_node in
+  let wait_sync node =
+    let* _level = Sc_rollup_node.wait_sync ~timeout:30. node in
+    unit
+  in
+  let wait_and_sync_all level =
+    let node_level = Node.get_last_seen_level node in
+    let level = Int.max node_level level in
+    let* level = Node.wait_for_level node (level + 1)
+    and* () = Lwt.join [wait_sync observer_node; wait_sync batcher_node] in
+    return level
+  in
+  let* all_accounts =
+    JSON.parse_file oracle_account_file
+    |> JSON.as_list
+    |> List.map JSON.(fun j -> j |-> "privateKey" |> as_string)
+    |> List.mapi (fun i oracle_private_key ->
+           let accounts_file =
+             Temp.file ("accounts" ^ string_of_int i ^ ".yaml")
+           in
+           let*! () =
+             gen_accounts number_of_account_per_oracle ~output:accounts_file
+           in
+           let*! () =
+             spam_oracle_transactions
+               ~private_key:oracle_private_key
+               ~accounts_file
+               evm_node
+           in
+           JSON.parse_file accounts_file |> JSON.as_list |> return)
+    |> Lwt.all
+  in
+  let all_accounts =
+    `A (List.flatten all_accounts |> List.map JSON.unannotate)
+  in
+  let all_accounts_file = Temp.file "accounts.yaml" in
+  let () = JSON.encode_to_file_u all_accounts_file all_accounts in
+  let level = Node.get_last_seen_level node in
+  let* level = wait_and_sync_all level in
+  let number_of_blocks = 1_000_000 in
+  let* _level =
+    fold number_of_blocks level @@ fun nonce level ->
+    let* level = wait_and_sync_all level in
+    let*! () =
+      spam_transactions evm_node ~accounts_file:all_accounts_file ~nonce
+    in
+    return level
+  in
+  unit
+
 let register ~testnet =
   Test.register
     ~__FILE__
@@ -410,4 +590,9 @@ let register ~testnet =
     ~__FILE__
     ~title:"Simple rollup use case"
     ~tags:["rollup"; "accuser"; "node"; "batcher"]
-    (simple_use_case_rollup ~testnet)
+    (simple_use_case_rollup ~testnet) ;
+  Test.register
+    ~__FILE__
+    ~title:"fill rollup inbox with valid transaction"
+    ~tags:["rollup"; "inbox"]
+    (fill_inbox_with_tx ~testnet)
