@@ -4492,7 +4492,6 @@ module Test_dal_with_rollups_at_different_levels = struct
       level and check that the rollup doesn't process the slot. *)
   let test_scenario_slot_published_with_origination _protocol parameters
       dal_node sc_rollup_node _sc_rollup_address _node client pvm_name =
-    let num_slots = parameters.Dal.Parameters.number_of_slots in
     let slot_size = parameters.Dal.Parameters.cryptobox.slot_size in
     let attestation_lag = parameters.Dal.Parameters.attestation_lag in
     let* init_level = Client.level client in
@@ -4520,14 +4519,7 @@ module Test_dal_with_rollups_at_different_levels = struct
       start_rollup_node sc_rollup_node;
     ]
     @ bake_n client dal_node_opt ~num_blocks:(attestation_lag - 3)
-    @ [
-        attest_dal_slots ~num_slots client dal_node;
-        bake;
-        bake;
-        bake;
-        bake;
-        exec lambda;
-      ]
+    @ [bake; bake; bake; bake; exec lambda]
 end
 
 let register ~protocols =
