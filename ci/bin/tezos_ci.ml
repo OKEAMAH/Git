@@ -102,6 +102,12 @@ let job ?arch ?after_script ?allow_failure ?artifacts ?before_script ?cache
     ?interruptible ?(dependencies = Staged) ?services ?variables ?rules ?timeout
     ?tags ?git_strategy ?when_ ?coverage ?retry ?parallel ~image ~stage ~name
     script : Gitlab_ci.Types.job =
+  (match (rules, when_) with
+  | Some _, Some _ ->
+      failwith
+        "[job] do not use [~when_] and [~rules] at the same time -- it's \
+         confusing."
+  | _ -> ()) ;
   let tags =
     Some
       (match (arch, tags) with
