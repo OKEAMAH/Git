@@ -54,6 +54,11 @@ let enc_when_artifact : when_artifact -> value = function
   | On_failure -> `String "on_failure"
   | On_success -> `String "on_success"
 
+let enc_when_job : when_job -> value = function
+  | Always -> `String "always"
+  | On_success -> `String "on_success"
+  | Manual -> `String "manual"
+
 let enc_workflow_rule : workflow_rule -> value =
  fun {changes; if_; variables; when_} ->
   obj_flatten
@@ -206,7 +211,7 @@ let enc_job : job -> value =
       opt "services" enc_services services;
       opt "variables" enc_variables variables;
       opt "artifacts" enc_artifacts artifacts;
-      opt "when" enc_when when_;
+      opt "when" enc_when_job when_;
       opt "coverage" string coverage;
       opt "retry" int retry;
       opt "parallel" int parallel;

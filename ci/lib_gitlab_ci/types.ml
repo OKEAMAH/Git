@@ -23,6 +23,9 @@ type time_interval =
 (** Represents values of the [when:] field in job rules. *)
 type when_ = Always | Never | On_success | Manual | Delayed of time_interval
 
+(** Represents values of the [when:] field of jobs. *)
+type when_job = Always | On_success | Manual
+
 (** Represents values of the [when:] field in [workflow:] and [include:] rules. *)
 type when_workflow = Always | Never
 
@@ -99,7 +102,7 @@ type job = {
   variables : variables option;
   timeout : time_interval option;
   tags : string list option;
-  when_ : when_ option;
+  when_ : when_job option;
   coverage : string option;
       (** Note: the job field [coverage] is not to be confused with
           {!coverage_report}.
