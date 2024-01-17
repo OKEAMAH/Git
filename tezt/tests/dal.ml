@@ -4239,7 +4239,7 @@ module Tx_kernel_e2e = struct
 end
 
 module Test_dal_with_rollups_at_different_levels = struct
-  (* 1. The kind of actions we may take. Each action is achieved in its given
+  (* 1. The kind of actions we may take. Each action will be executed in its given
      context. *)
   type action =
     | Bake of {client : Client.t; dal_node : Dal_node.t option}
@@ -4364,7 +4364,7 @@ module Test_dal_with_rollups_at_different_levels = struct
               List.filter (fun i -> attestable_slots.(i)) slots
             in
             match slots with
-            | [] -> unit (* This include not being in committee. *)
+            | [] -> unit (* This includes not being in committee. *)
             | _ ->
                 let* (`OpHash _h) =
                   inject_dal_attestation
@@ -4385,7 +4385,7 @@ module Test_dal_with_rollups_at_different_levels = struct
       cont ()
   end
 
-  (* 4. The function that iterate on the actions *)
+  (* 4. The function that iterates on the actions. *)
   let run_scenario scenario =
     let open Do_action in
     let rec aux ?rollup actions () =
