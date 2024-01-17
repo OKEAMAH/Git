@@ -131,6 +131,11 @@ module Rpc = struct
     {service; method_; encode; decode}
 end
 
+type 'response streamed_call_handler = {
+  stream : 'response Lwt_stream.t;
+  request_handler : unit tzresult Lwt.t;
+}
+
 let create_http2_connection ~error_handler socket =
   let open Lwt_result_syntax in
   Lwt.catch
@@ -202,3 +207,39 @@ let call (type request response) ?timeout ~(rpc : (request, response) Rpc.t)
            tzfail @@ Timeout timeout)
   in
   Lwt.choose @@ (grpc_handler :: Option.to_list timeout_handler_opt)
+
+let streamed_call (type request response) ~(rpc : (request, response) Rpc.t)
+    ?(error_handler = ignore) ?(on_grpc_closed_connection = ignore)
+    ?(on_http2_closed_connection = ignore) http2_connection message =
+  let open Lwt_result_syntax in
+  let stream, notify = Lwt.task () in
+  let encoded_message = rpc.encode message in
+  let request_handler =
+    let*! res =
+      Grpc_lwt.Client.call
+        ~service:rpc.service
+        ~rpc:rpc.method_
+        ~do_request:(H2_lwt_unix.Client.request http2_connection ~error_handler)
+        ~handler:
+          (Grpc_lwt.Client.Rpc.server_streaming
+             encoded_message
+             ~f:(fun response_stream ->
+               let decoded_stream =
+                 Lwt_stream.map
+                   (fun response -> rpc.decode response)
+                   response_stream
+               in
+               let () = Lwt.wakeup notify decoded_stream in
+               Lwt.return ()))
+        ()
+    in
+    match res with
+    | Ok ((), grpc_status) ->
+        on_grpc_closed_connection grpc_status ;
+        return ()
+    | Error http2_status ->
+        on_http2_closed_connection http2_status ;
+        return ()
+  in
+  let*! stream in
+  return {request_handler; stream}

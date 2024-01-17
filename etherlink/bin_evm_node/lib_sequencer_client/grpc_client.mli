@@ -33,6 +33,14 @@ module Rpc : sig
     ('request, 'response) t
 end
 
+(** The return type of [streamed_call] requests. *)
+type 'response streamed_call_handler = private {
+  stream : 'response Lwt_stream.t;
+      (** The stream where responses from the server are pushed to. *)
+  request_handler : unit tzresult Lwt.t;
+      (** The handler responsbile for receiving responses from the server. *)
+}
+
 (** [make ~error_handler address port] establishes a gRPC over HTTP/2 at the
     host [address]:[port]. The connection does not use TLS. If the connection
     fails, [error_handler] is invoked.
@@ -76,3 +84,17 @@ val call :
   H2_lwt_unix.Client.t ->
   'request ->
   'response tzresult Lwt.t
+
+(** [streamed_call ~rpc ~error_handler ~on_grpc_closed_connection ~on_http2_closed_connection] client message]
+    sends a streamed [message] request via [client] using [rpc].
+    It returns a ['response streamed_call_handler] that can be used to extract
+    the values of type ['response] streamed by the server. *)
+
+val streamed_call :
+  rpc:('request, 'response) Rpc.t ->
+  ?error_handler:H2.Client_connection.error_handler ->
+  ?on_grpc_closed_connection:(Grpc.Status.t -> unit) ->
+  ?on_http2_closed_connection:(H2.Status.t -> unit) ->
+  H2_lwt_unix.Client.t ->
+  'request ->
+  ('response tzresult streamed_call_handler, 'a) result Lwt.t
