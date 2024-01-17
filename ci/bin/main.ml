@@ -39,11 +39,11 @@ module Stages = struct
 
   let prepare_release = Stage.register "prepare_release"
 
-  let _publish_release_gitlab = Stage.register "publish_release_gitlab"
+  let publish_release_gitlab = Stage.register "publish_release_gitlab"
 
   let publish_release = Stage.register "publish_release"
 
-  let _publish_package_gitlab = Stage.register "publish_package_gitlab"
+  let publish_package_gitlab = Stage.register "publish_package_gitlab"
 
   let manual = Stage.register "manual"
 end
@@ -120,7 +120,7 @@ module Images = struct
       ~image_path:
         "${build_deps_image_name}:runtime-e2etest-dependencies--${build_deps_image_version}"
 
-  let _runtime_build_test_dependencies =
+  let runtime_build_test_dependencies =
     Image.register
       ~name:"runtime_build_test_dependencies"
       ~image_path:
@@ -170,6 +170,16 @@ module Images = struct
      checked by the jobs [trigger] and [sanity_ci]. *)
   let alpine =
     Image.register ~name:"alpine" ~image_path:("alpine:" ^ alpine_version)
+
+  let ci_release =
+    Image.register
+      ~name:"ci_release"
+      ~image_path:"${CI_REGISTRY}/tezos/docker-images/ci-release:v1.1.0"
+
+  let debian_bookworm =
+    Image.register ~name:"debian_bookworm" ~image_path:"debian:bookworm"
+
+  let fedora_39 = Image.register ~name:"fedora_39" ~image_path:"fedora:39"
 end
 
 let before_script ?(take_ownership = false) ?(source_version = false)
@@ -409,22 +419,8 @@ let job_docker_amd64_experimental : job =
     ~arch:Amd64
     Experimental
 
-let _job_docker_amd64_release : job =
-  job_docker_build
-    ~external_:true
-    ~rules:rules_octez_docker_changes_or_master
-    ~arch:Amd64
-    Release
-
 let _job_docker_amd64_test_manual : job =
   job_docker_build ~external_:true ~arch:Amd64 Test_manual
-
-let job_docker_amd64_test : job =
-  job_docker_build
-    ~external_:true
-    ~rules:rules_octez_docker_changes_or_master
-    ~arch:Amd64
-    Test
 
 let job_docker_arm64_experimental : job =
   job_docker_build
@@ -433,22 +429,8 @@ let job_docker_arm64_experimental : job =
     ~arch:Arm64
     Experimental
 
-let _job_docker_arm64_release : job =
-  job_docker_build
-    ~external_:true
-    ~rules:rules_octez_docker_changes_or_master
-    ~arch:Arm64
-    Release
-
 let _job_docker_arm64_test_manual : job =
   job_docker_build ~external_:true ~arch:Arm64 Test_manual
-
-let job_docker_arm64_test : job =
-  job_docker_build
-    ~external_:true
-    ~rules:rules_octez_docker_changes_or_master
-    ~arch:Arm64
-    Test
 
 (* Note: here we rely on [$IMAGE_ARCH_PREFIX] to be empty.
    Otherwise, [$DOCKER_IMAGE_TAG] would contain [$IMAGE_ARCH_PREFIX] too.
@@ -466,6 +448,7 @@ let job_docker_merge_manifests ~ci_docker_hub ~job_docker_amd64
     ~variables:[("CI_DOCKER_HUB", Bool.to_string ci_docker_hub)]
     ["./scripts/ci/docker_merge_manifests.sh"]
 
+(* This external definition is used in the [master_branch] pipeline *)
 let _job_docker_merge_manifests_release =
   job_external ~filename_suffix:"release"
   @@ job_docker_merge_manifests
@@ -475,17 +458,185 @@ let _job_docker_merge_manifests_release =
             pipeline. In practice, this does not matter as these jobs
             have the same name in the generated files
             ([oc.build:ARCH]). However, when the merge_manifest jobs
-            are created directly in the appropriate pipeline, the
-            correcty variant must be used. *)
+            are generated directly in the [master_branch] pipeline,
+            the correcty variant must be used. *)
        ~job_docker_amd64:job_docker_amd64_experimental
        ~job_docker_arm64:job_docker_arm64_experimental
 
-let _job_docker_merge_manifests_test =
-  job_external ~filename_suffix:"test"
-  @@ job_docker_merge_manifests
-       ~ci_docker_hub:false
-       ~job_docker_amd64:job_docker_amd64_test
-       ~job_docker_arm64:job_docker_arm64_test
+type bin_package_target = Dpkg | Rpm
+
+let job_build_bin_package ~arch ~target : job =
+  let arch_string =
+    match arch with Tezos_ci.Amd64 -> "amd64" | Arm64 -> "arm64"
+  in
+  let target_string = match target with Dpkg -> "dpkg" | Rpm -> "rpm" in
+  let name = sf "oc.build:%s:%s" target_string arch_string in
+  let image =
+    match target with Dpkg -> Images.debian_bookworm | Rpm -> Images.fedora_39
+  in
+  let artifacts =
+    let artifact_path =
+      "octez-*." ^ match target with Dpkg -> "deb" | Rpm -> "rpm"
+    in
+    artifacts
+      ~expire_in:(Days 1)
+      ~when_:On_success
+      ~name:"${TARGET}-$ARCH-$CI_COMMIT_REF_SLUG"
+      [artifact_path]
+  in
+  let before_script =
+    match target with
+    | Dpkg ->
+        [
+          "apt update";
+          "apt-get install -y rsync git m4 build-essential patch unzip wget \
+           opam jq bc autoconf cmake libev-dev libffi-dev libgmp-dev \
+           libhidapi-dev pkg-config zlib1g-dev";
+        ]
+    | Rpm ->
+        [
+          "dnf update -y";
+          "dnf install -y libev-devel gmp-devel hidapi-devel libffi-devel \
+           zlib-devel libpq-devel m4 perl git pkg-config rpmdevtools \
+           python3-devel python3-setuptools wget opam rsync which cargo \
+           autoconf mock systemd systemd-rpm-macros cmake python3-wheel \
+           python3-tox-current-env gcc-c++";
+        ]
+  in
+  job
+    ~name
+    ~arch
+    ~image
+    ~stage:Stages.build
+    ~dependencies:(Dependent [])
+    ~variables:
+      [
+        ("TARGET", target_string);
+        ("OCTEZ_PKGMAINTAINER", "nomadic-labs");
+        ("BLST_PORTABLE", "yes");
+        ("ARCH", arch_string);
+      ]
+    ~artifacts
+    ~before_script
+    [
+      ". ./scripts/version.sh";
+      "wget https://sh.rustup.rs/rustup-init.sh";
+      "chmod +x rustup-init.sh";
+      "./rustup-init.sh --profile minimal --default-toolchain  \
+       $recommended_rust_version -y";
+      ". $HOME/.cargo/env";
+      "export OPAMYES=\"true\"";
+      "opam init --bare --disable-sandboxing";
+      "make build-deps";
+      "eval $(opam env)";
+      "make $TARGET";
+    ]
+
+let job_build_dpkg_amd64 =
+  job_build_bin_package ~target:Dpkg ~arch:Tezos_ci.Amd64
+
+let job_build_rpm_amd64 = job_build_bin_package ~target:Rpm ~arch:Tezos_ci.Amd64
+
+(** Type of release tag pipelines.
+
+    The semantics of the type is summed up in this table:
+
+   |                       | Release_tag | Beta_release_tag | Non_release_tag |
+   |-----------------------+-------------+------------------+-----------------|
+   | GitLab release type   | Release     | Release          | Create          |
+   | Experimental binaries | No          | No               | No              |
+   | Docker build type     | Release     | Release          | Release         |
+   | Publishes to opam     | Yes         | No               | No              |
+
+    - All release tag pipelines types publish [Release] type Docker builds.
+    - No release tag pipelines include experimental binaries.
+    - [Release_tag] and [Beta_release_tag] pipelines creates GitLab
+    and publishes releases. [Non_release_tag] pipelines creates the
+    GitLab release but do not publish them.
+    - Only [Release_tag] pipelines publish to opam. *)
+type release_tag_pipeline_type =
+  | Release_tag
+  | Beta_release_tag
+  | Non_release_tag
+
+(** Create a release tag pipeline of type {!release_tag_pipeline_type}.
+
+    If [test] is true (default is [false]), then the Docker images are
+    built of the [Test] type and are published to the GitLab registry
+    instead of Docker hub. *)
+let release_tag_pipeline ?(test = false) release_tag_pipeline_type =
+  let job_docker_amd64 =
+    job_docker_build ~arch:Amd64 (if test then Test else Release)
+  in
+  let job_docker_arm64 =
+    job_docker_build ~arch:Arm64 (if test then Test else Release)
+  in
+  let job_docker_merge =
+    job_docker_merge_manifests
+      ~ci_docker_hub:(not test)
+      ~job_docker_amd64
+      ~job_docker_arm64
+  in
+  let job_static_arm64_release =
+    job_build_static_binaries ~arch:Arm64 ~release:true ()
+  in
+  let job_static_x86_64_release =
+    job_build_static_binaries ~arch:Amd64 ~release:true ~needs_trigger:true ()
+  in
+  let job_gitlab_release ~dependencies : job =
+    job
+      ~image:Images.ci_release
+      ~stage:Stages.publish_release_gitlab
+      ~interruptible:false
+      ~dependencies
+      ~name:"gitlab:release"
+      ["./scripts/ci/gitlab-release.sh"]
+  in
+  let job_gitlab_publish ~dependencies : job =
+    job
+      ~image:Images.ci_release
+      ~stage:Stages.publish_package_gitlab
+      ~interruptible:false
+      ~dependencies
+      ~name:"gitlab:publish"
+      ["${CI_PROJECT_DIR}/scripts/ci/create_gitlab_package.sh"]
+  in
+  let job_opam_release : job =
+    job
+      ~image:Images.runtime_build_test_dependencies
+      ~stage:Stages.publish_release
+      ~interruptible:false
+      ~name:"opam:release"
+      ["./scripts/ci/opam-release.sh"]
+  in
+  let job_gitlab_release_or_publish =
+    let dependencies =
+      Dependent
+        [
+          Artifacts job_static_x86_64_release;
+          Artifacts job_static_arm64_release;
+          Artifacts job_build_dpkg_amd64;
+          Artifacts job_build_rpm_amd64;
+        ]
+    in
+    match release_tag_pipeline_type with
+    | Non_release_tag -> job_gitlab_publish ~dependencies
+    | _ -> job_gitlab_release ~dependencies
+  in
+  [
+    job_static_x86_64_release;
+    job_static_arm64_release;
+    job_docker_amd64;
+    job_docker_arm64;
+    job_build_dpkg_amd64;
+    job_build_rpm_amd64;
+    job_docker_merge;
+    job_gitlab_release_or_publish;
+  ]
+  @
+  match (test, release_tag_pipeline_type) with
+  | false, Release_tag -> [job_opam_release]
+  | _ -> []
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
@@ -518,19 +669,24 @@ let () =
   register "master_branch" If.(on_tezos_namespace && push && on_branch "master") ;
   register
     "release_tag"
-    If.(on_tezos_namespace && push && has_tag_match release_tag_re) ;
+    If.(on_tezos_namespace && push && has_tag_match release_tag_re)
+    ~jobs:(release_tag_pipeline Release_tag) ;
   register
     "beta_release_tag"
-    If.(on_tezos_namespace && push && has_tag_match beta_release_tag_re) ;
+    If.(on_tezos_namespace && push && has_tag_match beta_release_tag_re)
+    ~jobs:(release_tag_pipeline Beta_release_tag) ;
   register
     "release_tag_test"
-    If.(not_on_tezos_namespace && push && has_any_release_tag) ;
+    If.(not_on_tezos_namespace && push && has_any_release_tag)
+    ~jobs:(release_tag_pipeline ~test:true Release_tag) ;
   register
     "non_release_tag"
-    If.(on_tezos_namespace && push && has_non_release_tag) ;
+    If.(on_tezos_namespace && push && has_non_release_tag)
+    ~jobs:(release_tag_pipeline Non_release_tag) ;
   register
     "non_release_tag_test"
-    If.(not_on_tezos_namespace && push && has_non_release_tag) ;
+    If.(not_on_tezos_namespace && push && has_non_release_tag)
+    ~jobs:(release_tag_pipeline ~test:true Non_release_tag) ;
   register "schedule_extended_test" schedule_extended_tests
 
 (* Split pipelines and writes image templates *)
