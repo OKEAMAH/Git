@@ -767,10 +767,7 @@ impl<M: backend::Manager> CSRegisters<M> {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{
-        csregisters::{CSRValue, Exception},
-        mode::Mode,
-    };
+    use crate::{csregisters::Exception, mode::Mode};
 
     #[test]
     pub fn test_privilege_access() {
@@ -844,11 +841,12 @@ pub mod tests {
     fn test_wlrl() {
         use crate::csregisters::CSRegister as csreg;
 
-        let check = |reg: csreg, value| reg.is_legal(value);
+        // Additionally check if value remains legal after using `make_value_writable`
+        let check =
+            |reg: csreg, value| reg.is_legal(value) && reg.make_value_writable(value).is_some();
 
         // Registers that are not xcause should always be ok
-        const ALL_BITS: CSRValue = 0xFFFF_FFFF_FFFF_FFFF;
-        assert!(check(csreg::mstatus, ALL_BITS));
+        assert!(check(csreg::mstatus, 0xFFFF_FFFF_FFFF_FFFF));
         assert!(check(csreg::sstatus, 0x0));
         assert!(check(csreg::time, 0x0));
 
@@ -873,8 +871,8 @@ pub mod tests {
     fn test_warl() {
         use crate::csregisters::CSRegister as csreg;
 
-        let check_wrapped = |reg: csreg, value| reg.transform_warl_fields(value);
-        let check = |reg: csreg, value| reg.transform_warl_fields(value).unwrap();
+        let check_wrapped = |reg: csreg, value| reg.make_value_writable(value);
+        let check = |reg: csreg, value| reg.make_value_writable(value).unwrap();
 
         // misa field
         assert!(check(csreg::misa, 0xFFFF_FFFF_FFFF_FFFF) == 0x8000_0000_0014_112D);
