@@ -861,7 +861,7 @@ impl<M: backend::Manager> CSRegisters<M> {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{csregisters::Exception, mode::Mode, backend::{tests::TestBackendFactory, Layout, Backend, Manager}, memory_backend::{SliceManager, InMemoryBackend}};
+    use crate::{csregisters::Exception, mode::Mode, backend::tests::TestBackendFactory};
 
     use super::{CSRegisters, CSRegistersLayout};
 
@@ -1033,15 +1033,19 @@ pub mod tests {
         assert!(check(csreg::instret, 0x42) == 0x42);
     }
 
-    fn test_xstatus_rw<'backend>(factory: &mut impl TestBackendFactory) {
+    use crate::backend;
+
+    fn test_xstatus_rw<'backend, M: backend::Manager>(factory: &mut impl TestBackendFactory) {
         use super::CSRegister;
-        use crate::backend::BackendManagement;
-        use crate::memory_backend;
+        use crate::backend::Layout;
+        use crate::backend::Backend;
 
         let mut backend = factory.make::<CSRegistersLayout>();
         let placed = CSRegistersLayout::placed().into_location();
 
-        let mut csrs = CSRegisters::new_in(&mut backend.allocate(placed));
+        let mut csrs: CSRegisters<_> = CSRegisters
+            ::<M>
+            ::new_in(&mut backend.allocate(placed));
 
         // write to MBE, SXL, UXL, MPP, MPIE, VS, SPP (through mstatus)
         csrs.write(CSRegister::mstatus, 0x0);
