@@ -38,12 +38,7 @@ let enc_if expr = string @@ If.encode expr
 let enc_variables (vars : variables) : value =
   `O (List.map (fun (name, value) -> (name, `String value)) vars)
 
-let enc_when : when_ -> value = function
-  | Always -> `String "always"
-  | Never -> `String "never"
-  | On_success -> `String "on_success"
-  | Manual -> `String "manual"
-  | Delayed _ -> `String "delayed"
+let enc_when (when_ : when_) = `String (show_when when_)
 
 let enc_when_workflow : when_workflow -> value = function
   | Always -> `String "always"

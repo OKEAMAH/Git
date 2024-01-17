@@ -87,3 +87,14 @@ let rec not = function
   | Neq (x, b) -> Eq (x, b)
   | Match (x, s) -> Unmatch (x, s)
   | Unmatch (x, s) -> Match (x, s)
+
+let implies_underapprox t t' =
+  (* Try to make the clause a bit CNF-like, could be improved ... *)
+  let rec and_list t =
+    match t with And (x, y) -> and_list x @ and_list y | _ -> [t]
+  in
+  (* Heuristic for implication in CNF: *)
+  (* all the clauses on the RHS must figure on the LHS *)
+  let t = and_list t in
+  let t' = and_list t' in
+  List.for_all (Fun.flip List.mem t) t'

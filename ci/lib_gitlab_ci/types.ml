@@ -23,6 +23,13 @@ type time_interval =
 (** Represents values of the [when:] field in job rules. *)
 type when_ = Always | Never | On_success | Manual | Delayed of time_interval
 
+let show_when : when_ -> string = function
+  | Always -> "always"
+  | Never -> "never"
+  | On_success -> "on_success"
+  | Manual -> "manual"
+  | Delayed _ -> "delayed"
+
 (** Represents values of the [when:] field of jobs. *)
 type when_job = Always | On_success | Manual
 

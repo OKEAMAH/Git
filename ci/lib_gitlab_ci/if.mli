@@ -65,3 +65,9 @@ val ( =~! ) : var -> string -> t
     laws and swapping (negated) operators for their (un)negated
     counter-parts. *)
 val not : t -> t
+
+(** Under-approximation of implication.
+
+    - If [implies_underapprox t t'] is [true], then if [t] evaluates to [true] then so does [t'].
+    - If [implies_underapprox t t'] is [false], then nothing is known of the relation between [t] and [t']. *)
+val implies_underapprox : t -> t -> bool
