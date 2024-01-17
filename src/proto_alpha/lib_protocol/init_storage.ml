@@ -201,20 +201,44 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
         let* ctxt =
           Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
         in
-        (*         let preserved_cycles = *)
-        (*           Constants_storage.blocks_preservation_cycles ctxt *)
-        (*         in *)
-        (*         let consensus_rights_delay = *)
-        (*           Constants_storage.consensus_rights_delay ctxt *)
-        (*         in *)
-        (*         let* ctxt = *)
-        (*           Stake_storage.cleanup_values_for_protocol_p *)
-        (*             ctxt *)
-        (*             ~preserved_cycles *)
-        (*             ~consensus_rights_delay *)
-        (*             ~new_cycle *)
-        (*         in *)
-        (*         let* ctxt =  cleanup_values ... *)
+
+        (* TODO: get the constant from Raw_context? *)
+        let preserved_cycles = 2 in
+        let consensus_rights_delay =
+          Constants_storage.consensus_rights_delay ctxt
+        in
+        let next_level = Raw_level_repr.succ level in
+        let cycle_eras = Raw_context.cycle_eras ctxt in
+        let new_cycle =
+          (Level_repr.level_from_raw ~cycle_eras next_level).cycle
+        in
+
+        Logging.log_string
+          Notice
+          ("\n consensus_rights_delay ="
+          ^ Int32.to_string (Int32.of_int consensus_rights_delay)
+          ^ "\n") ;
+
+        Logging.log_string
+          Notice
+          ("\n new_cycle ="
+          ^ Int32.to_string (Cycle_repr.to_int32 new_cycle)
+          ^ "\n") ;
+
+        let* ctxt =
+          Stake_storage.cleanup_values_for_protocol_p
+            ctxt
+            ~preserved_cycles
+            ~consensus_rights_delay
+            ~new_cycle
+        in
+        let* ctxt =
+          Delegate_sampler.cleanup_values_for_protocol_p
+            ctxt
+            ~preserved_cycles
+            ~consensus_rights_delay
+            ~new_cycle
+        in
         return (ctxt, [])
   in
   let* ctxt =

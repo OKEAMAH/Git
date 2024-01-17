@@ -1180,7 +1180,7 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
           Constants_parametric_repr.
             {
               (* TODO: set consensus_rights_delay to 2 *)
-              consensus_rights_delay = c.preserved_cycles;
+              consensus_rights_delay = 1;
               blocks_preservation_cycles = 1;
               delegate_parameters_activation_delay = c.preserved_cycles;
               blocks_per_cycle = c.blocks_per_cycle;
