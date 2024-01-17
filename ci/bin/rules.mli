@@ -44,7 +44,7 @@ val not_on_tezos_namespace : If.t
 (** A rule that is true if [CI_COMMIT_TAG] matches the given regexp. *)
 val has_tag_match : string -> If.t
 
-(** A rule that is true if the comma-separated list [CI_MERGE_REQUEST_LABELS] a given label. *)
+(** A rule that is true if the comma-separated list [CI_MERGE_REQUEST_LABELS] contains a given label. *)
 val has_mr_label : string -> If.t
 
 (** A rule that is true if [CI_MERGE_REQUEST_ASSIGNEES] contains [nomadic-margebot]. *)
