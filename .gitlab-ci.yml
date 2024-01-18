@@ -78,6 +78,9 @@ variables:
   # unzipping implementation (https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27496),
   # this setting cuts cache creation time.
   FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fast"
+  CACHE_COMPRESSION_LEVEL: "fastest"
+
   # TODO: https://gitlab.com/tezos/tezos/-/issues/6764
   # "false" is the GitLab default but we've overridden it in the runner settings.
   # This should be fixed at the runner level but we reset it to the
