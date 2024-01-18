@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2022 Trili Tech, <contact@trili.tech>                       *)
+(* Copyright (c) 2024 Marigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -76,7 +77,7 @@ let make_transaction ctxt ~parameters_ty ~unparsed_parameters ~destination
   let+ parameters, ctxt =
     Script_ir_translator.parse_data
       ctxt
-      ~elab_conf:Script_ir_translator_config.(make ~legacy:false ())
+      ~elab_conf:Script_ir_translator_config.(make ~legacy:true ())
       ~allow_forged:true
       parameters_ty
       (Micheline.root unparsed_parameters)
