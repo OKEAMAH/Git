@@ -353,7 +353,7 @@ let job_enable_coverage_instrumentation (job : job) =
     [("COVERAGE_OPTIONS", "--instrument-with bisect_ppx")]
     job
 
-let _job_enable_coverage_output ?(expire_in = Days 1) (job : job) =
+let job_enable_coverage_output ?(expire_in = Days 1) (job : job) =
   job
   (* Set the run-time environment variable that specifies the
      directory where coverage traces should be stored. *)
@@ -1639,6 +1639,161 @@ let _job_semgrep =
           locally, check out scripts/semgrep/README.md\"";
          "sh ./scripts/semgrep/lint-all-ocaml-sources.sh";
        ]
+
+let changeset_unit_test_arm64 = ["src/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
+
+let _jobs_unit_tests =
+  let build_dependencies = function
+    | Amd64 ->
+        Dependent
+          [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra]
+    | Arm64 ->
+        Dependent
+          [Job job_build_arm64_release; Job job_build_arm64_exp_dev_extra]
+  in
+  let unit_test ?(image = Images.runtime_build_dependencies) ?timeout ?parallel
+      ~arch ~name ?(enable_coverage = true)
+      ?(rules = [job_rule ~changes:changeset_octez ()]) ~make_targets () : job =
+    let arch_string =
+      match arch with Tezos_ci.Amd64 -> "x86_64" | Arm64 -> "arm64"
+    in
+    let script =
+      ["make $MAKE_TARGETS"]
+      @ if enable_coverage then ["./scripts/ci/merge_coverage.sh"] else []
+    in
+    let dependencies = build_dependencies arch in
+    let variables =
+      [("ARCH", arch_string); ("MAKE_TARGETS", String.concat " " make_targets)]
+      @
+      (* When parallel is set to non-zero (translating to the
+         [parallel:] clause), set the variable
+         [DISTRIBUTE_TESTS_TO_PARALLELS] to [true], so that
+         [scripts/test_wrapper.sh] partitions the set of @runtest
+         targets to build. *)
+      match parallel with
+      | Some n when n > 1 -> [("DISTRIBUTE_TESTS_TO_PARALLELS", "true")]
+      | _ -> []
+    in
+    let job =
+      job
+        ?timeout
+        ?parallel
+        ~retry:2
+        ~name
+        ~stage:Stages.test
+        ~image
+        ~arch
+        ~dependencies
+        ~rules
+        ~variables
+        ~artifacts:
+          (artifacts
+             ~name:"$CI_JOB_NAME-$CI_COMMIT_SHA-${ARCH}"
+             ["test_results"]
+             ~reports:(reports ~junit:"test_results/*.xml" ())
+             ~expire_in:(Days 1)
+             ~when_:Always)
+        ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+        script
+    in
+    if enable_coverage then
+      job |> job_enable_coverage_instrumentation |> job_enable_coverage_output
+    else job
+  in
+  let oc_unit_non_proto_x86_64 =
+    unit_test
+      ~name:"oc.unit:non-proto-x86_64"
+      ~arch:Amd64 (* The [lib_benchmark] unit tests require Python *)
+      ~image:Images.runtime_build_test_dependencies
+      ~make_targets:["test-nonproto-unit"]
+      ()
+  in
+  let oc_unit_other_x86_64 =
+    (* Runs unit tests for contrib. *)
+    unit_test
+      ~name:"oc.unit:other-x86_64"
+      ~arch:Amd64
+      ~make_targets:["test-other-unit"]
+      ()
+  in
+  let oc_unit_proto_x86_64 =
+    (* Runs unit tests for contrib. *)
+    unit_test
+      ~name:"oc.unit:proto-x86_64"
+      ~arch:Amd64
+      ~make_targets:["test-proto-unit"]
+      ()
+  in
+  let oc_unit_non_proto_arm64 =
+    unit_test
+      ~name:"oc.unit:non-proto-arm64"
+      ~parallel:2
+      ~arch:Arm64 (* The [lib_benchmark] unit tests require Python *)
+      ~image:Images.runtime_build_test_dependencies
+      ~rules:[job_rule ~changes:changeset_unit_test_arm64 ()]
+      ~make_targets:["test-nonproto-unit"; "test-webassembly"]
+        (* No coverage for arm64 jobs -- the code they test is a
+           subset of that tested by x86_64 unit tests. *)
+      ~enable_coverage:false
+      ()
+  in
+  let oc_unit_webassembly_x86_64 =
+    job
+      ~name:"oc.unit:webassembly-x86_64"
+      ~arch:Amd64 (* The wasm tests are written in Python *)
+      ~image:Images.runtime_build_test_dependencies
+      ~stage:Stages.test
+      ~dependencies:(build_dependencies Amd64)
+      ~rules:[job_rule ~changes:changeset_octez ()]
+      ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+        (* TODO: https://gitlab.com/tezos/tezos/-/issues/4663
+           This test takes around 2 to 4min to complete, but it sometimes
+           hangs. We use a timeout to retry the test in this case. The
+           underlying issue should be fixed eventually, turning this timeout
+           unnecessary. *)
+      ~timeout:(Minutes 20)
+      ["make test-webassembly"]
+  in
+  let oc_unit_js_components =
+    job
+      ~name:"oc.unit:js_components"
+      ~arch:Amd64
+      ~image:Images.runtime_build_test_dependencies
+      ~stage:Stages.test
+      ~dependencies:(build_dependencies Amd64)
+      ~rules:[job_rule ~changes:changeset_octez ()]
+      ~retry:2
+      ~variables:[("RUNTEZTALIAS", "true")]
+      ~before_script:
+        (before_script
+           ~take_ownership:true
+           ~source_version:true
+           ~eval_opam:true
+           ~install_js_deps:true
+           [])
+      ["make test-js"]
+  in
+  let oc_unit_protocol_compiles =
+    job
+      ~name:"oc.unit:protocol_compiles"
+      ~arch:Amd64
+      ~image:Images.runtime_build_dependencies
+      ~stage:Stages.test
+      ~dependencies:(build_dependencies Amd64)
+      ~rules:[job_rule ~changes:changeset_octez ()]
+      ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+      ["dune build @runtest_compile_protocol"]
+  in
+  jobs_external ~path:"test/oc.unit.yml"
+  @@ [
+       oc_unit_non_proto_x86_64;
+       oc_unit_other_x86_64;
+       oc_unit_proto_x86_64;
+       oc_unit_non_proto_arm64;
+       oc_unit_webassembly_x86_64;
+       oc_unit_js_components;
+       oc_unit_protocol_compiles;
+     ]
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
