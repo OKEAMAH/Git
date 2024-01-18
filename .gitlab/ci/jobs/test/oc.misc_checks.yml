@@ -6,8 +6,8 @@ oc.misc_checks:
   needs: [trigger]
   before_script:
     - ./scripts/ci/take_ownership.sh
-    - eval $(opam env)
     - . ./scripts/version.sh
+    - eval $(opam env)
     # Load the environment poetry previously created in the docker image.
     # Give access to the Python dependencies/executables
     - . $HOME/.venv/bin/activate
