@@ -570,6 +570,8 @@ module Inner = struct
     let hash = Hashtbl.hash
   end)
 
+  module Profiler = Tezos_crypto.Profiler
+
   (* Error cases of this functions are not encapsulated into
      `tzresult` for modularity reasons. *)
   let make =

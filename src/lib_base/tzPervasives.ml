@@ -120,7 +120,7 @@ module Empty = struct
 end
 
 module Skip_list = Skip_list
-module Profiler = Profiler
+module Profiler = Tezos_crypto.Profiler
 
 module type PRINTABLE = sig
   type t

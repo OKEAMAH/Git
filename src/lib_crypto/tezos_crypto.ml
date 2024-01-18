@@ -62,3 +62,4 @@ module Helpers = Helpers
 module Rand = Rand
 module Timelock_legacy = Timelock_legacy
 module Timelock = Timelock
+module Profiler = Profiler
