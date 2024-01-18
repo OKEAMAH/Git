@@ -1408,6 +1408,26 @@ let _job_oc_commit_titles =
        ["./scripts/ci/check_commit_messages.sh || exit $?"]
        ~allow_failure:(With_exit_codes [65])
 
+let changeset_kaitai_files =
+  ["src/**/*"; "contrib/*kaitai*/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
+
+(* check that ksy files are still up-to-date with octez *)
+let _kaitai_checks =
+  job_external
+  @@ job
+       ~name:"kaitai_checks"
+       ~image:Images.runtime_build_dependencies
+       ~stage:Stages.test
+       ~dependencies:(Dependent [Job job_build_x86_64_release])
+       ~rules:[job_rule ~changes:changeset_kaitai_files ()]
+       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+       [
+         "make -C ${CI_PROJECT_DIR} check-kaitai-struct-files || (echo 'Octez \
+          encodings and Kaitai files seem to be out of sync. You might need to \
+          run `make check-kaitai-struct-files` and commit the resulting diff.' \
+          ; false)";
+       ]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
