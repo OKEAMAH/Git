@@ -364,7 +364,8 @@ module Pipeline = struct
           (* This case is precluded by the preceding check verifying
              the definition of dependencies. *)
           assert false ) ;
-
+    (* TODO: check for cycles *)
+    (* TODO: if a job rule is manual, make a warning if allow_failure is not set to true? *)
     ()
 
   let write () =
