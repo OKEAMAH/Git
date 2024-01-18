@@ -2586,37 +2586,37 @@ module Slashing = struct
     let slash delegate = double_bake delegate --> make_denunciations () in
     Tag "double bake"
     --> (Tag "solo delegate"
-        --> init_scenario_with_delegators
-              "delegate"
-              "faucet"
-              [("delegator", 1_234_567_891L)]
-        --> loop
-              10
-              (stake_unstake_for ["delegate"]
-              --> slash "delegate" --> next_cycle))
-  (* |+ Tag "delegate with one staker"
-        --> init_scenario_with_delegators
-              "delegate"
-              "faucet"
-              [("staker", 1_234_356_891L)]
-        --> loop
-              10
-              (stake_unstake_for ["delegate"; "staker"]
-              --> slash "delegate" --> next_cycle)
-     |+ Tag "delegate with three stakers"
-        --> init_scenario_with_delegators
-              "delegate"
-              "faucet"
-              [
-                ("staker1", 1_234_356_891L);
-                ("staker2", 1_234_356_890L);
-                ("staker3", 1_723_333_111L);
-              ]
-        --> loop
-              10
-              (stake_unstake_for
-                 ["delegate"; "staker1"; "staker2"; "staker3"]
-              --> slash "delegate" --> next_cycle))*)
+         --> init_scenario_with_delegators
+               "delegate"
+               "faucet"
+               [("delegator", 1_234_567_891L)]
+         --> loop
+               10
+               (stake_unstake_for ["delegate"]
+               --> slash "delegate" --> next_cycle)
+        |+ Tag "delegate with one staker"
+           --> init_scenario_with_delegators
+                 "delegate"
+                 "faucet"
+                 [("staker", 1_234_356_891L)]
+           --> loop
+                 10
+                 (stake_unstake_for ["delegate"; "staker"]
+                 --> slash "delegate" --> next_cycle)
+        |+ Tag "delegate with three stakers"
+           --> init_scenario_with_delegators
+                 "delegate"
+                 "faucet"
+                 [
+                   ("staker1", 1_234_356_891L);
+                   ("staker2", 1_234_356_890L);
+                   ("staker3", 1_723_333_111L);
+                 ]
+           --> loop
+                 10
+                 (stake_unstake_for
+                    ["delegate"; "staker1"; "staker2"; "staker3"]
+                 --> slash "delegate" --> next_cycle))
 
   let test_no_shortcut_for_cheaters =
     let constants = init_constants ~autostaking_enable:false () in
