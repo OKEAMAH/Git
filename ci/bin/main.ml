@@ -1808,6 +1808,47 @@ let _job_oc_integration_compiler_rejections =
        ~before_script:(before_script ~source_version:true ~eval_opam:true [])
        ["dune build @runtest_rejections"]
 
+let changeset_script_snapshot_alpha_and_link =
+  [
+    "src/proto_alpha/**/*";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+    "scripts/snapshot_alpha_and_link.sh";
+    "scripts/snapshot_alpha.sh";
+    "scripts/user_activated_upgrade.sh";
+  ]
+
+let _job_oc_script_snapshot_alpha_and_link =
+  job_external
+  @@ job
+       ~name:"oc.script:snapshot_alpha_and_link"
+       ~stage:Stages.test
+       ~image:Images.runtime_build_dependencies
+       ~rules:
+         [
+           job_rule
+             ~if_:Rules.merge_request
+             ~changes:changeset_script_snapshot_alpha_and_link
+             ();
+         ]
+         (* Note: this job actually probably doesn't need the oc.build_x86_64 job
+            to have finished, but we don't want to start before oc.build_x86_64 has finished either.
+            However, when oc.build_x86_64-* don't exist, we don't need to wait for them. *)
+       ~dependencies:
+         (Dependent
+            [
+              Job trigger;
+              Optional job_build_x86_64_release;
+              Optional job_build_x86_64_exp_dev_extra;
+            ])
+       ~before_script:
+         (before_script
+            ~take_ownership:true
+            ~source_version:true
+            ~eval_opam:true
+            [])
+       ["./.gitlab/ci/jobs/test/script:snapshot_alpha_and_link.sh"]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
