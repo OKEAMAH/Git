@@ -1,7 +1,10 @@
 include: .gitlab/ci/jobs/test/common.yml
 
 oc.test-liquidity-baking-scripts:
-  extends: .test_template
+  extends:
+    - .default_settings_template
+    - .image_template__runtime_build_dependencies
+  stage: test
   rules:
     - changes:
         paths:
@@ -11,7 +14,13 @@ oc.test-liquidity-baking-scripts:
           - .gitlab/**/*
           - .gitlab-ci.yml
       when: on_success
+  needs:
+    - "oc.build_x86_64-released"
+    - "oc.build_x86_64-exp-dev-extra"
   dependencies:
     - "oc.build_x86_64-released"
     - "oc.build_x86_64-exp-dev-extra"
+  before_script:
+    - . ./scripts/version.sh
+    - eval $(opam env)
   script: ./scripts/ci/test_liquidity_baking_scripts.sh
