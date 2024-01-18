@@ -170,6 +170,7 @@ type double_signing_state = {
   evidence : Context.t -> Protocol.Alpha_context.packed_operation;
   denounced : bool;
   level : Int32.t;
+  misbehaviour : Protocol.Misbehaviour_repr.t;
 }
 
 (** Module for the [State.t] type of asserted information about the system during a test. *)
@@ -1414,8 +1415,23 @@ let op_double_baking ?(correct_order = true) bh1 bh2 ctxt =
   let bh1, bh2 = order_block_hashes ~correct_order bh1 bh2 in
   Op.double_baking ctxt bh1 bh2
 
+let misbehaviour_from_duplicate_block (duplicate_block : Block.t) =
+  let open Result_syntax in
+  let* level =
+    Protocol.Raw_level_repr.of_int32 duplicate_block.header.shell.level
+  in
+  let* round =
+    Protocol.Fitness_repr.round_from_raw duplicate_block.header.shell.fitness
+  in
+  let* slot =
+    Protocol.Round_repr.to_slot
+      round
+      ~committee_size:duplicate_block.constants.consensus_committee_size
+  in
+  return {Protocol.Misbehaviour_repr.kind = Double_baking; level; round; slot}
+
 let double_bake_ delegate_name (block, state) =
-  let open Lwt_result_syntax in
+  let open Lwt_result_wrap_syntax in
   Log.info ~color:Log_module.event_color "Double baking with %s" delegate_name ;
   let delegate = State.find_account delegate_name state in
   let* operation =
@@ -1427,6 +1443,7 @@ let double_bake_ delegate_name (block, state) =
   (* includes pending operations *)
   let* main_branch, state = bake ~baker:delegate_name (block, state) in
   let evidence = op_double_baking main_branch.header forked_block.header in
+  let*?@ misbehaviour = misbehaviour_from_duplicate_block main_branch in
   let dss =
     {
       culprit = delegate.pkh;
@@ -1434,6 +1451,7 @@ let double_bake_ delegate_name (block, state) =
       evidence;
       kind = Double_baking;
       level = block.header.shell.level;
+      misbehaviour;
     }
   in
   let state =
@@ -1478,6 +1496,11 @@ let double_attest_op ~op ~op_evidence ~kind delegate_name (block, state) =
       evidence;
       kind;
       level = block.header.shell.level;
+      misbehaviour =
+        Protocol.Alpha_context.Internal_for_tests
+        .misbehaviour_repr_of_duplicate_operations
+          attestation_a
+          attestation_b;
     }
   in
   let state =
@@ -1531,7 +1554,7 @@ let get_pending_slashed_pct_for_delegate (block, state) delegate =
   aux 0 state.State.pending_slashes
 
 let update_state_denunciation (block, state)
-    {culprit; denounced; evidence = _; kind; level} =
+    {culprit; denounced; evidence = _; kind = _; level; misbehaviour} =
   let open Lwt_result_syntax in
   if denounced then
     (* If the double signing has already been denounced, a second denunciation should fail *)
@@ -1564,21 +1587,6 @@ let update_state_denunciation (block, state)
             Protocol.Denunciations_repr.Current
           else if Cycle.(succ ds_cycle = inclusion_cycle) then Previous
           else assert false
-        in
-        let kind =
-          match kind with
-          | Double_baking -> Protocol.Misbehaviour_repr.Double_baking
-          | Double_attesting -> Double_attesting
-          | Double_preattesting -> Double_attesting
-        in
-        let misbehaviour =
-          {
-            Protocol.Misbehaviour_repr.kind;
-            (* Fields level, round, and slot are unused for now. *)
-            level = Protocol.Raw_level_repr.of_int32_exn level;
-            round = Protocol.Round_repr.zero;
-            slot = Protocol.Slot_repr.zero;
-          }
         in
         (* for simplicity's sake (lol), the block producer and the payload producer are the same
            We also assume that the current state baking policy will be used for the next block *)
