@@ -42,7 +42,7 @@ end) : Services_backend_sig.Backend = struct
       make_encoded_messages ~smart_rollup_address transaction
   end
 
-  module Publisher = struct
+  module TxPublisher = struct
     let publish_messages ~timestamp:_ ~smart_rollup_address:_ ~messages =
       let open Lwt_result_syntax in
       (* The injection's service returns a notion of L2 message hash (defined

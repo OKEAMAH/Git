@@ -32,7 +32,7 @@ end) : Services_backend_sig.Backend = struct
       Result_syntax.return (tx_hash, [transaction])
   end
 
-  module Publisher = struct
+  module TxPublisher = struct
     let publish_messages ~timestamp ~smart_rollup_address ~messages =
       let open Lwt_result_syntax in
       let* ctxt = Sequencer_context.sync Ctxt.ctxt in
