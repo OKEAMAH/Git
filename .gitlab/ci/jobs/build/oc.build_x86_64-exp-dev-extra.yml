@@ -36,8 +36,6 @@ oc.build_x86_64-exp-dev-extra:
     BUILD_EXTRA: src/bin_tps_evaluation/main_tps_evaluation.exe src/bin_octogram/octogram_main.exe
       tezt/tests/main.exe contrib/octez_injector_server/octez_injector_server.exe
     COVERAGE_OPTIONS: --instrument-with bisect_ppx
-    BISECT_FILE: $CI_PROJECT_DIR/_coverage_output/
-    SLACK_COVERAGE_CHANNEL: C02PHBE7W73
   artifacts:
     name: build-$ARCH-$CI_COMMIT_REF_SLUG
     expire_in: 1 day

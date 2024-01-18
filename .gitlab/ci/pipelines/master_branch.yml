@@ -173,7 +173,6 @@ oc.unified_coverage:
   variables:
     PROJECT: $CI_PROJECT_PATH
     DEFAULT_BRANCH: $CI_COMMIT_SHA
-    COVERAGE_OPTIONS: --instrument-with bisect_ppx
     BISECT_FILE: $CI_PROJECT_DIR/_coverage_output/
     SLACK_COVERAGE_CHANNEL: C02PHBE7W73
   artifacts:

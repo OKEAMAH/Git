@@ -114,8 +114,6 @@ oc.build_x86_64-released:
     GIT_DATETIME: 1970-01-01 00:00:00 +0000%
     GIT_VERSION: dev
     COVERAGE_OPTIONS: --instrument-with bisect_ppx
-    BISECT_FILE: $CI_PROJECT_DIR/_coverage_output/
-    SLACK_COVERAGE_CHANNEL: C02PHBE7W73
   artifacts:
     name: build-$ARCH-$CI_COMMIT_REF_SLUG
     expire_in: 1 day
@@ -161,8 +159,6 @@ oc.build_x86_64-exp-dev-extra:
     BUILD_EXTRA: src/bin_tps_evaluation/main_tps_evaluation.exe src/bin_octogram/octogram_main.exe
       tezt/tests/main.exe contrib/octez_injector_server/octez_injector_server.exe
     COVERAGE_OPTIONS: --instrument-with bisect_ppx
-    BISECT_FILE: $CI_PROJECT_DIR/_coverage_output/
-    SLACK_COVERAGE_CHANNEL: C02PHBE7W73
   artifacts:
     name: build-$ARCH-$CI_COMMIT_REF_SLUG
     expire_in: 1 day
@@ -5633,9 +5629,7 @@ tezt_flaky:
     TESTS: flaky
     TEZT_RETRY: "3"
     TEZT_PARALLEL: "1"
-    COVERAGE_OPTIONS: --instrument-with bisect_ppx
     BISECT_FILE: $CI_PROJECT_DIR/_coverage_output/
-    SLACK_COVERAGE_CHANNEL: C02PHBE7W73
   artifacts:
     name: coverage-files-$CI_JOB_ID
     expire_in: 3 days
@@ -5643,8 +5637,8 @@ tezt_flaky:
     - tezt.log
     - tezt-*.log
     - tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json
-    - $BISECT_FILE
     - $JUNIT
+    - $BISECT_FILE
     reports:
       junit: $JUNIT
     when: always

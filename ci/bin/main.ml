@@ -240,16 +240,159 @@ let before_script ?(take_ownership = false) ?(source_version = false)
   @ before_script
 
 let job_append_variables variables (job : job) : job =
-  let variables = Option.value ~default:[] job.variables @ variables in
-  {job with variables = Some variables}
+  let existing_variables = Option.value ~default:[] job.variables in
+  if List.exists (Fun.flip List.mem existing_variables) variables then
+    (* TODO: no need to complain if we're setting the same value *)
+    failwith "[job_append_variables] attempting to set an already set variable" ;
+  {job with variables = Some (existing_variables @ variables)}
 
-let job_enable_coverage (job : job) =
+let opt_join o1 o2 f =
+  match (o1, o2) with
+  | None, None -> None
+  | Some x, None | None, Some x -> Some x
+  | Some x, Some y -> Some (f x y)
+
+let opt_either field o1 o2 =
+  match (o1, o2) with
+  | None, None -> None
+  | Some x, None | None, Some x -> Some x
+  | Some _, Some _ ->
+      failwith
+        (sf "[job_merge_artifacts] attempted to merge two [%s:] fields." field)
+
+let max_when : when_artifact -> when_artifact -> when_artifact =
+ fun w1 w2 ->
+  match (w1, w2) with
+  | Always, _ | _, Always | On_success, On_failure | On_failure, On_success ->
+      Always
+  | On_success, _ -> On_success
+  | On_failure, _ -> On_failure
+
+let merge_reports : reports -> reports -> reports =
+ fun r1 r2 ->
+  {
+    dotenv = opt_either "artifacts:reports:dotenv" r1.dotenv r2.dotenv;
+    junit = opt_either "artifacts:reports:junit" r1.junit r2.junit;
+    coverage_report =
+      opt_either
+        "artifacts:reports:coverage_report"
+        r1.coverage_report
+        r2.coverage_report;
+  }
+
+let job_merge_artifacts (new_artifacts : artifacts) (job : job) : job =
+  let artifacts =
+    match job.artifacts with
+    | None -> new_artifacts
+    | Some {expire_in; paths; reports; when_; expose_as; name} ->
+        (* This is necessarily inexact. E.g. the length of a day in
+           seconds depends on leap seconds and stuff. However, this
+           approximation is sufficient for the purpose of comparing
+           intervals. *)
+        let time_interval_to_seconds = function
+          | Seconds n -> n
+          | Minutes n -> n * 60
+          | Hours n -> n * 60 * 60
+          | Days n -> n * 24 * 60 * 60
+          | Weeks n -> n * 7 * 24 * 60 * 60
+          | Months n -> n * 7 * 24 * 60 * 60
+          | Years n -> n * 365 * 7 * 24 * 60 * 60
+        in
+        let max_time_interval ti1 ti2 =
+          if
+            compare
+              (time_interval_to_seconds ti1)
+              (time_interval_to_seconds ti2)
+            < 0
+          then ti1
+          else ti2
+        in
+        let expire_in =
+          opt_join expire_in new_artifacts.expire_in max_time_interval
+        in
+        let paths = paths @ new_artifacts.paths in
+        let reports = opt_join reports new_artifacts.reports merge_reports in
+        let when_ = opt_join when_ new_artifacts.when_ max_when in
+        (* There is no obvious way to join the [name:] and [expose_as:] fields.
+           We'll prefer the right-most one. *)
+        let expose_as =
+          opt_join expose_as new_artifacts.expose_as (fun _ new_expose_as ->
+              new_expose_as)
+        in
+        let name =
+          opt_join name new_artifacts.name (fun _ new_name -> new_name)
+        in
+        {expire_in; paths; reports; when_; expose_as; name}
+  in
+  {job with artifacts = Some artifacts}
+
+(* Coverage collection for OCaml using bisect_ppx consists of three parts:
+
+   1. [job_enable_coverage_instrumentation]: configures dune to add
+   [bisect_ppx] when compiling. This is done by
+   [job_enable_coverage_instrumentation].
+
+   2. [job_enable_coverage_output]: configures the runtime environment
+   to activate the output of coverage traces and storing these as
+   artifacts.
+
+   3. Collecting coverage trace artifacts, producing a report using
+   [bisect-ppx-report], storing the report as an artifact and exposing
+   the collected coverage percentage to GitLab. This is facilitated by
+   [job_enable_coverage_report] that setups the artifacts for the
+   report.
+
+   For integration tests, this means that we perform step 1. in build
+   jobs, we do step 2. in test jobs and we do 3. in [unified_coverage]
+   job. Unit tests are built and executed in the same jobs. There, we
+   do 1. and 2. in the same job. *)
+let bisect_file = "$CI_PROJECT_DIR/_coverage_output/"
+
+let job_enable_coverage_instrumentation (job : job) =
   job_append_variables
-    [
-      ("COVERAGE_OPTIONS", "--instrument-with bisect_ppx");
-      ("BISECT_FILE", "$CI_PROJECT_DIR/_coverage_output/");
-      ("SLACK_COVERAGE_CHANNEL", "C02PHBE7W73");
-    ]
+    [("COVERAGE_OPTIONS", "--instrument-with bisect_ppx")]
+    job
+
+let job_enable_coverage_output ?(expire_in = Days 1) (job : job) =
+  job
+  (* Set the run-time environment variable that specifies the
+     directory where coverage traces should be stored. *)
+  |> job_append_variables [("BISECT_FILE", bisect_file)]
+  (* Store the directory of coverage traces as an artifact. *)
+  |> job_merge_artifacts
+       (artifacts
+          ~name:"coverage-files-$CI_JOB_ID"
+          ~expire_in
+          ~when_:On_success
+          ["$BISECT_FILE"])
+
+let job_enable_coverage_report job : job =
+  {job with coverage = Some "/Coverage: ([^%]+%)/"}
+  (* Set the run-time environment variable that specifies the
+     directory where coverage traces have been received as artifacts
+     and the Slack channel where corrupt traces are reported. *)
+  |> job_append_variables
+       [("BISECT_FILE", bisect_file); ("SLACK_COVERAGE_CHANNEL", "C02PHBE7W73")]
+  (* Store the directory of the reports as well as the merged traces
+     as an artifact. *)
+  |> job_merge_artifacts
+       (artifacts
+          ~expose_as:"Coverage report"
+          ~reports:
+            (reports
+               ~coverage_report:
+                 {
+                   coverage_format = Cobertura;
+                   path = "_coverage_report/cobertura.xml";
+                 }
+               ())
+          ~expire_in:(Days 15)
+          ~when_:Always
+          ["_coverage_report/"; "$BISECT_FILE"])
+
+let enable_sccache ?(sccache_dir = "$CI_PROJECT_DIR/_sccache") job =
+  job_append_variables
+    [("SCCACHE_DIR", sccache_dir); ("RUSTC_WRAPPER", "sccache")]
     job
 
 (* Define the [trigger] job *)
@@ -749,7 +892,7 @@ let job_build_dynamic_binaries ?rules ~arch ?(external_ = false)
   in
   let job =
     (* Disable coverage for arm64 *)
-    if arch = Amd64 then job_enable_coverage job else job
+    if arch = Amd64 then job |> job_enable_coverage_instrumentation else job
   in
   if external_ then job_external job else job
 
@@ -822,33 +965,6 @@ let job_build_x86_64_exp_dev_extra =
     ~release:false
     ~rules:build_x86_64_rules
     ()
-
-let job_enable_coverage_report job : job =
-  let coverage = "/Coverage: ([^%]+%)/" in
-  let artifacts =
-    match job.artifacts with
-    | Some _ -> assert false
-    | None ->
-        artifacts
-          ~expose_as:"Coverage report"
-          ~reports:
-            (reports
-               ~coverage_report:
-                 {
-                   coverage_format = Cobertura;
-                   path = "_coverage_report/cobertura.xml";
-                 }
-               ())
-          ~expire_in:(Days 15)
-          ~when_:Always
-          ["_coverage_report/"; "$BISECT_FILE"]
-  in
-  {job with artifacts = Some artifacts; coverage = Some coverage}
-
-let enable_sccache ?(sccache_dir = "$CI_PROJECT_DIR/_sccache") job =
-  job_append_variables
-    [("SCCACHE_DIR", sccache_dir); ("RUSTC_WRAPPER", "sccache")]
-    job
 
 let changeset_octez_docs =
   [
@@ -1187,7 +1303,6 @@ let job_tezt ?rules ?parallel ?(tags = ["gcp_tezt"]) ~name ~tezt_tests
         "tezt.log";
         "tezt-*.log";
         "tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json";
-        "$BISECT_FILE";
         "$JUNIT";
       ]
       (* The record artifacts [tezt-results-$CI_NODE_INDEX.json]
@@ -1590,7 +1705,7 @@ let () =
            ["./scripts/ci/doc_publish.sh"]
        in
        let unified_coverage_default =
-         job_enable_coverage @@ job_enable_coverage_report
+         job_enable_coverage_report
          @@ job
               ~image:Images.runtime_build_test_dependencies
               ~name:"oc.unified_coverage"
@@ -1687,7 +1802,7 @@ let () =
          ]
        in
        let job_tezt_flaky : job =
-         job_enable_coverage
+         job_enable_coverage_output ~expire_in:(Days 3)
          @@ job_tezt
               ~name:"tezt_flaky"
               ~tezt_tests:"flaky"
