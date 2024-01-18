@@ -1795,6 +1795,19 @@ let _jobs_unit_tests =
        oc_unit_protocol_compiles;
      ]
 
+let _job_oc_integration_compiler_rejections =
+  job_external
+  @@ job
+       ~name:"oc.integration:compiler-rejections"
+       ~stage:Stages.test
+       ~image:Images.runtime_build_dependencies
+       ~rules:[job_rule ~changes:changeset_octez ()]
+       ~dependencies:
+         (Dependent
+            [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra])
+       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+       ["dune build @runtest_rejections"]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
