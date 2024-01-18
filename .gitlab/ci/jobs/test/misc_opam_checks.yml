@@ -1,7 +1,14 @@
 misc_opam_checks:
   extends:
-    - .test_template
+    - .default_settings_template
+    - .image_template__runtime_build_dependencies
+    - .rules__octez_changes
+  stage: test
   needs: [trigger]
+  retry: 2
+  before_script:
+    - . ./scripts/version.sh
+    - eval $(opam env)
   script:
     # checks that all deps of opam packages are already installed
     - ./scripts/opam-check.sh
