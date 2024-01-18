@@ -258,7 +258,7 @@ fn log_error<Host: Runtime>(
     Ok(())
 }
 
-pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
+pub fn kernel_loop(host: &mut impl Runtime) {
     // In order to setup the temporary directory, we need to move something
     // from /evm to /tmp, so /evm must be non empty, this only happen
     // at the first run.
@@ -274,29 +274,44 @@ pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
         .expect("The kernel failed to create the temporary directory");
 
     let mut internal_storage = InternalStorage();
-    let mut host = SafeStorage {
+    let mut safe_host = SafeStorage {
         host,
         internal: &mut internal_storage,
     };
-    match main(&mut host) {
+    match main(&mut safe_host) {
         Ok(()) => {
-            host.promote_upgrade()
+            safe_host
+                .promote_upgrade()
                 .expect("Potential kernel upgrade promotion failed");
-            host.promote(&EVM_PATH)
-                .expect("The kernel failed to promote the temporary directory")
+            safe_host
+                .promote(&EVM_PATH)
+                .expect("The kernel failed to promote the temporary directory");
+
+            let path = RefPath::assert_from(b"/evm/__outbox_queue");
+            let outbox_queue =
+                tezos_smart_rollup::outbox::OutboxQueue::new(&path, u32::MAX)
+                    .expect("Failed to created the outbox queue");
+
+            log!(&safe_host, Info, "Going to flush");
+
+            let size = outbox_queue.flush_queue(safe_host.host);
+            log!(safe_host, Fatal, "Flushed {} messages", size);
         }
         Err(e) => {
             if let Some(UpgradeError(Fallback)) = e.downcast_ref::<Error>() {
                 // All the changes from the failed migration are reverted.
-                host.revert()
+                safe_host
+                    .revert()
                     .expect("The kernel failed to delete the temporary directory");
-                host.fallback_backup_kernel()
+                safe_host
+                    .fallback_backup_kernel()
                     .expect("Fallback mechanism failed");
             } else {
-                log_error(host.host, &e).expect("The kernel failed to write the error");
-                log!(host, Error, "The kernel produced an error: {:?}", e);
+                log_error(safe_host.host, &e)
+                    .expect("The kernel failed to write the error");
+                log!(safe_host, Error, "The kernel produced an error: {:?}", e);
                 log!(
-                    host,
+                    safe_host,
                     Error,
                     "The temporarily modified durable storage is discarded"
                 );
@@ -305,7 +320,8 @@ pub fn kernel_loop<Host: Runtime>(host: &mut Host) {
                 // If an input is consumed then an error happens, the input
                 // will be lost, this cannot happen in production.
 
-                host.revert()
+                safe_host
+                    .revert()
                     .expect("The kernel failed to delete the temporary directory")
             }
         }

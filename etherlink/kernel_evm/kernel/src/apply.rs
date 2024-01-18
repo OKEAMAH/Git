@@ -14,14 +14,12 @@ use evm_execution::handler::ExecutionOutcome;
 use evm_execution::precompiles::PrecompileBTreeMap;
 use evm_execution::{run_transaction, EthereumError};
 use primitive_types::{H160, U256};
-use tezos_data_encoding::enc::BinWriter;
 use tezos_ethereum::block::BlockConstants;
 use tezos_ethereum::transaction::TransactionHash;
 use tezos_ethereum::tx_common::EthereumTransactionCommon;
 use tezos_ethereum::tx_signature::TxSignature;
 use tezos_ethereum::withdrawal::Withdrawal;
 use tezos_evm_logging::{log, Level::*};
-use tezos_smart_rollup_core::MAX_OUTPUT_SIZE;
 use tezos_smart_rollup_encoding::contract::Contract;
 use tezos_smart_rollup_encoding::entrypoint::Entrypoint;
 use tezos_smart_rollup_encoding::michelson::ticket::{FA2_1Ticket, Ticket};
@@ -30,6 +28,7 @@ use tezos_smart_rollup_encoding::michelson::{
 };
 use tezos_smart_rollup_encoding::outbox::OutboxMessage;
 use tezos_smart_rollup_encoding::outbox::OutboxMessageTransaction;
+use tezos_smart_rollup_host::path::RefPath;
 use tezos_smart_rollup_host::runtime::Runtime;
 
 use crate::error::Error;
@@ -415,6 +414,10 @@ fn post_withdrawals<Host: Runtime>(
     };
     let entrypoint = Entrypoint::try_from(String::from("burn"))?;
 
+    let path = RefPath::assert_from(b"/__outbox_queue");
+    let outbox_queue = tezos_smart_rollup::outbox::OutboxQueue::new(&path, u32::MAX)
+        .expect("Failed to created the outbox queue");
+
     for withdrawal in withdrawals {
         // Wei is 10^18, whereas mutez is 10^6.
         let amount: U256 =
@@ -448,15 +451,20 @@ fn post_withdrawals<Host: Runtime>(
             entrypoint: entrypoint.clone(),
             destination: destination.clone(),
         };
+
         let outbox_message =
             OutboxMessage::AtomicTransactionBatch(vec![withdrawal].into());
 
-        let mut encoded = Vec::with_capacity(MAX_OUTPUT_SIZE);
-
-        outbox_message.bin_write(&mut encoded)?;
-
-        host.write_output(&encoded)?;
+        match outbox_queue.queue_message(host, outbox_message) {
+            Err(err) => {
+                log!(host, Fatal, "Failed to add withdrawal to outbox: {:?}", err);
+            }
+            Ok(len) => log!(host, Fatal, "Length of the outbox queue: {}", len),
+        }
     }
+
+    // let size = outbox_queue.flush_queue(&mut host);
+    // log!(host, Fatal, "Flushed {} messages", size);
 
     Ok(())
 }
