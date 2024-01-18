@@ -178,6 +178,18 @@ let enc_allow_failure_job (allow_failure : allow_failure_job) : value =
   | No -> `Bool false
   | With_exit_codes codes -> `O [("exit_codes", array1 int codes)]
 
+let enc_needs (needs : need list) : value =
+  (* Use terse encoding unless optional is set to true for at least one need *)
+  let enc_need =
+    if List.for_all (fun {job = _; optional} -> optional = false) needs then
+      fun {job; optional = _} -> `String job
+    else fun {job; optional} ->
+      `O
+        ([("job", `String job)]
+        @ if optional then [("optional", `Bool true)] else [])
+  in
+  array enc_need needs
+
 let enc_job : job -> value =
  fun {
        name = _;
@@ -208,7 +220,7 @@ let enc_job : job -> value =
       opt "stage" string stage;
       opt "tags" (array string) tags;
       opt "rules" enc_job_rules rules;
-      opt "needs" strings needs;
+      opt "needs" enc_needs needs;
       opt "dependencies" strings dependencies;
       opt "allow_failure" enc_allow_failure_job allow_failure;
       opt "timeout" enc_time_interval timeout;

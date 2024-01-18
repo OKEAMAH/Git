@@ -80,10 +80,16 @@ type arch = Amd64 | Arm64
 
     - A job that depends on [Job j] will not start until [j] finishes.
 
+    - A job that depends on [Optional j] will not start until [j]
+    finishes, if it is present in the pipeline. For more information,
+    see
+    {{:https://docs.gitlab.com/ee/ci/yaml/#needsoptional}needs:optional}.
+
     - A job that depends on [Artefacts j] will not start until [j] finishes
       and will also have the artefacts of [j] available. *)
 type dependency =
   | Job of Gitlab_ci.Types.job
+  | Optional of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
 
 (** Job dependencies.

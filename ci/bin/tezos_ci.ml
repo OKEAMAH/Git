@@ -93,6 +93,7 @@ type arch = Amd64 | Arm64
 
 type dependency =
   | Job of Gitlab_ci.Types.job
+  | Optional of Gitlab_ci.Types.job
   | Artifacts of Gitlab_ci.Types.job
 
 type dependencies = Staged | Dependent of dependency list
@@ -134,9 +135,21 @@ let job ?arch ?after_script ?allow_failure ?artifacts ?before_script ?cache
     | Staged -> (None, Some [])
     | Dependent dependencies ->
         let rec loop (needs, dependencies) = function
-          | Job j :: deps -> loop (j.name :: needs, dependencies) deps
+          | Job j :: deps ->
+              loop
+                ( Gitlab_ci.Types.{job = j.name; optional = false} :: needs,
+                  dependencies )
+                deps
+          | Optional j :: deps ->
+              loop
+                ( Gitlab_ci.Types.{job = j.name; optional = true} :: needs,
+                  dependencies )
+                deps
           | Artifacts j :: deps ->
-              loop (j.name :: needs, j.name :: dependencies) deps
+              loop
+                ( Gitlab_ci.Types.{job = j.name; optional = false} :: needs,
+                  j.name :: dependencies )
+                deps
           | [] ->
               (* Note that [dependencies] is always filled, because we want to
                  fetch no dependencies by default ([dependencies = Some

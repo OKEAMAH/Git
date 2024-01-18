@@ -91,6 +91,8 @@ type cache = {key : string; paths : string list}
 
 type service = {name : string}
 
+type need = {job : string; optional : bool}
+
 type job = {
   name : string;
       (** Note that [name] does not translate to the a field in a job, but
@@ -102,7 +104,7 @@ type job = {
   cache : cache list option;
   image : image option;
   interruptible : bool option;
-  needs : string list option;
+  needs : need list option;
   dependencies : string list option;
   rules : job_rule list option;
   script : string list option;
