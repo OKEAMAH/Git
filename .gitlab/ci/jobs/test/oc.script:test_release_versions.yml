@@ -1,5 +1,12 @@
 oc.script:test_release_versions:
-  extends: .test_template
+  extends:
+    - .default_settings_template
+    - .image_template__runtime_build_dependencies
+    - .rules__octez_changes
+  stage: test
+  needs:
+    - "oc.build_x86_64-released"
+    - "oc.build_x86_64-exp-dev-extra"
   before_script:
     - ./scripts/ci/take_ownership.sh
     - . ./scripts/version.sh
