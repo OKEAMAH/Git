@@ -15,6 +15,7 @@
 - Fix a bug where for non-existing address default hash was used rather than zero hash. (!11665)
 - Fix a bug where nonce and code shouldn't be set when SELFDESTRUCT is called
   in initialisation code. (!11637)
+- Fix a bug when call return CallToDeep error. (!11579)
 
 ### Breaking changes
 
