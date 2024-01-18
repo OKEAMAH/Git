@@ -512,6 +512,8 @@ module Inner = struct
 
   let pages_per_slot {slot_size; page_size; _} = slot_size / page_size
 
+  module Profiler = Tezos_crypto.Profiler
+
   (* Error cases of this functions are not encapsulated into
      `tzresult` for modularity reasons. *)
   let make
@@ -519,6 +521,7 @@ module Inner = struct
       parameters) =
     let open Result_syntax in
     let max_polynomial_length =
+      Profiler.record_f Profiler.main "slot_as_polynomial_length" @@ fun () ->
       slot_as_polynomial_length ~slot_size ~page_size
     in
     let erasure_encoded_polynomial_length =
@@ -526,11 +529,13 @@ module Inner = struct
     in
     let shard_length = erasure_encoded_polynomial_length / number_of_shards in
     let* raw =
+      Profiler.record_f Profiler.main "initialisation_parameters" @@ fun () ->
       match !initialisation_parameters with
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
       | Some srs -> return srs
     in
     let* () =
+      Profiler.record_f Profiler.main "ensure_validity" @@ fun () ->
       ensure_validity
         ~slot_size
         ~page_size
@@ -539,9 +544,16 @@ module Inner = struct
         ~srs_g1_length:(Srs_g1.size raw.srs_g1)
         ~srs_g2_length:(Srs_g2.size raw.srs_g2)
     in
-    let page_length = page_length ~page_size in
-    let page_length_domain, _, _ = FFT.select_fft_domain page_length in
+    let page_length =
+      Profiler.record_f Profiler.main "page_length" @@ fun () ->
+      page_length ~page_size
+    in
+    let page_length_domain, _, _ =
+      Profiler.record_f Profiler.main "select_fft_domain" @@ fun () ->
+      FFT.select_fft_domain page_length
+    in
     let srs =
+      Profiler.record_f Profiler.main "srs get" @@ fun () ->
       {
         raw;
         kate_amortized_srs_g2_shards = Srs_g2.get raw.srs_g2 shard_length;
@@ -556,11 +568,21 @@ module Inner = struct
         number_of_shards;
         max_polynomial_length;
         erasure_encoded_polynomial_length;
-        domain_polynomial_length = make_domain max_polynomial_length;
+        domain_polynomial_length =
+          Profiler.record_f
+            Profiler.main
+            "domain max polynomial length"
+            (fun () -> make_domain max_polynomial_length);
         domain_2_times_polynomial_length =
-          make_domain (2 * max_polynomial_length);
+          Profiler.record_f
+            Profiler.main
+            "domain 2 times max polynomial length"
+            (fun () -> make_domain (2 * max_polynomial_length));
         domain_erasure_encoded_polynomial_length =
-          make_domain erasure_encoded_polynomial_length;
+          ( Profiler.record_f
+              Profiler.main
+              "domain erasure encoded polynomial lengthpolynomial length"
+          @@ fun () -> make_domain erasure_encoded_polynomial_length );
         shard_length;
         pages_per_slot = pages_per_slot parameters;
         page_length;
