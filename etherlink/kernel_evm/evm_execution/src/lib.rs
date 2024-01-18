@@ -20,6 +20,7 @@ use tezos_smart_rollup_storage::StorageError;
 use thiserror::Error;
 
 pub mod abi;
+mod accessed_storage;
 pub mod account_storage;
 pub mod handler;
 pub mod precompiles;
