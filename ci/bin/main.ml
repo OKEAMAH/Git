@@ -1444,6 +1444,33 @@ let _job_kaitai_e2e_checks =
           contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input";
        ]
 
+let changeset_lift_limits_patch =
+  [
+    "src/bin_tps_evaluation/lift_limits.patch";
+    "src/proto_alpha/lib_protocol/main.ml";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+  ]
+
+let _job_oc_check_lift_limits_patch =
+  job_external
+  @@ job
+       ~name:"oc.check_lift_limits_patch"
+       ~image:Images.runtime_build_dependencies
+       ~stage:Stages.test
+       ~dependencies:(Dependent [Job trigger])
+       ~rules:[job_rule ~changes:changeset_lift_limits_patch ()]
+       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+       [
+         (* Check that the patch only modifies the
+            src/proto_alpha/lib_protocol. If not, the rules above have to be
+            updated. *)
+         "[ $(git apply --numstat src/bin_tps_evaluation/lift_limits.patch | \
+          cut -f3) = \"src/proto_alpha/lib_protocol/main.ml\" ]";
+         "git apply src/bin_tps_evaluation/lift_limits.patch";
+         "dune build @src/proto_alpha/lib_protocol/check";
+       ]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
