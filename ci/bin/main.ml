@@ -1849,6 +1849,17 @@ let _job_oc_script_snapshot_alpha_and_link =
             [])
        ["./.gitlab/ci/jobs/test/script:snapshot_alpha_and_link.sh"]
 
+let _job_oc_script_test_gen_genesis =
+  job_external
+  @@ job
+       ~name:"oc.script:test-gen-genesis"
+       ~stage:Stages.test
+       ~image:Images.runtime_build_dependencies
+       ~rules:[job_rule ~changes:changeset_octez ()]
+       ~dependencies:(Dependent [Job trigger])
+       ~before_script:(before_script ~eval_opam:true ["cd scripts/gen-genesis"])
+       ["dune build gen_genesis.exe"]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
