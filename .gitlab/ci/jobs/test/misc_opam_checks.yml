@@ -1,19 +1,32 @@
+# This file was automatically generated, do not edit.
+# Edit file ci/bin/main.ml instead.
+
 misc_opam_checks:
-  extends:
-    - .default_settings_template
-    - .image_template__runtime_build_dependencies
-    - .rules__octez_changes
+  image: ${build_deps_image_name}:runtime-build-dependencies--${build_deps_image_version}
   stage: test
-  needs: [trigger]
-  retry: 2
+  tags:
+  - gcp
+  rules:
+  - changes:
+    - src/**/*
+    - etherlink/**/*
+    - tezt/**/*
+    - .gitlab/**/*
+    - .gitlab-ci.yml
+    - michelson_test_scripts/**/*
+    - tzt_reference_test_suite/**/*
+    when: on_success
+  needs:
+  - trigger
+  dependencies: []
   before_script:
-    - . ./scripts/version.sh
-    - eval $(opam env)
+  - . ./scripts/version.sh
+  - eval $(opam env)
   script:
-    # checks that all deps of opam packages are already installed
-    - ./scripts/opam-check.sh
+  - ./scripts/opam-check.sh
   artifacts:
-    when: always
+    expire_in: 1 day
     paths:
-      - opam_repo.patch
-    expire_in: 1 days
+    - opam_repo.patch
+    when: always
+  retry: 2

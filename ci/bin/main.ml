@@ -1471,6 +1471,23 @@ let _job_oc_check_lift_limits_patch =
          "dune build @src/proto_alpha/lib_protocol/check";
        ]
 
+let _job_misc_opam_checks =
+  job_external
+  @@ job
+       ~name:"misc_opam_checks"
+       ~image:Images.runtime_build_dependencies
+       ~stage:Stages.test
+       ~retry:2
+       ~dependencies:(Dependent [Job trigger])
+       ~rules:[job_rule ~changes:changeset_octez ()]
+       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+       [
+         (* checks that all deps of opam packages are already installed *)
+         "./scripts/opam-check.sh";
+       ]
+       ~artifacts:
+         (artifacts ~when_:Always ["opam_repo.patch"] ~expire_in:(Days 1))
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
