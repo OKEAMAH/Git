@@ -2,8 +2,7 @@ kaitai_e2e_checks:
   extends:
     - .default_settings_template
     - .image_template__runtime_client_libs_dependencies
-  # These tests are not flaky at all so we overwrite the retry value
-  retry: 0
+  stage: test
   needs: [kaitai_checks]
   rules:
     - changes:
