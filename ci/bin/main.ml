@@ -138,7 +138,7 @@ module Images = struct
       ~image_path:
         "${build_deps_image_name}:runtime-prebuild-dependencies--${build_deps_image_version}"
 
-  let _runtime_client_libs_dependencies =
+  let runtime_client_libs_dependencies =
     Image.register
       ~name:"runtime_client_libs_dependencies"
       ~image_path:
@@ -1412,7 +1412,7 @@ let changeset_kaitai_files =
   ["src/**/*"; "contrib/*kaitai*/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
 
 (* check that ksy files are still up-to-date with octez *)
-let _kaitai_checks =
+let job_kaitai_checks =
   job_external
   @@ job
        ~name:"kaitai_checks"
@@ -1426,6 +1426,22 @@ let _kaitai_checks =
           encodings and Kaitai files seem to be out of sync. You might need to \
           run `make check-kaitai-struct-files` and commit the resulting diff.' \
           ; false)";
+       ]
+
+(* check that ksy files are still up-to-date with octez *)
+let _job_kaitai_e2e_checks =
+  job_external
+  @@ job
+       ~name:"kaitai_e2e_checks"
+       ~image:Images.runtime_client_libs_dependencies
+       ~stage:Stages.test
+       ~dependencies:(Dependent [Job job_kaitai_checks])
+       ~rules:[job_rule ~changes:changeset_kaitai_files ()]
+       ~before_script:
+         (before_script ~source_version:true ~install_js_deps:true [])
+       [
+         "./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh \
+          contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input";
        ]
 
 (* Register pipelines types. Pipelines types are used to generate

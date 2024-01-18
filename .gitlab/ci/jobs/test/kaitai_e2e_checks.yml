@@ -1,28 +1,24 @@
+# This file was automatically generated, do not edit.
+# Edit file ci/bin/main.ml instead.
+
 kaitai_e2e_checks:
-  extends:
-    - .default_settings_template
-    - .image_template__runtime_client_libs_dependencies
+  image: ${build_deps_image_name}:runtime-client-libs-dependencies--${build_deps_image_version}
   stage: test
-  needs: [kaitai_checks]
+  tags:
+  - gcp
   rules:
-    - changes:
-        paths:
-          - src/**/*
-          - contrib/*kaitai*/**/*
-          - .gitlab/**/*
-          - .gitlab-ci.yml
-      when: on_success
+  - changes:
+    - src/**/*
+    - contrib/*kaitai*/**/*
+    - .gitlab/**/*
+    - .gitlab-ci.yml
+    when: on_success
+  needs:
+  - kaitai_checks
+  dependencies: []
   before_script:
-    - . ./scripts/version.sh
-    # TODO: https://gitlab.com/tezos/tezos/-/issues/5026
-    #       As observed for the `unit:js_components` running `npm i`
-    #       everytime we run a job is inefficient.
-    #
-    #       The benefit of this approach is that we specify node version
-    #       and npm dependencies (package.json) in one place, and that the local
-    #       environment is then the same as CI environment.
-    - . ./scripts/install_build_deps.js.sh
+  - . ./scripts/version.sh
+  - . ./scripts/install_build_deps.js.sh
   script:
-    - ./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh
-      contrib/kaitai-struct-files/files
-      contrib/kaitai-struct-files/input
+  - ./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh contrib/kaitai-struct-files/files
+    contrib/kaitai-struct-files/input
