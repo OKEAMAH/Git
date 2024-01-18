@@ -1878,6 +1878,33 @@ let _job_oc_script_test_release_versions =
             [])
        ["./scripts/test_release_version.sh"]
 
+let changeset_script_b58_prefix =
+  [
+    "scripts/b58_prefix/b58_prefix.py";
+    "scripts/b58_prefix/test_b58_prefix.py";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+  ]
+
+let _job_oc_script_b58_prefix =
+  job_external
+  @@ job
+       ~name:"oc.script:b58_prefix"
+       ~stage:Stages.test
+         (* Requires Python. Can be changed to a python image, but using
+            the build docker image to keep in sync with the python
+            version used for the tests *)
+       ~image:Images.runtime_build_test_dependencies
+       ~rules:[job_rule ~changes:changeset_script_b58_prefix ()]
+       ~dependencies:(Dependent [Job trigger])
+       ~before_script:
+         (before_script ~source_version:true ~init_python_venv:true [])
+       [
+         "poetry run pylint scripts/b58_prefix/b58_prefix.py \
+          --disable=missing-docstring --disable=invalid-name";
+         "poetry run pytest scripts/b58_prefix/test_b58_prefix.py";
+       ]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
