@@ -286,6 +286,7 @@ let add_contract_delegated_stake ctxt contract amount =
   | None -> return ctxt
   | Some delegate -> add_delegated_stake ctxt delegate amount
 
+(* TODO: change with fold; iterate over rounds *)
 (* let's assume that consensus_rights_delay <= preserved_cycles;
    we need to keep [ new_cycles; new_cycles + consensus_rights_delay ]
    and remove the rest, i.e.,
@@ -303,14 +304,19 @@ let cleanup_values_for_protocol_p ctxt ~preserved_cycles ~consensus_rights_delay
     let max_cycle = Cycle_repr.add new_cycle (preserved_cycles + 1) in
     let rec aux ctxt cycle_to_clear =
       if Cycle_repr.equal cycle_to_clear max_cycle then return ctxt
-      else
+      else (
+        Logging.log
+          Notice
+          "\n we remove one entry in the table cycle = %a"
+          Cycle_repr.pp
+          cycle_to_clear ;
         let* ctxt =
           Storage.Stake.Total_active_stake.remove_existing ctxt cycle_to_clear
         in
         let* ctxt =
           Selected_distribution_for_cycle.remove_existing ctxt cycle_to_clear
         in
-        aux ctxt (Cycle_repr.succ cycle_to_clear)
+        aux ctxt (Cycle_repr.succ cycle_to_clear))
     in
     aux ctxt (Cycle_repr.add new_cycle (consensus_rights_delay + 1))
 

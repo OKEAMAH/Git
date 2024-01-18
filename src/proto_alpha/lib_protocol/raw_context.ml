@@ -1023,6 +1023,7 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
         let*! result = add_constants ctxt param.constants in
         return result
     | Oxford_018 ->
+        (* TODO: return c *)
         let*! c = get_previous_protocol_constants ctxt in
 
         (* When modifying the line below, be careful that the values are
