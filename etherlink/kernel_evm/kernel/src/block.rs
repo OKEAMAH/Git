@@ -62,6 +62,7 @@ fn compute<Host: Runtime>(
         "Queue length {}.",
         block_in_progress.queue_length()
     );
+    let mut is_first_transaction = true;
     // iteration over all remaining transaction in the block
     while block_in_progress.has_tx() {
         // is reboot necessary ?
@@ -119,10 +120,19 @@ fn compute<Host: Runtime>(
                 );
             }
             ExecutionResult::OutOfTicks => {
-                block_in_progress.repush_tx(transaction);
-                return Ok(ComputationResult::RebootNeeded);
+                if !is_first_transaction {
+                    block_in_progress.repush_tx(transaction);
+                    return Ok(ComputationResult::RebootNeeded);
+                } else {
+                    log!(
+                        host,
+                        Debug,
+                        "Transaction is discarded as it uses too much ticks to be applied in a kernel run."
+                    );
+                }
             }
         };
+        is_first_transaction = false;
     }
     Ok(ComputationResult::Finished)
 }
