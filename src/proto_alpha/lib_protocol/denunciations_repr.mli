@@ -39,3 +39,12 @@ val add :
   misbehaviour_cycle ->
   t ->
   t
+
+module Internal_for_tests : sig
+  val pp_item : Format.formatter -> item -> unit
+
+  val compare_cycle : misbehaviour_cycle -> misbehaviour_cycle -> int
+
+  (** Compare two {!item}s, ignoring their {!field-operation_hash}. *)
+  val compare_item_except_hash : item -> item -> int
+end

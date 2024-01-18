@@ -1352,56 +1352,26 @@ let check_pending_slashings (block, state) : unit tzresult Lwt.t =
   let open Lwt_result_syntax in
   let open Protocol.Denunciations_repr in
   let* denunciations_rpc = Context.get_denunciations (B block) in
-  let denunciations_obj_equal
-      (pkh_1, {rewarded = r1; misbehaviour = m1; misbehaviour_cycle = mc1; _})
-      (pkh_2, {rewarded = r2; misbehaviour = m2; misbehaviour_cycle = mc2; _}) =
-    Signature.Public_key_hash.equal pkh_1 pkh_2
-    && Signature.Public_key_hash.equal r1 r2
-    && Stdlib.(m1.kind = m2.kind)
-    && Stdlib.(mc1 = mc2)
+  let compare_denunciations (pkh_1, item1) (pkh_2, item2) =
+    Compare.or_else (Signature.Public_key_hash.compare pkh_1 pkh_2) @@ fun () ->
+    Internal_for_tests.compare_item_except_hash item1 item2
   in
-  let compare_denunciations
-      (pkh_1, {rewarded = r1; misbehaviour = m1; misbehaviour_cycle = mc1; _})
-      (pkh_2, {rewarded = r2; misbehaviour = m2; misbehaviour_cycle = mc2; _}) =
-    let c1 = Signature.Public_key_hash.compare pkh_1 pkh_2 in
-    if c1 <> 0 then c1
-    else
-      let c2 = Signature.Public_key_hash.compare r1 r2 in
-      if c2 <> 0 then c2
-      else
-        let c3 =
-          match (m1.kind, m2.kind) with
-          | Double_baking, Double_attesting -> -1
-          | x, y when x = y -> 0
-          | _ -> 1
-        in
-        if c3 <> 0 then c3
-        else
-          match (mc1, mc2) with
-          | Current, Previous -> -1
-          | x, y when x = y -> 0
-          | _ -> 1
+  let denunciations_obj_equal obj1 obj2 =
+    Int.equal (compare_denunciations obj1 obj2) 0
   in
   let denunciations_rpc = List.sort compare_denunciations denunciations_rpc in
   let denunciations_state =
     List.sort compare_denunciations state.State.pending_slashes
   in
   let denunciations_equal = List.equal denunciations_obj_equal in
-  let denunciations_obj_pp fmt
-      (pkh, {rewarded; misbehaviour; misbehaviour_cycle; operation_hash = _}) =
+  let denunciations_obj_pp fmt (pkh, denunciations_item) =
     Format.fprintf
       fmt
-      "slashed: %a; rewarded: %a; kind: %s; cycle: %s@."
+      "slashed: %a; %a@."
       Signature.Public_key_hash.pp
       pkh
-      Signature.Public_key_hash.pp
-      rewarded
-      (match misbehaviour.kind with
-      | Double_baking -> "double baking"
-      | Double_attesting -> "double attesting")
-      (match misbehaviour_cycle with
-      | Current -> "current"
-      | Previous -> "previous")
+      Protocol.Denunciations_repr.Internal_for_tests.pp_item
+      denunciations_item
   in
   let denunciations_pp = Format.pp_print_list denunciations_obj_pp in
   let* () =
