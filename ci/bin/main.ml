@@ -353,7 +353,7 @@ let job_enable_coverage_instrumentation (job : job) =
     [("COVERAGE_OPTIONS", "--instrument-with bisect_ppx")]
     job
 
-let job_enable_coverage_output ?(expire_in = Days 1) (job : job) =
+let _job_enable_coverage_output ?(expire_in = Days 1) (job : job) =
   job
   (* Set the run-time environment variable that specifies the
      directory where coverage traces should be stored. *)
@@ -1802,21 +1802,20 @@ let () =
          ]
        in
        let job_tezt_flaky : job =
-         job_enable_coverage_output ~expire_in:(Days 3)
-         @@ job_tezt
-              ~name:"tezt_flaky"
-              ~tezt_tests:"flaky"
-                (* To handle flakiness, consider tweaking [~tezt_parallel] (passed to
-                   Tezt's '--job-count'), and [~tezt_retry] (passed to Tezt's
-                   '--retry') *)
-              ~retry:2
-              ~tezt_retry:3
-              ~tezt_parallel:1
-              ~parallel:1
-              ~dependencies:
-                (Dependent
-                   (List.map (fun job -> Artifacts job) tezt_flaky_dependencies))
-              ()
+         job_tezt
+           ~name:"tezt_flaky"
+           ~tezt_tests:"flaky"
+             (* To handle flakiness, consider tweaking [~tezt_parallel] (passed to
+                Tezt's '--job-count'), and [~tezt_retry] (passed to Tezt's
+                '--retry') *)
+           ~retry:2
+           ~tezt_retry:3
+           ~tezt_parallel:1
+           ~parallel:1
+           ~dependencies:
+             (Dependent
+                (List.map (fun job -> Artifacts job) tezt_flaky_dependencies))
+           ()
        in
        [job_build_arm64_release; job_build_arm64_exp_dev_extra]
        (* These jobs are necessary to run flaky tezts *)

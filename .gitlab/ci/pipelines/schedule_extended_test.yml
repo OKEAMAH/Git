@@ -5629,7 +5629,6 @@ tezt_flaky:
     TESTS: flaky
     TEZT_RETRY: "3"
     TEZT_PARALLEL: "1"
-    BISECT_FILE: $CI_PROJECT_DIR/_coverage_output/
   artifacts:
     name: coverage-files-$CI_JOB_ID
     expire_in: 3 days
@@ -5638,7 +5637,6 @@ tezt_flaky:
     - tezt-*.log
     - tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json
     - $JUNIT
-    - $BISECT_FILE
     reports:
       junit: $JUNIT
     when: always
