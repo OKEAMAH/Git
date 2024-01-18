@@ -1397,6 +1397,17 @@ let _job_oc_misc_checks =
          "scripts/check_wasm_pvm_regressions.sh check";
        ]
 
+let _job_oc_commit_titles =
+  job_external
+  @@ job
+       ~name:"commit_titles"
+       ~image:Images.runtime_prebuild_dependencies
+       ~stage:Stages.test
+       ~dependencies:(Dependent [Job trigger])
+         (* ./scripts/ci/check_commit_messages.sh exits with code 65 when a git history contains invalid commits titles in situations where that is allowed. *)
+       ["./scripts/ci/check_commit_messages.sh || exit $?"]
+       ~allow_failure:(With_exit_codes [65])
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
