@@ -18,12 +18,12 @@ oc.build_arm64-released:
     when: manual
     allow_failure: true
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/released-executables
@@ -57,12 +57,12 @@ oc.build_arm64-exp-dev-extra:
     when: manual
     allow_failure: true
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/experimental-executables script-inputs/dev-executables
@@ -101,12 +101,12 @@ oc.build_x86_64-released:
   needs:
   - trigger
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: x86_64
     EXECUTABLE_FILES: script-inputs/released-executables
@@ -146,12 +146,12 @@ oc.build_x86_64-exp-dev-extra:
   needs:
   - trigger
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: x86_64
     EXECUTABLE_FILES: script-inputs/experimental-executables script-inputs/dev-executables
@@ -237,15 +237,15 @@ oc.tezt:fetch-records:
     when: on_success
   dependencies: []
   allow_failure: true
+  before_script:
+  - ./scripts/ci/take_ownership.sh
+  - . ./scripts/version.sh
+  - eval $(opam env)
   script:
   - dune exec scripts/ci/update_records/update.exe -- --log-file tezt-fetch-records.log
     --test-arg from=last-merged-pipeline --info
   after_script:
   - ./scripts/ci/filter_corrupted_records.sh
-  before_script:
-  - ./scripts/ci/take_ownership.sh
-  - . ./scripts/version.sh
-  - eval $(opam env)
   artifacts:
     expire_in: 4 hours
     paths:
@@ -285,13 +285,13 @@ opam:prepare:
   needs:
   - trigger
   dependencies: []
+  before_script:
+  - eval $(opam env)
   script:
   - git init _opam-repo-for-release
   - ./scripts/opam-prepare-repo.sh dev ./ ./_opam-repo-for-release
   - git -C _opam-repo-for-release add packages
   - git -C _opam-repo-for-release commit -m "tezos packages"
-  before_script:
-  - eval $(opam env)
   artifacts:
     paths:
     - _opam-repo-for-release/
@@ -332,6 +332,8 @@ opam:bls12-381:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -339,8 +341,6 @@ opam:bls12-381:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: bls12-381
@@ -389,6 +389,8 @@ opam:octez-accuser-Proxford:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -396,8 +398,6 @@ opam:octez-accuser-Proxford:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-accuser-Proxford
@@ -446,6 +446,8 @@ opam:octez-accuser-PtNairob:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -453,8 +455,6 @@ opam:octez-accuser-PtNairob:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-accuser-PtNairob
@@ -503,6 +503,8 @@ opam:octez-alcotezt:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -510,8 +512,6 @@ opam:octez-alcotezt:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-alcotezt
@@ -560,6 +560,8 @@ opam:octez-baker-Proxford:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -567,8 +569,6 @@ opam:octez-baker-Proxford:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-baker-Proxford
@@ -617,6 +617,8 @@ opam:octez-baker-PtNairob:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -624,8 +626,6 @@ opam:octez-baker-PtNairob:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-baker-PtNairob
@@ -674,6 +674,8 @@ opam:octez-client:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -681,8 +683,6 @@ opam:octez-client:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-client
@@ -731,6 +731,8 @@ opam:octez-codec:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -738,8 +740,6 @@ opam:octez-codec:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-codec
@@ -788,6 +788,8 @@ opam:octez-crawler:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -795,8 +797,6 @@ opam:octez-crawler:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-crawler
@@ -845,6 +845,8 @@ opam:octez-dac-client:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -852,8 +854,6 @@ opam:octez-dac-client:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-dac-client
@@ -902,6 +902,8 @@ opam:octez-dac-node:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -909,8 +911,6 @@ opam:octez-dac-node:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-dac-node
@@ -959,6 +959,8 @@ opam:octez-distributed-internal:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -966,8 +968,6 @@ opam:octez-distributed-internal:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-distributed-internal
@@ -1016,6 +1016,8 @@ opam:octez-distributed-lwt-internal:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1023,8 +1025,6 @@ opam:octez-distributed-lwt-internal:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-distributed-lwt-internal
@@ -1073,6 +1073,8 @@ opam:octez-injector:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1080,8 +1082,6 @@ opam:octez-injector:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-injector
@@ -1130,6 +1130,8 @@ opam:octez-internal-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1137,8 +1139,6 @@ opam:octez-internal-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-internal-libs
@@ -1187,6 +1187,8 @@ opam:octez-l2-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1194,8 +1196,6 @@ opam:octez-l2-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-l2-libs
@@ -1244,6 +1244,8 @@ opam:octez-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1251,8 +1253,6 @@ opam:octez-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-libs
@@ -1301,6 +1301,8 @@ opam:octez-node:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1308,8 +1310,6 @@ opam:octez-node:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-node
@@ -1358,6 +1358,8 @@ opam:octez-node-config:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1365,8 +1367,6 @@ opam:octez-node-config:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-node-config
@@ -1415,6 +1415,8 @@ opam:octez-proto-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1422,8 +1424,6 @@ opam:octez-proto-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-proto-libs
@@ -1472,6 +1472,8 @@ opam:octez-protocol-000-Ps9mPmXa-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1479,8 +1481,6 @@ opam:octez-protocol-000-Ps9mPmXa-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-000-Ps9mPmXa-libs
@@ -1529,6 +1529,8 @@ opam:octez-protocol-001-PtCJ7pwo-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1536,8 +1538,6 @@ opam:octez-protocol-001-PtCJ7pwo-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-001-PtCJ7pwo-libs
@@ -1586,6 +1586,8 @@ opam:octez-protocol-002-PsYLVpVv-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1593,8 +1595,6 @@ opam:octez-protocol-002-PsYLVpVv-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-002-PsYLVpVv-libs
@@ -1643,6 +1643,8 @@ opam:octez-protocol-003-PsddFKi3-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1650,8 +1652,6 @@ opam:octez-protocol-003-PsddFKi3-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-003-PsddFKi3-libs
@@ -1700,6 +1700,8 @@ opam:octez-protocol-004-Pt24m4xi-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1707,8 +1709,6 @@ opam:octez-protocol-004-Pt24m4xi-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-004-Pt24m4xi-libs
@@ -1757,6 +1757,8 @@ opam:octez-protocol-005-PsBabyM1-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1764,8 +1766,6 @@ opam:octez-protocol-005-PsBabyM1-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-005-PsBabyM1-libs
@@ -1814,6 +1814,8 @@ opam:octez-protocol-006-PsCARTHA-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1821,8 +1823,6 @@ opam:octez-protocol-006-PsCARTHA-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-006-PsCARTHA-libs
@@ -1871,6 +1871,8 @@ opam:octez-protocol-007-PsDELPH1-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1878,8 +1880,6 @@ opam:octez-protocol-007-PsDELPH1-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-007-PsDELPH1-libs
@@ -1928,6 +1928,8 @@ opam:octez-protocol-008-PtEdo2Zk-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1935,8 +1937,6 @@ opam:octez-protocol-008-PtEdo2Zk-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-008-PtEdo2Zk-libs
@@ -1985,6 +1985,8 @@ opam:octez-protocol-009-PsFLoren-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -1992,8 +1994,6 @@ opam:octez-protocol-009-PsFLoren-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-009-PsFLoren-libs
@@ -2042,6 +2042,8 @@ opam:octez-protocol-010-PtGRANAD-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2049,8 +2051,6 @@ opam:octez-protocol-010-PtGRANAD-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-010-PtGRANAD-libs
@@ -2099,6 +2099,8 @@ opam:octez-protocol-011-PtHangz2-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2106,8 +2108,6 @@ opam:octez-protocol-011-PtHangz2-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-011-PtHangz2-libs
@@ -2156,6 +2156,8 @@ opam:octez-protocol-012-Psithaca-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2163,8 +2165,6 @@ opam:octez-protocol-012-Psithaca-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-012-Psithaca-libs
@@ -2213,6 +2213,8 @@ opam:octez-protocol-013-PtJakart-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2220,8 +2222,6 @@ opam:octez-protocol-013-PtJakart-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-013-PtJakart-libs
@@ -2270,6 +2270,8 @@ opam:octez-protocol-014-PtKathma-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2277,8 +2279,6 @@ opam:octez-protocol-014-PtKathma-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-014-PtKathma-libs
@@ -2327,6 +2327,8 @@ opam:octez-protocol-015-PtLimaPt-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2334,8 +2336,6 @@ opam:octez-protocol-015-PtLimaPt-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-015-PtLimaPt-libs
@@ -2384,6 +2384,8 @@ opam:octez-protocol-016-PtMumbai-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2391,8 +2393,6 @@ opam:octez-protocol-016-PtMumbai-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-016-PtMumbai-libs
@@ -2441,6 +2441,8 @@ opam:octez-protocol-017-PtNairob-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2448,8 +2450,6 @@ opam:octez-protocol-017-PtNairob-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-017-PtNairob-libs
@@ -2498,6 +2498,8 @@ opam:octez-protocol-018-Proxford-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2505,8 +2507,6 @@ opam:octez-protocol-018-Proxford-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-018-Proxford-libs
@@ -2555,6 +2555,8 @@ opam:octez-protocol-alpha-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2562,8 +2564,6 @@ opam:octez-protocol-alpha-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-alpha-libs
@@ -2612,6 +2612,8 @@ opam:octez-protocol-compiler:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2619,8 +2621,6 @@ opam:octez-protocol-compiler:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-protocol-compiler
@@ -2669,6 +2669,8 @@ opam:octez-proxy-server:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2676,8 +2678,6 @@ opam:octez-proxy-server:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-proxy-server
@@ -2726,6 +2726,8 @@ opam:octez-rpc-process:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2733,8 +2735,6 @@ opam:octez-rpc-process:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-rpc-process
@@ -2783,6 +2783,8 @@ opam:octez-shell-libs:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2790,8 +2792,6 @@ opam:octez-shell-libs:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-shell-libs
@@ -2840,6 +2840,8 @@ opam:octez-signer:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2847,8 +2849,6 @@ opam:octez-signer:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-signer
@@ -2897,6 +2897,8 @@ opam:octez-smart-rollup-node:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2904,8 +2906,6 @@ opam:octez-smart-rollup-node:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-node
@@ -2954,6 +2954,8 @@ opam:octez-smart-rollup-node-Proxford:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -2961,8 +2963,6 @@ opam:octez-smart-rollup-node-Proxford:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-node-Proxford
@@ -3011,6 +3011,8 @@ opam:octez-smart-rollup-node-PtNairob:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3018,8 +3020,6 @@ opam:octez-smart-rollup-node-PtNairob:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-node-PtNairob
@@ -3068,6 +3068,8 @@ opam:octez-smart-rollup-node-alpha:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3075,8 +3077,6 @@ opam:octez-smart-rollup-node-alpha:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-node-alpha
@@ -3125,6 +3125,8 @@ opam:octez-smart-rollup-node-lib:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3132,8 +3134,6 @@ opam:octez-smart-rollup-node-lib:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-node-lib
@@ -3182,6 +3182,8 @@ opam:octez-smart-rollup-wasm-debugger:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3189,8 +3191,6 @@ opam:octez-smart-rollup-wasm-debugger:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-wasm-debugger
@@ -3239,6 +3239,8 @@ opam:octez-smart-rollup-wasm-debugger-lib:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3246,8 +3248,6 @@ opam:octez-smart-rollup-wasm-debugger-lib:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-wasm-debugger-lib
@@ -3296,6 +3296,8 @@ opam:octez-smart-rollup-wasm-debugger-plugin:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3303,8 +3305,6 @@ opam:octez-smart-rollup-wasm-debugger-plugin:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-smart-rollup-wasm-debugger-plugin
@@ -3353,6 +3353,8 @@ opam:octez-version:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3360,8 +3362,6 @@ opam:octez-version:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: octez-version
@@ -3410,6 +3410,8 @@ opam:tezos-benchmark:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3417,8 +3419,6 @@ opam:tezos-benchmark:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-benchmark
@@ -3467,6 +3467,8 @@ opam:tezos-client-demo-counter:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3474,8 +3476,6 @@ opam:tezos-client-demo-counter:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-client-demo-counter
@@ -3524,6 +3524,8 @@ opam:tezos-client-genesis:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3531,8 +3533,6 @@ opam:tezos-client-genesis:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-client-genesis
@@ -3581,6 +3581,8 @@ opam:tezos-dac-client-lib:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3588,8 +3590,6 @@ opam:tezos-dac-client-lib:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-dac-client-lib
@@ -3638,6 +3638,8 @@ opam:tezos-dac-lib:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3645,8 +3647,6 @@ opam:tezos-dac-lib:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-dac-lib
@@ -3695,6 +3695,8 @@ opam:tezos-dac-node-lib:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3702,8 +3704,6 @@ opam:tezos-dac-node-lib:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-dac-node-lib
@@ -3752,6 +3752,8 @@ opam:tezos-dal-node-lib:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3759,8 +3761,6 @@ opam:tezos-dal-node-lib:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-dal-node-lib
@@ -3809,6 +3809,8 @@ opam:tezos-dal-node-services:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3816,8 +3818,6 @@ opam:tezos-dal-node-services:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-dal-node-services
@@ -3866,6 +3866,8 @@ opam:tezos-openapi:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3873,8 +3875,6 @@ opam:tezos-openapi:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-openapi
@@ -3923,6 +3923,8 @@ opam:tezos-protocol-000-Ps9mPmXa:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3930,8 +3932,6 @@ opam:tezos-protocol-000-Ps9mPmXa:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-000-Ps9mPmXa
@@ -3980,6 +3980,8 @@ opam:tezos-protocol-001-PtCJ7pwo:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -3987,8 +3989,6 @@ opam:tezos-protocol-001-PtCJ7pwo:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-001-PtCJ7pwo
@@ -4037,6 +4037,8 @@ opam:tezos-protocol-002-PsYLVpVv:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4044,8 +4046,6 @@ opam:tezos-protocol-002-PsYLVpVv:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-002-PsYLVpVv
@@ -4094,6 +4094,8 @@ opam:tezos-protocol-003-PsddFKi3:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4101,8 +4103,6 @@ opam:tezos-protocol-003-PsddFKi3:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-003-PsddFKi3
@@ -4151,6 +4151,8 @@ opam:tezos-protocol-004-Pt24m4xi:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4158,8 +4160,6 @@ opam:tezos-protocol-004-Pt24m4xi:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-004-Pt24m4xi
@@ -4208,6 +4208,8 @@ opam:tezos-protocol-005-PsBABY5H:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4215,8 +4217,6 @@ opam:tezos-protocol-005-PsBABY5H:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-005-PsBABY5H
@@ -4265,6 +4265,8 @@ opam:tezos-protocol-005-PsBabyM1:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4272,8 +4274,6 @@ opam:tezos-protocol-005-PsBabyM1:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-005-PsBabyM1
@@ -4322,6 +4322,8 @@ opam:tezos-protocol-006-PsCARTHA:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4329,8 +4331,6 @@ opam:tezos-protocol-006-PsCARTHA:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-006-PsCARTHA
@@ -4379,6 +4379,8 @@ opam:tezos-protocol-007-PsDELPH1:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4386,8 +4388,6 @@ opam:tezos-protocol-007-PsDELPH1:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-007-PsDELPH1
@@ -4436,6 +4436,8 @@ opam:tezos-protocol-008-PtEdo2Zk:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4443,8 +4445,6 @@ opam:tezos-protocol-008-PtEdo2Zk:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-008-PtEdo2Zk
@@ -4493,6 +4493,8 @@ opam:tezos-protocol-008-PtEdoTez:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4500,8 +4502,6 @@ opam:tezos-protocol-008-PtEdoTez:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-008-PtEdoTez
@@ -4550,6 +4550,8 @@ opam:tezos-protocol-009-PsFLoren:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4557,8 +4559,6 @@ opam:tezos-protocol-009-PsFLoren:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-009-PsFLoren
@@ -4607,6 +4607,8 @@ opam:tezos-protocol-010-PtGRANAD:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4614,8 +4616,6 @@ opam:tezos-protocol-010-PtGRANAD:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-010-PtGRANAD
@@ -4664,6 +4664,8 @@ opam:tezos-protocol-011-PtHangz2:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4671,8 +4673,6 @@ opam:tezos-protocol-011-PtHangz2:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-011-PtHangz2
@@ -4721,6 +4721,8 @@ opam:tezos-protocol-012-Psithaca:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4728,8 +4730,6 @@ opam:tezos-protocol-012-Psithaca:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-012-Psithaca
@@ -4778,6 +4778,8 @@ opam:tezos-protocol-013-PtJakart:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4785,8 +4787,6 @@ opam:tezos-protocol-013-PtJakart:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-013-PtJakart
@@ -4835,6 +4835,8 @@ opam:tezos-protocol-014-PtKathma:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4842,8 +4844,6 @@ opam:tezos-protocol-014-PtKathma:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-014-PtKathma
@@ -4892,6 +4892,8 @@ opam:tezos-protocol-015-PtLimaPt:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4899,8 +4901,6 @@ opam:tezos-protocol-015-PtLimaPt:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-015-PtLimaPt
@@ -4949,6 +4949,8 @@ opam:tezos-protocol-016-PtMumbai:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -4956,8 +4958,6 @@ opam:tezos-protocol-016-PtMumbai:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-016-PtMumbai
@@ -5006,6 +5006,8 @@ opam:tezos-protocol-017-PtNairob:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5013,8 +5015,6 @@ opam:tezos-protocol-017-PtNairob:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-017-PtNairob
@@ -5063,6 +5063,8 @@ opam:tezos-protocol-018-Proxford:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5070,8 +5072,6 @@ opam:tezos-protocol-018-Proxford:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-018-Proxford
@@ -5120,6 +5120,8 @@ opam:tezos-protocol-alpha:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5127,8 +5129,6 @@ opam:tezos-protocol-alpha:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-alpha
@@ -5177,6 +5177,8 @@ opam:tezos-protocol-demo-counter:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5184,8 +5186,6 @@ opam:tezos-protocol-demo-counter:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-demo-counter
@@ -5234,6 +5234,8 @@ opam:tezos-protocol-demo-noops:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5241,8 +5243,6 @@ opam:tezos-protocol-demo-noops:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-demo-noops
@@ -5291,6 +5291,8 @@ opam:tezos-protocol-genesis:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5298,8 +5300,6 @@ opam:tezos-protocol-genesis:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-protocol-genesis
@@ -5348,6 +5348,8 @@ opam:tezos-proxy-server-config:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5355,8 +5357,6 @@ opam:tezos-proxy-server-config:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezos-proxy-server-config
@@ -5405,6 +5405,8 @@ opam:tezt-tezos:
     key: opam-sccache
     paths:
     - _build/_sccache
+  before_script:
+  - eval $(opam env)
   script:
   - opam remote add dev-repo ./_opam-repo-for-release
   - opam install --yes ${package}.dev
@@ -5412,8 +5414,6 @@ opam:tezt-tezos:
   after_script:
   - eval $(opam env)
   - OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh
-  before_script:
-  - eval $(opam env)
   variables:
     RUNTEZTALIAS: "true"
     package: tezt-tezos
@@ -5615,6 +5615,9 @@ tezt_flaky:
   - oc.build_x86_64-exp-dev-extra
   - oc.build_kernels
   - oc.tezt:fetch-records
+  before_script:
+  - . ./scripts/version.sh
+  - eval $(opam env)
   script:
   - echo "TESTS=\"${TESTS}\" JUNIT=\"${JUNIT}\" CI_NODE_INDEX=\"${CI_NODE_INDEX}\"
     CI_NODE_TOTAL=\"${CI_NODE_TOTAL}\" TEZT_PARALLEL=\"${TEZT_PARALLEL}\" TEZT_VARIANT=\"${TEZT_VARIANT}\""
@@ -5624,9 +5627,6 @@ tezt_flaky:
     --job ${CI_NODE_INDEX:-1}/${CI_NODE_TOTAL:-1} --record tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json
     --job-count ${TEZT_PARALLEL:-3} --retry ${TEZT_RETRY:-1}
   - ./scripts/ci/merge_coverage.sh
-  before_script:
-  - . ./scripts/version.sh
-  - eval $(opam env)
   variables:
     JUNIT: tezt-junit.xml
     TEZT_VARIANT: ""
@@ -5665,14 +5665,14 @@ documentation:linkcheck:
   needs: []
   dependencies: []
   allow_failure: true
-  script:
-  - make all
-  - make -C docs redirectcheck
-  - make -C docs linkcheck
   before_script:
   - . ./scripts/version.sh
   - eval $(opam env)
   - . $HOME/.venv/bin/activate
+  script:
+  - make all
+  - make -C docs redirectcheck
+  - make -C docs linkcheck
 oc.install_python_focal:
   image: public.ecr.aws/lts/ubuntu:20.04_stable
   stage: doc

@@ -7,12 +7,12 @@ docker:promote_to_latest:
   tags:
   - gcp
   dependencies: []
-  script:
-  - ./scripts/ci/docker_promote_to_latest.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_promote_to_latest.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:

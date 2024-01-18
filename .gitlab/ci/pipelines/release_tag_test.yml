@@ -9,11 +9,11 @@ oc.build:static-x86_64-linux-binaries:
   needs:
   - trigger
   dependencies: []
-  script:
-  - ./scripts/ci/build_static_binaries.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_static_binaries.sh
   variables:
     ARCH: x86_64
     EXECUTABLE_FILES: script-inputs/released-executables
@@ -27,11 +27,11 @@ oc.build:static-arm64-linux-binaries:
   tags:
   - gcp_arm64
   dependencies: []
-  script:
-  - ./scripts/ci/build_static_binaries.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_static_binaries.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/released-executables
@@ -45,12 +45,12 @@ oc.docker:amd64:
   tags:
   - gcp
   dependencies: []
-  script:
-  - ./scripts/ci/docker_release.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_release.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:
@@ -65,12 +65,12 @@ oc.docker:arm64:
   tags:
   - gcp_arm64
   dependencies: []
-  script:
-  - ./scripts/ci/docker_release.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_release.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:
@@ -86,6 +86,11 @@ oc.build:dpkg:amd64:
   - gcp
   needs: []
   dependencies: []
+  before_script:
+  - . ./scripts/version.sh
+  - apt update
+  - apt-get install -y rsync git m4 build-essential patch unzip wget opam jq bc autoconf
+    cmake libev-dev libffi-dev libgmp-dev libhidapi-dev pkg-config zlib1g-dev
   script:
   - wget https://sh.rustup.rs/rustup-init.sh
   - chmod +x rustup-init.sh
@@ -97,11 +102,6 @@ oc.build:dpkg:amd64:
   - make build-deps
   - eval $(opam env)
   - make $TARGET
-  before_script:
-  - . ./scripts/version.sh
-  - apt update
-  - apt-get install -y rsync git m4 build-essential patch unzip wget opam jq bc autoconf
-    cmake libev-dev libffi-dev libgmp-dev libhidapi-dev pkg-config zlib1g-dev
   variables:
     TARGET: dpkg
     OCTEZ_PKGMAINTAINER: nomadic-labs
@@ -120,6 +120,13 @@ oc.build:rpm:amd64:
   - gcp
   needs: []
   dependencies: []
+  before_script:
+  - . ./scripts/version.sh
+  - dnf update -y
+  - dnf install -y libev-devel gmp-devel hidapi-devel libffi-devel zlib-devel libpq-devel
+    m4 perl git pkg-config rpmdevtools python3-devel python3-setuptools wget opam
+    rsync which cargo autoconf mock systemd systemd-rpm-macros cmake python3-wheel
+    python3-tox-current-env gcc-c++
   script:
   - wget https://sh.rustup.rs/rustup-init.sh
   - chmod +x rustup-init.sh
@@ -131,13 +138,6 @@ oc.build:rpm:amd64:
   - make build-deps
   - eval $(opam env)
   - make $TARGET
-  before_script:
-  - . ./scripts/version.sh
-  - dnf update -y
-  - dnf install -y libev-devel gmp-devel hidapi-devel libffi-devel zlib-devel libpq-devel
-    m4 perl git pkg-config rpmdevtools python3-devel python3-setuptools wget opam
-    rsync which cargo autoconf mock systemd systemd-rpm-macros cmake python3-wheel
-    python3-tox-current-env gcc-c++
   variables:
     TARGET: rpm
     OCTEZ_PKGMAINTAINER: nomadic-labs
@@ -158,12 +158,12 @@ docker:merge_manifests:
   - oc.docker:amd64
   - oc.docker:arm64
   dependencies: []
-  script:
-  - ./scripts/ci/docker_merge_manifests.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_merge_manifests.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:

@@ -9,11 +9,11 @@ oc.build:static-x86_64-linux-binaries:
   needs:
   - trigger
   dependencies: []
-  script:
-  - ./scripts/ci/build_static_binaries.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_static_binaries.sh
   variables:
     ARCH: x86_64
     EXECUTABLE_FILES: script-inputs/released-executables script-inputs/experimental-executables
@@ -26,11 +26,11 @@ oc.build:static-arm64-linux-binaries:
   tags:
   - gcp_arm64
   dependencies: []
-  script:
-  - ./scripts/ci/build_static_binaries.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_static_binaries.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/released-executables script-inputs/experimental-executables
@@ -54,12 +54,12 @@ oc.build_arm64-released:
     when: manual
     allow_failure: true
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/released-executables
@@ -93,12 +93,12 @@ oc.build_arm64-exp-dev-extra:
     when: manual
     allow_failure: true
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/experimental-executables script-inputs/dev-executables
@@ -123,12 +123,12 @@ oc.docker:amd64:
   tags:
   - gcp
   dependencies: []
-  script:
-  - ./scripts/ci/docker_release.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_release.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:
@@ -143,12 +143,12 @@ oc.docker:arm64:
   tags:
   - gcp_arm64
   dependencies: []
-  script:
-  - ./scripts/ci/docker_release.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_release.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:
@@ -210,14 +210,14 @@ publish:documentation:
   needs: []
   dependencies: []
   interruptible: false
-  script:
-  - ./scripts/ci/doc_publish.sh
   before_script:
   - eval $(opam env)
   - . $HOME/.venv/bin/activate
   - echo "${CI_PK_GITLAB_DOC}" > ~/.ssh/id_ed25519
   - echo "${CI_KH}" > ~/.ssh/known_hosts
   - chmod 400 ~/.ssh/id_ed25519
+  script:
+  - ./scripts/ci/doc_publish.sh
 docker:merge_manifests:
   image: ${CI_REGISTRY}/tezos/docker-images/ci-docker:v1.9.0
   stage: prepare_release
@@ -227,12 +227,12 @@ docker:merge_manifests:
   - oc.docker:amd64
   - oc.docker:arm64
   dependencies: []
-  script:
-  - ./scripts/ci/docker_merge_manifests.sh
   before_script:
   - ./scripts/ci/docker_wait_for_daemon.sh
   - ./scripts/ci/docker_check_version.sh ${DOCKER_VERSION}
   - ./scripts/ci/docker_registry_auth.sh
+  script:
+  - ./scripts/ci/docker_merge_manifests.sh
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:

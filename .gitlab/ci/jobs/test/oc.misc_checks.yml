@@ -21,11 +21,11 @@ oc.misc_checks:
   needs:
   - trigger
   dependencies: []
-  script:
-  - ./scripts/ci/lint_misc_check.sh
-  - scripts/check_wasm_pvm_regressions.sh check
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
   - . $HOME/.venv/bin/activate
+  script:
+  - ./scripts/ci/lint_misc_check.sh
+  - scripts/check_wasm_pvm_regressions.sh check

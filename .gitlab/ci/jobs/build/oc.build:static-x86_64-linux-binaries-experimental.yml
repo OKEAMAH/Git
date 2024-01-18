@@ -9,11 +9,11 @@ oc.build:static-x86_64-linux-binaries:
   needs:
   - trigger
   dependencies: []
-  script:
-  - ./scripts/ci/build_static_binaries.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_static_binaries.sh
   variables:
     ARCH: x86_64
     EXECUTABLE_FILES: script-inputs/released-executables script-inputs/experimental-executables

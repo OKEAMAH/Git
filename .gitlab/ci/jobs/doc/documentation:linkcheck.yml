@@ -16,11 +16,11 @@ documentation:linkcheck:
   needs: []
   dependencies: []
   allow_failure: true
-  script:
-  - make all
-  - make -C docs redirectcheck
-  - make -C docs linkcheck
   before_script:
   - . ./scripts/version.sh
   - eval $(opam env)
   - . $HOME/.venv/bin/activate
+  script:
+  - make all
+  - make -C docs redirectcheck
+  - make -C docs linkcheck

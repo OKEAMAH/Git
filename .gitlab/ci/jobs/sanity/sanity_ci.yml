@@ -7,11 +7,11 @@ sanity_ci:
   tags:
   - gcp
   dependencies: []
+  before_script:
+  - ./scripts/ci/take_ownership.sh
+  - eval $(opam env)
   script:
   - make -C manifest check
   - ./scripts/lint.sh --check-gitlab-ci-yml
   - ./scripts/ci/check_alpine_version.sh
   - make -C ci check
-  before_script:
-  - ./scripts/ci/take_ownership.sh
-  - eval $(opam env)

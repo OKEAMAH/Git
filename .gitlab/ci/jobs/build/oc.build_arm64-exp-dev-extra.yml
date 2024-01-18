@@ -18,12 +18,12 @@ oc.build_arm64-exp-dev-extra:
     when: manual
     allow_failure: true
   dependencies: []
-  script:
-  - ./scripts/ci/build_full_unreleased.sh
   before_script:
   - ./scripts/ci/take_ownership.sh
   - . ./scripts/version.sh
   - eval $(opam env)
+  script:
+  - ./scripts/ci/build_full_unreleased.sh
   variables:
     ARCH: arm64
     EXECUTABLE_FILES: script-inputs/experimental-executables script-inputs/dev-executables
