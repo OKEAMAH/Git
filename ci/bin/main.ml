@@ -1905,6 +1905,31 @@ let _job_oc_script_b58_prefix =
          "poetry run pytest scripts/b58_prefix/test_b58_prefix.py";
        ]
 
+let changeset_test_liquidity_baking_scripts =
+  [
+    "src/**/*";
+    "scripts/ci/test_liquidity_baking_scripts.sh";
+    "scripts/check-liquidity-baking-scripts.sh";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+  ]
+
+let _job_oc_test_liquidity_baking_scripts =
+  job_external
+  @@ job
+       ~name:"oc.test-liquidity-baking-scripts"
+       ~stage:Stages.test
+       ~image:Images.runtime_build_dependencies
+       ~rules:[job_rule ~changes:changeset_test_liquidity_baking_scripts ()]
+       ~dependencies:
+         (Dependent
+            [
+              Artifacts job_build_x86_64_release;
+              Artifacts job_build_x86_64_exp_dev_extra;
+            ])
+       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+       ["./scripts/ci/test_liquidity_baking_scripts.sh"]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
