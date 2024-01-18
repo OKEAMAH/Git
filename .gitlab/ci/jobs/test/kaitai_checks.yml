@@ -1,0 +1,19 @@
+# check that ksy files are still up-to-date with octez
+kaitai_checks:
+  extends:
+    - .test_template
+  rules:
+    - changes:
+        paths:
+          - src/**/*
+          - contrib/*kaitai*/**/*
+          - .gitlab/**/*
+          - .gitlab-ci.yml
+      when: on_success
+  # These tests are not flaky at all so we overwrite the retry value
+  retry: 0
+  needs: [trigger]
+  needs:
+    - "oc.build_x86_64-released"
+  script:
+    - make -C ${CI_PROJECT_DIR} check-kaitai-struct-files || (echo 'Octez encodings and Kaitai files seem to be out of sync. You might need to run `make check-kaitai-struct-files` and commit the resulting diff.' ; false)
