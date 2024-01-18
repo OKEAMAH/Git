@@ -13,3 +13,5 @@ ocaml-check:
       when: on_success
   script:
     - dune build @check
+  # Disable artifact upload inherited from template '.oc.build'
+  artifacts:
