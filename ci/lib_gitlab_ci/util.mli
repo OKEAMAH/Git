@@ -27,7 +27,7 @@ val job_rule :
   ?if_:If.t ->
   ?variables:variables ->
   ?when_:when_ ->
-  ?allow_failure:bool ->
+  ?allow_failure:allow_failure_rule ->
   unit ->
   job_rule
 

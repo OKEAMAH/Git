@@ -137,7 +137,7 @@ val enc_git_strategy : git_strategy -> string
 val job :
   ?arch:arch ->
   ?after_script:string list ->
-  ?allow_failure:bool ->
+  ?allow_failure:Gitlab_ci.Types.allow_failure_job ->
   ?artifacts:Gitlab_ci.Types.artifacts ->
   ?before_script:string list ->
   ?cache:Gitlab_ci.Types.cache list ->

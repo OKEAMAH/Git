@@ -182,11 +182,11 @@ let trigger =
         job_rule
           ~if_:If.(Rules.(merge_request && assigned_to_marge_bot))
           ~when_:Manual (* Explicit [allow_failure] to make this job blocking *)
-          ~allow_failure:false
+          ~allow_failure:No
           ();
         job_rule ~when_:Always ();
       ]
-    ~allow_failure:false
+    ~allow_failure:No
     ~timeout:(Minutes 10)
     ~name:"trigger"
     ~git_strategy:No_strategy

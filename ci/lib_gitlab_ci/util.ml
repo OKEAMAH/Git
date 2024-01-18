@@ -18,7 +18,7 @@ let job_rule ?changes ?if_ ?variables ?(when_ : when_ = On_success)
      explicitly. *)
   let allow_failure =
     match (when_, allow_failure) with
-    | Manual, None -> Some true
+    | Manual, None -> Some Yes
     | _ -> allow_failure
   in
   {changes; if_; variables; when_; allow_failure}

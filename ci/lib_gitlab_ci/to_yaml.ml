@@ -69,6 +69,9 @@ let enc_workflow_rule : workflow_rule -> value =
       key "when" enc_when_workflow when_;
     ]
 
+let enc_allow_failure_rule (allow_failure : allow_failure_rule) : value =
+  match allow_failure with Yes -> `Bool true | No -> `Bool false
+
 let enc_time_interval interval =
   `String
     (match interval with
@@ -98,7 +101,7 @@ let enc_job_rule : job_rule -> value =
       opt "if" enc_if if_;
       opt "variables" enc_variables variables;
       key "when" enc_when when_;
-      opt "allow_failure" bool allow_failure;
+      opt "allow_failure" enc_allow_failure_rule allow_failure;
       opt "start_in" enc_time_interval start_in;
     ]
 
@@ -169,6 +172,12 @@ let enc_service ({name} : service) : value = `String name
 
 let enc_services (ss : service list) : value = array enc_service ss
 
+let enc_allow_failure_job (allow_failure : allow_failure_job) : value =
+  match allow_failure with
+  | Yes -> `Bool true
+  | No -> `Bool false
+  | With_exit_codes codes -> `O [("exit_codes", array1 int codes)]
+
 let enc_job : job -> value =
  fun {
        name = _;
@@ -201,7 +210,7 @@ let enc_job : job -> value =
       opt "rules" enc_job_rules rules;
       opt "needs" strings needs;
       opt "dependencies" strings dependencies;
-      opt "allow_failure" bool allow_failure;
+      opt "allow_failure" enc_allow_failure_job allow_failure;
       opt "timeout" enc_time_interval timeout;
       opt "cache" (array1 enc_cache) cache;
       opt "interruptible" bool interruptible;
