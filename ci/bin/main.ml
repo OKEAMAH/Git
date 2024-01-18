@@ -1860,6 +1860,24 @@ let _job_oc_script_test_gen_genesis =
        ~before_script:(before_script ~eval_opam:true ["cd scripts/gen-genesis"])
        ["dune build gen_genesis.exe"]
 
+let _job_oc_script_test_release_versions =
+  job_external
+  @@ job
+       ~name:"oc.script:test_release_versions"
+       ~stage:Stages.test
+       ~image:Images.runtime_build_dependencies
+       ~rules:[job_rule ~changes:changeset_octez ()]
+       ~dependencies:
+         (Dependent
+            [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra])
+       ~before_script:
+         (before_script
+            ~take_ownership:true
+            ~source_version:true
+            ~eval_opam:true
+            [])
+       ["./scripts/test_release_version.sh"]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
