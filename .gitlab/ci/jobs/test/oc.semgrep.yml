@@ -1,27 +1,24 @@
+# This file was automatically generated, do not edit.
+# Edit file ci/bin/main.ml instead.
+
 oc.semgrep:
-  extends:
-    - .default_settings_template
-  rules:
-    - changes:
-        paths:
-          - src/**/*
-          - tezt/**/*
-          - devtools/**/*
-          - scripts/semgrep/**/*
-          - .gitlab/**/*
-          - .gitlab-ci.yml
-      when: on_success
-  # We specify the image by hash to avoid flakiness. Indeed, if we took the
-  # latest release, then an update in the parser or analyser could result in new
-  # errors being found even if the code doesn't change. This would place the
-  # burden for fixing the code on the wrong dev (the devs who happen to open an
-  # MR coinciding with the semgrep update rather than the dev who wrote the
-  # infringing code in the first place).
-  # Update the hash in scripts/semgrep/README.md too when updating it here
-  # Last update: 20212-01-03
   image: returntocorp/semgrep-agent:sha-c6cd7cf
   stage: test
-  needs: [trigger]
+  tags:
+  - gcp
+  rules:
+  - changes:
+    - src/**/*
+    - tezt/**/*
+    - devtools/**/*
+    - scripts/semgrep/**/*
+    - .gitlab/**/*
+    - .gitlab-ci.yml
+    when: on_success
+  needs:
+  - trigger
+  dependencies: []
   script:
-    - echo "OCaml code linting. For information on how to reproduce locally, check out scripts/semgrep/README.md"
-    - sh ./scripts/semgrep/lint-all-ocaml-sources.sh
+  - echo "OCaml code linting. For information on how to reproduce locally, check out
+    scripts/semgrep/README.md"
+  - sh ./scripts/semgrep/lint-all-ocaml-sources.sh
