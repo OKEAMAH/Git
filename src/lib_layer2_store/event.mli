@@ -24,23 +24,39 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Tezos_crypto
+(** This module defines functions that emit the events used when the smart
+    rollup node is running (see {!Daemon}). *)
 
-include
-  Blake2B.Make
-    (Base58)
-    (struct
-      let name = "Smart_rollup_context_hash"
+(** [calling_gc ~gc_level ~head_level] emits the event that the GC is started
+    for level [gc_level].  *)
+val calling_gc : gc_level:int32 -> head_level:int32 -> unit Lwt.t
 
-      let title = "A base58-check encoded hash of a Smart rollup node context"
+(** [starting_context_gc hash] emits an event which indicates that a GC run
+    was launched for [hash]. *)
+val starting_context_gc : Context_hash.t -> unit Lwt.t
 
-      let b58check_prefix = "\008\209\216\166"
+(** [context_gc_already_launched ()] emits an event which indicates that a GC
+    launch was attempted but resulted in no action because a GC run is already
+    in progress. *)
+val context_gc_already_launched : unit -> unit Lwt.t
 
-      let size = None
-    end)
+(** [ending_context_gc total_duration finalise_duration] emits an event which
+    indicates that a GC run has ended, providing its total duration and its
+    finalisation duration. *)
+val ending_context_gc : Ptime.span * Ptime.span -> unit Lwt.t
 
-let () = Base58.check_encoded_prefix b58check_encoding "SRCo" 54
+(** [context_gc_failure err] emits an event which indicates a GC failure. *)
+val context_gc_failure : string -> unit Lwt.t
 
-let to_context_hash hash = to_bytes hash |> Context_hash.of_bytes_exn
+(** [context_gc_launch_failure err] emits an event which indicates a GC launch
+    error. *)
+val context_gc_launch_failure : string -> unit Lwt.t
 
-let of_context_hash hash = Context_hash.to_bytes hash |> of_bytes_exn
+(** [gc_levels_storage_failure ()] emits an event which indicates that GC level
+    values ([last_gc_level], [first_available_level]) could not be written to
+    storage. *)
+val gc_levels_storage_failure : unit -> unit Lwt.t
+
+(** [gc_finished ~gc_level ~head_level] emits the event that the GC is finished
+    for level [gc_level].  *)
+val gc_finished : gc_level:int32 -> head_level:int32 -> unit Lwt.t

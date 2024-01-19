@@ -4474,6 +4474,8 @@ let octez_layer2_store =
         aches_lwt;
         octez_stdlib_unix |> open_;
         octez_context_encoding;
+        octez_context_sigs;
+        octez_context_helpers;
       ]
     ~linkall:true
     ~conflicts:[Conflicts.checkseum]
