@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+let reveals = Commands.reveals
+
 module Make (Wasm : Wasm_utils_intf.S) = struct
   module Commands = Commands.Make (Wasm)
 

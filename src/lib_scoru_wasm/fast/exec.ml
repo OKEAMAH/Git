@@ -76,10 +76,9 @@ let load_kernel durable =
   let store = Lazy.force static_store in
   Module_cache.load_kernel store durable
 
-let compute ~version ~reveal_builtins ~write_debug durable buffers =
+let run_kernel ~wasm_entrypoint ~version ~reveal_builtins ~write_debug module_
+    durable buffers =
   let open Lwt.Syntax in
-  let* module_ = load_kernel durable in
-
   let main_mem : (unit -> Wasmer.Memory.t) option ref = ref None in
   let retrieve_mem () =
     match !main_mem with Some x -> x () | None -> assert false
@@ -106,7 +105,7 @@ let compute ~version ~reveal_builtins ~write_debug durable buffers =
 
   let exports = Wasmer.Exports.from_instance instance in
   let kernel_run =
-    Wasmer.(Exports.fn exports "kernel_run" (producer nothing))
+    Wasmer.(Exports.fn exports wasm_entrypoint (producer nothing))
   in
 
   main_mem := Some (fun () -> Wasmer.Exports.mem0 exports) ;
@@ -126,3 +125,15 @@ let compute ~version ~reveal_builtins ~write_debug durable buffers =
      The module is cached, but the cash is never cleaned.
      This is the point where it was scrubed before.*)
   Lwt.return durable
+
+let compute ~version ~reveal_builtins ~write_debug durable buffers =
+  let open Lwt.Syntax in
+  let* module_ = load_kernel durable in
+  run_kernel
+    ~wasm_entrypoint:Tezos_scoru_wasm.Constants.wasm_entrypoint
+    ~version
+    ~reveal_builtins
+    ~write_debug
+    module_
+    durable
+    buffers

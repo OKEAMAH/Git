@@ -26,7 +26,20 @@
 open Tezos_scoru_wasm
 open Tezos_webassembly_interpreter
 
-(** [compute durable buffers] applies one call to [kernel_run]. *)
+val load_kernel : Durable.t -> Tezos_wasmer.Module.t Lwt.t
+
+val run_kernel :
+  wasm_entrypoint:string ->
+  version:Wasm_pvm_state.version ->
+  reveal_builtins:Builtins.reveals ->
+  write_debug:Builtins.write_debug ->
+  Tezos_wasmer.Module.t ->
+  Durable.t ->
+  Eval.buffers ->
+  Durable.t Lwt.t
+
+(** [compute ~version ~reveal_builtins ~write_debug module_ durable buffers]
+    execute the [run_kernel] function once. *)
 val compute :
   version:Wasm_pvm_state.version ->
   reveal_builtins:Builtins.reveals ->

@@ -5,10 +5,53 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module TreeEncoding =
+module Wasm_utils =
   Wasm_utils.Make
     (Tezos_tree_encoding.Encodings_util.Make (Sequencer_context.Context))
-module Wasm = Wasm_debugger.Make (TreeEncoding)
+module Wasm = Wasm_debugger.Make (Wasm_utils)
+
+let eval ~wasm_entrypoint inbox config evm_state =
+  let open Lwt_result_syntax in
+  let open Tezos_scoru_wasm_fast in
+  let open Tezos_scoru_wasm in
+  (*
+
+    We reimplement the bare minimum in terms of PVM logic, namely the reboot
+    logic.
+
+  *)
+  let*! version = Wasm_utils.Wasm.get_wasm_version evm_state in
+  let* evm_state, _, _ = Wasm.Commands.load_inputs inbox 0l evm_state in
+  let*! pvm_state =
+    Wasm_utils.Tree_encoding_runner.decode
+      Tezos_scoru_wasm.Wasm_pvm.pvm_state_encoding
+      evm_state
+  in
+  let*! module_ = Exec.load_kernel pvm_state.durable in
+  (* Execute! *)
+  let rec exec durable buffers =
+    let*! durable =
+      Exec.run_kernel
+        ~wasm_entrypoint
+        ~version
+        ~reveal_builtins:(Wasm_debugger.reveals config)
+        ~write_debug:Noop
+        module_
+        durable
+        buffers
+    in
+    let*! should_reboot = Durable.exists durable Constants.reboot_flag_key in
+    if should_reboot then exec durable buffers else return durable
+  in
+  let* durable = exec pvm_state.durable pvm_state.buffers in
+  let pvm_state = {pvm_state with durable; tick_state = Collect} in
+  let*! evm_state =
+    Wasm_utils.Tree_encoding_runner.encode
+      Wasm_pvm.pvm_state_encoding
+      pvm_state
+      evm_state
+  in
+  return evm_state
 
 let execute ?(commit = false) ctxt inbox =
   let open Lwt_result_syntax in
@@ -21,8 +64,12 @@ let execute ?(commit = false) ctxt inbox =
       ~destination:ctxt.Sequencer_context.smart_rollup_address
       ()
   in
-  let* evm_state, _, _, _ =
-    Wasm.Commands.eval 0l inbox config Inbox ctxt.Sequencer_context.evm_state
+  let* evm_state =
+    eval
+      ~wasm_entrypoint:Tezos_scoru_wasm.Constants.wasm_entrypoint
+      inbox
+      config
+      ctxt.Sequencer_context.evm_state
   in
   let* ctxt =
     if commit then Sequencer_context.commit ctxt evm_state else return ctxt
