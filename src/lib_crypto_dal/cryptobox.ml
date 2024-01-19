@@ -31,6 +31,39 @@ module Degree_check = Kzg.Degree_check
 module Kate_amortized = Kzg.Kate_amortized
 module Base58 = Tezos_crypto.Base58
 
+module Parameters_bounds_for_tests = struct
+  (* The following bounds are chosen to fit the invariants of [ensure_validity] *)
+
+  (* The maximum value for the slot size is chosen to trigger
+     cases where some domain sizes for the FFT are not powers
+     of two.*)
+  let max_slot_size_log2 = 13
+
+  let max_redundancy_factor_log2 = 4
+
+  (* The difference between slot size & page size ; also the minimal bound of
+     the number of shards.
+     To keep shard length < max_polynomial_length, we need to set nb_shard
+     strictly greater (-> +1) than redundancy_factor *)
+  let size_offset_log2 = max_redundancy_factor_log2 + 1
+
+  (* The pages must be strictly smaller than the slot, and the difference of
+     their length must be greater than the number of shards. *)
+  let max_page_size_log2 = max_slot_size_log2 - size_offset_log2
+
+  (* The set of parameters maximizing the SRS length, and which
+     is in the codomain of [generate_parameters]. *)
+  let max_parameters : Dal_config.parameters =
+    {
+      (* The +1 is here to ensure that the SRS will be large enough for the
+         erasure polynomial *)
+      slot_size = 1 lsl (max_slot_size_log2 + 1);
+      page_size = 1 lsl max_page_size_log2;
+      redundancy_factor = 1 lsl max_redundancy_factor_log2;
+      number_of_shards = 1;
+    }
+end
+
 type error += Failed_to_load_trusted_setup of string
 
 let () =
@@ -142,8 +175,11 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
         (Failed_to_load_trusted_setup (Printf.sprintf "Invalid point %i" p))
   | Ok (srs_g1, srs_g2) -> return (srs_g1, srs_g2)
 
-let initialisation_parameters_with_fake_srs ~slot_size ~page_size
-    ~number_of_shards ~redundancy_factor =
+let initialisation_parameters_with_fake_srs ?parameters () =
+  let ({slot_size; page_size; redundancy_factor; number_of_shards}
+        : Dal_config.parameters) =
+    Option.value ~default:Parameters_bounds_for_tests.max_parameters parameters
+  in
   let length = slot_as_polynomial_length ~slot_size ~page_size in
   let secret =
     Scalar.of_string
@@ -164,6 +200,8 @@ let initialisation_parameters_with_fake_srs ~slot_size ~page_size
     Srs_g2.generate_insecure (max length evaluations_per_proof + 1) secret
   in
   (srs_g1, srs_g2)
+
+let fake_srs = initialisation_parameters_with_fake_srs ()
 
 module Inner = struct
   module Commitment = struct
@@ -576,13 +614,7 @@ module Inner = struct
             kate_amortized,
             Srs_g2.size srs_g2 )
       | None ->
-          let srs_g1, srs_g2 =
-            initialisation_parameters_with_fake_srs
-              ~slot_size
-              ~page_size
-              ~number_of_shards
-              ~redundancy_factor
-          in
+          let srs_g1, srs_g2 = fake_srs in
           let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
           let kate_amortized_srs_g2_pages =
             Srs_g2.get srs_g2 page_length_domain
@@ -1315,13 +1347,9 @@ include Inner
 module Verifier = Inner
 
 module Internal_for_tests = struct
-  let parameters_initialisation
-      {slot_size; page_size; number_of_shards; redundancy_factor; _} =
-    initialisation_parameters_with_fake_srs
-      ~slot_size
-      ~page_size
-      ~number_of_shards
-      ~redundancy_factor
+  module Parameters_bounds = Parameters_bounds_for_tests
+
+  let parameters_initialisation = initialisation_parameters_with_fake_srs
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1396,14 +1424,7 @@ module Internal_for_tests = struct
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
     let srs_g1, srs_g2 =
-      match !initialisation_parameters with
-      | Some srs -> srs
-      | None ->
-          initialisation_parameters_with_fake_srs
-            ~slot_size
-            ~page_size
-            ~number_of_shards
-            ~redundancy_factor
+      match !initialisation_parameters with Some srs -> srs | None -> fake_srs
     in
     ensure_validity
       ~slot_size
@@ -1436,7 +1457,7 @@ module Config = struct
       let* initialisation_parameters =
         match dal_config.use_mock_srs_for_testing with
         | Some parameters ->
-            return (Internal_for_tests.parameters_initialisation parameters)
+            return (Internal_for_tests.parameters_initialisation ~parameters ())
         | None ->
             let*? srs_g1_path, srs_g2_path = find_srs_files () in
             initialisation_parameters_from_files

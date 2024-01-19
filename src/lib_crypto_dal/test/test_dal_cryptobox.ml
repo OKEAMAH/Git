@@ -35,43 +35,16 @@ module Test = struct
     done ;
     indices
 
-  (* The following bounds are chosen to fit the invariants of [ensure_validity] *)
-
-  (* The maximum value for the slot size is chosen to trigger
-     cases where some domain sizes for the FFT are not powers
-     of two.*)
-  let max_slot_size_log2 = 13
-
-  let max_redundancy_factor_log2 = 4
-
-  (* The difference between slot size & page size ; also the minimal bound of
-     the number of shards.
-     To keep shard length < max_polynomial_length, we need to set nb_shard
-     strictly greater (-> +1) than redundancy_factor *)
-  let size_offset_log2 = max_redundancy_factor_log2 + 1
-
-  (* The pages must be strictly smaller than the slot, and the difference of
-     their length must be greater than the number of shards. *)
-  let max_page_size_log2 = max_slot_size_log2 - size_offset_log2
-
   (* The set of parameters maximizing the SRS length, and which
      is in the codomain of [generate_parameters]. *)
   let max_parameters =
-    let max_parameters : Cryptobox.parameters =
-      {
-        (* The +1 is here to ensure that the SRS will be large enough for the
-           erasure polynomial *)
-        slot_size = 1 lsl (max_slot_size_log2 + 1);
-        page_size = 1 lsl max_page_size_log2;
-        redundancy_factor = 1 lsl max_redundancy_factor_log2;
-        number_of_shards = 1;
-      }
-    in
-    lazy (Cryptobox.Internal_for_tests.parameters_initialisation max_parameters)
+    lazy Cryptobox.Internal_for_tests.(parameters_initialisation ())
 
   (* Initializes the DAL parameters *)
   let init () =
     Cryptobox.Internal_for_tests.load_parameters (Lazy.force max_parameters)
+
+  let reset = Cryptobox.Internal_for_tests.reset_initialisation_parameters
 
   type parameters = {
     slot_size : int;
@@ -92,6 +65,7 @@ module Test = struct
 
   let generate_parameters =
     let open QCheck2.Gen in
+    let open Cryptobox.Internal_for_tests.Parameters_bounds in
     let* redundancy_factor_log2 = int_range 1 max_redundancy_factor_log2 in
     (* 32 ≤ page_size < slot_size *)
     let* page_size_log2 = int_range 5 max_page_size_log2 in
@@ -373,6 +347,7 @@ module Test = struct
              (page_index * params.page_size)
              params.page_size
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -405,6 +380,7 @@ module Test = struct
              (page_index * params.page_size)
              params.page_size
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page altered_proof)
         |> function
@@ -441,6 +417,7 @@ module Test = struct
                 (the queried index is out of bounds) doesn't happen. *)
              assert false
          | Some shard ->
+             reset () ;
              let* t = Cryptobox.make (get_cryptobox_parameters params) in
              Cryptobox.verify_shard
                t
@@ -501,6 +478,7 @@ module Test = struct
                Cryptobox.Internal_for_tests.alter_shard_proof
                  shard_proofs.(shard_index)
              in
+             reset () ;
              let* t = Cryptobox.make (get_cryptobox_parameters params) in
              Cryptobox.verify_shard t commitment shard altered_proof)
         |> function
@@ -523,6 +501,7 @@ module Test = struct
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let* commitment = Cryptobox.commit t polynomial in
          let* commitment_proof = Cryptobox.prove_commitment t polynomial in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          return (Cryptobox.verify_commitment t commitment commitment_proof))
         |> function
@@ -546,6 +525,7 @@ module Test = struct
          let altered_proof =
            Cryptobox.Internal_for_tests.alter_commitment_proof commitment_proof
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          return (Cryptobox.verify_commitment t commitment altered_proof))
         |> function
@@ -749,6 +729,7 @@ module Test = struct
          let page_index =
            randrange (Cryptobox.Internal_for_tests.number_of_pages t)
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -779,6 +760,7 @@ module Test = struct
          let shard_proof =
            Cryptobox.Internal_for_tests.dummy_shard_proof ~state ()
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_shard t commitment shard shard_proof)
         |> function
@@ -834,6 +816,7 @@ module Test = struct
              ~min:0
              ~max:(Cryptobox.Internal_for_tests.number_of_pages t)
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -869,6 +852,7 @@ module Test = struct
              ~index:shard_index
              ~length:(Cryptobox.Internal_for_tests.shard_length t)
          in
+         reset () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_shard t commitment shard shard_proof)
         |> function
