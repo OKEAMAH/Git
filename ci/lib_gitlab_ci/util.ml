@@ -11,6 +11,16 @@ let default ?image ?interruptible () : default = {image; interruptible}
 
 let job_rule ?changes ?if_ ?variables ?(when_ : when_ = On_success)
     ?allow_failure () : job_rule =
+  (* Swap the
+     {{:https://docs.gitlab.com/ee/ci/yaml/#allow_failure}default} of
+     [allow_failure] for manual rules. This makes the default case
+     non-blocking, and blocking rules have to be demanded
+     explicitly. *)
+  let allow_failure =
+    match (when_, allow_failure) with
+    | Manual, None -> Some true
+    | _ -> allow_failure
+  in
   {changes; if_; variables; when_; allow_failure}
 
 let workflow_rule ?changes ?if_ ?variables ?(when_ : when_workflow = Always) ()

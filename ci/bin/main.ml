@@ -181,7 +181,8 @@ let trigger =
       [
         job_rule
           ~if_:If.(Rules.(merge_request && assigned_to_marge_bot))
-          ~when_:Manual
+          ~when_:Manual (* Explicit [allow_failure] to make this job blocking *)
+          ~allow_failure:false
           ();
         job_rule ~when_:Always ();
       ]
