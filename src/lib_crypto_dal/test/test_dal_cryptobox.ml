@@ -69,9 +69,8 @@ module Test = struct
     in
     ( lazy
         (Cryptobox.Internal_for_tests.parameters_initialisation max_parameters),
-      lazy
-        (Cryptobox.Internal_for_tests.parameters_initialisation_verifier
-           max_parameters) )
+      lazy (assert (* TODO: Students this your job! *)
+                   false) )
 
   (* Initializes the DAL parameters *)
   let init () =

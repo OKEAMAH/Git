@@ -47,15 +47,7 @@ let () =
     (fun parameter -> Failed_to_load_trusted_setup parameter)
   [@@coverage off]
 
-type srs_user = Prover | Verifier
-
-type prover_raw_srs = {srs_g1 : Srs_g1.t; srs_g2 : Srs_g2.t}
-
-type verifier_raw_srs = {srs_g1 : Srs_g1.t; srs_g2 : Srs_g2.t}
-
-type initialisation_parameters =
-  | Prover_init_param of prover_raw_srs
-  | Verifier_init_param of verifier_raw_srs
+type initialisation_parameters = Srs_g1.t * Srs_g2.t
 
 (* Initialisation parameters are supposed to be instantiated once. *)
 let initialisation_parameters = ref None
@@ -88,7 +80,7 @@ let load_parameters parameters =
 
    An integrity check is run to ensure the validity of the files. *)
 
-let initialisation_parameters_from_files ~srs_user ~srs_g1_path ~srs_g2_path
+let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
     ~srs_size_log2 =
   let open Lwt_result_syntax in
   let len = 1 lsl srs_size_log2 in
@@ -131,10 +123,7 @@ let initialisation_parameters_from_files ~srs_user ~srs_g1_path ~srs_g2_path
   | Error (`Invalid_point p) ->
       tzfail
         (Failed_to_load_trusted_setup (Printf.sprintf "Invalid point %i" p))
-  | Ok (srs_g1, srs_g2) -> (
-      match srs_user with
-      | Prover -> return (Prover_init_param {srs_g1; srs_g2})
-      | Verifier -> return (Verifier_init_param {srs_g1; srs_g2}))
+  | Ok (srs_g1, srs_g2) -> return (srs_g1, srs_g2)
 
 module Inner = struct
   module Commitment = struct
@@ -488,7 +477,7 @@ module Inner = struct
            you can reduce the size of a slot."
           max_polynomial_length
           srs_g1_length)
-  (* TODO: Put this verification somewhere. *)
+  (* TODO: Students this your job! *)
   (* let erasure_encoded_polynomial_length = *)
   (*   redundancy_factor * max_polynomial_length *)
   (* in *)
@@ -529,11 +518,6 @@ module Inner = struct
       redundancy_factor * max_polynomial_length
     in
     let shard_length = erasure_encoded_polynomial_length / number_of_shards in
-    let* raw =
-      match !initialisation_parameters with
-      | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
-      | Some srs -> return srs
-    in
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = FFT.select_fft_domain page_length in
     let ( mode,
@@ -541,8 +525,8 @@ module Inner = struct
           kate_amortized_srs_g2_pages,
           kate_amortized_srs_g2_commitment,
           kate_amortized ) =
-      match raw with
-      | Prover_init_param {srs_g1; srs_g2} ->
+      match !initialisation_parameters with
+      | Some (srs_g1, srs_g2) ->
           let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
           let kate_amortized_srs_g2_pages =
             Srs_g2.get srs_g2 page_length_domain
@@ -564,7 +548,9 @@ module Inner = struct
             kate_amortized_srs_g2_pages,
             kate_amortized_srs_g2_commitment,
             kate_amortized )
-      | Verifier_init_param {srs_g1; srs_g2} ->
+      | None ->
+          (* TODO: Students this your job! *)
+          let srs_g1, srs_g2 = assert false in
           let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
           let kate_amortized_srs_g2_pages =
             Srs_g2.get srs_g2 page_length_domain
@@ -1316,32 +1302,7 @@ module Internal_for_tests = struct
     let srs_g2 =
       Srs_g2.generate_insecure (max length evaluations_per_proof + 1) secret
     in
-    Prover_init_param {srs_g1; srs_g2}
-
-  (* This function is duplicated from parameters_initialisation for now.
-     At some point the two functions will differ *)
-  let parameters_initialisation_verifier
-      {slot_size; page_size; number_of_shards; redundancy_factor; _} =
-    let length = slot_as_polynomial_length ~slot_size ~page_size in
-    let secret =
-      Scalar.of_string
-        "20812168509434597367146703229805575690060615791308155437936410982393987532344"
-    in
-    let srs_g1 = Srs_g1.generate_insecure length secret in
-    (* The error is caught during the instantiation through [make]. *)
-    let erasure_encoded_polynomial_length = redundancy_factor * length in
-    let evaluations_per_proof =
-      match erasure_encoded_polynomial_length / number_of_shards with
-      | exception Invalid_argument _ -> 0
-      | x -> x
-    in
-    (* The cryptobox will read at indices `size`, `1 lsl evaluations_per_proof_log`
-       and `page_length` so we take the max + 1. Since `page_length < size`, we
-       can remove the `page_length from the max. *)
-    let srs_g2 =
-      Srs_g2.generate_insecure (max length evaluations_per_proof + 1) secret
-    in
-    Verifier_init_param {srs_g1; srs_g2}
+    (srs_g1, srs_g2)
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1415,16 +1376,12 @@ module Internal_for_tests = struct
 
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
-    let open Result_syntax in
-    let* raw =
-      match !initialisation_parameters with
-      | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
-      | Some srs -> return srs
-    in
     let srs_g1 =
-      match raw with
-      | Prover_init_param {srs_g1; _} -> srs_g1
-      | Verifier_init_param {srs_g1; _} -> srs_g1
+      match !initialisation_parameters with
+      | Some (srs_g1, _) -> srs_g1
+      | None ->
+          (* TODO: Students this your job! *)
+          assert false
     in
     ensure_validity
       ~slot_size
@@ -1460,26 +1417,6 @@ module Config = struct
         | None ->
             let*? srs_g1_path, srs_g2_path = find_srs_files () in
             initialisation_parameters_from_files
-              ~srs_user:Prover
-              ~srs_g1_path
-              ~srs_g2_path
-              ~srs_size_log2
-      in
-      Lwt.return (load_parameters initialisation_parameters)
-    else return_unit
-
-  let init_dal_verifier ~find_srs_files ?(srs_size_log2 = 21) dal_config =
-    let open Lwt_result_syntax in
-    if dal_config.activated then
-      let* initialisation_parameters =
-        match dal_config.use_mock_srs_for_testing with
-        | Some parameters ->
-            return
-              (Internal_for_tests.parameters_initialisation_verifier parameters)
-        | None ->
-            let*? srs_g1_path, srs_g2_path = find_srs_files () in
-            initialisation_parameters_from_files
-              ~srs_user:Verifier
               ~srs_g1_path
               ~srs_g2_path
               ~srs_size_log2
