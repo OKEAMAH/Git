@@ -179,6 +179,17 @@ module Frozen_tez = struct
       in
       String.Map.map f co_current
 
+  let share ~round tez a =
+    let self_portion = Tez.ratio a.self_current (total_current a) in
+    let self_quantity = Tez.mul_q tez self_portion |> Tez.of_q ~round in
+    (self_quantity, Tez.(tez -! self_quantity))
+
+  let apply_share (self_quantity, co_amount) a =
+    let self_current = Tez.(a.self_current +! self_quantity) in
+    let co_quantity = Partial_tez.of_tez co_amount in
+    let co_current = add_q_to_all_co_current co_quantity a.co_current in
+    {a with self_current; co_current}
+
   (* For rewards, distribute equally *)
   let add_tez_to_all_current ~edge tez a =
     let self_portion = Tez.ratio a.self_current (total_current a) in
@@ -196,7 +207,7 @@ module Frozen_tez = struct
   (* For slashing, slash equally *)
   let sub_tez_from_all_current tez a =
     let self_portion = Tez.ratio a.self_current (total_current a) in
-    let self_quantity = Tez.mul_q tez self_portion |> Tez.of_q ~round:`Down in
+    let self_quantity = Tez.mul_q tez self_portion |> Tez.of_q ~round:`Up in
     let self_current =
       if Tez.(self_quantity >= a.self_current) then Tez.zero
       else Tez.(a.self_current -! self_quantity)
@@ -289,7 +300,14 @@ module Frozen_tez = struct
     in
     let total_current = total_current a in
     let slashed_amount_final = Tez.min slashed_amount total_current in
-    (sub_tez_from_all_current slashed_amount a, slashed_amount_final)
+    (* TODO use the real value *)
+    let rewarded =
+      Tez.(mul_q slashed_amount_final Q.(1 // 7) |> of_q ~round:`Down)
+    in
+    let burnt = Tez.(slashed_amount_final -! rewarded) in
+    let a = sub_tez_from_all_current rewarded a in
+    let a = sub_tez_from_all_current burnt a in
+    (a, slashed_amount_final)
 end
 
 (** Representation of Unstaked frozen deposits *)
