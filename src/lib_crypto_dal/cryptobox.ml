@@ -136,23 +136,6 @@ let initialisation_parameters_from_files ~srs_user ~srs_g1_path ~srs_g2_path
       | Prover -> return (Prover_init_param {srs_g1; srs_g2})
       | Verifier -> return (Verifier_init_param {srs_g1; srs_g2}))
 
-(* The srs is made of the initialisation_parameters and two
-   well-choosen points. Building the srs from the initialisation
-   parameters is almost cost-free. *)
-type prover_srs = {
-  raw : prover_raw_srs;
-  kate_amortized_srs_g2_shards : G2.t;
-  kate_amortized_srs_g2_pages : G2.t;
-}
-
-type verifier_srs = {
-  raw : verifier_raw_srs;
-  kate_amortized_srs_g2_shards : G2.t;
-  kate_amortized_srs_g2_pages : G2.t;
-}
-
-type srs = Prove of prover_srs | Verify of verifier_srs
-
 module Inner = struct
   module Commitment = struct
     include Kzg.Commitment.Single
@@ -309,7 +292,10 @@ module Inner = struct
     remaining_bytes : int;
     (* Log of the number of evaluations that constitute an erasure encoded
        polynomial. *)
-    srs : srs;
+    kate_amortized_srs_g2_shards : G2.t;
+    kate_amortized_srs_g2_pages : G2.t;
+    kate_amortized_srs_g2_commitment : G2.t;
+    mode : [`Verifier | `Prover];
     kate_amortized : Kate_amortized.public_parameters;
   }
 
@@ -549,10 +535,10 @@ module Inner = struct
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
       | Some srs -> return srs
     in
-    let srs_g1, srs_g2 =
+    let mode, srs_g1, srs_g2 =
       match raw with
-      | Prover_init_param {srs_g1; srs_g2} -> (srs_g1, srs_g2)
-      | Verifier_init_param {srs_g1; srs_g2} -> (srs_g1, srs_g2)
+      | Prover_init_param {srs_g1; srs_g2} -> (`Prover, srs_g1, srs_g2)
+      | Verifier_init_param {srs_g1; srs_g2} -> (`Verifier, srs_g1, srs_g2)
     in
     let* () =
       ensure_validity
@@ -565,22 +551,15 @@ module Inner = struct
     in
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = FFT.select_fft_domain page_length in
-    let srs =
-      match raw with
-      | Prover_init_param raw ->
-          Prove
-            {
-              raw;
-              kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length;
-              kate_amortized_srs_g2_pages = Srs_g2.get srs_g2 page_length_domain;
-            }
-      | Verifier_init_param raw ->
-          Verify
-            {
-              raw;
-              kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length;
-              kate_amortized_srs_g2_pages = Srs_g2.get srs_g2 page_length_domain;
-            }
+    let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
+    let kate_amortized_srs_g2_pages = Srs_g2.get srs_g2 page_length_domain in
+    let kate_amortized_srs_g2_commitment =
+      let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
+      let max_committable_degree = Srs_g1.size srs_g1 - 1 in
+      let offset_monomial_degree =
+        max_committable_degree - max_allowed_committed_poly_degree
+      in
+      Srs_g2.get srs_g2 offset_monomial_degree
     in
     return
       {
@@ -600,7 +579,10 @@ module Inner = struct
         page_length;
         page_length_domain;
         remaining_bytes = page_size mod scalar_bytes_amount;
-        srs;
+        kate_amortized_srs_g2_shards;
+        kate_amortized_srs_g2_pages;
+        kate_amortized_srs_g2_commitment;
+        mode;
         kate_amortized =
           {max_polynomial_length; shard_length; srs_g1; number_of_shards};
       }
@@ -1043,14 +1025,17 @@ module Inner = struct
       Ok (Poly.truncate ~len:t.max_polynomial_length p)
 
   let commit t p =
-    match t.srs with
-    | Verify _ -> Error `Prover_SRS_not_loaded
-    | Prove srs -> (
-        try Ok (Commitment.commit srs.raw.srs_g1 p)
+    match t.mode with
+    | `Verifier -> Error `Prover_SRS_not_loaded
+    | `Prover -> (
+        try Ok (Commitment.commit t.kate_amortized.srs_g1 p)
         with Kzg.Commitment.SRS_too_short _ ->
           Error
             (`Invalid_degree_strictly_less_than_expected
-              {given = Poly.degree p; expected = Srs_g1.size srs.raw.srs_g1}))
+              {
+                given = Poly.degree p;
+                expected = Srs_g1.size t.kate_amortized.srs_g1;
+              }))
 
   let pp_commit_error fmt = function
     | `Invalid_degree_strictly_less_than_expected {given; expected} ->
@@ -1083,36 +1068,30 @@ module Inner = struct
   (* FIXME https://gitlab.com/tezos/tezos/-/issues/4192
 
      Generalize this function to pass the slot_size in parameter. *)
-  let prove_commitment ({srs; max_polynomial_length; _} : t) p =
-    match srs with
-    | Verify _ -> Error `Prover_SRS_not_loaded
-    | Prove {raw = {srs_g1; _}; _} ->
-        if Srs_g1.size srs_g1 >= max_polynomial_length then
+  let prove_commitment ({mode; max_polynomial_length; kate_amortized; _} : t) p
+      =
+    match mode with
+    | `Verifier -> Error `Prover_SRS_not_loaded
+    | `Prover ->
+        if Srs_g1.size kate_amortized.srs_g1 >= max_polynomial_length then
           Ok
             (Degree_check.prove
-               ~max_commit:(Srs_g1.size srs_g1 - 1)
+               ~max_commit:(Srs_g1.size kate_amortized.srs_g1 - 1)
                ~max_degree:(max_polynomial_length - 1)
-               srs_g1
+               kate_amortized.srs_g1
                p)
         else
           Error
             (`Invalid_degree_strictly_less_than_expected
-              {given = max_polynomial_length; expected = Srs_g1.size srs_g1})
+              {
+                given = max_polynomial_length;
+                expected = Srs_g1.size kate_amortized.srs_g1;
+              })
 
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
   let verify_commitment (t : t) cm proof =
-    let srs_g1, srs_g2 =
-      match t.srs with
-      | Prove srs -> (srs.raw.srs_g1, srs.raw.srs_g2)
-      | Verify srs -> (srs.raw.srs_g1, srs.raw.srs_g2)
-    in
-    let max_allowed_committed_poly_degree = t.max_polynomial_length - 1 in
-    let max_committable_degree = Srs_g1.size srs_g1 - 1 in
-    let offset_monomial_degree =
-      max_committable_degree - max_allowed_committed_poly_degree
-    in
-    let srs_0 = Srs_g2.get srs_g2 0 in
-    let srs_n_d = Srs_g2.get srs_g2 offset_monomial_degree in
+    let srs_0 = G2.one in
+    let srs_n_d = t.kate_amortized_srs_g2_commitment in
     Degree_check.verify {srs_0; srs_n_d} cm proof
 
   let save_precompute_shards_proofs precomputation ~filename =
@@ -1199,11 +1178,7 @@ module Inner = struct
           Domain.get t.domain_erasure_encoded_polynomial_length shard_index
         in
         let domain = Domain.build t.shard_length in
-        let srs_point =
-          match t.srs with
-          | Prove srs -> srs.kate_amortized_srs_g2_shards
-          | Verify srs -> srs.kate_amortized_srs_g2_shards
-        in
+        let srs_point = t.kate_amortized_srs_g2_shards in
         if
           Kate_amortized.verify
             t.kate_amortized
@@ -1269,11 +1244,7 @@ module Inner = struct
               | _ -> Scalar.(copy zero))
         in
         let root = Domain.get t.domain_polynomial_length page_index in
-        let srs_point =
-          match t.srs with
-          | Prove srs -> srs.kate_amortized_srs_g2_pages
-          | Verify srs -> srs.kate_amortized_srs_g2_pages
-        in
+        let srs_point = t.kate_amortized_srs_g2_pages in
         if
           Kate_amortized.verify
             t.kate_amortized
@@ -1397,13 +1368,7 @@ module Internal_for_tests = struct
     Poly.init (degree + 1) (fun i ->
         if i = degree then nonzero () else Scalar.random ~state ())
 
-  let srs_size_g1 t =
-    let srs_g1 =
-      match t.srs with
-      | Prove {raw = {srs_g1; _}; _} -> srs_g1
-      | Verify {raw = {srs_g1; _}; _} -> srs_g1
-    in
-    Srs_g1.size srs_g1
+  let srs_size_g1 t = Srs_g1.size t.kate_amortized.srs_g1
 
   let encoded_share_size = encoded_share_size
 
