@@ -104,6 +104,9 @@ module Pipeline = struct
       | Some _needed_job ->
           (* TODO: check rule implication *)
           ()
+      | None when need = "trigger" ->
+          (* TODO: special handling for trigger *)
+          ()
       | None ->
           (* TODO: handle optional needs *)
           failwith
