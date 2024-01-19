@@ -1006,7 +1006,7 @@ let update_cycle_eras ctxt level ~prev_blocks_per_cycle ~blocks_per_cycle
 let prepare_first_block ~level ~timestamp _chain_id ctxt =
   let open Lwt_result_syntax in
   let* previous_proto, ctxt = check_and_update_protocol_version ctxt in
-  let* ctxt =
+  let* ctxt, previous_proto_constants =
     match previous_proto with
     | Genesis param ->
         let*? first_level = Raw_level_repr.of_int32 level in
@@ -1021,7 +1021,7 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
         let*? cycle_eras = Level_repr.create_cycle_eras [cycle_era] in
         let* ctxt = set_cycle_eras ctxt cycle_eras in
         let*! result = add_constants ctxt param.constants in
-        return result
+        return (result, None)
     | Oxford_018 ->
         (* TODO: return c *)
         let*! c = get_previous_protocol_constants ctxt in
@@ -1254,7 +1254,7 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
           else return (ctxt, constants)
         in
         let*! ctxt = add_constants ctxt constants in
-        return ctxt
+        return (ctxt, Some c)
   in
   let+ ctxt =
     prepare
@@ -1264,7 +1264,7 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
       ~timestamp
       ~adaptive_issuance_enable:false
   in
-  (previous_proto, ctxt)
+  (previous_proto, previous_proto_constants, ctxt)
 
 let activate ctxt h =
   let open Lwt_syntax in

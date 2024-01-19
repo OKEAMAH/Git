@@ -112,7 +112,7 @@ let patch_script ctxt (address, hash, patched_code) =
 let prepare_first_block chain_id ctxt ~typecheck_smart_contract
     ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
   let open Lwt_result_syntax in
-  let* previous_protocol, ctxt =
+  let* previous_protocol, previous_proto_constants, ctxt =
     Raw_context.prepare_first_block ~level ~timestamp chain_id ctxt
   in
   let parametric = Raw_context.constants ctxt in
@@ -202,8 +202,16 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
           Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
         in
 
-        (* TODO: get the constant from Raw_context? *)
-        let preserved_cycles = 2 in
+        let previous_proto_constants =
+          match previous_proto_constants with
+          | None ->
+              (* Shouldn't happen *)
+              failwith
+                "Internal error: cannot read previous protocol constants in \
+                 context."
+          | Some c -> c
+        in
+        let preserved_cycles = previous_proto_constants.preserved_cycles in
         let consensus_rights_delay =
           Constants_storage.consensus_rights_delay ctxt
         in
@@ -212,6 +220,12 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
         let new_cycle =
           (Level_repr.level_from_raw ~cycle_eras next_level).cycle
         in
+
+        Logging.log_string
+          Notice
+          ("\n preserved_cycles ="
+          ^ Int32.to_string (Int32.of_int preserved_cycles)
+          ^ "\n") ;
 
         Logging.log_string
           Notice
