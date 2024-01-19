@@ -1,5 +1,11 @@
 open Gitlab_ci.Util
 
+let header =
+  {|# This file was automatically generated, do not edit.
+# Edit file ci/bin/main.ml instead.
+
+|}
+
 module Stage = struct
   type t = Stage of string
 

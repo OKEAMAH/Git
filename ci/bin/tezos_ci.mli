@@ -5,6 +5,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* A string that should be prepended to all generated files.
+
+   Warns not to modify the generated files, and refers to the generator. *)
+val header : string
+
 (** A facility for registering pipeline stages. *)
 module Stage : sig
   (* Represents a pipeline stage *)

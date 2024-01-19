@@ -15,12 +15,6 @@ open Gitlab_ci.Types
 open Gitlab_ci.Util
 open Tezos_ci
 
-let generation_header =
-  {|# This file was automatically generated, do not edit.
-# Edit file ci/bin/main.ml instead.
-
-|}
-
 (* Sets up the [default:] top-level configuration element. *)
 let default = default ~interruptible:true ()
 
@@ -258,7 +252,7 @@ let config =
       (name, `O [("image", `String (Image.name image_path))])
     in
     let config : Yaml.value = `O (List.map image_template (Image.all ())) in
-    Base.write_yaml ~header:generation_header filename config ;
+    Base.write_yaml ~header:Tezos_ci.header filename config ;
     {local = filename; rules = []}
   in
   let includes =
@@ -277,4 +271,4 @@ let config =
 
 let () =
   let filename = Base.(project_root // ".gitlab-ci.yml") in
-  To_yaml.to_file ~header:generation_header ~filename config
+  To_yaml.to_file ~header:Tezos_ci.header ~filename config
