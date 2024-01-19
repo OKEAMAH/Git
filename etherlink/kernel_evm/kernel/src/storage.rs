@@ -201,9 +201,19 @@ pub fn read_optional_rlp<T: Decodable>(
     path: &impl Path,
 ) -> Result<Option<T>, anyhow::Error> {
     if let Some(ValueType::Value) = host.store_has(path)? {
+        let bytes = host.store_read_all(path)?;
+        log!(
+            host,
+            Info,
+            "read_optional_rlp {} is some {}",
+            path,
+            hex::encode(bytes)
+        );
         let elt = read_rlp(host, path)?;
+        log!(host, Info, "read_optional_rlp conversion ok");
         Ok(Some(elt))
     } else {
+        log!(host, Info, "read_optional_rlp {} is none", path);
         Ok(None)
     }
 }

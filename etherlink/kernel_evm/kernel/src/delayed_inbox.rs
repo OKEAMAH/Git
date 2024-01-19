@@ -25,7 +25,7 @@ pub const DELAYED_DEPOSIT_TAG: u8 = 0x01;
 /// Hash of a transaction
 ///
 /// It represents the key of the transaction in the delayed inbox.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Hash([u8; TRANSACTION_HASH_SIZE]);
 
 impl Encodable for Hash {
@@ -54,7 +54,7 @@ impl AsRef<[u8]> for Hash {
 /// Later it might be turned into a struct
 /// And fields like the timestamp might be added
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DelayedTransaction {
     Ethereum(EthereumTransactionCommon),
     Deposit(Deposit),
