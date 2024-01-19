@@ -33,7 +33,7 @@ module Stages = struct
 
   let test_coverage = Stage.register "test_coverage"
 
-  let _packaging = Stage.register "packaging"
+  let packaging = Stage.register "packaging"
 
   let doc = Stage.register "doc"
 
@@ -132,7 +132,7 @@ module Images = struct
       ~image_path:
         "${build_deps_image_name}:runtime-build-dependencies--${build_deps_image_version}"
 
-  let _runtime_prebuild_dependencies =
+  let runtime_prebuild_dependencies =
     Image.register
       ~name:"runtime_prebuild_dependencies"
       ~image_path:
@@ -762,6 +762,140 @@ let changeset_octez_docs =
     ".gitlab/**/*";
     ".gitlab-ci.yml";
   ]
+
+(* The set of [changes:] that trigger opam jobs *)
+let changeset_opam_jobs =
+  [
+    "**/dune";
+    "**/dune.inc";
+    "**/*.dune.inc";
+    "**/dune-project";
+    "**/dune-workspace";
+    "**/*.opam";
+    ".gitlab/ci/jobs/packaging/opam:prepare.yml";
+    ".gitlab/ci/jobs/packaging/opam_package.yml";
+    "manifest/manifest.ml";
+    "manifest/main.ml";
+    "scripts/opam-prepare-repo.sh";
+    "scripts/version.sh";
+  ]
+
+(* We *)
+type opam_package_group = Executable | All
+
+type opam_package = {
+  name : string;
+  group : opam_package_group;
+  batch_index : int;
+}
+
+let opam_rules ~only_marge_bot ?batch_index () =
+  let when_ =
+    match batch_index with
+    | Some batch_index -> Delayed (Minutes batch_index)
+    | None -> On_success
+  in
+  [
+    job_rule ~if_:Rules.schedule_extended_tests ~when_ ();
+    job_rule ~if_:(Rules.has_mr_label "ci--opam") ~when_ ();
+    job_rule
+      ~if_:
+        (if only_marge_bot then
+         If.(Rules.merge_request && Rules.triggered_by_marge_bot)
+        else Rules.merge_request)
+      ~changes:changeset_opam_jobs
+      ~when_
+      ();
+    job_rule ~when_:Never ();
+  ]
+
+let _job_opam_prepare : job =
+  job_external
+  @@ job
+       ~name:"opam:prepare"
+       ~image:Images.runtime_prebuild_dependencies
+       ~stage:Stages.packaging
+       ~dependencies:(Dependent [Job trigger])
+       ~before_script:(before_script ~eval_opam:true [])
+       ~artifacts:(artifacts ["_opam-repo-for-release/"])
+       ~rules:(opam_rules ~only_marge_bot:false ~batch_index:1 ())
+       [
+         "git init _opam-repo-for-release";
+         "./scripts/opam-prepare-repo.sh dev ./ ./_opam-repo-for-release";
+         "git -C _opam-repo-for-release add packages";
+         "git -C _opam-repo-for-release commit -m \"tezos packages\"";
+       ]
+
+let job_opam_package {name; group; batch_index} : job =
+  job
+    ~name:("opam:" ^ name)
+    ~image:Images.runtime_prebuild_dependencies
+    ~stage:Stages.packaging
+      (* FIXME: https://gitlab.com/nomadic-labs/tezos/-/issues/663
+         FIXME: https://gitlab.com/nomadic-labs/tezos/-/issues/664
+         At the time of writing, the opam tests were quite flaky.
+         Therefore, a retry was added. This should be removed once the
+         underlying tests have been fixed. *)
+    ~retry:2
+    ~dependencies:(Dependent [Artifacts _job_opam_prepare])
+    ~rules:(opam_rules ~only_marge_bot:(group = All) ~batch_index ())
+    ~variables:
+      [
+        (* See [.gitlab-ci.yml] for details on [RUNTEZTALIAS] *)
+        ("RUNTEZTALIAS", "true");
+        (* We store caches in [_build] for two reasons: (1) the [_build]
+           folder is excluded from opam's rsync. (2) gitlab ci cache
+           requires that cached files are in a sub-folder of the checkout. *)
+        ("SCCACHE_DIR", "$CI_PROJECT_DIR/_build/_sccache");
+        ("RUSTC_WRAPPER", "sccache");
+        ("package", name);
+      ]
+    ~before_script:(before_script ~eval_opam:true [])
+    [
+      "opam remote add dev-repo ./_opam-repo-for-release";
+      "opam install --yes ${package}.dev";
+      "opam reinstall --yes --with-test ${package}.dev";
+    ]
+    (* Stores logs in opam_logs for artifacts and outputs an excerpt on
+       failure. [after_script] runs in a separate shell and so requires
+       a second opam environment initialization. *)
+    ~after_script:
+      [
+        "eval $(opam env)";
+        "OPAM_LOGS=opam_logs ./scripts/ci/opam_handle_output.sh";
+      ]
+    ~artifacts:(artifacts ~expire_in:(Weeks 1) ~when_:Always ["opam_logs/"])
+    ~cache:[{key = "opam-sccache"; paths = ["_build/_sccache"]}]
+
+let ci_opam_package_tests = "script-inputs/ci-opam-package-tests"
+
+let read_opam_packages =
+  Fun.flip List.filter_map (read_lines_from_file ci_opam_package_tests)
+  @@ fun line ->
+  let fail () =
+    failwith
+      (sf "failed to parse %S: invalid line: %S" ci_opam_package_tests line)
+  in
+  if line = "" then None
+  else
+    match String.split_on_char '\t' line with
+    | [name; group; batch_index] ->
+        let batch_index =
+          match int_of_string_opt batch_index with
+          | Some i -> i
+          | None -> fail ()
+        in
+        let group =
+          match group with "exec" -> Executable | "all" -> All | _ -> fail ()
+        in
+        Some {name; group; batch_index}
+    | _ -> fail ()
+
+let make_opam_packages (packages : opam_package list) : job list =
+  let jobs = List.map job_opam_package packages in
+  jobs_external ~path:"packaging/opam_package.yml" jobs
+
+let (_jobs_opam_package : job list) = make_opam_packages read_opam_packages
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
