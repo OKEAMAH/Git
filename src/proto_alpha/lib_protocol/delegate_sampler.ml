@@ -256,6 +256,19 @@ let clear_outdated_sampling_data ctxt ~new_cycle =
       let* ctxt = Delegate_sampler_state.remove_existing ctxt outdated_cycle in
       Seed_storage.remove_for_cycle ctxt outdated_cycle
 
+let cleanup_values_for_protocol_p ctxt ~preserved_cycles ~consensus_rights_delay
+    ~new_cycle =
+  let open Lwt_result_syntax in
+  assert (Compare.Int.(consensus_rights_delay <= preserved_cycles)) ;
+  if Compare.Int.(consensus_rights_delay = preserved_cycles) then return ctxt
+  else
+    let start_cycle = Cycle_repr.add new_cycle (consensus_rights_delay + 1) in
+    let end_cycle = Cycle_repr.add new_cycle preserved_cycles in
+    List.fold_left_es
+      Delegate_sampler_state.remove_existing
+      ctxt
+      Cycle_repr.(start_cycle ---> end_cycle)
+
 module For_RPC = struct
   let delegate_current_baking_power ctxt delegate =
     let open Lwt_result_syntax in

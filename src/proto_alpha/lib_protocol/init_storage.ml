@@ -109,10 +109,48 @@ let patch_script ctxt (address, hash, patched_code) =
         address ;
       return ctxt
 
+let cleanup_values_for_protocol_p ctxt
+    (previous_proto_constants : Constants_parametric_previous_repr.t option)
+    level =
+  let open Lwt_result_syntax in
+  let preserved_cycles =
+    let previous_proto_constants =
+      match previous_proto_constants with
+      | None ->
+          (* Shouldn't happen *)
+          failwith
+            "Internal error: cannot read previous protocol constants in \
+             context."
+      | Some c -> c
+    in
+    previous_proto_constants.preserved_cycles
+  in
+  let consensus_rights_delay = Constants_storage.consensus_rights_delay ctxt in
+  let new_cycle =
+    let next_level = Raw_level_repr.succ level in
+    let cycle_eras = Raw_context.cycle_eras ctxt in
+    (Level_repr.level_from_raw ~cycle_eras next_level).cycle
+  in
+  let* ctxt =
+    Stake_storage.cleanup_values_for_protocol_p
+      ctxt
+      ~preserved_cycles
+      ~consensus_rights_delay
+      ~new_cycle
+  in
+  let* ctxt =
+    Delegate_sampler.cleanup_values_for_protocol_p
+      ctxt
+      ~preserved_cycles
+      ~consensus_rights_delay
+      ~new_cycle
+  in
+  return ctxt
+
 let prepare_first_block chain_id ctxt ~typecheck_smart_contract
     ~typecheck_smart_rollup ~level ~timestamp ~predecessor =
   let open Lwt_result_syntax in
-  let* previous_protocol, _previous_proto_constants, ctxt =
+  let* previous_protocol, previous_proto_constants, ctxt =
     Raw_context.prepare_first_block ~level ~timestamp chain_id ctxt
   in
   let parametric = Raw_context.constants ctxt in
@@ -199,6 +237,9 @@ let prepare_first_block chain_id ctxt ~typecheck_smart_contract
         (* Migration of refutation games needs to be kept for each protocol. *)
         let* ctxt =
           Sc_rollup_refutation_storage.migrate_clean_refutation_games ctxt
+        in
+        let* ctxt =
+          cleanup_values_for_protocol_p ctxt previous_proto_constants level
         in
         return (ctxt, [])
   in
