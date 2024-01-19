@@ -2,7 +2,7 @@
 (*                                                                           *)
 (* SPDX-License-Identifier: MIT                                              *)
 (* Copyright (c) 2023 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2023 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2023-2024 Marigold <contact@marigold.dev>                   *)
 (*                                                                           *)
 (*****************************************************************************)
 
@@ -145,7 +145,7 @@ let test_spending ~direct_ticket_spending_enable () =
       (Destination.Contract implicit)
       block
   in
-  let arg = sf "Pair %S Unit 1" boomerang_str in
+  let arg = sf "Ticket %S unit Unit 1" boomerang_str in
   if direct_ticket_spending_enable then
     let* block = call_contract ~source:implicit ~contract:consumer ~arg block in
     assert_ticket_balance

@@ -2,7 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
-(* Copyright (c) 2022 Marigold <contact@marigold.dev>                        *)
+(* Copyright (c) 2022-2024 Marigold <contact@marigold.dev>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -31,8 +31,6 @@
    Subject:      Regression tests for tickets
 *)
 
-open Tezos_protocol_alpha.Protocol
-
 let hooks = Tezos_regression.hooks
 
 let setup_node protocol ~direct_ticket_spending_enable =
@@ -51,17 +49,8 @@ let setup_node protocol ~direct_ticket_spending_enable =
   return (node, client)
 
 (* Return micheline encoding of ticket. *)
-let encode_ticket ~ticketer ~content ~amount =
-  let ticketer_contract =
-    Result.get_ok (Alpha_context.Contract.of_b58check ticketer)
-  in
-  let ticketer_bytes =
-    Data_encoding.Binary.to_bytes_exn
-      Alpha_context.Contract.encoding
-      ticketer_contract
-  in
-  let encoded_ticketer = Hex.show (Hex.of_bytes ticketer_bytes) in
-  sf {|Pair 0x%s (Pair %S %d)|} encoded_ticketer content amount
+let encode_string_ticket ~ticketer ~content ~amount =
+  sf {|Ticket %S string %S %d|} ticketer content amount
 
 let test_create_and_remove_tickets =
   Protocol.register_regression_test
@@ -305,7 +294,7 @@ let test_direct_transfer_tickets_from_implicit_account_to_originated =
       ~giver:Constant.bootstrap1.alias
       ~receiver:bag
       ~entrypoint:"save"
-      ~arg:(encode_ticket ~ticketer ~content:"Ticket" ~amount:1)
+      ~arg:(encode_string_ticket ~ticketer ~content:"Ticket" ~amount:1)
       ~hooks
       client
   in
@@ -327,6 +316,164 @@ let test_direct_transfer_tickets_from_implicit_account_to_originated =
       ~contents:"\"Ticket\""
       ~expected:1
       client
+  in
+  unit
+
+(* Test that it is impossible to transfer a Ticket if the contents_type isn't correct. *)
+let test_direct_transfer_tickets_from_implicit_account_to_originated_with_invalid_contents_type_fail
+    =
+  Protocol.register_regression_test
+    ~__FILE__
+    ~title:
+      "Send tickets from implicit account to originated using wrong ticket \
+       contents_type fail"
+    ~tags:["client"; "michelson"; "implicit"; "ticket"; "originated"]
+    ~supports:(Protocol.From_protocol 19)
+  @@ fun protocol ->
+  let* _node, client =
+    setup_node protocol ~direct_ticket_spending_enable:true
+  in
+  (* Deposit tickets to the implicit account. *)
+  let* _alias, ticketer =
+    Client.originate_contract_at
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.alias
+      ~init:"Unit"
+      ~burn_cap:Tez.one
+      client
+      ["mini_scenarios"; "tickets_send"]
+      protocol
+  in
+  let* () = Client.bake_for_and_wait client in
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:Tez.zero
+      ~giver:Constant.bootstrap1.alias
+      ~receiver:ticketer
+      ~arg:(sf "Pair %S 1" Constant.bootstrap1.public_key_hash)
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  (* Assert that the implicit account holds the ticket. *)
+  let* () =
+    assert_ticket_balance
+      ~contract:Constant.bootstrap1.alias
+      ~ticketer
+      ~ty:"string"
+      ~contents:"\"Ticket\""
+      ~expected:1
+      client
+  in
+  (* Originate contract that stores tickets sent to it's "save" entrypoint.  *)
+  let* _alias, bag =
+    Client.originate_contract_at
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.alias
+      ~init:"{}"
+      ~burn_cap:Tez.one
+      client
+      ["mini_scenarios"; "tickets_bag"]
+      protocol
+  in
+  let* () = Client.bake_for_and_wait client in
+  (* Check that transferring a ticket from implicit to originated using
+     a ticket constructor that specifies a wrong contents type fails. *)
+  let encode_wrong_ticket ~ticketer ~content ~amount =
+    (* Pass [unit] as contents type when the actual contents is string. *)
+    sf {|Ticket %S unit %S %d|} ticketer content amount
+  in
+  let* () =
+    Process.check_error
+      ~msg:(rex "Type string is not compatible with type unit")
+      (Client.spawn_transfer
+         ~burn_cap:Tez.one
+         ~amount:Tez.zero
+         ~giver:Constant.bootstrap1.alias
+         ~receiver:bag
+         ~entrypoint:"save"
+         ~arg:(encode_wrong_ticket ~ticketer ~content:"Ticket" ~amount:1)
+         ~hooks
+         client)
+  in
+  unit
+
+(* Test that it is impossible to transfer a Ticket using the legacy Pair representation. *)
+let test_direct_transfer_tickets_from_implicit_account_to_originated_using_pair_fail
+    =
+  Protocol.register_regression_test
+    ~__FILE__
+    ~title:
+      "Send tickets from implicit account to originated using pair constructor \
+       fail"
+    ~tags:["client"; "michelson"; "implicit"; "ticket"; "originated"]
+    ~supports:(Protocol.From_protocol 19)
+  @@ fun protocol ->
+  (* Return micheline encoding of ticket using legacy Pair constructor. *)
+  let encode_pair_ticket ~ticketer ~content ~amount =
+    sf {|Pair %S (Pair %S %d)|} ticketer content amount
+  in
+  let* _node, client =
+    setup_node protocol ~direct_ticket_spending_enable:true
+  in
+  (* Deposit tickets to the implicit account. *)
+  let* _alias, ticketer =
+    Client.originate_contract_at
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.alias
+      ~init:"Unit"
+      ~burn_cap:Tez.one
+      client
+      ["mini_scenarios"; "tickets_send"]
+      protocol
+  in
+  let* () = Client.bake_for_and_wait client in
+  let* () =
+    Client.transfer
+      ~burn_cap:Tez.one
+      ~amount:Tez.zero
+      ~giver:Constant.bootstrap1.alias
+      ~receiver:ticketer
+      ~arg:(sf "Pair %S 1" Constant.bootstrap1.public_key_hash)
+      client
+  in
+  let* () = Client.bake_for_and_wait client in
+  (* Assert that the implicit account holds the ticket. *)
+  let* () =
+    assert_ticket_balance
+      ~contract:Constant.bootstrap1.alias
+      ~ticketer
+      ~ty:"string"
+      ~contents:"\"Ticket\""
+      ~expected:1
+      client
+  in
+  (* Originate contract that stores tickets sent to its "save" entrypoint.  *)
+  let* _alias, bag =
+    Client.originate_contract_at
+      ~amount:Tez.zero
+      ~src:Constant.bootstrap1.alias
+      ~init:"{}"
+      ~burn_cap:Tez.one
+      client
+      ["mini_scenarios"; "tickets_bag"]
+      protocol
+  in
+  let* () = Client.bake_for_and_wait client in
+  (* Check that transferring ticket from implicit to originated using the
+     [Transaction] manager operation with legacy Pair representation fails. *)
+  let* () =
+    Process.check_error
+      ~msg:(rex "invalid primitive Pair, only Ticket can be used here")
+      (Client.spawn_transfer
+         ~burn_cap:Tez.one
+         ~amount:Tez.zero
+         ~giver:Constant.bootstrap1.alias
+         ~receiver:bag
+         ~entrypoint:"save"
+         ~arg:(encode_pair_ticket ~ticketer ~content:"Ticket" ~amount:1)
+         ~hooks
+         client)
   in
   unit
 
@@ -419,11 +566,11 @@ let test_direct_transfer_tickets_from_implicit_account_to_originated_complex =
   let complex_arg_with_tickets =
     sf
       {|Pair 99 {Pair "garbage" (%s) ; Pair "garbage" (%s)}|}
-      (encode_ticket
+      (encode_string_ticket
          ~ticketer
          ~content:first_ticket_content
          ~amount:first_ticket_sent)
-      (encode_ticket
+      (encode_string_ticket
          ~ticketer
          ~content:second_ticket_content
          ~amount:second_ticket_sent)
@@ -1328,5 +1475,9 @@ let register ~protocols =
   test_send_tickets_to_sc_rollup protocols ;
   test_send_tickets_from_storage_to_sc_rollup protocols ;
   test_direct_transfer_tickets_from_implicit_account_to_originated protocols ;
+  test_direct_transfer_tickets_from_implicit_account_to_originated_using_pair_fail
+    protocols ;
+  test_direct_transfer_tickets_from_implicit_account_to_originated_with_invalid_contents_type_fail
+    protocols ;
   test_direct_transfer_tickets_from_implicit_account_to_originated_complex
     protocols
