@@ -463,7 +463,7 @@ module Inner = struct
           shard_length)
 
   let ensure_validity ~slot_size ~page_size ~redundancy_factor ~number_of_shards
-      ~srs_g1_length ~srs_g2_length =
+      ~srs_g1_length =
     let open Result_syntax in
     let assert_result condition error_message =
       if not condition then fail (`Fail (error_message ())) else return_unit
@@ -478,33 +478,32 @@ module Inner = struct
     let max_polynomial_length =
       slot_as_polynomial_length ~slot_size ~page_size
     in
-    let erasure_encoded_polynomial_length =
-      redundancy_factor * max_polynomial_length
-    in
-    let shard_length = erasure_encoded_polynomial_length / number_of_shards in
-    let* () =
-      assert_result
-        (max_polynomial_length <= srs_g1_length)
-        (* The committed polynomials have degree t.max_polynomial_length - 1 at most,
-           so t.max_polynomial_length coefficients. *)
-        (fun () ->
-          Format.asprintf
-            "SRS on G1 size is too small. Expected more than %d. Got %d. Hint: \
-             you can reduce the size of a slot."
-            max_polynomial_length
-            srs_g1_length)
-    in
     assert_result
-      (let srs_g2_expected_length =
-         max max_polynomial_length shard_length + 1
-       in
-       srs_g2_expected_length <= srs_g2_length)
+      (max_polynomial_length <= srs_g1_length)
+      (* The committed polynomials have degree t.max_polynomial_length - 1 at most,
+         so t.max_polynomial_length coefficients. *)
       (fun () ->
         Format.asprintf
-          "SRS on G2 size is too small. Expected more than %d. Got %d. Hint: \
-           you can increase the number of shards/number of pages."
+          "SRS on G1 size is too small. Expected more than %d. Got %d. Hint: \
+           you can reduce the size of a slot."
           max_polynomial_length
-          srs_g2_length)
+          srs_g1_length)
+  (* TODO: Put this verification somewhere. *)
+  (* let erasure_encoded_polynomial_length = *)
+  (*   redundancy_factor * max_polynomial_length *)
+  (* in *)
+  (* let shard_length = erasure_encoded_polynomial_length / number_of_shards in   *)
+  (* assert_result *)
+  (*   (let srs_g2_expected_length = *)
+  (*      max max_polynomial_length shard_length + 1 *)
+  (*    in *)
+  (*    srs_g2_expected_length <= srs_g2_length) *)
+  (*   (fun () -> *)
+  (*     Format.asprintf *)
+  (* "SRS on G2 size is too small. Expected more than %d. Got %d. Hint: \ *)
+     (*        you can increase the number of shards/number of pages." *)
+  (*       max_polynomial_length *)
+  (*       srs_g2_length) *)
 
   type parameters = Dal_config.parameters = {
     redundancy_factor : int;
@@ -535,10 +534,58 @@ module Inner = struct
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialised.")
       | Some srs -> return srs
     in
-    let mode, srs_g1, srs_g2 =
+    let page_length = page_length ~page_size in
+    let page_length_domain, _, _ = FFT.select_fft_domain page_length in
+    let ( mode,
+          kate_amortized_srs_g2_shards,
+          kate_amortized_srs_g2_pages,
+          kate_amortized_srs_g2_commitment,
+          kate_amortized ) =
       match raw with
-      | Prover_init_param {srs_g1; srs_g2} -> (`Prover, srs_g1, srs_g2)
-      | Verifier_init_param {srs_g1; srs_g2} -> (`Verifier, srs_g1, srs_g2)
+      | Prover_init_param {srs_g1; srs_g2} ->
+          let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
+          let kate_amortized_srs_g2_pages =
+            Srs_g2.get srs_g2 page_length_domain
+          in
+          let kate_amortized_srs_g2_commitment =
+            let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
+            let max_committable_degree = Srs_g1.size srs_g1 - 1 in
+            let offset_monomial_degree =
+              max_committable_degree - max_allowed_committed_poly_degree
+            in
+            Srs_g2.get srs_g2 offset_monomial_degree
+          in
+          let kate_amortized =
+            Kate_amortized.
+              {max_polynomial_length; shard_length; srs_g1; number_of_shards}
+          in
+          ( `Prover,
+            kate_amortized_srs_g2_shards,
+            kate_amortized_srs_g2_pages,
+            kate_amortized_srs_g2_commitment,
+            kate_amortized )
+      | Verifier_init_param {srs_g1; srs_g2} ->
+          let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
+          let kate_amortized_srs_g2_pages =
+            Srs_g2.get srs_g2 page_length_domain
+          in
+          let kate_amortized_srs_g2_commitment =
+            let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
+            let max_committable_degree = Srs_g1.size srs_g1 - 1 in
+            let offset_monomial_degree =
+              max_committable_degree - max_allowed_committed_poly_degree
+            in
+            Srs_g2.get srs_g2 offset_monomial_degree
+          in
+          let kate_amortized =
+            Kate_amortized.
+              {max_polynomial_length; shard_length; srs_g1; number_of_shards}
+          in
+          ( `Verifier,
+            kate_amortized_srs_g2_shards,
+            kate_amortized_srs_g2_pages,
+            kate_amortized_srs_g2_commitment,
+            kate_amortized )
     in
     let* () =
       ensure_validity
@@ -546,20 +593,7 @@ module Inner = struct
         ~page_size
         ~redundancy_factor
         ~number_of_shards
-        ~srs_g1_length:(Srs_g1.size srs_g1)
-        ~srs_g2_length:(Srs_g2.size srs_g2)
-    in
-    let page_length = page_length ~page_size in
-    let page_length_domain, _, _ = FFT.select_fft_domain page_length in
-    let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
-    let kate_amortized_srs_g2_pages = Srs_g2.get srs_g2 page_length_domain in
-    let kate_amortized_srs_g2_commitment =
-      let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
-      let max_committable_degree = Srs_g1.size srs_g1 - 1 in
-      let offset_monomial_degree =
-        max_committable_degree - max_allowed_committed_poly_degree
-      in
-      Srs_g2.get srs_g2 offset_monomial_degree
+        ~srs_g1_length:(Srs_g1.size kate_amortized.srs_g1)
     in
     return
       {
@@ -583,8 +617,7 @@ module Inner = struct
         kate_amortized_srs_g2_pages;
         kate_amortized_srs_g2_commitment;
         mode;
-        kate_amortized =
-          {max_polynomial_length; shard_length; srs_g1; number_of_shards};
+        kate_amortized;
       }
 
   let parameters
@@ -1388,10 +1421,10 @@ module Internal_for_tests = struct
       | None -> fail (`Fail "Dal_cryptobox.make: DAL was not initialisated.")
       | Some srs -> return srs
     in
-    let srs_g1, srs_g2 =
+    let srs_g1 =
       match raw with
-      | Prover_init_param {srs_g1; srs_g2} -> (srs_g1, srs_g2)
-      | Verifier_init_param {srs_g1; srs_g2} -> (srs_g1, srs_g2)
+      | Prover_init_param {srs_g1; _} -> srs_g1
+      | Verifier_init_param {srs_g1; _} -> srs_g1
     in
     ensure_validity
       ~slot_size
@@ -1399,7 +1432,6 @@ module Internal_for_tests = struct
       ~redundancy_factor
       ~number_of_shards
       ~srs_g1_length:(Srs_g1.size srs_g1)
-      ~srs_g2_length:(Srs_g2.size srs_g2)
 
   let ensure_validity parameters =
     match ensure_validity parameters with Ok _ -> true | _ -> false
