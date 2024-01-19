@@ -67,6 +67,23 @@ let () =
     (function () -> Dal_initialisation_twice)
   [@@coverage off]
 
+(* Number of bytes fitting in a Scalar.t. Since scalars are integer modulo
+   r~2^255, we restrict ourselves to 248-bit integers (31 bytes). *)
+let scalar_bytes_amount = Scalar.size_in_bytes - 1
+
+(* The page size is a power of two and thus not a multiple of [scalar_bytes_amount],
+   hence the + 1 to account for the remainder of the division. *)
+let page_length ~page_size = Int.div page_size scalar_bytes_amount + 1
+
+(* [slot_as_polynomial_length ~slot_size ~page_size] returns the length of the
+   polynomial of maximal degree representing a slot of size [slot_size] with
+   [slot_size / page_size] pages. The returned length thus depends on the number
+   of pages. *)
+let slot_as_polynomial_length ~slot_size ~page_size =
+  let page_length = page_length ~page_size in
+  let page_length_domain, _, _ = FFT.select_fft_domain page_length in
+  slot_size / page_size * page_length_domain
+
 (* This function is expected to be called once. *)
 let load_parameters parameters =
   let open Result_syntax in
@@ -124,6 +141,29 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
       tzfail
         (Failed_to_load_trusted_setup (Printf.sprintf "Invalid point %i" p))
   | Ok (srs_g1, srs_g2) -> return (srs_g1, srs_g2)
+
+let initialisation_parameters_with_fake_srs ~slot_size ~page_size
+    ~number_of_shards ~redundancy_factor =
+  let length = slot_as_polynomial_length ~slot_size ~page_size in
+  let secret =
+    Scalar.of_string
+      "20812168509434597367146703229805575690060615791308155437936410982393987532344"
+  in
+  let srs_g1 = Srs_g1.generate_insecure length secret in
+  (* The error is caught during the instantiation through [make]. *)
+  let erasure_encoded_polynomial_length = redundancy_factor * length in
+  let evaluations_per_proof =
+    match erasure_encoded_polynomial_length / number_of_shards with
+    | exception Invalid_argument _ -> 0
+    | x -> x
+  in
+  (* The cryptobox will read at indices `size`, `1 lsl evaluations_per_proof_log`
+     and `page_length` so we take the max + 1. Since `page_length < size`, we
+     can remove the `page_length from the max. *)
+  let srs_g2 =
+    Srs_g2.generate_insecure (max length evaluations_per_proof + 1) secret
+  in
+  (srs_g1, srs_g2)
 
 module Inner = struct
   module Commitment = struct
@@ -249,10 +289,6 @@ module Inner = struct
       (function err -> Invalid_precomputation_hash err)
     [@@coverage off]
 
-  (* Number of bytes fitting in a Scalar.t. Since scalars are integer modulo
-     r~2^255, we restrict ourselves to 248-bit integers (31 bytes). *)
-  let scalar_bytes_amount = Scalar.size_in_bytes - 1
-
   (* Builds group of nth roots of unity, a valid domain for the FFT. *)
   let make_domain n = Domain.build n
 
@@ -289,19 +325,6 @@ module Inner = struct
   }
 
   let is_power_of_two = Kzg.Utils.is_power_of_two
-
-  (* The page size is a power of two and thus not a multiple of [scalar_bytes_amount],
-     hence the + 1 to account for the remainder of the division. *)
-  let page_length ~page_size = Int.div page_size scalar_bytes_amount + 1
-
-  (* [slot_as_polynomial_length ~slot_size ~page_size] returns the length of the
-     polynomial of maximal degree representing a slot of size [slot_size] with
-     [slot_size / page_size] pages. The returned length thus depends on the number
-     of pages. *)
-  let slot_as_polynomial_length ~slot_size ~page_size =
-    let page_length = page_length ~page_size in
-    let page_length_domain, _, _ = FFT.select_fft_domain page_length in
-    slot_size / page_size * page_length_domain
 
   let ensure_validity_without_srs ~slot_size ~page_size ~redundancy_factor
       ~number_of_shards =
@@ -452,7 +475,7 @@ module Inner = struct
           shard_length)
 
   let ensure_validity ~slot_size ~page_size ~redundancy_factor ~number_of_shards
-      ~srs_g1_length =
+      ~srs_g1_length ~srs_g2_length =
     let open Result_syntax in
     let assert_result condition error_message =
       if not condition then fail (`Fail (error_message ())) else return_unit
@@ -467,32 +490,34 @@ module Inner = struct
     let max_polynomial_length =
       slot_as_polynomial_length ~slot_size ~page_size
     in
+    let* () =
+      assert_result
+        (max_polynomial_length <= srs_g1_length)
+        (* The committed polynomials have degree t.max_polynomial_length - 1 at most,
+           so t.max_polynomial_length coefficients. *)
+        (fun () ->
+          Format.asprintf
+            "SRS on G1 size is too small. Expected more than %d. Got %d. Hint: \
+             you can reduce the size of a slot."
+            max_polynomial_length
+            srs_g1_length)
+    in
+    (* TODO: Students this your job! *)
+    let erasure_encoded_polynomial_length =
+      redundancy_factor * max_polynomial_length
+    in
+    let shard_length = erasure_encoded_polynomial_length / number_of_shards in
     assert_result
-      (max_polynomial_length <= srs_g1_length)
-      (* The committed polynomials have degree t.max_polynomial_length - 1 at most,
-         so t.max_polynomial_length coefficients. *)
+      (let srs_g2_expected_length =
+         max max_polynomial_length shard_length + 1
+       in
+       srs_g2_expected_length <= srs_g2_length)
       (fun () ->
         Format.asprintf
-          "SRS on G1 size is too small. Expected more than %d. Got %d. Hint: \
-           you can reduce the size of a slot."
+          "SRS on G2 size is too small. Expected more than %d. Got %d. Hint: \
+           you can increase the number of shards/number of pages."
           max_polynomial_length
-          srs_g1_length)
-  (* TODO: Students this your job! *)
-  (* let erasure_encoded_polynomial_length = *)
-  (*   redundancy_factor * max_polynomial_length *)
-  (* in *)
-  (* let shard_length = erasure_encoded_polynomial_length / number_of_shards in   *)
-  (* assert_result *)
-  (*   (let srs_g2_expected_length = *)
-  (*      max max_polynomial_length shard_length + 1 *)
-  (*    in *)
-  (*    srs_g2_expected_length <= srs_g2_length) *)
-  (*   (fun () -> *)
-  (*     Format.asprintf *)
-  (* "SRS on G2 size is too small. Expected more than %d. Got %d. Hint: \ *)
-     (*        you can increase the number of shards/number of pages." *)
-  (*       max_polynomial_length *)
-  (*       srs_g2_length) *)
+          srs_g2_length)
 
   type parameters = Dal_config.parameters = {
     redundancy_factor : int;
@@ -524,7 +549,8 @@ module Inner = struct
           kate_amortized_srs_g2_shards,
           kate_amortized_srs_g2_pages,
           kate_amortized_srs_g2_commitment,
-          kate_amortized ) =
+          kate_amortized,
+          srs_g2_length ) =
       match !initialisation_parameters with
       | Some (srs_g1, srs_g2) ->
           let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
@@ -547,10 +573,16 @@ module Inner = struct
             kate_amortized_srs_g2_shards,
             kate_amortized_srs_g2_pages,
             kate_amortized_srs_g2_commitment,
-            kate_amortized )
+            kate_amortized,
+            Srs_g2.size srs_g2 )
       | None ->
-          (* TODO: Students this your job! *)
-          let srs_g1, srs_g2 = assert false in
+          let srs_g1, srs_g2 =
+            initialisation_parameters_with_fake_srs
+              ~slot_size
+              ~page_size
+              ~number_of_shards
+              ~redundancy_factor
+          in
           let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
           let kate_amortized_srs_g2_pages =
             Srs_g2.get srs_g2 page_length_domain
@@ -571,7 +603,8 @@ module Inner = struct
             kate_amortized_srs_g2_shards,
             kate_amortized_srs_g2_pages,
             kate_amortized_srs_g2_commitment,
-            kate_amortized )
+            kate_amortized,
+            Srs_g2.size srs_g2 )
     in
     let* () =
       ensure_validity
@@ -580,6 +613,7 @@ module Inner = struct
         ~redundancy_factor
         ~number_of_shards
         ~srs_g1_length:(Srs_g1.size kate_amortized.srs_g1)
+        ~srs_g2_length
     in
     return
       {
@@ -1283,26 +1317,11 @@ module Verifier = Inner
 module Internal_for_tests = struct
   let parameters_initialisation
       {slot_size; page_size; number_of_shards; redundancy_factor; _} =
-    let length = slot_as_polynomial_length ~slot_size ~page_size in
-    let secret =
-      Scalar.of_string
-        "20812168509434597367146703229805575690060615791308155437936410982393987532344"
-    in
-    let srs_g1 = Srs_g1.generate_insecure length secret in
-    (* The error is caught during the instantiation through [make]. *)
-    let erasure_encoded_polynomial_length = redundancy_factor * length in
-    let evaluations_per_proof =
-      match erasure_encoded_polynomial_length / number_of_shards with
-      | exception Invalid_argument _ -> 0
-      | x -> x
-    in
-    (* The cryptobox will read at indices `size`, `1 lsl evaluations_per_proof_log`
-       and `page_length` so we take the max + 1. Since `page_length < size`, we
-       can remove the `page_length from the max. *)
-    let srs_g2 =
-      Srs_g2.generate_insecure (max length evaluations_per_proof + 1) secret
-    in
-    (srs_g1, srs_g2)
+    initialisation_parameters_with_fake_srs
+      ~slot_size
+      ~page_size
+      ~number_of_shards
+      ~redundancy_factor
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1376,12 +1395,15 @@ module Internal_for_tests = struct
 
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
-    let srs_g1 =
+    let srs_g1, srs_g2 =
       match !initialisation_parameters with
-      | Some (srs_g1, _) -> srs_g1
+      | Some srs -> srs
       | None ->
-          (* TODO: Students this your job! *)
-          assert false
+          initialisation_parameters_with_fake_srs
+            ~slot_size
+            ~page_size
+            ~number_of_shards
+            ~redundancy_factor
     in
     ensure_validity
       ~slot_size
@@ -1389,6 +1411,7 @@ module Internal_for_tests = struct
       ~redundancy_factor
       ~number_of_shards
       ~srs_g1_length:(Srs_g1.size srs_g1)
+      ~srs_g2_length:(Srs_g2.size srs_g2)
 
   let ensure_validity parameters =
     match ensure_validity parameters with Ok _ -> true | _ -> false

@@ -56,7 +56,7 @@ module Test = struct
 
   (* The set of parameters maximizing the SRS length, and which
      is in the codomain of [generate_parameters]. *)
-  let max_parameters, max_parameters_verifier =
+  let max_parameters =
     let max_parameters : Cryptobox.parameters =
       {
         (* The +1 is here to ensure that the SRS will be large enough for the
@@ -67,18 +67,11 @@ module Test = struct
         number_of_shards = 1;
       }
     in
-    ( lazy
-        (Cryptobox.Internal_for_tests.parameters_initialisation max_parameters),
-      lazy (assert (* TODO: Students this your job! *)
-                   false) )
+    lazy (Cryptobox.Internal_for_tests.parameters_initialisation max_parameters)
 
   (* Initializes the DAL parameters *)
   let init () =
     Cryptobox.Internal_for_tests.load_parameters (Lazy.force max_parameters)
-
-  let init_verifier () =
-    Cryptobox.Internal_for_tests.load_parameters
-      (Lazy.force max_parameters_verifier)
 
   type parameters = {
     slot_size : int;
@@ -380,7 +373,6 @@ module Test = struct
              (page_index * params.page_size)
              params.page_size
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -413,7 +405,6 @@ module Test = struct
              (page_index * params.page_size)
              params.page_size
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page altered_proof)
         |> function
@@ -450,7 +441,6 @@ module Test = struct
                 (the queried index is out of bounds) doesn't happen. *)
              assert false
          | Some shard ->
-             init_verifier () ;
              let* t = Cryptobox.make (get_cryptobox_parameters params) in
              Cryptobox.verify_shard
                t
@@ -511,7 +501,6 @@ module Test = struct
                Cryptobox.Internal_for_tests.alter_shard_proof
                  shard_proofs.(shard_index)
              in
-             init_verifier () ;
              let* t = Cryptobox.make (get_cryptobox_parameters params) in
              Cryptobox.verify_shard t commitment shard altered_proof)
         |> function
@@ -534,7 +523,6 @@ module Test = struct
          let* polynomial = Cryptobox.polynomial_from_slot t params.slot in
          let* commitment = Cryptobox.commit t polynomial in
          let* commitment_proof = Cryptobox.prove_commitment t polynomial in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          return (Cryptobox.verify_commitment t commitment commitment_proof))
         |> function
@@ -558,7 +546,6 @@ module Test = struct
          let altered_proof =
            Cryptobox.Internal_for_tests.alter_commitment_proof commitment_proof
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          return (Cryptobox.verify_commitment t commitment altered_proof))
         |> function
@@ -762,7 +749,6 @@ module Test = struct
          let page_index =
            randrange (Cryptobox.Internal_for_tests.number_of_pages t)
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -793,7 +779,6 @@ module Test = struct
          let shard_proof =
            Cryptobox.Internal_for_tests.dummy_shard_proof ~state ()
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_shard t commitment shard shard_proof)
         |> function
@@ -849,7 +834,6 @@ module Test = struct
              ~min:0
              ~max:(Cryptobox.Internal_for_tests.number_of_pages t)
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_page t commitment ~page_index page page_proof)
         |> function
@@ -885,7 +869,6 @@ module Test = struct
              ~index:shard_index
              ~length:(Cryptobox.Internal_for_tests.shard_length t)
          in
-         init_verifier () ;
          let* t = Cryptobox.make (get_cryptobox_parameters params) in
          Cryptobox.verify_shard t commitment shard shard_proof)
         |> function
