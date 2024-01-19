@@ -264,7 +264,8 @@ let setup_evm_kernel ?config ?kernel_installee
     ?(rollup_operator_key = Constant.bootstrap1.public_key_hash)
     ?(bootstrap_accounts = Eth_account.bootstrap_accounts)
     ?(with_administrator = true) ~admin ?commitment_period ?challenge_window
-    ?timestamp ?(setup_mode = Setup_proxy {devmode = true}) protocol =
+    ?timestamp ?(setup_mode = Setup_proxy {devmode = true})
+    ?(run_evm_node = true) protocol =
   let* node, client =
     setup_l1 ?commitment_period ?challenge_window ?timestamp protocol
   in
@@ -335,9 +336,8 @@ let setup_evm_kernel ?config ?kernel_installee
     Sc_rollup_node.run sc_rollup_node sc_rollup_address [Log_kernel_debug]
   in
   (* EVM Kernel installation level. *)
-  let* () = Client.bake_for_and_wait client in
-  let* level = Node.get_level node in
-  let* _ = Sc_rollup_node.wait_for_level ~timeout:30. sc_rollup_node level in
+  let* () = Client.bake_for_and_wait client
+  and* _ = Sc_rollup_node.wait_sync ~timeout:30. sc_rollup_node in
   let* mode =
     match setup_mode with
     | Setup_proxy {devmode} -> return (Evm_node.Proxy {devmode})
@@ -360,7 +360,10 @@ let setup_evm_kernel ?config ?kernel_installee
              })
   in
   let* evm_node =
-    Evm_node.init ~mode (Sc_rollup_node.endpoint sc_rollup_node)
+    if run_evm_node then
+      Evm_node.init ~mode (Sc_rollup_node.endpoint sc_rollup_node)
+    else
+      return @@ Evm_node.create ~mode (Sc_rollup_node.endpoint sc_rollup_node)
   in
   let endpoint = Evm_node.endpoint evm_node in
   return
@@ -4023,41 +4026,40 @@ let test_keep_alive =
         Constant.octez_evm_node;
         Constant.smart_rollup_installer;
       ])
-    (fun protocol ->
-      let* {sc_rollup_node; sc_rollup_address; evm_node; endpoint = _; _} =
-        setup_evm_kernel ~admin:None protocol
-      in
-      (* Stop the EVM and rollup nodes. *)
-      let* () = Evm_node.terminate evm_node in
-      let* () = Sc_rollup_node.terminate sc_rollup_node in
-      (* Restart the evm node without keep alive, expected to fail. *)
-      let process = Evm_node.spawn_run evm_node in
-      let* () =
-        Process.check_error ~msg:(rex "the communication was lost") process
-      in
-      (* Restart with keep alive. The EVM node is waiting for the connection. *)
-      let* () =
-        Evm_node.run ~wait:false ~extra_arguments:["--keep-alive"] evm_node
-      in
-      let* () =
-        Evm_node.wait_for evm_node "evm_node_retrying_connect.v0"
-        @@ fun _json -> Some ()
-      in
-      (* Restart the rollup node to restore the connection. *)
-      let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
-      let* () = Evm_node.wait_for_ready evm_node in
-      (* The EVM node should respond to RPCs. *)
-      let*@ _block_number = Rpc.block_number evm_node in
-      (* Stop the rollup node, the EVM node no longer properly respond to RPCs. *)
-      let* () = Sc_rollup_node.terminate sc_rollup_node in
-      let*@? error = Rpc.block_number evm_node in
-      Check.(error.message =~ rex "the communication was lost")
-        ~error_msg:
-          "The RPC was supposed to failed because of lost communication" ;
-      (* Restart the EVM node, do the same RPC. *)
-      let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
-      let*@ _block_number = Rpc.block_number evm_node in
-      unit)
+  @@ fun protocol ->
+  let* {sc_rollup_node; sc_rollup_address; evm_node; endpoint = _; _} =
+    setup_evm_kernel ~admin:None protocol
+  in
+  (* Stop the EVM and rollup nodes. *)
+  let* () = Evm_node.terminate evm_node in
+  let* () = Sc_rollup_node.terminate sc_rollup_node in
+  (* Restart the evm node without keep alive, expected to fail. *)
+  let process = Evm_node.spawn_run evm_node in
+  let* () =
+    Process.check_error ~msg:(rex "the communication was lost") process
+  in
+  (* Restart with keep alive. The EVM node is waiting for the connection. *)
+  let* () =
+    Evm_node.run ~wait:false ~extra_arguments:["--keep-alive"] evm_node
+  in
+  let* () =
+    Evm_node.wait_for evm_node "evm_node_retrying_connect.v0" @@ fun _json ->
+    Some ()
+  in
+  (* Restart the rollup node to restore the connection. *)
+  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
+  let* () = Evm_node.wait_for_ready evm_node in
+  (* The EVM node should respond to RPCs. *)
+  let*@ _block_number = Rpc.block_number evm_node in
+  (* Stop the rollup node, the EVM node no longer properly respond to RPCs. *)
+  let* () = Sc_rollup_node.terminate sc_rollup_node in
+  let*@? error = Rpc.block_number evm_node in
+  Check.(error.message =~ rex "the communication was lost")
+    ~error_msg:"The RPC was supposed to failed because of lost communication" ;
+  (* Restart the EVM node, do the same RPC. *)
+  let* () = Sc_rollup_node.run sc_rollup_node sc_rollup_address [] in
+  let*@ _block_number = Rpc.block_number evm_node in
+  unit
 
 let test_regression_block_hash_gen =
   (* This test is created because of bug in blockConstant in simulation,
@@ -4081,6 +4083,32 @@ let test_regression_block_hash_gen =
   let* _ = next_evm_level ~evm_node ~sc_rollup_node ~node ~client in
   let sender = Eth_account.bootstrap_accounts.(0) in
   let* _address, _tx = deploy ~contract:block_hash_gen ~sender evm_setup in
+  unit
+
+let test_init_from_rollup_node_data_dir =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "rollup_node"; "init"]
+    ~uses:(fun _protocol ->
+      [
+        Constant.octez_smart_rollup_node;
+        Constant.octez_evm_node;
+        Constant.smart_rollup_installer;
+      ])
+    ~title:"Init evm node sequencer data dir form a rollup node data dir"
+  @@ fun protocol ->
+  let* {sc_rollup_node; evm_node; client; _} =
+    setup_evm_kernel ~admin:None ~run_evm_node:false protocol
+  in
+  let* () =
+    repeat 2 (fun () ->
+        let* _ = Client.bake_for_and_wait client in
+        let* _ = Sc_rollup_node.wait_sync ~timeout:30. sc_rollup_node in
+        unit)
+  in
+  let* () = Sc_rollup_node.terminate sc_rollup_node in
+  let* () = Evm_node.init_from_rollup_node_data_dir evm_node sc_rollup_node in
+  (*   let* () = Evm_node.run evm_node in *)
   unit
 
 let register_evm_node ~protocols =
@@ -4155,7 +4183,8 @@ let register_evm_node ~protocols =
   test_l2_intermediate_OOG_call protocols ;
   test_l2_ether_wallet protocols ;
   test_keep_alive protocols ;
-  test_regression_block_hash_gen protocols
+  test_regression_block_hash_gen protocols ;
+  test_init_from_rollup_node_data_dir protocols
 
 let register ~protocols =
   register_evm_node ~protocols ;

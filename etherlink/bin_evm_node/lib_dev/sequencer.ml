@@ -15,9 +15,7 @@ end) : Services_backend_sig.Backend = struct
   module READER = struct
     let read path =
       let open Lwt_result_syntax in
-      let* Sequencer_context.{evm_state; _} =
-        Sequencer_context.sync Ctxt.ctxt
-      in
+      let*! evm_state = Sequencer_context.evm_state Ctxt.ctxt in
       let*! res = Sequencer_state.inspect evm_state path in
       return res
   end

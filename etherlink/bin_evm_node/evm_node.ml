@@ -787,8 +787,37 @@ let chunker_command =
       in
       print_chunks rollup_address data)
 
+let init_from_rollup_node_command =
+  let open Tezos_clic in
+  let rollup_node_data_dir_param =
+    Tezos_clic.param
+      ~name:"rollup-node-data-dir"
+      ~desc:
+        (Format.sprintf
+           "The path to the EVM node data directory. By default it is %s"
+           (Filename.concat (Sys.getenv "HOME") ".tezos-smart-rollup-node"))
+      Params.string
+  in
+  command
+    ~desc:
+      "Chunk hexadecimal data according to the message representation of the \
+       EVM rollup"
+    (args1 data_dir_arg)
+    (prefixes ["init"; "from"; "rollup"; "node"]
+    @@ rollup_node_data_dir_param @@ stop)
+    (fun data_dir rollup_node_data_dir () ->
+      Evm_node_lib_dev.Sequencer_state.init_from_rollup_node_data_dir
+        ~data_dir
+        ~rollup_node_data_dir)
+
 (* List of program commands *)
-let commands = [proxy_command; sequencer_command; chunker_command]
+let commands =
+  [
+    proxy_command;
+    sequencer_command;
+    chunker_command;
+    init_from_rollup_node_command;
+  ]
 
 let global_options = Tezos_clic.no_options
 

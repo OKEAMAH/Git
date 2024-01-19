@@ -24,6 +24,9 @@ val init :
   Sequencer_context.t ->
   Sequencer_context.t tzresult Lwt.t
 
+val init_from_rollup_node_data_dir :
+  data_dir:string -> rollup_node_data_dir:string -> unit tzresult Lwt.t
+
 (** [inspect evm_state key] inspects [key] in [evm_state]. *)
 val inspect : Sequencer_context.evm_state -> string -> bytes option Lwt.t
 

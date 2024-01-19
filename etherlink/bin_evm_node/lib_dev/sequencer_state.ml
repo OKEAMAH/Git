@@ -7,7 +7,7 @@
 
 module TreeEncoding =
   Wasm_utils.Make
-    (Tezos_tree_encoding.Encodings_util.Make (Sequencer_context.Context))
+    (Tezos_tree_encoding.Encodings_util.Make (Sequencer_context.Bare_context))
 module Wasm = Wasm_debugger.Make (TreeEncoding)
 
 let execute ?(commit = false) ctxt inbox =
@@ -21,8 +21,9 @@ let execute ?(commit = false) ctxt inbox =
       ~destination:ctxt.Sequencer_context.smart_rollup_address
       ()
   in
+  let*! evm_state = Sequencer_context.evm_state ctxt in
   let* evm_state, _, _, _ =
-    Wasm.Commands.eval 0l inbox config Inbox ctxt.Sequencer_context.evm_state
+    Wasm.Commands.eval 0l inbox config Inbox evm_state
   in
   let* ctxt =
     if commit then Sequencer_context.commit ctxt evm_state else return ctxt
@@ -31,15 +32,12 @@ let execute ?(commit = false) ctxt inbox =
 
 let init ~secret_key ~smart_rollup_address ~rollup_node_endpoint ctxt =
   let open Lwt_result_syntax in
+  let*! evm_state = Sequencer_context.evm_state ctxt in
   let* evm_state =
-    Wasm.start
-      ~tree:ctxt.Sequencer_context.evm_state
-      Tezos_scoru_wasm.Wasm_pvm_state.V3
-      ctxt.kernel
+    Wasm.start ~tree:evm_state Tezos_scoru_wasm.Wasm_pvm_state.V3 ctxt.kernel
   in
-  let ctxt =
-    {ctxt with evm_state; next_blueprint_number = Ethereum_types.(Qty Z.one)}
-  in
+  let* ctxt = Sequencer_context.commit ctxt evm_state in
+  let ctxt = {ctxt with next_blueprint_number = Ethereum_types.(Qty Z.one)} in
   (* Create the first empty block. *)
   let inputs =
     Sequencer_blueprint.create
@@ -79,3 +77,21 @@ let execute_and_inspect ctxt
   let* _ctxt, evm_state = execute ctxt messages in
   let*! values = List.map_p (fun key -> inspect evm_state key) keys in
   return values
+
+let init_from_rollup_node_data_dir ~data_dir ~rollup_node_data_dir =
+  let open Lwt_result_syntax in
+  let* evm_state, checkpoint =
+    Sequencer_context.init_evm_state_from_rollup_node_store
+      ~data_dir
+      ~rollup_node_data_dir
+  in
+  let* next_blueprint_number =
+    let*! next_blueprint_number_opt =
+      inspect evm_state Durable_storage_path.Block.current_number
+    in
+    match next_blueprint_number_opt with
+    | Some b ->
+        Ethereum_types.Qty Z.(add one (of_string (Bytes.to_string b))) |> return
+    | None -> failwith "The blueprint number was not found"
+  in
+  Sequencer_context.store_metadata ~data_dir {next_blueprint_number; checkpoint}

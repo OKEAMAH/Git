@@ -142,3 +142,5 @@ type txpool_slot = {address : string; transactions : (int64 * JSON.t) list}
 (** [txpool_content evm_node] returns the transaction hash and nonce
     contained in the `pending` and `queued` pools. *)
 val txpool_content : t -> (txpool_slot list * txpool_slot list) Lwt.t
+
+val init_from_rollup_node_data_dir : t -> Sc_rollup_node.t -> unit Lwt.t
