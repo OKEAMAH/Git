@@ -757,4 +757,7 @@ end
 
 module Internal_for_tests = struct
   let to_raw x = x
+
+  let misbehaviour_repr_of_duplicate_operations =
+    Misbehaviour_repr.Internal_for_tests.of_duplicate_operations
 end

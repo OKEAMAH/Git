@@ -1171,12 +1171,6 @@ module Global_constants_storage : sig
   end
 end
 
-(** This module discloses definitions that are only useful for tests and must
-    not be used otherwise. *)
-module Internal_for_tests : sig
-  val to_raw : context -> Raw_context.t
-end
-
 (** This module re-exports definitions from {!Level_repr} and
     {!Level_storage}. *)
 module Level : sig
@@ -5366,4 +5360,16 @@ module Fees : sig
   type error += Storage_limit_too_high (* `Permanent *)
 
   val check_storage_limit : context -> storage_limit:Z.t -> unit tzresult
+end
+
+(** This module discloses definitions that are only useful for tests
+    and must not be used otherwise. *)
+module Internal_for_tests : sig
+  val to_raw : context -> Raw_context.t
+
+  (** See {!Misbehaviour_repr.Internal_for_tests.of_duplicate_operations}. *)
+  val misbehaviour_repr_of_duplicate_operations :
+    'a Kind.consensus operation ->
+    'a Kind.consensus operation ->
+    Misbehaviour_repr.t
 end

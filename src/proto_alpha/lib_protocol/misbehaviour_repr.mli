@@ -34,3 +34,18 @@ type t = {
 }
 
 val encoding : t Data_encoding.t
+
+module Internal_for_tests : sig
+  val pp : Format.formatter -> t -> unit
+
+  val compare_kind : kind -> kind -> int
+
+  include Compare.S with type t := t
+
+  (** Builds a {!t} from two (pre)attestations that constitute a
+      double signing event. *)
+  val of_duplicate_operations :
+    'a Operation_repr.Kind.consensus Operation_repr.operation ->
+    'a Operation_repr.Kind.consensus Operation_repr.operation ->
+    t
+end

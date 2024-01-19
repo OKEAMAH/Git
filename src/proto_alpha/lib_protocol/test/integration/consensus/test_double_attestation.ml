@@ -51,16 +51,28 @@ let block_fork b =
   let+ blk_b = Block.bake ~policy:(By_account baker_2) b in
   (blk_a, blk_b)
 
+let check_misbehaviour ~loc misbehaviour op1 op2 =
+  let expected =
+    Alpha_context.Internal_for_tests.misbehaviour_repr_of_duplicate_operations
+      op1
+      op2
+  in
+  Assert.equal
+    ~loc
+    Misbehaviour_repr.Internal_for_tests.equal
+    "misbehaviours are not equal"
+    Misbehaviour_repr.Internal_for_tests.pp
+    misbehaviour
+    expected
+
 (* Checks that there is exactly one denunciation for the given delegate *)
-let check_denunciations ~(cycle : Denunciations_repr.misbehaviour_cycle) b
-    delegate =
+let check_denunciations ~loc ~cycle b delegate op1 op2 =
   let open Lwt_result_syntax in
   let* denunciations = Context.get_denunciations (B b) in
   match denunciations with
   | [(d, item)] when Signature.Public_key_hash.equal d delegate ->
-      assert (item.Denunciations_repr.misbehaviour.kind = Double_attesting) ;
       assert (item.Denunciations_repr.misbehaviour_cycle = cycle) ;
-      return_unit
+      check_misbehaviour ~loc item.misbehaviour op1 op2
   | _ -> assert false
 
 let check_empty_denunciations b =
@@ -130,8 +142,15 @@ let test_valid_double_attestation_evidence () =
   let* full_balance = Context.Delegate.full_balance (B blk_a) baker in
   let* () = check_empty_denunciations blk_a in
   let* blk_final = Block.bake ~policy:(By_account baker) ~operation blk_a in
-  (* Check that parts of the frozen deposits are slashed *)
-  let* () = check_denunciations ~cycle:Current blk_final delegate in
+  let* () =
+    check_denunciations
+      ~loc:__LOC__
+      ~cycle:Current
+      blk_final
+      delegate
+      attestation_a
+      attestation_b
+  in
   let* frozen_deposits_before =
     Context.Delegate.current_frozen_deposits (B blk_a) delegate
   in
@@ -153,6 +172,8 @@ let test_valid_double_attestation_evidence () =
       frozen_deposits_right_after
       frozen_deposits_before
   in
+  (* Check that the right portion of the frozen deposits is slashed at
+     the end of the cycle. *)
   let* blk_eoc, metadata, _ =
     Block.bake_until_cycle_end_with_metadata
       ~policy:(By_account baker)
