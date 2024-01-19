@@ -221,7 +221,7 @@ val round_of_timestamp :
   timestamp:Time_repr.t ->
   t tzresult
 
-module Internals_for_test : sig
+module Internal_for_tests : sig
   type round_and_offset_raw = {round : round; offset : Period_repr.t}
 
   (** [round_and_offset round_durations ~level_offset], where [level_offset]
