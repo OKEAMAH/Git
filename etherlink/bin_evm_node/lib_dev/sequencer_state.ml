@@ -22,7 +22,13 @@ let execute ?(commit = false) ctxt inbox =
       ()
   in
   let* evm_state, _, _, _ =
-    Wasm.Commands.eval 0l inbox config Inbox ctxt.Sequencer_context.evm_state
+    Wasm.Commands.eval
+      ~wasm_entrypoint:Tezos_scoru_wasm.Constants.wasm_entrypoint
+      0l
+      inbox
+      config
+      Inbox
+      ctxt.Sequencer_context.evm_state
   in
   let* ctxt =
     if commit then Sequencer_context.commit ctxt evm_state else return ctxt
