@@ -435,6 +435,9 @@ module History = struct
         (Skip_list.pp ~pp_content:Content.pp ~pp_ptr:Pointer_hash.pp)
         history
 
+    let published_level_of_last_cell t =
+      (Skip_list.content t).Content.published_level
+
     module History_cache =
       Bounded_history_repr.Make
         (struct

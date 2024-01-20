@@ -238,6 +238,8 @@ module History : sig
   (** Returns the hash of an history. *)
   val hash : t -> hash
 
+  val published_level_of_last_cell : t -> Raw_level_repr.t
+
   (** The [History_cache.t] structure is basically a bounded lookup table of
       {!t} skip lists. (See {!Bounded_history_repr.S}). In the L1 layer, the
       capacity (bound) is set to zero (nothing is remembered). By contrast,

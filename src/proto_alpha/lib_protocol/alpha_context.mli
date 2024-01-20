@@ -2869,6 +2869,8 @@ module Dal : sig
 
     val hash : t -> hash
 
+    val published_level_of_last_cell : t -> Raw_level.t
+
     module History_cache :
       Bounded_history_repr.S with type key = hash and type value = t
 
