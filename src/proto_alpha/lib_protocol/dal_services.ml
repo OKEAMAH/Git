@@ -41,3 +41,6 @@ let shards ctxt ~level =
      to know the DAL committee at some particular level. *)
   let+ committee = Dal_apply.compute_committee ctxt level in
   Signature.Public_key_hash.Map.bindings committee.pkh_to_shards
+
+let slot_headers_history =
+  Alpha_context.Dal.Slots_storage.get_slot_headers_history

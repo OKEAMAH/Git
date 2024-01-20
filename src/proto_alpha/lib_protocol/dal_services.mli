@@ -31,3 +31,6 @@ val shards :
   Alpha_context.t ->
   level:Alpha_context.Raw_level.t ->
   (Signature.Public_key_hash.t * (int * int)) list tzresult Lwt.t
+
+val slot_headers_history :
+  Alpha_context.t -> Alpha_context.Dal.Slots_history.t tzresult Lwt.t
