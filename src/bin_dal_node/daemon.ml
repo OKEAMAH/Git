@@ -383,6 +383,12 @@ module Handler = struct
                 attested_slots
                 (Node_context.get_store ctxt)
             in
+            let* new_slots_history = Plugin.get_slot_headers_history cctxt in
+            let* () =
+              Store.Slots_history.save
+                (Node_context.get_store ctxt).Store.slots_history_store
+                new_slots_history
+            in
             let* committee =
               Node_context.fetch_committee ctxt ~level:block_level
             in
