@@ -3189,7 +3189,8 @@ module Dal = struct
 
   let register () =
     register_dal_confirmed_slot_headers_history () ;
-    register_shards ()
+    register_shards () ;
+    register_slot_headers_history ()
 end
 
 module Forge = struct
