@@ -3133,6 +3133,15 @@ module Dal = struct
           Data_encoding.(
             list (tup2 Signature.Public_key_hash.encoding (tup2 int16 int16)))
         RPC_path.(path / "shards")
+
+    let slot_headers_history =
+      RPC_service.get_service
+        ~description:
+          "Get the slot headers history from the current context and its \
+           associated published level. None is returned if DAL is not enabled"
+        ~query:RPC_query.(seal @@ query ())
+        ~output:Data_encoding.(option (tup2 (bytes Hex) int32))
+        RPC_path.(path / "slot_headers_history")
   end
 
   let register_dal_confirmed_slot_headers_history () =
@@ -3152,10 +3161,31 @@ module Dal = struct
   let dal_shards ctxt block ?level () =
     RPC_context.make_call0 S.shards ctxt block level ()
 
+  let dal_slot_headers_history ctxt block () =
+    RPC_context.make_call0 S.slot_headers_history ctxt block ()
+
   let register_shards () =
     Registration.register0 ~chunked:true S.shards @@ fun ctxt level () ->
     let level = Option.value level ~default:(Level.current ctxt).level in
     Dal_services.shards ctxt ~level
+
+  let register_slot_headers_history () =
+    let open Lwt_result_syntax in
+    let open Alpha_context in
+    let open Dal in
+    Registration.register0 ~chunked:true S.slot_headers_history
+    @@ fun ctxt () () ->
+    if (Constants.parametric ctxt).dal.feature_enable then return_none
+    else
+      let+ slots_history = Dal_services.slot_headers_history ctxt in
+      let published_level =
+        Slots_history.published_level_of_last_cell slots_history
+        |> Raw_level.to_int32
+      in
+      let slots_history_bytes =
+        Data_encoding.Binary.to_bytes_exn Slots_history.encoding slots_history
+      in
+      Some (slots_history_bytes, published_level)
 
   let register () =
     register_dal_confirmed_slot_headers_history () ;
