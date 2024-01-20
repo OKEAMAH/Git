@@ -34,6 +34,8 @@ include StoreMaker.Make (Irmin.Contents.String)
 
 let shard_store_dir = "shard_store"
 
+let slots_history_store_dir = "slots_history_store"
+
 let info message =
   let date = Unix.gettimeofday () |> int_of_float |> Int64.of_int in
   Info.v ~author:"DAL Node" ~message date
@@ -137,6 +139,48 @@ module Shards = struct
           ())
 end
 
+module Slots_history = struct
+  include Key_value_store
+
+  type nonrec t = (int32, int, bytes) t
+
+  let save slots_history_store data_opt =
+    let open Lwt_result_syntax in
+    match data_opt with
+    | None ->
+        (* TODO: Check that Dal is disabled in this case. *)
+        return_unit
+    | Some (slots_history_bytes, published_level) ->
+        (* TODO: check that published level is as expected wrt. to current level
+           and attestation_lag ? *)
+        Seq.cons (published_level, 0, slots_history_bytes) Seq.empty
+        |> write_values slots_history_store
+
+  let init node_store_dir slots_history_store_dir =
+    let open Lwt_syntax in
+    let ( // ) = Filename.concat in
+    let dir_path = node_store_dir // slots_history_store_dir in
+    let+ () =
+      if not (Sys.file_exists dir_path) then Lwt_utils_unix.create_dir dir_path
+      else return_unit
+    in
+    (* TODO: The size of our successive skip list heads are variables
+       (growing). How to deal with that for the KVS? *)
+    let max_encoded_value_size = 8192 in
+    init
+      ~lru_size:Constants.slots_history_store_lru_size
+      (fun published_level ->
+        let commitment_string = Int32.to_string published_level in
+        let filepath = dir_path // commitment_string in
+        layout
+          ~encoded_value_size:max_encoded_value_size
+          ~encoding:Data_encoding.(bytes)
+          ~filepath
+          ~eq:Stdlib.( = )
+          ~index_of:Fun.id
+          ())
+end
+
 module Shard_proofs_cache =
   Aches.Vache.Map (Aches.Vache.LRU_Precise) (Aches.Vache.Strong)
     (struct
@@ -151,6 +195,7 @@ module Shard_proofs_cache =
 type node_store = {
   store : t;
   shard_store : Shards.t;
+  slots_history_store : Slots_history.t;
   shards_watcher : Cryptobox.Commitment.t Lwt_watcher.input;
   in_memory_shard_proofs : Cryptobox.shard_proof array Shard_proofs_cache.t;
       (* The length of the array is the number of shards per slot *)
@@ -170,10 +215,14 @@ let init config =
   let*! repo = Repo.v (Irmin_pack.config base_dir) in
   let*! store = main repo in
   let*! shard_store = Shards.init base_dir shard_store_dir in
+  let*! slots_history_store =
+    Slots_history.init base_dir slots_history_store_dir
+  in
   let*! () = Event.(emit store_is_ready ()) in
   return
     {
       shard_store;
+      slots_history_store;
       store;
       shards_watcher;
       in_memory_shard_proofs =
