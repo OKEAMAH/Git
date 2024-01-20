@@ -116,6 +116,8 @@ module Plugin = struct
       Signature.Public_key_hash.Map.empty
       pkh_to_shards
 
+  let get_slot_headers_history _ctxt = Lwt_result_syntax.return_none
+
   let attested_slot_headers (block : block_info) ~number_of_slots =
     let open Result_syntax in
     let* metadata =

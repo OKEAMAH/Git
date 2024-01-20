@@ -69,6 +69,10 @@ module Plugin = struct
       ~metadata
       ()
 
+  let get_slot_headers_history ctxt =
+    let cpctxt = new Protocol_client_context.wrap_rpc_context ctxt in
+    Plugin.RPC.Dal.dal_slot_headers_history cpctxt (`Main, `Head 0) () ()
+
   let block_shell_header (block_info : block_info) = block_info.header.shell
 
   let get_round fitness =

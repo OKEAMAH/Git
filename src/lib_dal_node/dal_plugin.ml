@@ -70,6 +70,9 @@ module type T = sig
     level:int32 ->
     (int * int) Tezos_crypto.Signature.Public_key_hash.Map.t tzresult Lwt.t
 
+  val get_slot_headers_history :
+    Tezos_rpc.Context.generic -> (bytes * int32) option tzresult Lwt.t
+
   val attested_slot_headers :
     block_info -> number_of_slots:int -> slot_index list tzresult
 
