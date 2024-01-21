@@ -149,8 +149,10 @@ module Slots_history = struct
     match data_opt with
     | None ->
         (* TODO: Check that Dal is disabled in this case. *)
+        Format.eprintf "## NONE@.@." ;
         return_unit
     | Some (slots_history_bytes, published_level) ->
+        Format.eprintf "## Some at published level %ld@.@." published_level ;
         (* TODO: check that published level is as expected wrt. to current level
            and attestation_lag ? *)
         Seq.cons (published_level, 0, slots_history_bytes) Seq.empty
@@ -166,7 +168,7 @@ module Slots_history = struct
     in
     (* TODO: The size of our successive skip list heads are variables
        (growing). How to deal with that for the KVS? *)
-    let max_encoded_value_size = 8192 in
+    let max_encoded_value_size = 46 in
     init
       ~lru_size:Constants.slots_history_store_lru_size
       (fun published_level ->
@@ -174,7 +176,7 @@ module Slots_history = struct
         let filepath = dir_path // commitment_string in
         layout
           ~encoded_value_size:max_encoded_value_size
-          ~encoding:Data_encoding.(bytes)
+          ~encoding:(Data_encoding.Fixed.bytes max_encoded_value_size)
           ~filepath
           ~eq:Stdlib.( = )
           ~index_of:Fun.id

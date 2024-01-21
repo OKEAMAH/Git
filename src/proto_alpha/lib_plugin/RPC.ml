@@ -3175,17 +3175,18 @@ module Dal = struct
     let open Dal in
     Registration.register0 ~chunked:true S.slot_headers_history
     @@ fun ctxt () () ->
-    if (Constants.parametric ctxt).dal.feature_enable then return_none
-    else
-      let+ slots_history = Dal_services.slot_headers_history ctxt in
-      let published_level =
-        Slots_history.published_level_of_last_cell slots_history
-        |> Raw_level.to_int32
-      in
-      let slots_history_bytes =
-        Data_encoding.Binary.to_bytes_exn Slots_history.encoding slots_history
-      in
-      Some (slots_history_bytes, published_level)
+    (*
+       if (Constants.parametric ctxt).dal.feature_enable then return_none
+       else*)
+    let+ slots_history = Dal_services.slot_headers_history ctxt in
+    let published_level =
+      Slots_history.published_level_of_last_cell slots_history
+      |> Raw_level.to_int32
+    in
+    let slots_history_bytes =
+      Data_encoding.Binary.to_bytes_exn Slots_history.encoding slots_history
+    in
+    Some (slots_history_bytes, published_level)
 
   let register () =
     register_dal_confirmed_slot_headers_history () ;
