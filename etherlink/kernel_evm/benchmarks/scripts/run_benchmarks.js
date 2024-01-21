@@ -80,7 +80,7 @@ function push_profiler_sections(output, opcodes, precompiles) {
     return opcodes;
 }
 
-function run_profiler(path, logs) {
+function run_profiler(path, logs, prune_flamecharts) {
 
     profiler_result = new Promise((resolve, _) => {
 
@@ -122,7 +122,7 @@ function run_profiler(path, logs) {
             const profiler_output_path_result = profiler_output_path_match
                 ? profiler_output_path_match[1]
                 : null;
-            if (profiler_output_path_result !== null) {
+            if (profiler_output_path_result !== null && !prune_flamecharts) {
                 profiler_output_path = profiler_output_path_result;
                 console.log(`Flamechart: ${profiler_output_path}`)
             }
@@ -251,10 +251,19 @@ async function analyze_profiler_output(path) {
 }
 
 // Run given benchmark
-async function run_benchmark(path, logs) {
+async function run_benchmark(path, logs, prune_benchmarks) {
     var inbox_size = fs.statSync(path).size
-    run_profiler_result = await run_profiler(path, logs);
+    run_profiler_result = await run_profiler(path, logs, prune_benchmarks);
     profiler_output_analysis_result = await analyze_profiler_output(run_profiler_result.profiler_output_path);
+    if (prune_benchmarks) {
+        fs.unlink(run_profiler_result.profiler_output_path, (err) => {
+            if (err) {
+                console.error(err);
+            } else {
+                console.log(`Profiler output ${run_profiler_result.profiler_output_path} removed.`);
+            }
+        });
+    }
     return {
         inbox_size,
         ...profiler_output_analysis_result,
@@ -427,7 +436,7 @@ function dump_opcodes(filename, opcodes) {
 }
 
 // Run the benchmark suite and write the result to benchmark_result_${TIMESTAMP}.csv
-async function run_all_benchmarks(benchmark_scripts) {
+async function run_all_benchmarks(benchmark_scripts, options) {
     console.log(`Running benchmarks on: [${benchmark_scripts.join('\n  ')}]`);
     var benchmark_fields = [
         "benchmark_name",
@@ -483,7 +492,7 @@ async function run_all_benchmarks(benchmark_scripts) {
         console.log(`Benchmarking ${benchmark_script}`);
         fs.appendFileSync(logs, `=================================================\nBenchmarking ${benchmark_script}\n`)
         build_benchmark_scenario(benchmark_script);
-        run_benchmark_result = await run_benchmark("transactions.json", logs);
+        run_benchmark_result = await run_benchmark("transactions.json", logs, options.prune_flamecharts);
         benchmark_log = log_benchmark_result(benchmark_name, run_benchmark_result);
         opcodes[benchmark_name] = run_benchmark_result.opcodes;
         fs.appendFileSync(output, csv.stringify(benchmark_log, benchmark_csv_config));
@@ -495,5 +504,24 @@ async function run_all_benchmarks(benchmark_scripts) {
     execSync("rm transactions.json");
 }
 
+function parse_args() {
+    // Remove `node` and the name of the script
+    args = process.argv.slice(2);
+    let options = { prune_flamecharts : false };
+
+    while (args.length > 0) {
+        switch(args.shift()) {
+        case "--prune-flamecharts":
+            options = { ...options, prune_flamecharts : true };
+            break;
+        default:
+            console.log(`Unknown argument $args[0]`);
+            process.exit(2);
+        }
+    }
+    return options;
+}
+
 benchmark_scripts = require("./benchmarks_list.json")
-run_all_benchmarks(benchmark_scripts);
+let options = parse_args();
+run_all_benchmarks(benchmark_scripts, options);
