@@ -73,6 +73,15 @@ let current_block_height evm_state =
       let (Qty current_block_number) = decode_number current_block_number in
       return (Block_height current_block_number)
 
+let current_block_hash evm_state =
+  let open Lwt_result_syntax in
+  let*! current_hash =
+    inspect evm_state Durable_storage_path.Block.current_hash
+  in
+  match current_hash with
+  | Some h -> return (decode_block_hash h)
+  | None -> return genesis_parent_hash
+
 let execute_and_inspect ~config
     ~input:Simulation.Encodings.{messages; insight_requests; _} ctxt =
   let open Lwt_result_syntax in
@@ -104,5 +113,6 @@ let apply_blueprint ~config evm_state (blueprint : Blueprint_types.payload) =
   let* evm_state = execute ~config evm_state exec_inputs in
   let*! (Block_height after_height) = current_block_height evm_state in
   if Z.(equal (succ before_height) after_height) then
-    return (evm_state, Block_height after_height)
+    let* block_hash = current_block_hash evm_state in
+    return (evm_state, Block_height after_height, block_hash)
   else tzfail Cannot_apply_blueprint
