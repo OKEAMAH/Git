@@ -73,8 +73,6 @@ module Kind : sig
 
   type attestation = attestation_consensus_kind consensus
 
-  type dal_attestation = Dal_attestation_kind
-
   type seed_nonce_revelation = Seed_nonce_revelation_kind
 
   type vdf_revelation = Vdf_revelation_kind
@@ -195,7 +193,6 @@ type dal_content = {attestation : Dal_attestation_repr.t}
 type consensus_watermark =
   | Attestation of Chain_id.t
   | Preattestation of Chain_id.t
-  | Dal_attestation of Chain_id.t
 
 val to_watermark : consensus_watermark -> Signature.watermark
 
@@ -243,12 +240,6 @@ and _ contents =
       dal_content : dal_content option;
     }
       -> Kind.attestation contents
-  (* DAL/FIXME https://gitlab.com/tezos/tezos/-/issues/3115
-
-     Temporary operation to avoid modifying attestation encoding. *)
-  | Dal_attestation :
-      Dal_attestation_repr.operation
-      -> Kind.dal_attestation contents
   (* Seed_nonce_revelation: Nonces are created by bakers and are
      combined to create pseudo-random seeds. Bakers are urged to reveal their
      nonces after a given number of cycles to keep their block rewards
@@ -610,7 +601,7 @@ val compare_by_passes : packed_operation -> packed_operation -> int
 
    The global order is as follows:
 
-   {!Attestation} and {!Preattestation} > {!Dal_attestation} >
+   {!Attestation} and {!Preattestation} >
    {!Proposals} > {!Ballot} > {!Double_preattestation_evidence} >
    {!Double_attestation_evidence} > {!Double_baking_evidence} >
    {!Vdf_revelation} > {!Seed_nonce_revelation} > {!Activate_account}
@@ -624,10 +615,6 @@ val compare_by_passes : packed_operation -> packed_operation -> int
    attester has, the smaller is its smallest [slot]), and then the number of the
    DAL attested slots, the more the better. When the pair is equal and comparing
    an {!Attestation} to a {!Preattestation}, the {!Attestation} is better.
-
-   Two {!Dal_attestation} ops are compared in the lexicographic order of the
-   tuple of their level, their slot, their number of slots attested as
-   available, and their attesters' hash.
 
    Two voting operations are compared in the lexicographic order of
    the pair of their [period] and [source]. A {!Proposals} is better
@@ -695,8 +682,6 @@ module Encoding : sig
   val endorsement_with_dal_case : Kind.attestation case
 
   val attestation_with_dal_case : Kind.attestation case
-
-  val dal_attestation_case : Kind.dal_attestation case
 
   val seed_nonce_revelation_case : Kind.seed_nonce_revelation case
 

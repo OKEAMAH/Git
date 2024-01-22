@@ -2711,13 +2711,6 @@ module Dal : sig
   module Attestation : sig
     type t = private Bitset.t
 
-    type operation = {
-      attestation : t;
-      level : Raw_level.t;
-      round : Round.t;
-      slot : Slot.t;
-    }
-
     type shard_index = int
 
     module Shard_map : Map.S with type key = shard_index
@@ -4327,8 +4320,6 @@ module Kind : sig
 
   type attestation = attestation_consensus_kind consensus
 
-  type dal_attestation = Dal_attestation_kind
-
   type seed_nonce_revelation = Seed_nonce_revelation_kind
 
   type vdf_revelation = Vdf_revelation_kind
@@ -4470,7 +4461,6 @@ and _ contents =
       dal_content : dal_content option;
     }
       -> Kind.attestation contents
-  | Dal_attestation : Dal.Attestation.operation -> Kind.dal_attestation contents
   | Seed_nonce_revelation : {
       level : Raw_level.t;
       nonce : Nonce.t;
@@ -4669,7 +4659,6 @@ module Operation : sig
   type consensus_watermark =
     | Attestation of Chain_id.t
     | Preattestation of Chain_id.t
-    | Dal_attestation of Chain_id.t
 
   val to_watermark : consensus_watermark -> Signature.watermark
 
@@ -4760,8 +4749,6 @@ module Operation : sig
     val endorsement_with_dal_case : Kind.attestation case
 
     val attestation_with_dal_case : Kind.attestation case
-
-    val dal_attestation_case : Kind.dal_attestation case
 
     val seed_nonce_revelation_case : Kind.seed_nonce_revelation case
 
