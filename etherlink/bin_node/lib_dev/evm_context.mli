@@ -79,3 +79,7 @@ val last_produced_blueprint : t -> Blueprint_types.t tzresult Lwt.t
     state stored under [ctxt]. It commits the result if the blueprint produces
     the expected block. *)
 val apply_blueprint : t -> Sequencer_blueprint.t -> t tzresult Lwt.t
+
+(** [current_block_hash ctxt] returns the hash of the latest block
+    produced. *)
+val current_block_hash : t -> Ethereum_types.block_hash tzresult Lwt.t

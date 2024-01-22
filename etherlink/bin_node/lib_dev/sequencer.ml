@@ -50,6 +50,7 @@ end) : Services_backend_sig.Backend = struct
     let publish_messages ~timestamp ~smart_rollup_address ~messages =
       let open Lwt_result_syntax in
       let* ctxt = Evm_context.sync Ctxt.ctxt in
+      let* parent_hash = Evm_context.current_block_hash ctxt in
       (* Create the blueprint with the messages. *)
       let blueprint =
         Sequencer_blueprint.create
@@ -58,6 +59,7 @@ end) : Services_backend_sig.Backend = struct
           ~smart_rollup_address
           ~transactions:messages.TxEncoder.raw
           ~delayed_transactions:messages.TxEncoder.delayed
+          ~parent_hash
           ~number:ctxt.next_blueprint_number
       in
       (* Apply the blueprint *)

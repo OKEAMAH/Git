@@ -170,6 +170,7 @@ let init ?(genesis_timestamp = Helpers.now ()) ?produce_genesis_with
                   ~transactions:[]
                   ~delayed_transactions:[]
                   ~number:Ethereum_types.(Qty Z.zero)
+                  ~parent_hash:Ethereum_types.genesis_parent_hash
               in
               apply_blueprint ctxt genesis
           | None -> return ctxt)
@@ -250,3 +251,14 @@ let last_produced_blueprint (ctxt : t) =
   | Some blueprint ->
       return_ok Blueprint_types.{number = current; payload = blueprint}
   | None -> failwith "Could not fetch the last produced blueprint"
+
+let current_block_hash ctxt =
+  let open Lwt_result_syntax in
+  let*! evm_state = evm_state ctxt in
+
+  let*! current_hash =
+    Evm_state.inspect evm_state Durable_storage_path.Block.current_hash
+  in
+  match current_hash with
+  | Some h -> return (Ethereum_types.decode_block_hash h)
+  | None -> return Ethereum_types.genesis_parent_hash
