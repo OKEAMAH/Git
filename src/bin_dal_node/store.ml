@@ -81,6 +81,35 @@ module Value_size_hooks = struct
     match !share_size_ref with None -> assert false | Some size -> size
 end
 
+module Last_processed_head = struct
+  include Key_value_store
+
+  type nonrec t = (unit, unit, int32 * Block_hash.t) t
+
+  let path = "last_seen_processed_head"
+
+  let init node_store_dir =
+    let open Lwt_syntax in
+    let ( // ) = Filename.concat in
+    let dir_path = node_store_dir // path in
+    let+ () =
+      if not (Sys.file_exists dir_path) then Lwt_utils_unix.create_dir dir_path
+      else return_unit
+    in
+    init ~lru_size:1 (fun () ->
+        let filepath = dir_path in
+        layout
+          ~encoding:Data_encoding.(tup2 Data_encoding.int32 Block_hash.encoding)
+          ~filepath
+          ~eq:Stdlib.( = )
+          ~index_of:(fun _ -> 0) (* The store saves only one value *)
+          ())
+
+  let set store level = write_value store () () level
+
+  let find store = read_value store () ()
+end
+
 module Shards = struct
   include Key_value_store
 
@@ -151,6 +180,7 @@ module Shard_proofs_cache =
 type node_store = {
   store : t;
   shard_store : Shards.t;
+  last_processed_head_store : Last_processed_head.t;
   shards_watcher : Cryptobox.Commitment.t Lwt_watcher.input;
   in_memory_shard_proofs : Cryptobox.shard_proof array Shard_proofs_cache.t;
       (* The length of the array is the number of shards per slot *)
@@ -170,10 +200,12 @@ let init config =
   let*! repo = Repo.v (Irmin_pack.config base_dir) in
   let*! store = main repo in
   let*! shard_store = Shards.init base_dir shard_store_dir in
+  let*! last_processed_head_store = Last_processed_head.init base_dir in
   let*! () = Event.(emit store_is_ready ()) in
   return
     {
       shard_store;
+      last_processed_head_store;
       store;
       shards_watcher;
       in_memory_shard_proofs =
