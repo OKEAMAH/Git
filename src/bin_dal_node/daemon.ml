@@ -407,7 +407,7 @@ module Handler = struct
           in
           let* () =
             match last_seen_head with
-            | Some {level = last_head_level; proto}
+            | Some {level = last_head_level; proto; _}
               when Int32.(succ last_head_level = head_level) ->
                 if last_head_level > 1l then process_block proto last_head_level
                 else
@@ -421,12 +421,16 @@ module Handler = struct
             | _ -> return_unit
           in
           let head_info =
-            Node_context.{proto = header.shell.proto_level; level = head_level}
+            Node_context.
+              {
+                proto = header.shell.proto_level;
+                level = head_level;
+                hash = head_hash;
+              }
           in
-          let*? () = Node_context.update_last_seen_head ctxt head_info in
-          return_unit
+          (* It is important this is done at the very end. *)
+          Node_context.update_last_seen_head ctxt head_info
     in
-
     let*! () = Event.(emit layer1_node_tracking_started ()) in
     (* FIXME: https://gitlab.com/tezos/tezos/-/issues/3517
         If the layer1 node reboots, the rpc stream breaks.*)

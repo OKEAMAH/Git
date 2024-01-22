@@ -26,6 +26,7 @@
 type head_info = {
   proto : int; (* the [proto_level] from the head's shell header *)
   level : int32;
+  hash : Block_hash.t;
 }
 
 (** A [ready_ctx] value contains globally needed informations for a running dal
@@ -90,7 +91,7 @@ type error += Node_not_ready
 (** Updates the [last_seen_head] field of the "ready context" with the given
     info.  Assumes the node's status is ready. Otherwise it returns
     [Node_not_ready]. *)
-val update_last_seen_head : t -> head_info -> unit tzresult
+val update_last_seen_head : t -> head_info -> unit tzresult Lwt.t
 
 (** [get_ready ctxt] extracts the [ready_ctxt] value from a context [t]. It
     propagates [Node_not_ready] if status is not ready yet. If called multiple

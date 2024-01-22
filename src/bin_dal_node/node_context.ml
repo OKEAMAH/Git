@@ -28,6 +28,7 @@ exception Status_already_ready
 type head_info = {
   proto : int; (* the [proto_level] from the head's shell header *)
   level : int32;
+  hash : Block_hash.t;
 }
 
 type ready_ctxt = {
@@ -136,10 +137,15 @@ let get_ready ctxt =
   | Starting -> fail [Node_not_ready]
 
 let update_last_seen_head ctxt head_info =
-  let open Result_syntax in
+  let open Lwt_result_syntax in
   match ctxt.status with
   | Ready ready_ctxt ->
       ctxt.status <- Ready {ready_ctxt with last_seen_head = Some head_info} ;
+      let* () =
+        Store.Last_processed_head.set
+          ctxt.store.last_processed_head_store
+          (head_info.level, head_info.hash)
+      in
       return_unit
   | Starting -> fail [Node_not_ready]
 
