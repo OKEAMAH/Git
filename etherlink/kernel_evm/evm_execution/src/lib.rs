@@ -295,6 +295,17 @@ mod test {
         account.increment_nonce(host).unwrap();
     }
 
+    fn get_nonce(
+        host: &mut MockHost,
+        evm_account_storage: &mut EthereumAccountStorage,
+        address: &H160,
+    ) -> U256 {
+        let account = evm_account_storage
+            .get_or_create(host, &account_path(address).unwrap())
+            .unwrap();
+        account.nonce(host).unwrap()
+    }
+
     fn dummy_first_block() -> BlockConstants {
         let block_fees = BlockFees::new(U256::from(12345));
         BlockConstants::first_block(U256::zero(), U256::one(), block_fees)
@@ -2790,5 +2801,63 @@ mod test {
             initial_caller_nonce, caller_nonce,
             "Nonce shouldn't have changed"
         )
+    }
+
+    #[test]
+    fn create_contract_loop_in_init_code() {
+        let mut host = MockHost::default();
+        let block = dummy_first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_evm_account_storage().unwrap();
+
+        let caller = H160::from_str("a94f5374fce5edbc8e2a8697c15331677e6ebf0b").unwrap();
+        let callee = H160::from_str("095e7baea6a6c7c4c2dfeb977efac326af552d87").unwrap();
+
+        let internal_address =
+            H160::from_str("8e3411c91d5dd4081b4846fa2f93808f5ad19686").unwrap();
+
+        set_balance(
+            &mut host,
+            &mut evm_account_storage,
+            &caller,
+            U256::from(10000),
+        );
+
+        let code = hex::decode("3060025560206000600039602060006000f000").unwrap();
+        set_account_code(&mut host, &mut evm_account_storage, &callee, &code);
+
+        bump_nonce(&mut host, &mut evm_account_storage, &callee);
+        let result = run_transaction(
+            &mut host,
+            &block,
+            &mut evm_account_storage,
+            &precompiles,
+            CONFIG,
+            Some(callee),
+            caller,
+            vec![],
+            Some(400000),
+            U256::one(),
+            Some(U256::one()),
+            false,
+            DUMMY_ALLOCATED_TICKS,
+        );
+
+        let caller_nonce = get_nonce(&mut host, &mut evm_account_storage, &caller);
+        let callee_nonce = get_nonce(&mut host, &mut evm_account_storage, &callee);
+
+        let internal_address_nonce =
+            get_nonce(&mut host, &mut evm_account_storage, &internal_address);
+        let internal_address_balance =
+            get_balance(&mut host, &mut evm_account_storage, &internal_address);
+
+        assert_eq!(
+            ExitReason::Succeed(ExitSucceed::Stopped),
+            result.unwrap().unwrap().reason,
+        );
+        assert_eq!(caller_nonce, U256::one());
+        assert_eq!(callee_nonce, U256::from(2));
+        assert_eq!(internal_address_nonce, U256::zero());
+        assert_eq!(internal_address_balance, U256::zero());
     }
 }
