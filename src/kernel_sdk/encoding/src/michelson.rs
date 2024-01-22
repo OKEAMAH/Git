@@ -1,6 +1,5 @@
 // SPDX-FileCopyrightText: 2022-2023 TriliTech <contact@trili.tech>
 // SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
-// SPDX-FileCopyrightText: 2024 Marigold <contact@marigold.dev>
 // SPDX-License-Identifier: MIT
 
 //! Definitions & tezos-encodings for *michelson* data.
@@ -20,10 +19,9 @@ use super::contract::Contract;
 use micheline::{
     bin_write_micheline_bytes, bin_write_micheline_int, bin_write_micheline_string,
     bin_write_prim_1_arg_no_annots, bin_write_prim_2_args_no_annots,
-    bin_write_prim_4_args_no_annots, bin_write_prim_no_args_no_annots,
-    nom_read_micheline_bytes, nom_read_micheline_int, nom_read_micheline_string,
-    MichelinePrim1ArgNoAnnots, MichelinePrim2ArgsNoAnnots, MichelinePrim4ArgsNoAnnots,
-    MichelinePrimNoArgsNoAnnots,
+    bin_write_prim_generic, bin_write_prim_no_args_no_annots, nom_read_micheline_bytes,
+    nom_read_micheline_int, nom_read_micheline_string, MichelineGeneric,
+    MichelinePrim1ArgNoAnnots, MichelinePrim2ArgsNoAnnots, MichelinePrimNoArgsNoAnnots,
 };
 use v1_primitives as prim;
 
@@ -50,8 +48,8 @@ pub mod v1_primitives {
     /// unit encoding case tag.
     pub const UNIT_TAG: u8 = 11;
 
-    /// ticket encoding case tag.
-    pub const TICKET_TAG: u8 = 12;
+    /// unit encoding case tag.
+    pub const TICKET_TAG: u8 = 157;
 }
 
 /// marker trait for michelson encoding
@@ -284,7 +282,7 @@ where
 {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
         map(
-            MichelinePrim4ArgsNoAnnots::<_, _, _, _, { prim::TICKET_TAG }>::nom_read,
+            MichelineGeneric::<_, { prim::TICKET_TAG }>::nom_read,
             Into::into,
         )(input)
     }
@@ -378,14 +376,7 @@ where
     Arg3: BinWriter + Debug + PartialEq + Eq,
 {
     fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-        bin_write_prim_4_args_no_annots(
-            prim::TICKET_TAG,
-            &self.0,
-            &self.1,
-            &self.2,
-            &self.3,
-            output,
-        )
+        bin_write_prim_generic(prim::TICKET_TAG, &self.0, &self.1, output)
     }
 }
 
@@ -402,33 +393,6 @@ where
     }
 }
 
-impl<Arg0, Arg1, Arg2, Arg3>
-    From<MichelinePrim4ArgsNoAnnots<Arg0, Arg1, Arg2, Arg3, { prim::TICKET_TAG }>>
-    for MichelsonTicket<Arg0, Arg1, Arg2, Arg3>
-where
-    Arg0: Debug + PartialEq + Eq,
-    Arg1: Debug + PartialEq + Eq,
-    Arg2: Debug + PartialEq + Eq,
-    Arg3: Debug + PartialEq + Eq,
-{
-    fn from(
-        micheline: MichelinePrim4ArgsNoAnnots<
-            Arg0,
-            Arg1,
-            Arg2,
-            Arg3,
-            { prim::TICKET_TAG },
-        >,
-    ) -> Self {
-        Self(
-            micheline.arg1,
-            micheline.arg2,
-            micheline.arg3,
-            micheline.arg4,
-        )
-    }
-}
-
 impl<Arg0, Arg1> From<MichelsonPair<Arg0, Arg1>>
     for MichelinePrim2ArgsNoAnnots<Arg0, Arg1, { prim::PAIR_TAG }>
 where
@@ -439,24 +403,6 @@ where
         Self {
             arg1: michelson.0,
             arg2: michelson.1,
-        }
-    }
-}
-
-impl<Arg0, Arg1, Arg2, Arg3> From<MichelsonTicket<Arg0, Arg1, Arg2, Arg3>>
-    for MichelinePrim4ArgsNoAnnots<Arg0, Arg1, Arg2, Arg3, { prim::TICKET_TAG }>
-where
-    Arg0: Debug + PartialEq + Eq,
-    Arg1: Debug + PartialEq + Eq,
-    Arg2: Debug + PartialEq + Eq,
-    Arg3: Debug + PartialEq + Eq,
-{
-    fn from(michelson: MichelsonTicket<Arg0, Arg1, Arg2, Arg3>) -> Self {
-        Self {
-            arg1: michelson.0,
-            arg2: michelson.1,
-            arg3: michelson.2,
-            arg4: michelson.3,
         }
     }
 }
