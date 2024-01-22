@@ -84,7 +84,7 @@ end
 module Last_processed_head = struct
   include Key_value_store
 
-  type nonrec t = (unit, unit, int32 * Block_hash.t) t
+  type nonrec t = (unit, unit, int * int32 * Block_hash.t) t
 
   let path = "last_seen_processed_head"
 
@@ -99,15 +99,20 @@ module Last_processed_head = struct
     init ~lru_size:1 (fun () ->
         let filepath = dir_path in
         layout
-          ~encoding:Data_encoding.(tup2 Data_encoding.int32 Block_hash.encoding)
+          ~encoding:
+            Data_encoding.(
+              tup3 Data_encoding.int8 Data_encoding.int32 Block_hash.encoding)
           ~filepath
           ~eq:Stdlib.( = )
           ~index_of:(fun _ -> 0) (* The store saves only one value *)
           ())
 
-  let set store level = write_value store () () level
+  let set store data = write_value store () () data
 
-  let find store = read_value store () ()
+  let find store =
+    let open Lwt_syntax in
+    let+ result = read_value store () () in
+    Result.to_option result
 end
 
 module Shards = struct

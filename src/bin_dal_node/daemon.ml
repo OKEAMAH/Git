@@ -307,7 +307,6 @@ module Handler = struct
                   cryptobox;
                   shards_proofs_precomputation = _;
                   plugin_proto;
-                  last_seen_head;
                 } =
             ready_ctxt
           in
@@ -405,6 +404,7 @@ module Handler = struct
               ~current_proto:plugin_proto
               ~block_proto
           in
+          let last_seen_head = Node_context.get_last_seen_head ctxt in
           let* () =
             match last_seen_head with
             | Some {level = last_head_level; proto; _}
@@ -644,7 +644,7 @@ let run ~data_dir configuration_override =
   in
   let* store = Store.init config in
   let*! metrics_server = Metrics.launch config.metrics_addr in
-  let ctxt =
+  let*! ctxt =
     Node_context.init
       config
       store

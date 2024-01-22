@@ -37,7 +37,6 @@ type ready_ctxt = {
   plugin : (module Dal_plugin.T);
   shards_proofs_precomputation : Cryptobox.shards_proofs_precomputation;
   plugin_proto : int; (* the [proto_level] of the plugin *)
-  last_seen_head : head_info option;
 }
 
 type status = Ready of ready_ctxt | Starting
@@ -53,9 +52,11 @@ type t = {
   transport_layer : Gossipsub.Transport_layer.t;
   mutable profile_ctxt : Profile_manager.t;
   metrics_server : Metrics.t;
+  mutable last_seen_processed_head : head_info option;
 }
 
 let init config store gs_worker transport_layer cctxt metrics_server =
+  let open Lwt_syntax in
   let neighbors_cctxts =
     List.map
       (fun Configuration_file.{addr; port} ->
@@ -65,19 +66,29 @@ let init config store gs_worker transport_layer cctxt metrics_server =
         Dal_node_client.make_unix_cctxt endpoint)
       config.Configuration_file.neighbors
   in
-  {
-    status = Starting;
-    config;
-    store;
-    tezos_node_cctxt = cctxt;
-    neighbors_cctxts;
-    committee_cache =
-      Committee_cache.create ~max_size:Constants.committee_cache_size;
-    gs_worker;
-    transport_layer;
-    profile_ctxt = Profile_manager.empty;
-    metrics_server;
-  }
+  let* last_seen_processed_head =
+    let* result =
+      Store.Last_processed_head.find store.Store.last_processed_head_store
+    in
+    result
+    |> Option.map (fun (proto, level, hash) -> {proto; level; hash})
+    |> return
+  in
+  return
+    {
+      status = Starting;
+      config;
+      store;
+      tezos_node_cctxt = cctxt;
+      neighbors_cctxts;
+      committee_cache =
+        Committee_cache.create ~max_size:Constants.committee_cache_size;
+      gs_worker;
+      transport_layer;
+      profile_ctxt = Profile_manager.empty;
+      metrics_server;
+      last_seen_processed_head;
+    }
 
 let set_ready ctxt plugin cryptobox proto_parameters plugin_proto =
   let open Result_syntax in
@@ -103,7 +114,6 @@ let set_ready ctxt plugin cryptobox proto_parameters plugin_proto =
             proto_parameters;
             shards_proofs_precomputation;
             plugin_proto;
-            last_seen_head = None;
           } ;
       return_unit
   | Ready _ -> raise Status_already_ready
@@ -138,16 +148,15 @@ let get_ready ctxt =
 
 let update_last_seen_head ctxt head_info =
   let open Lwt_result_syntax in
-  match ctxt.status with
-  | Ready ready_ctxt ->
-      ctxt.status <- Ready {ready_ctxt with last_seen_head = Some head_info} ;
-      let* () =
-        Store.Last_processed_head.set
-          ctxt.store.last_processed_head_store
-          (head_info.level, head_info.hash)
-      in
-      return_unit
-  | Starting -> fail [Node_not_ready]
+  ctxt.last_seen_processed_head <- Some head_info ;
+  let* () =
+    Store.Last_processed_head.set
+      ctxt.store.last_processed_head_store
+      (head_info.proto, head_info.level, head_info.hash)
+  in
+  return_unit
+
+let get_last_seen_head ctxt = ctxt.last_seen_processed_head
 
 let get_profile_ctxt ctxt = ctxt.profile_ctxt
 

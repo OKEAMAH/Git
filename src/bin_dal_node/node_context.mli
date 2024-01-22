@@ -42,8 +42,6 @@ type ready_ctxt = {
   plugin : (module Dal_plugin.T);
   shards_proofs_precomputation : Cryptobox.shards_proofs_precomputation;
   plugin_proto : int;  (** Protocol level of the plugin. *)
-  last_seen_head : head_info option;
-      (** The level of the last seen head of the L1 node. *)
 }
 
 (** The status of the dal node *)
@@ -64,7 +62,7 @@ val init :
   Gossipsub.Transport_layer.t ->
   Tezos_rpc.Context.generic ->
   Metrics.t ->
-  t
+  t Lwt.t
 
 (** Raised by [set_ready] when the status is already [Ready _] *)
 exception Status_already_ready
@@ -92,6 +90,8 @@ type error += Node_not_ready
     info.  Assumes the node's status is ready. Otherwise it returns
     [Node_not_ready]. *)
 val update_last_seen_head : t -> head_info -> unit tzresult Lwt.t
+
+val get_last_seen_head : t -> head_info option
 
 (** [get_ready ctxt] extracts the [ready_ctxt] value from a context [t]. It
     propagates [Node_not_ready] if status is not ready yet. If called multiple
