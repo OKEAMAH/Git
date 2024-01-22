@@ -35,6 +35,8 @@ pub const MICHELINE_PRIM_1_ARG_NO_ANNOTS_TAG: u8 = 5;
 pub const MICHELINE_PRIM_1_ARG_SOME_ANNOTS_TAG: u8 = 6;
 /// 2-argument primitive (without annotations) encoding case tag.
 pub const MICHELINE_PRIM_2_ARGS_NO_ANNOTS_TAG: u8 = 7;
+/// 2-argument primitive (without annotations) encoding case tag.
+pub const MICHELINE_PRIM_4_ARGS_NO_ANNOTS_TAG: u8 = 11;
 /// 2-argument primitive (with annotations) encoding case tag.
 pub const MICHELINE_PRIM_2_ARGS_SOME_ANNOTS_TAG: u8 = 8;
 /// any primitive (with or without annotations) encoding case tag.
@@ -209,6 +211,26 @@ where
     pub(crate) arg2: Arg2,
 }
 
+/// lib_micheline *prim-2 no annotations* encoding.
+///
+/// Encoded as an `obj3`, prefixed by [MICHELINE_PRIM_4_ARGS_NO_ANNOTS_TAG], with fields:
+/// - `prim` - the `PRIM_TAG`
+/// - `arg1` - the first argument
+/// - `arg2` - the second argument
+#[derive(Debug, PartialEq, Eq)]
+pub struct MichelinePrim4ArgsNoAnnots<Arg1, Arg2, Arg3, Arg4, const PRIM_TAG: u8>
+where
+    Arg1: Debug + PartialEq + Eq,
+    Arg2: Debug + PartialEq + Eq,
+    Arg3: Debug + PartialEq + Eq,
+    Arg4: Debug + PartialEq + Eq,
+{
+    pub(crate) arg1: Arg1,
+    pub(crate) arg2: Arg2,
+    pub(crate) arg3: Arg3,
+    pub(crate) arg4: Arg4,
+}
+
 /// lib_micheline *prim-2 some annotations* encoding.
 ///
 /// Encoded as an `obj4`, prefixed by [MICHELINE_PRIM_2_ARGS_SOME_ANNOTS_TAG], with fields:
@@ -326,6 +348,27 @@ where
     }
 }
 
+impl<Arg1, Arg2, Arg3, Arg4, const PRIM_TAG: u8>
+    From<MichelinePrim4ArgsNoAnnots<Arg1, Arg2, Arg3, Arg4, PRIM_TAG>> for Node
+where
+    Arg1: Debug + PartialEq + Eq,
+    Arg2: Debug + PartialEq + Eq,
+    Arg3: Debug + PartialEq + Eq,
+    Arg4: Debug + PartialEq + Eq,
+    Node: From<Arg1>,
+    Node: From<Arg2>,
+    Node: From<Arg3>,
+    Node: From<Arg4>,
+{
+    fn from(a: MichelinePrim4ArgsNoAnnots<Arg1, Arg2, Arg3, Arg4, PRIM_TAG>) -> Self {
+        Node::Prim {
+            prim_tag: PRIM_TAG,
+            args: vec![a.arg1.into(), a.arg2.into(), a.arg3.into(), a.arg4.into()],
+            annots: Annotations::default(),
+        }
+    }
+}
+
 impl<Arg1, Arg2, const PRIM_TAG: u8>
     From<MichelinePrim2ArgsSomeAnnots<Arg1, Arg2, PRIM_TAG>> for Node
 where
@@ -404,6 +447,19 @@ impl<Arg1, Arg2, const PRIM_TAG: u8> HasEncoding
 where
     Arg1: Debug + PartialEq + Eq,
     Arg2: Debug + PartialEq + Eq,
+{
+    fn encoding() -> Encoding {
+        Encoding::Custom
+    }
+}
+
+impl<Arg1, Arg2, Arg3, Arg4, const PRIM_TAG: u8> HasEncoding
+    for MichelinePrim4ArgsNoAnnots<Arg1, Arg2, Arg3, Arg4, PRIM_TAG>
+where
+    Arg1: Debug + PartialEq + Eq,
+    Arg2: Debug + PartialEq + Eq,
+    Arg3: Debug + PartialEq + Eq,
+    Arg4: Debug + PartialEq + Eq,
 {
     fn encoding() -> Encoding {
         Encoding::Custom
@@ -512,6 +568,34 @@ where
     }
 }
 
+impl<Arg1, Arg2, Arg3, Arg4, const PRIM_TAG: u8> NomReader
+    for MichelinePrim4ArgsNoAnnots<Arg1, Arg2, Arg3, Arg4, PRIM_TAG>
+where
+    Arg1: NomReader + Debug + PartialEq + Eq,
+    Arg2: NomReader + Debug + PartialEq + Eq,
+    Arg3: NomReader + Debug + PartialEq + Eq,
+    Arg4: NomReader + Debug + PartialEq + Eq,
+{
+    fn nom_read(input: &[u8]) -> NomResult<Self> {
+        let parse = preceded(
+            tag([MICHELINE_PRIM_4_ARGS_NO_ANNOTS_TAG, PRIM_TAG]),
+            pair(
+                Arg1::nom_read,
+                pair(Arg2::nom_read, pair(Arg3::nom_read, Arg4::nom_read)),
+            ),
+        );
+
+        map(parse, |(arg1, (arg2, (arg3, arg4)))| {
+            MichelinePrim4ArgsNoAnnots {
+                arg1,
+                arg2,
+                arg3,
+                arg4,
+            }
+        })(input)
+    }
+}
+
 impl<Arg1, Arg2, const PRIM_TAG: u8> NomReader
     for MichelinePrim2ArgsSomeAnnots<Arg1, Arg2, PRIM_TAG>
 where
@@ -595,6 +679,20 @@ impl Node {
                 |(prim_tag, (arg1, arg2))| Prim {
                     prim_tag,
                     args: vec![arg1, arg2],
+                    annots: Annotations::default(),
+                },
+            ),
+            nom_read_app_aux(
+                MICHELINE_PRIM_4_ARGS_NO_ANNOTS_TAG,
+                tuple((
+                    Self::nom_read,
+                    Self::nom_read,
+                    Self::nom_read,
+                    Self::nom_read,
+                )),
+                |(prim_tag, (arg1, arg2, arg3, arg4))| Prim {
+                    prim_tag,
+                    args: vec![arg1, arg2, arg3, arg4],
                     annots: Annotations::default(),
                 },
             ),
@@ -706,6 +804,21 @@ where
     }
 }
 
+impl<Arg1, Arg2, Arg3, Arg4, const PRIM_TAG: u8> BinWriter
+    for MichelinePrim4ArgsNoAnnots<Arg1, Arg2, Arg3, Arg4, PRIM_TAG>
+where
+    Arg1: BinWriter + Debug + PartialEq + Eq,
+    Arg2: BinWriter + Debug + PartialEq + Eq,
+    Arg3: BinWriter + Debug + PartialEq + Eq,
+    Arg4: BinWriter + Debug + PartialEq + Eq,
+{
+    fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
+        bin_write_prim_4_args_no_annots(
+            PRIM_TAG, &self.arg1, &self.arg2, &self.arg3, &self.arg4, output,
+        )
+    }
+}
+
 impl<Arg1, Arg2, const PRIM_TAG: u8> BinWriter
     for MichelinePrim2ArgsSomeAnnots<Arg1, Arg2, PRIM_TAG>
 where
@@ -746,6 +859,9 @@ impl BinWriter for Node {
                 ([arg0, arg1], true) => {
                     bin_write_prim_2_args_no_annots(*prim_tag, arg0, arg1, output)
                 }
+                ([arg0, arg1, arg2, arg3], true) => bin_write_prim_4_args_no_annots(
+                    *prim_tag, arg0, arg1, arg2, arg3, output,
+                ),
                 ([arg0, arg1], false) => bin_write_prim_2_args_some_annots(
                     *prim_tag, arg0, arg1, annots, output,
                 ),
@@ -868,6 +984,32 @@ where
 
     arg1.bin_write(output)?;
     arg2.bin_write(output)?;
+
+    Ok(())
+}
+
+/// Write `PRIM_TAG`, `arg1` & `arg2` into an `obj3` encoding, prefixed with the
+/// [MICHELINE_PRIM_4_ARGS_NO_ANNOTS_TAG].
+pub(crate) fn bin_write_prim_4_args_no_annots<Arg1, Arg2, Arg3, Arg4>(
+    prim_tag: u8,
+    arg1: &Arg1,
+    arg2: &Arg2,
+    arg3: &Arg3,
+    arg4: &Arg4,
+    output: &mut Vec<u8>,
+) -> BinResult
+where
+    Arg1: BinWriter,
+    Arg2: BinWriter,
+    Arg3: BinWriter,
+    Arg4: BinWriter,
+{
+    enc::put_bytes(&[MICHELINE_PRIM_4_ARGS_NO_ANNOTS_TAG, prim_tag], output);
+
+    arg1.bin_write(output)?;
+    arg2.bin_write(output)?;
+    arg3.bin_write(output)?;
+    arg4.bin_write(output)?;
 
     Ok(())
 }
