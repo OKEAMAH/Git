@@ -381,13 +381,25 @@ module History = struct
     let history_encoding =
       let open Data_encoding in
       (* The history_encoding is given as a union of two versions of the skip
-         list: The legacy case is meant for the transition setting where
-         refutation games may have started on the old protocol and are
-         continuing on the new one. Since, Dal genesis skip list is snapshotted
-         even if dal feature flag is disabled, we should decode the old genesis
-         cell (in a hackish way), and immediately return the new represtation of
-         genesis. The second case implement the normal encoding of the (new)
-         skip list representation. *)
+         list:
+
+         In the first version of the Dal skip list, we were storing one attested
+         slot header per cell. So, genesis was of the form [Skip_list.genesis
+         slot_header_zero], where [slot_header_zero] is a dummy slot supposed to
+         be published at level [Raw_level_repr.root] with a commitment
+         [Commitment.zero].
+
+         The new version of Dal skip lists are not compatible with the old ones.
+         The legacy case is meant for the transition setting where refutation
+         games may have started on the old protocol and are continuing on the
+         new one. Since, Dal genesis skip list is snapshotted even if Dal
+         feature flag is disabled, we should decode the old genesis cell (in a
+         hackish way), and immediately return the new represtation of
+         genesis. The second case implements the normal encoding of the (new)
+         skip list representation.
+
+         Once the transition is done, the "dal_skip_list_legacy" case with "Tag
+         0" could be removed. *)
       union
         ~tag_size:`Uint8
         [
