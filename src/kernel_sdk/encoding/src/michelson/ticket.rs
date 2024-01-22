@@ -10,7 +10,7 @@ use crate::{
     contract::Contract,
     michelson::{
         Michelson, MichelsonBytes, MichelsonContract, MichelsonInt, MichelsonOption,
-        MichelsonPair, MichelsonString, MichelsonTicket, MichelsonUnit,
+        MichelsonTicket, MichelsonPair, MichelsonString, MichelsonUnit,
     },
 };
 use core::{
@@ -138,20 +138,17 @@ impl<Expr: Michelson> HasEncoding for Ticket<Expr> {
 }
 
 impl<Expr: Michelson> Ticket<Expr> {
-    /// creates a new ticket with `creator`, `contents_type`, `contents` and `amount`.
-    pub fn new<Val: Into<Expr>, Type: Into<Expr>, Amount: Into<BigInt>>(
+    /// creates a new ticket with `creator`, `contents` and `amount`.
+    pub fn new<Val: Into<Expr>, Amount: Into<BigInt>>(
         creator: Contract,
-        contents_type: Type,
         contents: Val,
         amount: Amount,
     ) -> Result<Self, TicketError> {
         let amount: BigInt = amount.into();
         if amount.is_positive() {
-            Ok(Ticket(MichelsonTicket(
+            Ok(Ticket(MichelsonPair(
                 MichelsonContract(creator),
-                contents_type.into(),
-                contents.into(),
-                MichelsonInt(Zarith(amount)),
+                MichelsonPair(contents.into(), MichelsonInt(Zarith(amount))),
             )))
         } else {
             Err(TicketError::InvalidAmount(amount))
@@ -160,13 +157,12 @@ impl<Expr: Michelson> Ticket<Expr> {
 
     /// Return an identifying hash of the ticket creator and contents.
     ///
-    /// Calculated as the `blake2b` hash of a tezos-encoded `obj3`:
+    /// Calculated as the `blake2b` hash of a tezos-encoded `obj2`:
     /// - creator contract
     /// - string contents
     pub fn hash(&self) -> Result<TicketHash, TicketHashError> {
         let mut bytes = Vec::new();
         self.creator().bin_write(&mut bytes)?;
-        self.contents_type().bin_write(&mut bytes)?;
         self.contents().bin_write(&mut bytes)?;
 
         let digest = digest_256(bytes.as_slice())?;
@@ -181,13 +177,9 @@ impl<Expr: Michelson> Ticket<Expr> {
     pub fn creator(&self) -> &MichelsonContract {
         &self.0 .0
     }
-    /// The L1 ticket's contents type.
-    pub fn contents_type(&self) -> &Expr {
-        &self.0 .1
-    }
     /// The ticket's content
     pub fn contents(&self) -> &Expr {
-        &self.0 .2
+        &self.0 .1 .0
     }
     /// The ticket's amount
     pub fn amount(&self) -> &BigInt {
