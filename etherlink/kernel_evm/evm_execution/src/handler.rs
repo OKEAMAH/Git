@@ -732,6 +732,22 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         }
     }
 
+    // Sub function to specify the end of a CREATE opcode
+    // The nonce of the caller should be rollbacked to its original
+    fn end_create_opcode(
+        &mut self,
+        caller: H160,
+        nonce_rollback: bool,
+        original_nonce: U256,
+        execution_result: Result<CreateOutcome, EthereumError>,
+    ) -> Result<Capture<CreateOutcome, Infallible>, EthereumError> {
+        let res = self.end_inter_transaction(execution_result);
+        if nonce_rollback {
+            self.set_nonce(caller, original_nonce)?;
+        }
+        Ok(res)
+    }
+
     fn end_create(
         &mut self,
         runtime: evm::Runtime,
@@ -1182,6 +1198,27 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     self.host,
                     Debug,
                     "Failed to increment nonce for account {:?}",
+                    address
+                );
+                Err(EthereumError::from(AccountStorageError::from(err)))
+            }
+        }
+    }
+
+    pub fn set_nonce(&mut self, address: H160, nonce: U256) -> Result<(), EthereumError> {
+        match account_path(&address) {
+            Ok(path) => {
+                let mut account =
+                    self.evm_account_storage.get_or_create(self.host, &path)?;
+                account
+                    .set_nonce(self.host, nonce)
+                    .map_err(EthereumError::from)
+            }
+            Err(err) => {
+                log!(
+                    self.host,
+                    Debug,
+                    "Failed to set nonce for account {:?}",
                     address
                 );
                 Err(EthereumError::from(AccountStorageError::from(err)))
@@ -1892,6 +1929,7 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
     ) -> Capture<CreateOutcome, Self::CreateInterrupt> {
         let gas_limit = self.nested_call_gas_limit(target_gas);
         let contract_address = self.create_address(scheme);
+        let original_nonce = self.get_nonce(caller);
 
         // Put the increment nonce out of the transaction because it should not rollback even if
         // the transaction fails
@@ -1916,9 +1954,27 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
                 vec![],
             ))
         } else {
-            let result = self.execute_create(caller, value, init_code, contract_address);
-            let result = result.map(CreateOutcome::from);
-            self.end_inter_transaction(result)
+            let execution_result =
+                self.execute_create(caller, value, init_code, contract_address);
+            let rollback = match &execution_result {
+                Ok(outcome) => matches!(outcome.rollback, RollbackCallerNonce::Rollback),
+                Err(_) => true,
+            };
+            let execution_result = execution_result.map(CreateOutcome::from);
+            let result = self.end_create_opcode(
+                caller,
+                rollback,
+                original_nonce,
+                execution_result,
+            );
+            match result {
+                Ok(capture) => capture,
+                Err(err) => {
+                    log!(self.host, Debug, "{:?}", err);
+
+                    Capture::Exit((ethereum_error_to_exit_reason(&err), None, vec![]))
+                }
+            }
         }
     }
 
