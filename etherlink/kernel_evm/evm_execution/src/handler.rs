@@ -97,6 +97,28 @@ impl From<EthereumError> for CreateError {
 /// address will be `None`.
 type CreateOutcome = (ExitReason, Option<H160>, Vec<u8>);
 
+pub enum RollbackCallerNonce {
+    Rollback,
+    Nothing,
+}
+
+pub struct CreateOutcomeRB {
+    exit: ExitReason,
+    address: Option<H160>,
+    rollback: RollbackCallerNonce,
+    result: Vec<u8>,
+}
+
+impl From<CreateOutcomeRB> for CreateOutcome {
+    fn from(create_outcome: CreateOutcomeRB) -> CreateOutcome {
+        (
+            create_outcome.exit,
+            create_outcome.address,
+            create_outcome.result,
+        )
+    }
+}
+
 /// Wrap ethereum errors in the SputnikVM errors
 ///
 /// This function wraps critical errors that indicate something is wrong
@@ -668,9 +690,44 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     fn handle_create_error(
         &self,
         error: CreateError,
-    ) -> Result<CreateOutcome, EthereumError> {
+    ) -> Result<CreateOutcomeRB, EthereumError> {
         match error {
-            CreateError::PreconditionErr(exit) => Ok((exit, None, vec![])),
+            CreateError::PreconditionErr(
+                call_too_deep @ ExitReason::Fatal(ExitFatal::CallErrorAsFatal(
+                    ExitError::CallTooDeep,
+                )),
+            ) => {
+                // Rollback the nonce of the caller because of the CallTooDeep error
+                let call_too_deep_outcome = CreateOutcomeRB {
+                    exit: call_too_deep,
+                    address: None,
+                    rollback: RollbackCallerNonce::Rollback,
+                    result: vec![],
+                };
+                Ok(call_too_deep_outcome)
+            }
+            CreateError::PreconditionErr(
+                out_of_fund @ ExitReason::Error(ExitError::OutOfFund),
+            ) => {
+                // Rollback the nonce of the caller because of the OutOfFund error
+                let out_of_fund_outcome = CreateOutcomeRB {
+                    exit: out_of_fund,
+                    address: None,
+                    rollback: RollbackCallerNonce::Rollback,
+                    result: vec![],
+                };
+                Ok(out_of_fund_outcome)
+            }
+            CreateError::PreconditionErr(err_exit) => {
+                // A precondition fails but does not imply a rollback of the nonce
+                let error_outcome = CreateOutcomeRB {
+                    exit: err_exit,
+                    address: None,
+                    rollback: RollbackCallerNonce::Nothing,
+                    result: vec![],
+                };
+                Ok(error_outcome)
+            }
             CreateError::EthereumErr(eth_err) => Err(eth_err),
         }
     }
@@ -680,34 +737,49 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         runtime: evm::Runtime,
         sub_context_result: Result<ExitReason, CreateError>,
         address: H160,
-    ) -> Result<CreateOutcome, EthereumError> {
+    ) -> Result<CreateOutcomeRB, EthereumError> {
         match sub_context_result {
             Ok(sub_context_result @ ExitReason::Succeed(ExitSucceed::Suicided)) => {
-                Ok((sub_context_result, Some(address), vec![]))
+                let suicide_outcome = CreateOutcomeRB {
+                    exit: sub_context_result,
+                    address: Some(address),
+                    rollback: RollbackCallerNonce::Nothing,
+                    result: vec![],
+                };
+                Ok(suicide_outcome)
             }
             Ok(sub_context_result @ ExitReason::Succeed(_)) => {
                 let code_out = runtime.machine().return_value();
 
                 if code_out.first() == Some(&0xef) {
                     // EIP-3541: see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-3541.md
-                    return Ok((
-                        ExitReason::Error(ExitError::InvalidCode(Opcode(0xef))),
-                        None,
-                        vec![],
-                    ));
+                    let invalid_outcome = CreateOutcomeRB {
+                        exit: ExitReason::Error(ExitError::InvalidCode(Opcode(0xef))),
+                        address: None,
+                        rollback: RollbackCallerNonce::Nothing,
+                        result: vec![],
+                    };
+                    return Ok(invalid_outcome);
                 }
 
                 if code_out.len() > MAX_CODE_SIZE {
                     // EIP-170: see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-170.md
-                    return Ok((
-                        ExitReason::Error(ExitError::CreateContractLimit),
-                        None,
-                        vec![],
-                    ));
+                    let max_size_outcome = CreateOutcomeRB {
+                        exit: ExitReason::Error(ExitError::CreateContractLimit),
+                        address: None,
+                        rollback: RollbackCallerNonce::Nothing,
+                        result: vec![],
+                    };
+                    return Ok(max_size_outcome);
                 }
-
                 if let Err(err) = self.record_deposit(code_out.len()) {
-                    return Ok((ExitReason::Error(err), None, vec![]));
+                    let err_deposit_outcome = CreateOutcomeRB {
+                        exit: ExitReason::Error(err),
+                        address: None,
+                        rollback: RollbackCallerNonce::Nothing,
+                        result: vec![],
+                    };
+                    return Ok(err_deposit_outcome);
                 }
 
                 self.set_contract_code(address, code_out)?;
@@ -715,20 +787,44 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 // A created smart contract nonce must start at 1.
                 self.increment_nonce(address)?;
 
-                Ok((sub_context_result, Some(address), vec![]))
+                let valid_create_outcome = CreateOutcomeRB {
+                    exit: sub_context_result,
+                    address: Some(address),
+                    rollback: RollbackCallerNonce::Nothing,
+                    result: vec![],
+                };
+                Ok(valid_create_outcome)
             }
             Ok(sub_context_result @ ExitReason::Revert(_)) => {
                 // EIP-140: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-140.md
                 // In case of a REVERT in a context of a CREATE, CREATE2, the error message
                 // is available in the returndata buffer
-                Ok((sub_context_result, None, runtime.machine().return_value()))
+                let reverted_create_outcome = CreateOutcomeRB {
+                    exit: sub_context_result,
+                    address: None,
+                    rollback: RollbackCallerNonce::Nothing,
+                    result: runtime.machine().return_value(),
+                };
+                Ok(reverted_create_outcome)
             }
             // Since the sub context failed, return address 0 (`None` in our case) (https://www.evm.codes/#f0?fork=shanghai)
             Ok(sub_context_result @ ExitReason::Error(_)) => {
-                Ok((sub_context_result, None, vec![]))
+                let error_create_outcome = CreateOutcomeRB {
+                    exit: sub_context_result,
+                    address: None,
+                    rollback: RollbackCallerNonce::Nothing,
+                    result: vec![],
+                };
+                Ok(error_create_outcome)
             }
             Ok(sub_context_result @ ExitReason::Fatal(_)) => {
-                Ok((sub_context_result, None, vec![]))
+                let fatal_create_outcome = CreateOutcomeRB {
+                    exit: sub_context_result,
+                    address: None,
+                    rollback: RollbackCallerNonce::Nothing,
+                    result: vec![],
+                };
+                Ok(fatal_create_outcome)
             }
             Err(create_error) =>
             // This is either an ethereum error or a pre-condition that failed.
@@ -815,7 +911,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         value: U256,
         initial_code: Vec<u8>,
         address: H160,
-    ) -> Result<CreateOutcome, EthereumError> {
+    ) -> Result<CreateOutcomeRB, EthereumError> {
         log!(self.host, Debug, "Executing a contract create");
 
         let context = Context {
@@ -1018,8 +1114,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             input,
             contract_address,
         );
-
-        self.end_initial_transaction(result)
+        self.end_initial_transaction(result.map(CreateOutcome::from))
     }
 
     fn get_or_create_account(
@@ -1822,7 +1917,7 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
             ))
         } else {
             let result = self.execute_create(caller, value, init_code, contract_address);
-
+            let result = result.map(CreateOutcome::from);
             self.end_inter_transaction(result)
         }
     }
@@ -2554,6 +2649,7 @@ mod test {
 
         let contract_address = handler.create_address(create_scheme);
         let result = handler.execute_create(caller, value, init_code, contract_address);
+        let result = result.map(CreateOutcome::from);
 
         match result {
             Ok(result) => {
@@ -2621,6 +2717,7 @@ mod test {
         let contract_address = handler.create_address(create_scheme);
         let result =
             handler.execute_create(caller, value, initial_code, contract_address);
+        let result = result.map(CreateOutcome::from);
 
         match result {
             Ok(result) => {
@@ -3128,6 +3225,8 @@ mod test {
         let contract_address = handler.create_address(scheme);
         let result =
             handler.execute_create(caller, U256::from(100000), code, contract_address);
+
+        let result = result.map(CreateOutcome::from);
 
         assert_eq!(
             result.unwrap(),
