@@ -83,6 +83,10 @@ const BLOCKS_INDEX: RefPath = EVM_BLOCKS;
 /// Subpath where transactions are indexed
 const TRANSACTIONS_INDEX: RefPath = RefPath::assert_from(b"/transactions");
 
+// Path to the number of seconds until delayed txs are timed out.
+const EVM_DELAYED_INBOX_TIMEOUT: RefPath =
+    RefPath::assert_from(b"/delayed_inbox_timeout");
+
 /// The size of one 256 bit word. Size in bytes
 pub const WORD_SIZE: usize = 32usize;
 
@@ -813,6 +817,23 @@ pub fn store_sequencer<Host: Runtime>(
     let pk_b58 = PublicKey::to_b58check(&public_key);
     let bytes = String::as_bytes(&pk_b58);
     host.store_write_all(&SEQUENCER, bytes).map_err(Into::into)
+}
+
+pub fn delayed_inbox_timeout<Host: Runtime>(host: &Host) -> anyhow::Result<u64> {
+    // The default timeout is 12 hours
+    let default_timeout = 43200;
+    if host.store_has(&EVM_DELAYED_INBOX_TIMEOUT)?.is_some() {
+        let mut buffer = [0u8; 8];
+        store_read_slice(host, &EVM_DELAYED_INBOX_TIMEOUT, &mut buffer, 8)?;
+        Ok(u64::from_le_bytes(buffer))
+    } else {
+        log!(
+            host,
+            Info,
+            "Using default delayed inbox timeout of 12 hours"
+        );
+        Ok(default_timeout)
+    }
 }
 
 #[cfg(test)]
