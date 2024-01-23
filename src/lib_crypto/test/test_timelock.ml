@@ -44,6 +44,8 @@ let test_raw_scenario time () =
   (* Not creator opening chest. *)
   assert (verify ~time locked proof) ;
   let proof_2 = unlock_and_prove ~time locked in
+  let proof_3 = unlock_and_prove ~time:(time + 1) locked in
+  assert (verify ~time:(time + 1) locked proof_3) ;
   assert (verify ~time locked proof_2) ;
   let sym_key_1 = timelock_proof_to_symmetric_key proof in
   let sym_key_2 = timelock_proof_to_symmetric_key proof_2 in
