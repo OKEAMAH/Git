@@ -306,9 +306,10 @@ let register_dal_profiles dal_node_rpc_ctxt delegates =
         Tezos_dal_node_services.Types.Attester consensus_key.public_key_hash)
       delegates
   in
+  let save_config = true in
   Tezos_rpc.Context.make_call
     Tezos_dal_node_services.Services.patch_profiles
     dal_node_rpc_ctxt
     ()
-    ()
+    Tezos_dal_node_services.Services.{save_config}
     profiles
