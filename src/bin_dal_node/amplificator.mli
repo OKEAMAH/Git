@@ -10,8 +10,13 @@
    the DAL reliability by reconstructing the slot, recomputing all the
    shards, and republishing the missing shards on the DAL network. *)
 
-(* [amplify shard_store] is called each time a new shard is received
-   by an observer node and added to the shard store
-   [shard_store]. This function is called after the update of the
+(* [amplify shard_store commitment node_ctxt] is called each time a
+   new shard is received by an observer node and added to the shard
+   store [shard_store]. The argument [commitment] is the commitment of
+   the received shard. This function is called after the update of the
    shard store. *)
-val amplify : Store.Shards.t -> unit
+val amplify :
+  Store.Shards.t ->
+  Cryptobox.Commitment.t ->
+  Node_context.t ->
+  unit tzresult Lwt.t
