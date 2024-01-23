@@ -217,7 +217,7 @@ module Slots_handlers = struct
 end
 
 module Profile_handlers = struct
-  let patch_profiles ctxt () operator_profiles =
+  let patch_profiles ctxt Services.{save_config} operator_profiles =
     let open Lwt_result_syntax in
     let gs_worker = Node_context.get_gs_worker ctxt in
     call_handler2 ctxt (fun _store {proto_parameters; _} ->
@@ -229,7 +229,11 @@ module Profile_handlers = struct
             operator_profiles
         with
         | None -> fail Errors.[Profile_incompatibility]
-        | Some pctxt -> return @@ Node_context.set_profile_ctxt ctxt pctxt)
+        | Some pctxt ->
+            Node_context.set_profile_ctxt ctxt pctxt ;
+            if save_config then
+              Configuration_file.save (Node_context.get_config ctxt)
+            else return_unit)
 
   let get_profiles ctxt () () =
     let open Lwt_result_syntax in

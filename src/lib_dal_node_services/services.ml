@@ -192,20 +192,27 @@ let get_published_level_headers :
     ~output:(Data_encoding.list slot_header_encoding)
     Tezos_rpc.Path.(open_root / "levels" /: Tezos_rpc.Arg.int32 / "headers")
 
+type patch_profiles_query = {save_config : bool}
+
 let patch_profiles :
     < meth : [`PATCH]
     ; input : operator_profiles
     ; output : unit
     ; prefix : unit
     ; params : unit
-    ; query : unit >
+    ; query : patch_profiles_query >
     service =
   Tezos_rpc.Service.patch_service
     ~description:
       "Update the list of profiles tracked by the DAL node. Note that it does \
        not take the bootstrap profile as it is incompatible with other \
-       profiles."
-    ~query:Tezos_rpc.Query.empty
+       profiles. The boolean parameter `save_config` makes the node save the \
+       new profile list in its configuration file."
+    ~query:
+      Tezos_rpc.Query.(
+        query (fun save_config -> {save_config})
+        |+ flag "save_config" (fun t -> t.save_config)
+        |> seal)
     ~input:(Data_encoding.list operator_profile_encoding)
     ~output:Data_encoding.unit
     Tezos_rpc.Path.(open_root / "profiles")

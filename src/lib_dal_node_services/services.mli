@@ -141,16 +141,19 @@ val get_published_level_headers :
   ; query : Types.header_status option >
   service
 
-(** Update the list of profiles tracked by the DAL node.
-    Note that it does not take the bootstrap profile as it
-    is incompatible with other profiles. *)
+type patch_profiles_query = {save_config : bool}
+
+(** Update the list of profiles tracked by the DAL node.  Note that it does not
+    take the bootstrap profile as it is incompatible with other profiles. The
+    boolean parameter `save_config` makes the node save the new profile list in its
+    configuration file. *)
 val patch_profiles :
   < meth : [`PATCH]
   ; input : Types.operator_profiles
   ; output : unit
   ; prefix : unit
   ; params : unit
-  ; query : unit >
+  ; query : patch_profiles_query >
   service
 
 (** Return the list of current profiles tracked by the DAL node *)
