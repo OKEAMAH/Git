@@ -113,7 +113,9 @@ impl DelayedInbox {
         host: &mut Host,
         tx: Transaction,
     ) -> Result<()> {
-        let Transaction { tx_hash, content } = tx;
+        let Transaction { tx_hash, content , data_availability_fee : None} = tx else {
+            return Err(anyhow::anyhow!("Transaction was not injected through the delayed inbox"));
+        };
         let delayed_transaction = match content {
             TransactionContent::Ethereum(tx) => DelayedTransaction::Ethereum(tx),
             TransactionContent::Deposit(deposit) => DelayedTransaction::Deposit(deposit),

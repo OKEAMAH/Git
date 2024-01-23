@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022-2023 TriliTech <contact@trili.tech>
+// SPDX-FileCopyrightText: 2022-2024 TriliTech <contact@trili.tech>
 // SPDX-FileCopyrightText: 2023 Nomadic Labs <contact@nomadic-labs.com>
 // SPDX-FileCopyrightText: 2023 Functori <contact@functori.com>
 // SPDX-FileCopyrightText: 2023 Marigold <contact@marigold.dev>
@@ -26,6 +26,8 @@ use tezos_ethereum::tx_common::EthereumTransactionCommon;
 use tezos_evm_logging::{log, Level::*};
 use tezos_smart_rollup_encoding::public_key::PublicKey;
 use tezos_smart_rollup_host::runtime::Runtime;
+
+pub mod da_fee;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Deposit {
@@ -112,6 +114,13 @@ impl Decodable for TransactionContent {
 pub struct Transaction {
     pub tx_hash: TransactionHash,
     pub content: TransactionContent,
+    /// The estimated fee paid by the sequencer, to the baker(s), for inclusion in an L1 block.
+    ///
+    /// If injected through the delayed inbox, there is no fee to pay, as the user who injected
+    /// the transaction paid the cost themselves.
+    ///
+    /// Demominated in `mutez`.
+    pub data_availability_fee: Option<std::num::NonZeroU64>,
 }
 
 impl Transaction {
@@ -128,6 +137,12 @@ impl Encodable for Transaction {
         stream.begin_list(2);
         stream.append_iter(self.tx_hash);
         stream.append(&self.content);
+        stream.append(
+            &self
+                .data_availability_fee
+                .map(std::num::NonZeroU64::get)
+                .unwrap_or_default(),
+        );
     }
 }
 
@@ -143,7 +158,12 @@ impl Decodable for Transaction {
         let tx_hash: TransactionHash = decode_tx_hash(next(&mut it)?)?;
         let content: TransactionContent =
             decode_field(&next(&mut it)?, "Transaction content")?;
-        Ok(Transaction { tx_hash, content })
+        let da_fee: u64 = decode_field(&next(&mut it)?, "Data availability fee")?;
+        Ok(Transaction {
+            tx_hash,
+            content,
+            data_availability_fee: std::num::NonZeroU64::new(da_fee),
+        })
     }
 }
 
@@ -258,6 +278,7 @@ fn handle_deposit<Host: Runtime>(
     Ok(Transaction {
         tx_hash,
         content: TransactionContent::Deposit(deposit),
+        data_availability_fee: None
     })
 }
 
