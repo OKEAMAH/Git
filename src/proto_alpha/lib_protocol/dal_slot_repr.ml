@@ -518,6 +518,48 @@ module History = struct
           in
           return (new_cell, cache)
 
+    let () =
+      let open Content in
+      let published_level = Raw_level_repr.of_int32_exn Int32.max_int in
+      let slots_indices =
+        Dal_slot_index_repr.slots_range_opt
+          ~number_of_slots:256
+          ~lower:0
+          ~upper:255
+        |> function
+        | None -> assert false
+        | Some l -> l
+      in
+      let slot_headers =
+        List.map (fun slot_index -> (Commitment.zero, slot_index)) slots_indices
+      in
+      let cell = {published_level; slot_headers} in
+      let genesis = Skip_list.genesis cell in
+
+      let rec aux skip_list cpt =
+        if Compare.Int.(cpt > 129600) then skip_list
+        else
+          let prev_cell_ptr = hash skip_list in
+          let new_list =
+            match
+              Skip_list.next
+                ~prev_cell_ptr
+                ~prev_cell:genesis
+                {
+                  cell with
+                  published_level = Raw_level_repr.succ cell.published_level;
+                }
+            with
+            | Error _ -> assert false
+            | Ok sl -> sl
+          in
+          aux new_list (cpt + 1)
+      in
+      let new_list = aux genesis 0 in
+
+      let bytes = Data_encoding.Binary.to_bytes_exn history_encoding new_list in
+      failwith (string_of_int @@ Bytes.length bytes)
+
     let add_confirmed_slot_headers (t : t) cache published_level slot_headers =
       add_confirmed_slot_header (t, cache) published_level slot_headers
 
