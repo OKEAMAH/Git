@@ -8,7 +8,9 @@ use crate::current_timestamp;
 use crate::delayed_inbox::DelayedInbox;
 use crate::inbox::InboxContent;
 use crate::inbox::{read_inbox, TezosContracts};
+use crate::read_last_info_per_level_timestamp;
 use crate::upgrade::store_kernel_upgrade;
+use crate::Timestamp;
 use anyhow::Ok;
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_evm_logging::{log, Level::*};
@@ -88,9 +90,11 @@ fn fetch_sequencer_blueprints<Host: Runtime>(
         Some(delayed_bridge),
         Some(sequencer),
     )? {
+        let timestamp = read_last_info_per_level_timestamp(host)
+            .unwrap_or_else(|_| Timestamp::from(0));
         // Store the transactions in the delayed inbox.
         for transaction in transactions {
-            delayed_inbox.save_transaction(host, transaction)?;
+            delayed_inbox.save_transaction(host, transaction, timestamp)?;
         }
 
         // Store the blueprints.
