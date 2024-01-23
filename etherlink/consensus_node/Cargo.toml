@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2024 TriliTech <contact@trili.tech>
+#
+# SPDX-License-Identifier: MIT
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/node"
+]
+
+[workspace.package]
+version = "0.1.0"
+
+[workspace.dependencies]
+tokio = "1.28.1"
