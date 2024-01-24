@@ -518,7 +518,7 @@ module Inner = struct
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = FFT.select_fft_domain page_length in
     let srs_g2_shards, srs_g2_pages, srs_g2_commitment =
-      Srs_verifier.get_verifier_srs2
+      Srs_verifier.For_tests.get_verifier_srs2
         ~max_polynomial_length
         ~page_length_domain
         ~shard_length
@@ -535,7 +535,7 @@ module Inner = struct
         ~page_size
         ~redundancy_factor
         ~number_of_shards
-        ~srs_g1_length:(Srs_g1.size srs_g1)
+        ~srs_g1_length:max_int
         ~srs_g2_length:max_int
     in
     let kate_amortized =
@@ -1244,7 +1244,7 @@ module Verifier = Inner
 module Internal_for_tests = struct
   module Parameters_bounds = Parameters_bounds_for_tests
 
-  let parameters_initialisation () = Srs_verifier.fake_srs
+  let parameters_initialisation () = Srs_verifier.For_tests.fake_srs
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1321,7 +1321,7 @@ module Internal_for_tests = struct
     let mode, (srs_g1, srs_g2) =
       match !initialisation_parameters with
       | Some srs -> (`Prover, srs)
-      | None -> (`Verifier, Srs_verifier.fake_srs)
+      | None -> (`Verifier, Srs_verifier.For_tests.fake_srs)
     in
     ensure_validity
       ~mode

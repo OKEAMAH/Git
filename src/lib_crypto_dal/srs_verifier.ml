@@ -45,7 +45,7 @@ module Parameters_bounds_for_tests = struct
      their length must be greater than the number of shards. *)
   let max_page_size_log2 = max_slot_size_log2 - size_offset_log2
 
-  let max_srs_size = 1 lsl (max_slot_size_log2 + 1)
+  let max_srs_size = 1 lsl 15
 
   (* The set of parameters maximizing the SRS length, and which
      is in the codomain of [generate_parameters]. *)
@@ -83,15 +83,37 @@ let slot_as_polynomial_length ~slot_size ~page_size =
   let page_length_domain = domain_length ~size:page_size in
   slot_size / page_size * page_length_domain
 
-let fake_srs =
-  let length = Parameters_bounds_for_tests.max_srs_size in
-  let secret =
+module For_tests = struct
+  let fake_srs_seed =
     Scalar.of_string
       "20812168509434597367146703229805575690060615791308155437936410982393987532344"
-  in
-  let srs_g1 = Srs_g1.generate_insecure length secret in
-  let srs_g2 = Srs_g2.generate_insecure length secret in
-  (srs_g1, srs_g2)
+
+  let fake_srs =
+    let length = Parameters_bounds_for_tests.max_srs_size in
+    let srs_g1 = Srs_g1.generate_insecure length fake_srs_seed in
+    let srs_g2 = Srs_g2.generate_insecure length fake_srs_seed in
+    (srs_g1, srs_g2)
+
+  let get_srs1 i = G1.mul G1.one (Scalar.pow fake_srs_seed (Z.of_int i))
+
+  let get_srs2 i = G2.mul G2.one (Scalar.pow fake_srs_seed (Z.of_int i))
+
+  let get_verifier_srs2 ~max_polynomial_length ~page_length_domain ~shard_length
+      =
+    let srs_g2_shards = get_srs2 shard_length in
+    let srs_g2_pages = get_srs2 page_length_domain in
+    let srs_g2_commitment =
+      let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
+      let max_committable_degree =
+        Parameters_bounds_for_tests.max_srs_size - 1
+      in
+      let offset_monomial_degree =
+        max_committable_degree - max_allowed_committed_poly_degree
+      in
+      get_srs2 offset_monomial_degree
+    in
+    (srs_g2_shards, srs_g2_pages, srs_g2_commitment)
+end
 
 (* Bounds (in log₂)
    1 <= redundancy<= 4
@@ -168,7 +190,7 @@ let generate_poly_lengths p =
   List.sort_uniq Int.compare (page_srs @ commitment_srs @ shard_srs)
 
 let print_verifier_srs () =
-  let srs_g1, srs_g2 = fake_srs in
+  let srs_g1, srs_g2 = For_tests.fake_srs in
   let srs2 =
     List.map
       (fun i ->
@@ -840,15 +862,15 @@ let srs_g2 =
   ]
   |> read_srs_g2
 
-let get_verifier_srs2 ~max_polynomial_length ~page_length_domain ~shard_length =
-  let srs_g2_shards = get_srs2 srs_g2 shard_length in
-  let srs_g2_pages = get_srs2 srs_g2 page_length_domain in
-  let srs_g2_commitment =
-    let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
-    let max_committable_degree = Parameters_bounds_for_tests.max_srs_size - 1 in
-    let offset_monomial_degree =
-      max_committable_degree - max_allowed_committed_poly_degree
-    in
-    get_srs2 srs_g2 offset_monomial_degree
-  in
-  (srs_g2_shards, srs_g2_pages, srs_g2_commitment)
+(* let get_verifier_srs2 ~max_polynomial_length ~page_length_domain ~shard_length =
+   let srs_g2_shards = get_srs2 srs_g2 shard_length in
+   let srs_g2_pages = get_srs2 srs_g2 page_length_domain in
+   let srs_g2_commitment =
+     let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
+     let max_committable_degree = Parameters_bounds_for_tests.max_srs_size - 1 in
+     let offset_monomial_degree =
+       max_committable_degree - max_allowed_committed_poly_degree
+     in
+     get_srs2 srs_g2 offset_monomial_degree
+   in
+   (srs_g2_shards, srs_g2_pages, srs_g2_commitment) *)
