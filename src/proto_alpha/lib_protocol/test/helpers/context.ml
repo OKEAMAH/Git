@@ -511,6 +511,9 @@ module Delegate = struct
 
   let deactivated ctxt pkh = Delegate_services.deactivated rpc_ctxt ctxt pkh
 
+  let delegated_balance ctxt pkh =
+    Delegate_services.delegated_balance rpc_ctxt ctxt pkh
+
   let voting_info ctxt d = Alpha_services.Delegate.voting_info rpc_ctxt ctxt d
 
   let consensus_key ctxt pkh = Delegate_services.consensus_key rpc_ctxt ctxt pkh

@@ -206,23 +206,26 @@ module Frozen_tez = struct
 
   (* For slashing, slash equally *)
   let sub_tez_from_all_current tez a =
-    let self_portion = Tez.ratio a.self_current (total_current a) in
-    let self_quantity = Tez.mul_q tez self_portion |> Tez.of_q ~round:`Up in
-    let self_current =
-      if Tez.(self_quantity >= a.self_current) then Tez.zero
-      else Tez.(a.self_current -! self_quantity)
-    in
-    let co_quantity = Tez.(tez -! self_quantity) in
-    let s = total_co_current_q a.co_current in
-    if Partial_tez.(geq (of_tez co_quantity) s) then
-      {a with self_current; co_current = String.Map.empty}
+    let total_current = total_current a in
+    if Tez.(equal total_current zero) then assert false
     else
-      let f p_amount =
-        let q = Q.div p_amount s in
-        Partial_tez.sub p_amount (Tez.mul_q co_quantity q)
-        (* > 0 *)
+      let self_portion = Tez.ratio a.self_current total_current in
+      let self_quantity = Tez.mul_q tez self_portion |> Tez.of_q ~round:`Up in
+      let self_current =
+        if Tez.(self_quantity >= a.self_current) then Tez.zero
+        else Tez.(a.self_current -! self_quantity)
       in
-      {a with self_current; co_current = String.Map.map f a.co_current}
+      let co_quantity = Tez.(tez -! self_quantity) in
+      let s = total_co_current_q a.co_current in
+      if Partial_tez.(geq (of_tez co_quantity) s) then
+        {a with self_current; co_current = String.Map.empty}
+      else
+        let f p_amount =
+          let q = Q.div p_amount s in
+          Partial_tez.sub p_amount (Tez.mul_q co_quantity q)
+          (* > 0 *)
+        in
+        {a with self_current; co_current = String.Map.map f a.co_current}
 
   (* Adds frozen to account. Happens each stake in frozen deposits *)
   let add_current_q amount account a =
@@ -300,14 +303,16 @@ module Frozen_tez = struct
     in
     let total_current = total_current a in
     let slashed_amount_final = Tez.min slashed_amount total_current in
-    (* TODO use the real value *)
-    let rewarded =
-      Tez.(mul_q slashed_amount_final Q.(1 // 7) |> of_q ~round:`Down)
-    in
-    let burnt = Tez.(slashed_amount_final -! rewarded) in
-    let a = sub_tez_from_all_current rewarded a in
-    let a = sub_tez_from_all_current burnt a in
-    (a, slashed_amount_final)
+    if Tez.(equal slashed_amount_final zero) then (a, Tez.zero)
+    else
+      (* TODO use the real value for den *)
+      let rewarded =
+        Tez.(mul_q slashed_amount_final Q.(1 // 7) |> of_q ~round:`Down)
+      in
+      let burnt = Tez.(slashed_amount_final -! rewarded) in
+      let a = sub_tez_from_all_current rewarded a in
+      let a = sub_tez_from_all_current burnt a in
+      (a, slashed_amount_final)
 end
 
 (** Representation of Unstaked frozen deposits *)

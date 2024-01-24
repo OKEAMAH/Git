@@ -679,6 +679,9 @@ let exec_unit f =
 (** After baking and applying rewards in state *)
 let check_all_balances block state : unit tzresult Lwt.t =
   let open Lwt_result_syntax in
+  (* ignore block ;
+     ignore state ;
+        return_unit *)
   let State.{account_map; total_supply; _} = state in
   let* actual_total_supply = Context.get_total_supply (B block) in
   let*! r1 =
@@ -2680,6 +2683,61 @@ module Slashing = struct
         --> check_balance_field "delegate" `Unstaked_frozen_total Tez.zero)
     --> wait_n_cycles (constants.preserved_cycles + 1)
 
+  let test_mini_slash_2 =
+    let open Lwt_result_syntax in
+    let constants = init_constants ~autostaking_enable:false () in
+    let print_delegated delegate_name =
+      exec_unit (fun (block, state) ->
+          let delegate = State.find_account delegate_name state in
+          let*! info = Context.Delegate.(info (B block) delegate.pkh) in
+          let* _ =
+            match info with
+            | Ok info ->
+                let delegated = info.delegated_balance in
+                Log.info "%a@." Tez.pp delegated ;
+                return_unit
+            | Error _ -> (* Not a delegate *) return_unit
+          in
+          return_unit)
+    in
+    Tag "No AI"
+    --> begin_test ~activate_ai:false constants ["delegate"; "baker"]
+    --> set_baker "baker"
+    --> unstake "delegate" (Amount Tez.one_mutez)
+    (* --> next_cycle
+       --> unstake "delegate" (Amount (Tez.of_mutez 2L)) *)
+    --> print_delegated "delegate"
+    --> next_cycle --> double_bake "delegate" --> make_denunciations ()
+    --> print_delegated "delegate" --> next_cycle --> print_delegated "delegate"
+
+  let test_too_many_slashes =
+    let open Lwt_result_syntax in
+    let constants = init_constants ~autostaking_enable:false () in
+    let print_delegated delegate_name =
+      exec_unit (fun (block, state) ->
+          let delegate = State.find_account delegate_name state in
+          let* delegated_balance =
+            Context.Delegate.(delegated_balance (B block) delegate.pkh)
+          in
+          Log.info "%a@." Tez.pp delegated_balance ;
+          return_unit)
+    in
+    Tag "No AI"
+    --> begin_test ~activate_ai:false constants ["delegate"; "baker"]
+    --> set_baker "baker"
+    --> loop
+          1
+          (unstake "delegate" (Amount (Tez.of_mutez 123_456L))
+          --> print_delegated "delegate" --> next_cycle)
+    --> double_attest "delegate" --> make_denunciations ()
+    --> double_attest "delegate" --> double_attest "delegate"
+    (* --> unstake "delegate" (Amount (Tez.of_mutez 123_456L)) *)
+    --> next_cycle
+    --> make_denunciations () (* --> print_delegated "delegate" *)
+    (* --> unstake "delegate" (Amount (Tez.of_mutez 123_456L)) *)
+    --> next_cycle
+    --> print_delegated "delegate"
+
   let test_slash_rounding =
     let constants = init_constants ~autostaking_enable:false () in
     begin_test ~activate_ai:true constants ["delegate"; "baker"]
@@ -2705,6 +2763,8 @@ module Slashing = struct
          ( "Test stake from unstake reduce initial amount",
            test_slash_correct_amount_after_stake_from_unstake );
          ("Test unstake 1 mutez then slash", test_mini_slash);
+         ("minimini", test_mini_slash_2);
+         ("too_many_slashes", test_too_many_slashes);
          ("Test slash rounding", test_slash_rounding);
        ]
 end
