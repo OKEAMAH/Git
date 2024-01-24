@@ -10,7 +10,7 @@ use crate::{
     contract::Contract,
     michelson::{
         Michelson, MichelsonBytes, MichelsonContract, MichelsonInt, MichelsonOption,
-        MichelsonTicket, MichelsonPair, MichelsonString, MichelsonUnit,
+        MichelsonPair, MichelsonString, MichelsonTicket, MichelsonUnit,
     },
 };
 use core::{
@@ -24,7 +24,7 @@ use num_bigint::BigInt;
 use num_traits::Signed;
 use std::fmt::Debug;
 use tezos_data_encoding::{
-    enc::{BinError, BinResult, BinWriter},
+    enc::{BinError, BinWriter, BinResult},
     encoding::HasEncoding,
     nom::{NomReader, NomResult},
     types::{SizedBytes, Zarith},
@@ -111,7 +111,7 @@ pub enum TicketError {
 
 // Expr is guarantee by construction to implement `Michelson` even though
 // rust does not enforce it in type aliases `type TicketRepr<Expr: Michelson>`.
-type TicketRepr<Expr> = MichelsonTicket<MichelsonContract, Expr, Expr, MichelsonInt>;
+type TicketRepr<Expr> = MichelsonTicket<Expr>;
 
 /// Michelson ticket representative.
 #[derive(Debug, PartialEq, Eq)]
@@ -146,9 +146,12 @@ impl<Expr: Michelson> Ticket<Expr> {
     ) -> Result<Self, TicketError> {
         let amount: BigInt = amount.into();
         if amount.is_positive() {
-            Ok(Ticket(MichelsonPair(
+            Ok(Ticket(MichelsonTicket(
                 MichelsonContract(creator),
-                MichelsonPair(contents.into(), MichelsonInt(Zarith(amount))),
+                // todo!("Créer le contents_type depuis Val"),
+                // contents_type.into(), //
+                contents.into(),
+                MichelsonInt(Zarith(amount)),
             )))
         } else {
             Err(TicketError::InvalidAmount(amount))
@@ -179,11 +182,11 @@ impl<Expr: Michelson> Ticket<Expr> {
     }
     /// The ticket's content
     pub fn contents(&self) -> &Expr {
-        &self.0 .1 .0
+        &self.0 .1
     }
     /// The ticket's amount
     pub fn amount(&self) -> &BigInt {
-        &self.0 .1 .1 .0 .0
+        &self.0 .2 .0 .0
     }
 
     /// same as `amount()` but returns it as a `T`

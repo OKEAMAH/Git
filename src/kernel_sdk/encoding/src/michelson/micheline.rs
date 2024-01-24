@@ -14,7 +14,7 @@ use nom::sequence::{pair, preceded, tuple};
 use tezos_data_encoding::enc::{self, BinResult, BinSerializer, BinWriter};
 use tezos_data_encoding::encoding::{Encoding, HasEncoding};
 use tezos_data_encoding::has_encoding;
-use tezos_data_encoding::nom::{self as nom_read, NomInput, NomReader, NomResult};
+use tezos_data_encoding::nom::{self as nom_read, list, NomInput, NomReader, NomResult};
 use tezos_data_encoding::types::Zarith;
 
 use std::fmt::Debug;
@@ -126,6 +126,8 @@ mod annots {
 
 use annots::Annotations;
 
+use super::{MichelsonContract, MichelsonInt};
+
 // -----
 // TYPES
 // -----
@@ -228,11 +230,12 @@ where
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct MichelineGeneric<Args, const PRIM_TAG: u8>
+pub struct MichelineGeneric<Arg, const PRIM_TAG: u8>
 where
-    Args: Debug + PartialEq + Eq,
+    Arg: Debug + PartialEq + Eq,
 {
-    pub(crate) args: Args,
+    pub(crate) args: Vec<Arg>,
+    pub(crate) annots: Annotations,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -346,6 +349,25 @@ where
         Node::Prim {
             prim_tag: PRIM_TAG,
             args: vec![a.arg1.into(), a.arg2.into()],
+            annots: a.annots,
+        }
+    }
+}
+
+impl<Arg, const PRIM_TAG: u8> From<MichelineGeneric<Arg, PRIM_TAG>> for Node
+where
+    Arg: Debug + PartialEq + Eq,
+    Node: From<Arg>,
+{
+    fn from(a: MichelineGeneric<Arg, PRIM_TAG>) -> Self {
+        let mut args = Vec::new();
+        for a in a.args {
+            let node = a.into();
+            args.push(node);
+        }
+        Node::Prim {
+            prim_tag: PRIM_TAG,
+            args,
             annots: a.annots,
         }
     }
@@ -535,6 +557,20 @@ where
         map(parse, |(arg1, (arg2, annots))| {
             MichelinePrim2ArgsSomeAnnots { arg1, arg2, annots }
         })(input)
+    }
+}
+
+impl<Arg, const PRIM_TAG: u8> NomReader for MichelineGeneric<Arg, PRIM_TAG>
+where
+    Arg: NomReader + Debug + PartialEq + Eq,
+{
+    fn nom_read(input: &[u8]) -> NomResult<Self> {
+        let parse = preceded(
+            tag([MICHELINE_PRIM_GENERIC_TAG, PRIM_TAG]),
+            pair(list(Arg::nom_read), Annotations::nom_read),
+        );
+
+        map(parse, |(args, annots)| MichelineGeneric { args, annots })(input)
     }
 }
 
@@ -731,6 +767,28 @@ where
     }
 }
 
+impl<Arg, const PRIM_TAG: u8> BinWriter for MichelineGeneric<Arg, PRIM_TAG>
+where
+    Arg: BinWriter + Debug + PartialEq + Eq,
+{
+    fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
+        bin_write_prim_generic(PRIM_TAG, &self.args, &self.annots, output)
+    }
+}
+
+// impl BinWriter for IntTicket {
+//     fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
+//         bin_write_prim_generic_ticket(
+//             crate::michelson::prim::TICKET_TAG,
+//             &self.creator().into(),
+//             &self.contents_type(),
+//             &self.contents().into(),
+//             &self.amount().into(),
+//             output,
+//         )
+//     }
+// }
+
 impl BinWriter for Node {
     fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
         match self {
@@ -922,6 +980,27 @@ where
     enc::put_bytes(&[MICHELINE_PRIM_GENERIC_TAG, prim_tag], output);
     enc::dynamic(enc::list(Arg::bin_write))(args, output)?;
     Annotations::bin_write(annots, output)?;
+
+    Ok(())
+}
+
+/// Write `PRIM_TAG`, `args` & `annots` into an `obj3` encoding, prefixed with the
+/// [MICHELINE_PRIM_GENERIC_TAG].
+pub(crate) fn bin_write_prim_generic_ticket<Arg0>(
+    prim_tag: u8,
+    arg0: &MichelsonContract,
+    arg1: &Arg0,
+    arg2: &MichelsonInt,
+    output: &mut Vec<u8>,
+) -> BinResult
+where
+    Arg0: BinWriter,
+{
+    enc::put_bytes(&[MICHELINE_PRIM_GENERIC_TAG, prim_tag], output);
+    arg0.bin_write(output)?;
+    arg1.bin_write(output)?;
+    arg2.bin_write(output)?;
+    // enc::dynamic(enc::list(Arg::bin_write))(args, output)?;
 
     Ok(())
 }

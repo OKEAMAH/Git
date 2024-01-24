@@ -15,13 +15,15 @@ mod micheline;
 #[cfg(feature = "alloc")]
 pub mod ticket;
 
+use self::micheline::{bin_write_prim_generic_ticket, MichelineGeneric};
+
 use super::contract::Contract;
 use micheline::{
     bin_write_micheline_bytes, bin_write_micheline_int, bin_write_micheline_string,
     bin_write_prim_1_arg_no_annots, bin_write_prim_2_args_no_annots,
-    bin_write_prim_generic, bin_write_prim_no_args_no_annots, nom_read_micheline_bytes,
-    nom_read_micheline_int, nom_read_micheline_string, MichelineGeneric,
-    MichelinePrim1ArgNoAnnots, MichelinePrim2ArgsNoAnnots, MichelinePrimNoArgsNoAnnots,
+    bin_write_prim_no_args_no_annots, nom_read_micheline_bytes, nom_read_micheline_int,
+    nom_read_micheline_string, MichelinePrim1ArgNoAnnots, MichelinePrim2ArgsNoAnnots,
+    MichelinePrimNoArgsNoAnnots,
 };
 use v1_primitives as prim;
 
@@ -95,17 +97,14 @@ where
 
 /// Michelson *ticket* encoding.
 #[derive(Debug, PartialEq, Eq)]
-pub struct MichelsonTicket<Arg0, Arg1, Arg2, Arg3>(
-    pub Arg0,
+pub struct MichelsonTicket<Arg1>(
+    pub MichelsonContract,
     pub Arg1,
-    pub Arg2,
-    pub Arg3,
+    // pub Arg2,
+    pub MichelsonInt,
 )
 where
-    Arg0: Debug + PartialEq + Eq,
-    Arg1: Debug + PartialEq + Eq,
-    Arg2: Debug + PartialEq + Eq,
-    Arg3: Debug + PartialEq + Eq;
+    Arg1: Debug + PartialEq + Eq;
 
 /// Michelson *or* encoding.
 #[derive(Debug, PartialEq, Eq)]
@@ -190,12 +189,9 @@ where
     }
 }
 
-impl<Arg0, Arg1, Arg2, Arg3> HasEncoding for MichelsonTicket<Arg0, Arg1, Arg2, Arg3>
+impl<Arg1> HasEncoding for MichelsonTicket<Arg1>
 where
-    Arg0: Debug + PartialEq + Eq,
     Arg1: Debug + PartialEq + Eq,
-    Arg2: Debug + PartialEq + Eq,
-    Arg3: Debug + PartialEq + Eq,
 {
     fn encoding() -> Encoding {
         Encoding::Custom
@@ -273,12 +269,9 @@ where
     }
 }
 
-impl<Arg0, Arg1, Arg2, Arg3> NomReader for MichelsonTicket<Arg0, Arg1, Arg2, Arg3>
+impl<Arg0> NomReader for MichelsonTicket<Arg0>
 where
     Arg0: NomReader + Debug + PartialEq + Eq,
-    Arg1: NomReader + Debug + PartialEq + Eq,
-    Arg2: NomReader + Debug + PartialEq + Eq,
-    Arg3: NomReader + Debug + PartialEq + Eq,
 {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
         map(
@@ -368,15 +361,12 @@ where
     }
 }
 
-impl<Arg0, Arg1, Arg2, Arg3> BinWriter for MichelsonTicket<Arg0, Arg1, Arg2, Arg3>
+impl<Arg1> BinWriter for MichelsonTicket<Arg1>
 where
-    Arg0: BinWriter + Debug + PartialEq + Eq,
     Arg1: BinWriter + Debug + PartialEq + Eq,
-    Arg2: BinWriter + Debug + PartialEq + Eq,
-    Arg3: BinWriter + Debug + PartialEq + Eq,
 {
     fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-        bin_write_prim_generic(prim::TICKET_TAG, &self.0, &self.1, output)
+        bin_write_prim_generic_ticket(prim::TICKET_TAG, &self.0, &self.1, &self.2, output)
     }
 }
 
@@ -443,6 +433,15 @@ where
 {
     fn from(micheline: MichelinePrim1ArgNoAnnots<Arg1, { prim::RIGHT_TAG }>) -> Self {
         Self::Right(micheline.arg)
+    }
+}
+
+impl<Arg0> From<MichelineGeneric<Arg0, { prim::TICKET_TAG }>> for MichelsonTicket<Arg0>
+where
+    Arg0: Debug + PartialEq + Eq,
+{
+    fn from(micheline: MichelineGeneric<Arg0, { prim::TICKET_TAG }>) -> Self {
+        todo!("A faire");
     }
 }
 
