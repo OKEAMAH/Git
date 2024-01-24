@@ -359,15 +359,79 @@ let shutdown () =
   | Ok w -> Worker.shutdown w
 
 let message_status state msg_hash =
+  let open Result_syntax in
   match Message_queue.find_opt state.messages msg_hash with
-  | Some msg -> Some (Pending_batch, L2_message.content msg)
+  | Some msg ->
+      return (Some (L2_message.content msg), Rollup_node_services.Pending_batch)
   | None -> (
       match Batched_messages.find_opt state.batched msg_hash with
-      | Some {content; l1_hash} -> Some (Batched l1_hash, content)
-      | None -> None)
+      | None -> return (None, Rollup_node_services.Unknown)
+      | Some {content = msg; l1_hash} -> (
+          let return status = return (Some msg, status) in
+          match Injector.operation_status l1_hash with
+          | None -> return Rollup_node_services.Unknown
+          | Some (Pending op) ->
+              return (Rollup_node_services.Pending_injection op)
+          | Some (Injected {op; oph; op_index}) ->
+              return
+                (Rollup_node_services.Injected
+                   {op = op.operation; oph; op_index})
+          | Some (Included {op; oph; op_index; l1_block; l1_level}) ->
+              let* w = Result.map_error TzTrace.make (Lazy.force worker) in
+              let state = Worker.state w in
+              let finalized =
+                match state.last_seen_head with
+                | None -> false
+                | Some {level; _} -> level >= Int32.add l1_level 2l
+              in
+              let cemented =
+                (* Default value, cementation status is not known by
+                   autonomous batcher *)
+                false
+              in
+              return
+                (Rollup_node_services.Included
+                   {
+                     op = op.operation;
+                     oph;
+                     op_index;
+                     l1_block;
+                     l1_level;
+                     finalized;
+                     cemented;
+                   })))
 
 let message_status msg_hash =
   let open Result_syntax in
-  let+ w = Result.map_error TzTrace.make (Lazy.force worker) in
+  let* w = Result.map_error TzTrace.make (Lazy.force worker) in
   let state = Worker.state w in
   message_status state msg_hash
+
+module RPC_directory = struct
+  module Local_directory = Rpc_directory_helpers.Make_directory (struct
+    include Rollup_node_services.Local
+
+    type context = unit
+
+    type subcontext = unit
+
+    let context_of_prefix () () = Lwt_result.return ()
+  end)
+
+  let () =
+    Local_directory.register0 Rollup_node_services.Local.injection
+    @@ fun _node_ctxt () messages -> register_messages messages
+
+  let () =
+    Local_directory.register0 Rollup_node_services.Local.batcher_queue
+    @@ fun _node_ctxt () () ->
+    let open Lwt_result_syntax in
+    let*? queue = get_queue () in
+    return queue
+
+  let () =
+    Local_directory.register1 Rollup_node_services.Local.batcher_message
+    @@ fun () hash () () -> message_status hash |> Lwt.return
+end
+
+let rpc_directory = RPC_directory.Local_directory.build_directory ()

@@ -61,7 +61,11 @@ val get_queue : unit -> (L2_message.hash * L2_message.t) list tzresult
     when the application fails, the messages are not queued.  *)
 val register_messages : string list -> L2_message.hash list tzresult Lwt.t
 
-(** The status of a message in the batcher. Returns [None] if the message is not
-    known by the batcher (the batcher only keeps the batched status of the last
-    500000 messages). *)
-val message_status : L2_message.hash -> (status * string) option tzresult
+(** The status of a message in the batcher. Returns [(None, Unkwnown)] if the
+    message is not known by the batcher (the batcher only keeps the batched
+    status of the last 500000 messages). *)
+val message_status :
+  L2_message.hash ->
+  (string option * Rollup_node_services.message_status) tzresult
+
+val rpc_directory : unit Tezos_rpc.Directory.t
