@@ -1489,10 +1489,14 @@ module Make (Parameters : PARAMETERS) = struct
     in
     return operation.hash
 
-  let shutdown () =
-    let workers = Worker.list table in
+  let shutdown ?tags () =
+    let workers =
+      match tags with
+      | None -> Worker.list table |> List.map snd
+      | Some tags -> Worker.find_opt table (Tags.of_list tags) |> Option.to_list
+    in
     (* Don't shutdown L1 monitoring otherwise worker shutdown hangs *)
-    List.iter_p (fun (_signer, w) -> Worker.shutdown w) workers
+    List.iter_p Worker.shutdown workers
 
   let op_status_in_worker state l1_hash =
     match Op_queue.find_opt state.queue l1_hash with
