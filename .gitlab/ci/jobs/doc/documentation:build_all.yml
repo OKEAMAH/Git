@@ -1,23 +1,35 @@
-# Warning: the documentation:linkcheck job must have at least the same
-# restrictions in the rules as documentation:build_all, otherwise the CI
-# may complain that documentation:linkcheck depends on documentation:build_all
-# which does not exist.
+# This file was automatically generated, do not edit.
+# Edit file ci/bin/main.ml instead.
+
 documentation:build_all:
-  extends:
-    - .default_settings_template
-    - .image_template__runtime_build_test_dependencies
-    - .tags_template__build
-    - .rules__octez_docs_changes
+  image: ${build_deps_image_name}:runtime-build-test-dependencies--${build_deps_image_version}
   stage: doc
-  needs: [trigger]
+  tags:
+  - gcp
+  rules:
+  - changes:
+    - scripts/**/*/
+    - script-inputs/**/*/
+    - src/**/*
+    - tezt/**/*
+    - vendors/**/*
+    - dune
+    - dune-project
+    - dune-workspace
+    - docs/**/*
+    - .gitlab/**/*
+    - .gitlab-ci.yml
+    when: on_success
+  needs:
+  - trigger
+  dependencies: []
   before_script:
-    - eval $(opam env)
-    - . $HOME/.venv/bin/activate
+  - eval $(opam env)
+  - . $HOME/.venv/bin/activate
   script:
-    - ./.gitlab/ci/jobs/doc/documentation:build_all.sh
+  - ./.gitlab/ci/jobs/doc/documentation:build_all.sh
   artifacts:
-    expose_as: 'Documentation - excluding old protocols'
-    paths:
-      # Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706)
-      - docs/_build/
     expire_in: 1 week
+    paths:
+    - docs/_build/
+    expose_as: Documentation - excluding old protocols

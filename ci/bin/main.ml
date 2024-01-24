@@ -1396,6 +1396,27 @@ let job_documentation_linkcheck =
        ~allow_failure:Yes
        ["make all"; "make -C docs redirectcheck"; "make -C docs linkcheck"]
 
+let _job_documentation_build_all =
+  job_external
+  @@ job
+       ~name:"documentation:build_all"
+       ~image:Images.runtime_build_test_dependencies
+       ~stage:Stages.doc
+       ~dependencies:(Dependent [Job trigger])
+         (* Warning: the [documentation:linkcheck] job must have at least the same
+            restrictions in the rules as [documentation:build_all], otherwise the CI
+            may complain that [documentation:linkcheck] depends on [documentation:build_all]
+            which does not exist. *)
+       ~rules:[job_rule ~changes:changeset_octez_docs ()]
+       ~before_script:(before_script ~eval_opam:true ~init_python_venv:true [])
+       ~artifacts:
+         (artifacts
+            ~expose_as:"Documentation - excluding old protocols"
+            ~expire_in:(Weeks 1)
+            (* Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706) *)
+            ["docs/_build/"])
+       ["./.gitlab/ci/jobs/doc/documentation:build_all.sh"]
+
 let job_install_python ~name ~image =
   job
     ~name
