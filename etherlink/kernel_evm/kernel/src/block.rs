@@ -66,26 +66,6 @@ fn compute<Host: Runtime>(
     let mut is_first_transaction = true;
     // iteration over all remaining transaction in the block
     while block_in_progress.has_tx() {
-        // is reboot necessary ?
-        if block_in_progress.would_overflow() {
-            // If it is not the first transaction this means there will never be
-            // enough ticks for this transaction.
-            if !is_first_transaction || !is_first_block_of_reboot {
-                return Ok(ComputationResult::RebootNeeded);
-            } else {
-                let transaction = block_in_progress.pop_tx().ok_or(Error::Reboot)?;
-                let data_size: u64 = transaction.data_size();
-                block_in_progress.account_for_invalid_transaction(data_size);
-                log!(
-                    host,
-                    Debug,
-                    "Discarding transaction {} as it overflows",
-                    hex::encode(transaction.tx_hash)
-                );
-                continue;
-            }
-        }
-
         let transaction = block_in_progress.pop_tx().ok_or(Error::Reboot)?;
         let data_size: u64 = transaction.data_size();
 

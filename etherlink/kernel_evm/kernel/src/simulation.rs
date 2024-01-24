@@ -15,6 +15,7 @@ use crate::{
     tick_model, CONFIG,
 };
 
+use evm_execution::run_transaction;
 use evm_execution::{account_storage, handler::ExecutionOutcome, precompiles};
 use primitive_types::{H160, U256};
 use rlp::{Decodable, DecoderError, Rlp};
@@ -118,7 +119,7 @@ impl Evaluation {
             crate::retrieve_base_fee_per_gas(host)?
         };
 
-        let outcome = evm_execution::run_transaction(
+        let outcome = run_transaction(
             host,
             &current_constants,
             &mut evm_account_storage,
@@ -193,11 +194,62 @@ enum TxValidationOutcome {
     NonceTooLow,
     NotCorrectSignature,
     InvalidChainId,
-    GasLimitTooHigh,
     MaxGasFeeTooLow,
+    OutOfTick,
 }
 
 impl TxValidation {
+    // Run the transaction and checks if it fails with "OutOfTicks". It might
+    // fail for other reasons, but in that case it is still correct.
+    pub fn would_exhaust_ticks<Host: Runtime>(
+        host: &mut Host,
+        transaction: &EthereumTransactionCommon,
+        caller: &H160,
+    ) -> Result<bool, anyhow::Error> {
+        let chain_id = retrieve_chain_id(host)?;
+        let base_fee_per_gas = retrieve_base_fee_per_gas(host)?;
+
+        let current_constants = match storage::read_current_block(host) {
+            Ok(block) => block.constants(chain_id, base_fee_per_gas),
+            Err(_) => {
+                let timestamp = current_timestamp(host);
+                let timestamp = U256::from(timestamp.as_u64());
+                BlockConstants::first_block(timestamp, chain_id, base_fee_per_gas)
+            }
+        };
+
+        let mut evm_account_storage = account_storage::init_account_storage()
+            .map_err(|_| Error::Storage(StorageError::AccountInitialisation))?;
+        let precompiles = precompiles::precompile_set::<Host>();
+        let tx_data_size = transaction.data.len() as u64;
+        let allocated_ticks =
+            tick_model::estimate_remaining_ticks_for_transaction_execution(
+                0,
+                tx_data_size,
+            );
+
+        let gas_price = crate::retrieve_base_fee_per_gas(host)?;
+
+        match run_transaction(
+            host,
+            &current_constants,
+            &mut evm_account_storage,
+            &precompiles,
+            CONFIG,
+            transaction.to,
+            *caller,
+            transaction.data.clone(),
+            Some(transaction.gas_limit), // gas could be omitted
+            gas_price,
+            Some(transaction.value),
+            false,
+            allocated_ticks,
+        ) {
+            Err(evm_execution::EthereumError::OutOfTicks) => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
     /// Execute the simulation
     pub fn run<Host: Runtime>(
         &self,
@@ -226,10 +278,13 @@ impl TxValidation {
         if tx.chain_id.is_some() && tx.chain_id != Some(chain_id) {
             return Ok(TxValidationOutcome::InvalidChainId);
         }
-        // Check if the gas limit is not too high
-        if tx.gas_limit > MAX_TRANSACTION_GAS_LIMIT {
-            return Ok(TxValidationOutcome::GasLimitTooHigh);
+
+        // Check if running the transaction (assuming it is valid) would run out
+        // of ticks.
+        if let Ok(true) = Self::would_exhaust_ticks(host, tx, &caller) {
+            return Ok(TxValidationOutcome::OutOfTick);
         }
+
         // Check if the gas price is high enough
         if tx.max_fee_per_gas < base_fee_per_gas
             || tx.max_fee_per_gas < tx.max_priority_fee_per_gas
@@ -401,13 +456,21 @@ fn store_tx_validation_outcome<Host: Runtime>(
             storage::store_simulation_status(host, false)?;
             storage::store_simulation_result(host, Some(b"Invalid chain id.".to_vec()))
         }
-        TxValidationOutcome::GasLimitTooHigh => {
-            storage::store_simulation_status(host, false)?;
-            storage::store_simulation_result(host, Some(b"Gas limit too high.".to_vec()))
-        }
         TxValidationOutcome::MaxGasFeeTooLow => {
             storage::store_simulation_status(host, false)?;
             storage::store_simulation_result(host, Some(b"Max gas fee too low.".to_vec()))
+        }
+        TxValidationOutcome::OutOfTick => {
+            storage::store_simulation_status(host, false)?;
+            storage::store_simulation_result(
+                host,
+                Some(
+                    b"The transaction would exhaust all the ticks it is allocated. \
+                      Try reducing its gas consumption or splitting the call in \
+                      multiple steps, if possible."
+                        .to_vec(),
+                ),
+            )
         }
     }
 }
