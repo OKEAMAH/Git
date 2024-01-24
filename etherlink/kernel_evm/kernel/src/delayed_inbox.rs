@@ -2,8 +2,10 @@
 // SPDX-FileCopyrightText: 2024 Trilitech <contact@trili.tech>
 
 use crate::{
+    current_timestamp,
     inbox::{Deposit, Transaction, TransactionContent},
     linked_list::LinkedList,
+    storage,
 };
 use anyhow::Result;
 use rlp::{Decodable, DecoderError, Encodable};
@@ -166,6 +168,22 @@ impl DelayedInbox {
         Ok(())
     }
 
+    fn transaction_from_delayed(
+        tx_hash: Hash,
+        delayed: DelayedTransaction,
+    ) -> Transaction {
+        match delayed {
+            DelayedTransaction::Ethereum(tx) => Transaction {
+                tx_hash: tx_hash.0,
+                content: TransactionContent::Ethereum(tx),
+            },
+            DelayedTransaction::Deposit(deposit) => Transaction {
+                tx_hash: tx_hash.0,
+                content: TransactionContent::Deposit(deposit),
+            },
+        }
+    }
+
     pub fn find_and_remove_transaction<Host: Runtime>(
         &mut self,
         host: &mut Host,
@@ -181,25 +199,65 @@ impl DelayedInbox {
             |DelayedInboxItem {
                  transaction,
                  timestamp,
-             }| match transaction {
-                DelayedTransaction::Ethereum(tx) => (
-                    Transaction {
-                        tx_hash: tx_hash.0,
-                        content: TransactionContent::Ethereum(tx),
-                    },
+             }| {
+                (
+                    Self::transaction_from_delayed(tx_hash, transaction),
                     timestamp,
-                ),
-                DelayedTransaction::Deposit(deposit) => (
-                    Transaction {
-                        tx_hash: tx_hash.0,
-                        content: TransactionContent::Deposit(deposit),
-                    },
-                    timestamp,
-                ),
+                )
             },
         );
 
         Ok(tx)
+    }
+
+    fn pop_first_if_timed_out<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+        now: Timestamp,
+        timeout: u64,
+    ) -> Result<Option<Transaction>> {
+        let to_pop = self.0.first_with_id(host)?.and_then(
+            |(
+                tx_hash,
+                DelayedInboxItem {
+                    transaction,
+                    timestamp,
+                },
+            )| {
+                if now.as_u64() - timestamp.as_u64() >= timeout {
+                    log!(
+                        host,
+                        Info,
+                        "Delayed transaction {} timed out",
+                        hex::encode(tx_hash)
+                    );
+                    Some((tx_hash, transaction))
+                } else {
+                    None
+                }
+            },
+        );
+        match to_pop {
+            None => Ok(None),
+            Some((hash, delayed)) => {
+                let _ = self.0.remove(host, &hash)?;
+                let transaction = Self::transaction_from_delayed(hash, delayed);
+                Ok(Some(transaction))
+            }
+        }
+    }
+
+    pub fn timed_out_transactions<Host: Runtime>(
+        &mut self,
+        host: &mut Host,
+    ) -> Result<Vec<Transaction>> {
+        let now = current_timestamp(host);
+        let timeout = storage::delayed_inbox_timeout(host)?;
+        let mut popped: Vec<Transaction> = vec![];
+        while let Some(tx) = self.pop_first_if_timed_out(host, now, timeout)? {
+            popped.push(tx)
+        }
+        Ok(popped)
     }
 }
 
