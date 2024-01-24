@@ -266,6 +266,8 @@ Available commands:
     execute docker compose up
   - restart
     execute docker compose restart
+  - deposit <amount> <source: tezos address> <target: evm address>
+    deposit xtz to etherlink via the ticketer
 EOF
   ;;
 esac
