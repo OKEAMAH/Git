@@ -401,8 +401,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         let non_zero_nonce = account
             .nonce(self.borrow_host())
             .map(|s| s != U256::zero())?;
+        let non_zero_balance = account
+            .balance(self.borrow_host())
+            .map(|s| s != U256::zero())?;
 
-        Ok(has_code || non_zero_nonce)
+        Ok(has_code || non_zero_nonce || non_zero_balance)
     }
 
     /// Returns true if there is a static transaction in progress, otherwise
@@ -1620,7 +1623,11 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
     }
 
     fn exists(&self, address: H160) -> bool {
-        self.code_size(address) > U256::zero()
+        let nonce = self.get_nonce(address).unwrap_or_default() > U256::zero();
+        let code_size = self.code_size(address) > U256::zero();
+        let balance = self.balance(address) > U256::zero();
+
+        nonce || code_size || balance
     }
 
     fn deleted(&self, address: H160) -> bool {
