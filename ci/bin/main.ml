@@ -1993,6 +1993,7 @@ let _jobs_tezt =
          ~name:"tezt-memory-3k"
          ~tezt_tests:"memory_3k"
          ~tezt_variant:"-memory_3k"
+         ~parallel:1
          ~dependencies
          ~rules
          ()
@@ -2008,6 +2009,7 @@ let _jobs_tezt =
          ~name:"tezt-time-sensitive"
          ~tezt_tests:"time_sensitive"
          ~tezt_variant:"-time_sensitive"
+         ~parallel:1
          ~dependencies
          ()
   in
