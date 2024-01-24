@@ -28,11 +28,16 @@ let amplify (shard_store : Store.Shards.t) commitment node_ctxt =
                  | _, index, Ok share -> Some Cryptobox.{index; share}
                  | _ -> None)
         in
-        let* _polynomial =
+        let* polynomial =
           Slot_manager_legacy.polynomial_from_shards_lwt
             cryptobox
             shards
             ~number_of_needed_shards
         in
+        let all_shards =
+          (* TODO: don't compute the shards that we already have *)
+          Cryptobox.shards_from_polynomial cryptobox polynomial
+        in
+        let* () = all_shards |> Seq.ES.iter (fun _shard -> return_unit) in
         return_unit
       else return_unit
