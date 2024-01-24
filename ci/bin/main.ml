@@ -2039,6 +2039,28 @@ let _jobs_tezt =
       tezt_static_binaries;
     ]
 
+let changeset_test_kernels =
+  [
+    ".gitlab-ci.yml";
+    "kernels.mk";
+    "src/kernel_*/**/*";
+    "src/risc_v/**/*";
+    "etherlink/kernel_evm/**/*";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+  ]
+
+let _job_test_kernels : job =
+  job_external @@ enable_kernels
+  @@ job
+       ~name:"test_kernels"
+       ~image:Images.rust_toolchain
+       ~stage:Stages.test
+       ~dependencies:(Dependent [Job trigger])
+       ~rules:[job_rule ~changes:changeset_test_kernels ()]
+       ["make -f kernels.mk check"; "make -f kernels.mk test"]
+       ~cache:[{key = "kernels"; paths = ["cargo/"]}]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
