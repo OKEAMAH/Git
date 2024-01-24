@@ -8,7 +8,7 @@ documentation:build_all:
     - .image_template__runtime_build_test_dependencies
     - .tags_template__build
     - .rules__octez_docs_changes
-  stage: build
+  stage: doc
   needs: [trigger]
   before_script:
     - eval $(opam env)
