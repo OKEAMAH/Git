@@ -69,3 +69,9 @@ let write_yaml ?(header = "") filename yaml =
           ("Could not convert JSON configuration to YAML string: " ^ error_msg)
   in
   write_file filename ~contents
+
+let range a b =
+  let rec range ?(acc = []) a b =
+    if b < a then acc else range ~acc:(b :: acc) a (b - 1)
+  in
+  range a b
