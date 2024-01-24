@@ -1930,6 +1930,94 @@ let _job_oc_test_liquidity_baking_scripts =
        ~before_script:(before_script ~source_version:true ~eval_opam:true [])
        ["./scripts/ci/test_liquidity_baking_scripts.sh"]
 
+let _jobs_tezt =
+  let dependencies =
+    Dependent
+      [
+        Artifacts job_build_x86_64_release;
+        Artifacts job_build_x86_64_exp_dev_extra;
+        Artifacts job_build_kernels;
+        Artifacts job_tezt_fetch_records;
+      ]
+  in
+  let rules = [job_rule ~changes:changeset_octez ()] in
+  let coverage_expiry = Days 3 in
+  let tezt : job =
+    job_enable_coverage_output ~expire_in:coverage_expiry
+    @@ job_tezt
+         ~name:"tezt"
+           (* Exclude tests with tags 'ci_disabled', 'flaky' and `memory_{3,4}k`.
+              See tezt/lib_tezos/tag.mli for more information. *)
+         ~tezt_tests:"/ci_disabled /flaky /memory_3k /memory_4k /time_sensitive"
+         ~tezt_parallel:3
+         ~parallel:60
+         ~rules
+         ~dependencies
+         ()
+  in
+  let tezt_memory_4k : job =
+    job_enable_coverage_output ~expire_in:coverage_expiry
+    @@ job_tezt
+         ~name:"tezt-memory-4k"
+         ~tezt_tests:"memory_4k"
+         ~tezt_variant:"-memory_4k"
+         ~parallel:4
+         ~dependencies
+         ~rules
+         ()
+  in
+  let tezt_memory_3k : job =
+    job_enable_coverage_output ~expire_in:coverage_expiry
+    @@ job_tezt
+         ~name:"tezt-memory-3k"
+         ~tezt_tests:"memory_3k"
+         ~tezt_variant:"-memory_3k"
+         ~dependencies
+         ~rules
+         ()
+  in
+  let tezt_time_sensitive : job =
+    (* the following tests are executed with [~tezt_parallel:1] to ensure
+       that other tests do not affect their executions. However, these
+       tests are not particularly cpu/memory-intensive hence they do not
+       need to run on a particular machine contrary to performance
+       regression tests. *)
+    job_enable_coverage_output ~expire_in:coverage_expiry
+    @@ job_tezt
+         ~name:"tezt-time-sensitive"
+         ~tezt_tests:"time_sensitive"
+         ~tezt_variant:"-time_sensitive"
+         ~dependencies
+         ()
+  in
+  let tezt_static_binaries : job =
+    job_tezt (* TODO: this job might as well run on [gcp_tezt] *)
+      ~tags:["gcp"]
+      ~name:"tezt:static-binaries"
+      ~tezt_tests:"cli"
+      ~tezt_parallel:3
+      ~retry:0
+      ~dependencies:
+        (Dependent
+           [
+             Artifacts job_build_x86_64_exp_dev_extra;
+             Artifacts job_static_x86_64_experimental;
+             Artifacts job_tezt_fetch_records;
+           ])
+      ~rules
+      ~before_script:(before_script ["mv octez-binaries/x86_64/octez-* ."])
+      ()
+  in
+  jobs_external
+    ~path:"test/tezt.yml"
+    [
+      tezt;
+      tezt_memory_4k;
+      tezt_memory_3k;
+      tezt_time_sensitive;
+      tezt_static_binaries;
+    ]
+
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
    pipeline is defined. At the moment, all these pipelines are defined
