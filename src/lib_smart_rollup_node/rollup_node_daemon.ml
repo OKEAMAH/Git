@@ -50,7 +50,7 @@ let start_workers (plugin : (module Protocol_plugin_sig.S))
     (node_ctxt : _ Node_context.t) =
   let open Lwt_result_syntax in
   let* () = Publisher.init node_ctxt in
-  let* () = Batcher.init plugin node_ctxt in
+  let* () = Batcher.init plugin node_ctxt.config in
   let* () = Refutation_coordinator.init node_ctxt in
   return_unit
 

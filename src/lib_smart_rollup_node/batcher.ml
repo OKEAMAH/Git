@@ -39,7 +39,7 @@ module Batched_messages = Hash_queue.Make (L2_message.Hash) (L2_batched_message)
 type status = Pending_batch | Batched of Injector.Inj_operation.hash
 
 type state = {
-  node_ctxt : Node_context.ro;
+  config : Configuration.t;
   messages : Message_queue.t;
   batched : Batched_messages.t;
   mutable plugin : (module Protocol_plugin_sig.S);
@@ -54,9 +54,7 @@ let inject_batch state (l2_messages : L2_message.t list) =
   let messages = List.map L2_message.content l2_messages in
   let operation = L1_operation.Add_messages {messages} in
   let* l1_hash =
-    Injector.check_and_add_pending_operation
-      state.node_ctxt.config.mode
-      operation
+    Injector.check_and_add_pending_operation state.config.mode operation
   in
   let+ l1_hash =
     match l1_hash with
@@ -74,10 +72,10 @@ let inject_batch state (l2_messages : L2_message.t list) =
 
 let inject_batches state = List.iter_es (inject_batch state)
 
-let max_batch_size {node_ctxt; plugin; _} =
+let max_batch_size {config; plugin; _} =
   let module Plugin = (val plugin) in
   Option.value
-    node_ctxt.config.batcher.max_batch_size
+    config.batcher.max_batch_size
     ~default:Plugin.Batcher_constants.protocol_max_batch_size
 
 let get_batches state ~only_full =
@@ -97,8 +95,7 @@ let get_batches state ~only_full =
         let new_batch_elements = current_batch_elements + 1 in
         if
           new_batch_size <= max_batch_size state
-          && new_batch_elements
-             <= state.node_ctxt.config.batcher.max_batch_elements
+          && new_batch_elements <= state.config.batcher.max_batch_elements
         then
           (* We can add the message to the current batch because we are still
              within the bounds. *)
@@ -120,9 +117,8 @@ let get_batches state ~only_full =
   let batches =
     if
       (not only_full)
-      || current_batch_size >= state.node_ctxt.config.batcher.min_batch_size
-         && current_batch_elements
-            >= state.node_ctxt.config.batcher.min_batch_elements
+      || current_batch_size >= state.config.batcher.min_batch_size
+         && current_batch_elements >= state.config.batcher.min_batch_elements
     then
       (* We have enough to make a batch with the last non-full batch. *)
       List.rev current_rev_batch :: full_batches
@@ -185,9 +181,9 @@ let on_register state (messages : string list) =
 
 let on_new_head state = produce_batches state ~only_full:false
 
-let init_batcher_state plugin node_ctxt =
+let init_batcher_state plugin config =
   {
-    node_ctxt;
+    config;
     messages = Message_queue.create 100_000 (* ~ 400MB *);
     batched = Batched_messages.create 100_000 (* ~ 400MB *);
     plugin;
@@ -197,7 +193,7 @@ module Types = struct
   type nonrec state = state
 
   type parameters = {
-    node_ctxt : Node_context.ro;
+    config : Configuration.t;
     plugin : (module Protocol_plugin_sig.S);
   }
 end
@@ -235,9 +231,9 @@ module Handlers = struct
 
   type launch_error = error trace
 
-  let on_launch _w () Types.{node_ctxt; plugin} =
+  let on_launch _w () Types.{config; plugin} =
     let open Lwt_result_syntax in
-    let state = init_batcher_state plugin node_ctxt in
+    let state = init_batcher_state plugin config in
     return state
 
   let on_error (type a b) _w st (r : (a, b) Request.t) (errs : b) :
@@ -277,13 +273,10 @@ let check_batcher_config (module Plugin : Protocol_plugin_sig.S)
         Plugin.Batcher_constants.protocol_max_batch_size
   | _ -> Ok ()
 
-let start plugin node_ctxt =
+let start plugin config =
   let open Lwt_result_syntax in
-  let*? () =
-    check_batcher_config plugin node_ctxt.Node_context.config.batcher
-  in
-  let node_ctxt = Node_context.readonly node_ctxt in
-  let+ worker = Worker.launch table () {node_ctxt; plugin} (module Handlers) in
+  let*? () = check_batcher_config plugin config.Configuration.batcher in
+  let+ worker = Worker.launch table () {config; plugin} (module Handlers) in
   Lwt.wakeup worker_waker worker
 
 let start_in_mode mode =
@@ -293,7 +286,7 @@ let start_in_mode mode =
   | Observer | Accuser | Bailout | Maintenance -> false
   | Custom ops -> purpose_matches_mode (Custom ops) Batching
 
-let init plugin (node_ctxt : _ Node_context.t) =
+let init plugin (config : Configuration.t) =
   let open Lwt_result_syntax in
   match Lwt.state worker_promise with
   | Lwt.Return _ ->
@@ -304,8 +297,7 @@ let init plugin (node_ctxt : _ Node_context.t) =
       fail [Rollup_node_errors.No_batcher; Exn exn]
   | Lwt.Sleep ->
       (* Never started, start it. *)
-      if start_in_mode node_ctxt.config.mode then start plugin node_ctxt
-      else return_unit
+      if start_in_mode config.mode then start plugin config else return_unit
 
 (* This is a batcher worker for a single scoru *)
 let worker =
