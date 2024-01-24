@@ -205,3 +205,7 @@ let read_srs_g2 srs2 =
   List.map
     (fun (i, s) -> (i, Hex.to_bytes_exn (`Hex s) |> G2.of_compressed_bytes_exn))
     srs2
+
+let get_srs1 = Srs_g1.get
+
+let get_srs2 list i = List.assoc i list
