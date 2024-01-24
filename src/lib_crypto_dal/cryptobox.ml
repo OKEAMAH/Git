@@ -132,33 +132,14 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
         (Failed_to_load_trusted_setup (Printf.sprintf "Invalid point %i" p))
   | Ok (srs_g1, srs_g2) -> return (srs_g1, srs_g2)
 
-let initialisation_parameters_with_fake_srs ?parameters () =
-  let ({slot_size; page_size; redundancy_factor; number_of_shards}
-        : Dal_config.parameters) =
-    Option.value ~default:Parameters_bounds_for_tests.max_parameters parameters
-  in
-  let length = slot_as_polynomial_length ~slot_size ~page_size in
+let fake_srs =
+  let length = Parameters_bounds_for_tests.max_srs_size in
   let secret =
     Scalar.of_string
       "20812168509434597367146703229805575690060615791308155437936410982393987532344"
   in
-  let srs_g1 = Srs_g1.generate_insecure length secret in
-  (* The error is caught during the instantiation through [make]. *)
-  let erasure_encoded_polynomial_length = redundancy_factor * length in
-  let evaluations_per_proof =
-    match erasure_encoded_polynomial_length / number_of_shards with
-    | exception Invalid_argument _ -> 0
-    | x -> x
-  in
-  (* The cryptobox will read at indices `size`, `1 lsl evaluations_per_proof_log`
-     and `page_length` so we take the max + 1. Since `page_length < size`, we
-     can remove the `page_length from the max. *)
-  let srs_g2 =
-    Srs_g2.generate_insecure (max length evaluations_per_proof + 1) secret
-  in
-  (srs_g1, srs_g2)
-
-let fake_srs = initialisation_parameters_with_fake_srs ()
+  ( Srs_g1.generate_insecure length secret,
+    Srs_g2.generate_insecure length secret )
 
 module Inner = struct
   module Commitment = struct
@@ -1306,7 +1287,7 @@ module Verifier = Inner
 module Internal_for_tests = struct
   module Parameters_bounds = Parameters_bounds_for_tests
 
-  let parameters_initialisation = initialisation_parameters_with_fake_srs
+  let parameters_initialisation () = fake_srs
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1413,8 +1394,8 @@ module Config = struct
     if dal_config.activated then
       let* initialisation_parameters =
         match dal_config.use_mock_srs_for_testing with
-        | Some parameters ->
-            return (Internal_for_tests.parameters_initialisation ~parameters ())
+        | Some _parameters ->
+            return (Internal_for_tests.parameters_initialisation ())
         | None ->
             let*? srs_g1_path, srs_g2_path = find_srs_files () in
             initialisation_parameters_from_files

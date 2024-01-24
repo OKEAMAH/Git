@@ -447,10 +447,8 @@ module Internal_for_tests : sig
 
   (** The initialisation parameters can be too large for testing
      purposes. This function creates an unsafe initialisation
-     parameters using [parameters]. The running time of this function
-     is linear with respect to [parameters.slot_size]. Order of magnitude can
-     be around 1 minute for a size of 1MiB. *)
-  val parameters_initialisation : ?parameters:parameters -> unit -> initialisation_parameters
+     parameters using default parameters designed to handle test cases. *)
+  val parameters_initialisation : unit -> initialisation_parameters
 
   (** Same as {!val:load_parameters} except it erase parameters if
      they were already loaded. This is used to circumvent limitation
