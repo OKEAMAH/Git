@@ -467,26 +467,41 @@ let job ?arch ?after_script ?allow_failure ?artifacts ?before_script ?cache
   in
   let stage = Some (Stage.name stage) in
   let script = Some script in
+  if parallel = Some 0 then
+    failwith "[job] the argument to [parallel] must be strictly positive." ;
   let needs, dependencies =
     match dependencies with
     | Staged -> (None, Some [])
     | Dependent dependencies ->
         let rec loop (needs, dependencies) = function
-          | Job j :: deps ->
-              loop
-                ( Gitlab_ci.Types.{job = j.name; optional = false} :: needs,
-                  dependencies )
-                deps
-          | Optional j :: deps ->
-              loop
-                ( Gitlab_ci.Types.{job = j.name; optional = true} :: needs,
-                  dependencies )
-                deps
-          | Artifacts j :: deps ->
-              loop
-                ( Gitlab_ci.Types.{job = j.name; optional = false} :: needs,
-                  j.name :: dependencies )
-                deps
+          | dep :: deps ->
+              let job_expanded =
+                match dep with
+                | Job j | Optional j | Artifacts j -> (
+                    match j with
+                    | Gitlab_ci.Types.{name; parallel; _} -> (
+                        match parallel with
+                        | None -> [name]
+                        | Some n ->
+                            List.rev
+                            @@ List.map
+                                 (fun i -> sf "%s %d/%d" name i n)
+                                 (range 1 n)))
+              in
+              let needs ~optional =
+                List.map
+                  (fun name -> Gitlab_ci.Types.{job = name; optional})
+                  job_expanded
+                @ needs
+              in
+              let needs, dependencies =
+                match dep with
+                | Job _ -> (needs ~optional:false, dependencies)
+                | Optional _ -> (needs ~optional:true, dependencies)
+                | Artifacts _ ->
+                    (needs ~optional:false, job_expanded @ dependencies)
+              in
+              loop (needs, dependencies) deps
           | [] ->
               (* Note that [dependencies] is always filled, because we want to
                  fetch no dependencies by default ([dependencies = Some
