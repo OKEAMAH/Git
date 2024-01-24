@@ -548,18 +548,22 @@ module Inner = struct
             kate_amortized,
             Srs_g2.size srs_g2 )
       | None ->
-          let srs_g1, srs_g2 = fake_srs in
-          let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
+          let srs_g1, srs_g2 = Srs_verifier.(srs_g1, srs_g2) in
+          let kate_amortized_srs_g2_shards =
+            Srs_verifier.get_srs2 srs_g2 shard_length
+          in
           let kate_amortized_srs_g2_pages =
-            Srs_g2.get srs_g2 page_length_domain
+            Srs_verifier.get_srs2 srs_g2 page_length_domain
           in
           let kate_amortized_srs_g2_commitment =
             let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
-            let max_committable_degree = Srs_g1.size srs_g1 - 1 in
+            let max_committable_degree =
+              Parameters_bounds_for_tests.max_srs_size - 1
+            in
             let offset_monomial_degree =
               max_committable_degree - max_allowed_committed_poly_degree
             in
-            Srs_g2.get srs_g2 offset_monomial_degree
+            Srs_verifier.get_srs2 srs_g2 offset_monomial_degree
           in
           let kate_amortized =
             Kate_amortized.
@@ -570,7 +574,7 @@ module Inner = struct
             kate_amortized_srs_g2_pages,
             kate_amortized_srs_g2_commitment,
             kate_amortized,
-            Srs_g2.size srs_g2 )
+            max_int )
     in
     let* () =
       ensure_validity
