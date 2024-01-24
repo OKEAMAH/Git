@@ -117,18 +117,6 @@ module Shards = struct
     |> Seq.map (fun shard_index -> (commitment, shard_index))
     |> read_values shards_store
 
-  let count shards_store commitment ~number_of_shards =
-    Seq.ints 0
-    |> Seq.take_while (fun x -> x < number_of_shards)
-    |> Seq.map (fun shard_index -> (commitment, shard_index))
-    |> values_exist shards_store
-    |> Seq_s.E.fold_left
-         (fun accu (_, _, exists) ->
-           let open Result_syntax in
-           let+ exists in
-           if exists then accu + 1 else accu)
-         0
-
   let init node_store_dir shard_store_dir =
     let open Lwt_syntax in
     let ( // ) = Filename.concat in

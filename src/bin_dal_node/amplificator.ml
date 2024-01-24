@@ -18,7 +18,7 @@ let amplify (shard_store : Store.Shards.t) commitment node_ctxt =
       let redundancy_factor = dal_parameters.redundancy_factor in
       let number_of_needed_shards = number_of_shards / redundancy_factor in
       let* number_of_already_stored_shards =
-        Store.Shards.count shard_store commitment ~number_of_shards
+        Store.Shards.count_values shard_store commitment
       in
       if number_of_already_stored_shards >= number_of_needed_shards then
         (* We have enough shards to reconstruct the whole slot. *)
