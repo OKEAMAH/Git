@@ -1,8 +1,8 @@
 test_kernels:
   extends:
+    - .default_settings_template
     - .oc.kernels_template
   stage: test
-  dependencies: []
   script:
     - make -f kernels.mk check
     - make -f kernels.mk test
