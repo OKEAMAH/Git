@@ -32,6 +32,12 @@ Read more on [grpc.io](https://grpc.io/docs/protoc-installation/)
 
 ## Build
 
+In order to build the consensus node binary:
+
+```bash
+make build-node
+```
+
 ## Test
 
 ## Run
