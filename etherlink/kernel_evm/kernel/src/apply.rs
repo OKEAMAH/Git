@@ -36,7 +36,6 @@ use crate::error::Error;
 use crate::inbox::{Deposit, Transaction, TransactionContent};
 use crate::indexable_storage::IndexableStorage;
 use crate::storage::{index_account, read_ticketer};
-use crate::tick_model::constants::MAX_TRANSACTION_GAS_LIMIT;
 use crate::{tick_model, CONFIG};
 
 // This implementation of `Transaction` is used to share the logic of
@@ -188,7 +187,6 @@ fn account<Host: Runtime>(
 pub enum Validity {
     Valid(H160),
     InvalidChainId,
-    InvalidGasLimit,
     InvalidSignature,
     InvalidNonce,
     InvalidPrePay,
@@ -212,11 +210,6 @@ fn is_valid_ethereum_transaction_common<Host: Runtime>(
     {
         log!(host, Debug, "Transaction status: ERROR_CHAINID");
         return Ok(Validity::InvalidChainId);
-    }
-    // Gas limit is bounded.
-    if transaction.gas_limit > MAX_TRANSACTION_GAS_LIMIT {
-        log!(host, Debug, "Transaction status: ERROR_GASLIMIT");
-        return Ok(Validity::InvalidGasLimit);
     }
     // The transaction signature is valid.
     let caller = match transaction.caller() {
