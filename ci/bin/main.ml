@@ -589,11 +589,11 @@ let job_docker_build ?rules ~arch ?(external_ = false) docker_build_type : job =
   else job
 
 (* Used in external [before_merging] pipeline *)
-let _job_docker_amd64_test_manual : job =
+let job_docker_amd64_test_manual : job =
   job_docker_build ~external_:true ~arch:Amd64 Test_manual
 
 (* Used in external [before_merging] pipeline *)
-let _job_docker_arm64_test_manual : job =
+let job_docker_arm64_test_manual : job =
   job_docker_build ~external_:true ~arch:Arm64 Test_manual
 
 (* Note: here we rely on [$IMAGE_ARCH_PREFIX] to be empty.
@@ -691,7 +691,7 @@ let job_build_dpkg_amd64 =
 let job_build_rpm_amd64 =
   job_build_bin_package ~target:Rpm ~arch:Tezos_ci.Amd64 ()
 
-let _job_build_bin_packages_manual =
+let jobs_build_bin_packages_manual =
   let manual = true in
   let arch = Tezos_ci.Amd64 in
   jobs_external ~path:"build/bin_packages_manual.yml"
@@ -1402,7 +1402,7 @@ let job_documentation_linkcheck =
        ~allow_failure:Yes
        ["make all"; "make -C docs redirectcheck"; "make -C docs linkcheck"]
 
-let _job_documentation_build_all =
+let job_documentation_build_all =
   job_external
   @@ job
        ~name:"documentation:build_all"
@@ -1461,7 +1461,7 @@ let jobs_install_python =
         ~image:Images.debian_bullseye;
     ]
 
-let _job_sanity_ci =
+let job_sanity_ci =
   job_external
   @@ job
        ~name:"sanity_ci"
@@ -1480,7 +1480,7 @@ let _job_sanity_ci =
 
 let changeset_docker_files = ["build.Dockerfile"; "Dockerfile"]
 
-let _job_docker_hadolint =
+let job_docker_hadolint =
   job_external
   @@ job
        ~name:"docker:hadolint"
@@ -1499,7 +1499,7 @@ let _job_docker_hadolint =
 let changeset_ocaml_files =
   ["src/**/*"; "tezt/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"; "devtools/**/*"]
 
-let _job_ocaml_check =
+let job_ocaml_check =
   job_external
   @@ job
        ~name:"ocaml-check"
@@ -1532,7 +1532,7 @@ let changeset_lint_files =
     ".gitlab/**/*";
   ]
 
-let _job_oc_misc_checks =
+let job_oc_misc_checks =
   job_external
   @@ job
        ~name:"oc.misc_checks"
@@ -1552,7 +1552,7 @@ let _job_oc_misc_checks =
          "scripts/check_wasm_pvm_regressions.sh check";
        ]
 
-let _job_oc_commit_titles =
+let job_oc_commit_titles =
   job_external
   @@ job
        ~name:"commit_titles"
@@ -1584,7 +1584,7 @@ let job_kaitai_checks =
        ]
 
 (* check that ksy files are still up-to-date with octez *)
-let _job_kaitai_e2e_checks =
+let job_kaitai_e2e_checks =
   job_external
   @@ job
        ~name:"kaitai_e2e_checks"
@@ -1607,7 +1607,7 @@ let changeset_lift_limits_patch =
     ".gitlab-ci.yml";
   ]
 
-let _job_oc_check_lift_limits_patch =
+let job_oc_check_lift_limits_patch =
   job_external
   @@ job
        ~name:"oc.check_lift_limits_patch"
@@ -1626,7 +1626,7 @@ let _job_oc_check_lift_limits_patch =
          "dune build @src/proto_alpha/lib_protocol/check";
        ]
 
-let _job_misc_opam_checks =
+let job_misc_opam_checks =
   job_external
   @@ job
        ~name:"misc_opam_checks"
@@ -1653,7 +1653,7 @@ let changeset_semgrep_files =
     ".gitlab-ci.yml";
   ]
 
-let _job_semgrep =
+let job_semgrep =
   job_external
   @@ job
        ~name:"oc.semgrep"
@@ -1669,7 +1669,7 @@ let _job_semgrep =
 
 let changeset_unit_test_arm64 = ["src/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
 
-let _jobs_unit_tests =
+let jobs_unit_tests =
   let build_dependencies = function
     | Amd64 ->
         Dependent
@@ -1822,7 +1822,7 @@ let _jobs_unit_tests =
        oc_unit_protocol_compiles;
      ]
 
-let _job_oc_integration_compiler_rejections =
+let job_oc_integration_compiler_rejections =
   job_external
   @@ job
        ~name:"oc.integration:compiler-rejections"
@@ -1845,7 +1845,7 @@ let changeset_script_snapshot_alpha_and_link =
     "scripts/user_activated_upgrade.sh";
   ]
 
-let _job_oc_script_snapshot_alpha_and_link =
+let job_oc_script_snapshot_alpha_and_link =
   job_external
   @@ job
        ~name:"oc.script:snapshot_alpha_and_link"
@@ -1876,7 +1876,7 @@ let _job_oc_script_snapshot_alpha_and_link =
             [])
        ["./.gitlab/ci/jobs/test/script:snapshot_alpha_and_link.sh"]
 
-let _job_oc_script_test_gen_genesis =
+let job_oc_script_test_gen_genesis =
   job_external
   @@ job
        ~name:"oc.script:test-gen-genesis"
@@ -1887,7 +1887,7 @@ let _job_oc_script_test_gen_genesis =
        ~before_script:(before_script ~eval_opam:true ["cd scripts/gen-genesis"])
        ["dune build gen_genesis.exe"]
 
-let _job_oc_script_test_release_versions =
+let job_oc_script_test_release_versions =
   job_external
   @@ job
        ~name:"oc.script:test_release_versions"
@@ -1913,7 +1913,7 @@ let changeset_script_b58_prefix =
     ".gitlab-ci.yml";
   ]
 
-let _job_oc_script_b58_prefix =
+let job_oc_script_b58_prefix =
   job_external
   @@ job
        ~name:"oc.script:b58_prefix"
@@ -1941,7 +1941,7 @@ let changeset_test_liquidity_baking_scripts =
     ".gitlab-ci.yml";
   ]
 
-let _job_oc_test_liquidity_baking_scripts =
+let job_oc_test_liquidity_baking_scripts =
   job_external
   @@ job
        ~name:"oc.test-liquidity-baking-scripts"
@@ -1957,7 +1957,7 @@ let _job_oc_test_liquidity_baking_scripts =
        ~before_script:(before_script ~source_version:true ~eval_opam:true [])
        ["./scripts/ci/test_liquidity_baking_scripts.sh"]
 
-let _jobs_tezt =
+let jobs_tezt =
   let dependencies =
     Dependent
       [
@@ -2058,7 +2058,7 @@ let changeset_test_kernels =
     ".gitlab-ci.yml";
   ]
 
-let _job_test_kernels : job =
+let job_test_kernels : job =
   job_external @@ enable_kernels
   @@ job
        ~name:"test_kernels"
@@ -2072,7 +2072,7 @@ let _job_test_kernels : job =
 (* This job fetches coverage files by precedent test stage. It creates
    the html, summary and cobertura reports. It also provide a coverage %
    for the merge request. *)
-let _job_unified_coverage_before_merging : job =
+let job_unified_coverage_before_merging : job =
   let dependencies =
     List.map (fun job -> Artifacts job) (List.rev !jobs_with_coverage_output)
   in
@@ -2120,7 +2120,58 @@ let () =
   let has_non_release_tag =
     If.(Predefined_vars.ci_commit_tag != null && not has_any_release_tag)
   in
-  register "before_merging" If.(on_tezos_namespace && merge_request) ;
+  register
+    "before_merging"
+    If.(on_tezos_namespace && merge_request)
+    ~jobs:
+      ((* Stage: sanity *)
+       let sanity = [job_sanity_ci; job_docker_hadolint] in
+       (* Stage: package *)
+       let package = job_opam_prepare :: jobs_opam_package in
+       (* Stage: build *)
+       let build =
+         [
+           job_ocaml_check;
+           job_static_x86_64_experimental;
+           job_build_arm64_exp_dev_extra;
+           job_build_arm64_release;
+           job_build_x86_64_exp_dev_extra;
+           job_build_x86_64_release;
+           job_build_kernels;
+           job_docker_amd64_test_manual;
+           job_docker_arm64_test_manual;
+           job_tezt_fetch_records;
+         ]
+         @ jobs_build_bin_packages_manual
+       in
+       (* Stage: test *)
+       let test =
+         [
+           job_oc_commit_titles;
+           job_kaitai_checks;
+           job_kaitai_e2e_checks;
+           job_oc_check_lift_limits_patch;
+           job_oc_misc_checks;
+           job_misc_opam_checks;
+           job_semgrep;
+           job_oc_integration_compiler_rejections;
+           job_oc_script_test_gen_genesis;
+           job_oc_script_test_release_versions;
+           job_oc_script_b58_prefix;
+           job_oc_test_liquidity_baking_scripts;
+           job_oc_script_snapshot_alpha_and_link;
+           job_test_kernels;
+         ]
+         @ jobs_unit_tests @ jobs_install_octez @ jobs_tezt
+       in
+       (* Stage: test_coverage *)
+       let test_coverage = [job_unified_coverage_before_merging] in
+       (* Stage: doc *)
+       let doc =
+         [job_documentation_build_all; job_documentation_linkcheck]
+         @ jobs_install_python
+       in
+       sanity @ package @ build @ test @ test_coverage @ doc) ;
   register
     "latest_release"
     ~jobs:[job_docker_promote_to_latest ~ci_docker_hub:true]

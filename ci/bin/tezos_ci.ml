@@ -87,7 +87,7 @@ module Pipeline = struct
     in
     let msg =
       sf
-        "[%s] job '%s' needs job '%s' but"
+        "[%s] job '%s' needs job '%s' but "
         pipeline_name
         job.name
         job_needed.name
