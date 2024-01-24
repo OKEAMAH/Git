@@ -50,3 +50,31 @@ A job's `before_script:` section should be used to:
 
 For consistency, these actions (or a subset thereof) should be taken
 in the order listed above.
+
+## Simple form
+
+Preference for simple form also applies to fields that can take either
+a value of a certain type, or an array of such values. Examples
+include the `cache:` field.
+
+Do:
+
+```
+job_foo:
+  script:
+    - echo "I'm cached!"
+  cache:
+    paths:
+      - foo.txt
+```
+
+Don't:
+
+```
+job_foo:
+  script:
+    - echo "I'm cached!"
+  cache:
+    - paths:
+        - foo.txt
+```
