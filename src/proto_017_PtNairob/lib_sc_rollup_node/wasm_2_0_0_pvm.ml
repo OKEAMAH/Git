@@ -159,6 +159,11 @@ end
 module Durable_state =
   Make_durable_state (Make_wrapped_tree (Wasm_2_0_0_proof_format.Tree))
 
+let pvm_hooks = ref Tezos_scoru_wasm.Hooks.no_hooks
+
+let on_fast_exec_panicked hook =
+  pvm_hooks := Tezos_scoru_wasm.Hooks.on_fast_exec_panicked hook !pvm_hooks
+
 module Impl : Pvm_sig.S = struct
   module PVM =
     Sc_rollup.Wasm_2_0_0PVM.Make (Make_backend) (Wasm_2_0_0_proof_format)
@@ -191,7 +196,7 @@ module Impl : Pvm_sig.S = struct
   module Backend = Make_backend (Wasm_2_0_0_proof_format.Tree)
 
   let eval_many ~reveal_builtins ~write_debug =
-    Backend.compute_step_many ~reveal_builtins ~write_debug ?hooks:None
+    Backend.compute_step_many ~reveal_builtins ~write_debug ~hooks:!pvm_hooks
 end
 
 include Impl

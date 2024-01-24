@@ -469,6 +469,7 @@ let make_signers_for_injector operators =
 let run ({node_ctxt; configuration; plugin; _} as state) =
   let open Lwt_result_syntax in
   let module Plugin = (val state.plugin) in
+  Plugin.Wasm.on_fast_exec_panicked (fun () -> Wasm_event.fast_exec_panicked ()) ;
   let start () =
     let signers = make_signers_for_injector node_ctxt.config.operators in
     let* () =

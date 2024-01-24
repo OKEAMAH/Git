@@ -309,4 +309,8 @@ module type S = sig
   module L1_processing : L1_PROCESSING
 
   module Refutation_game_helpers : REFUTATION_GAME_HELPERS
+
+  module Wasm : sig
+    val on_fast_exec_panicked : (unit -> unit Lwt.t) -> unit
+  end
 end

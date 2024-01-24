@@ -34,6 +34,10 @@ module Plugin : Protocol_plugin_sig.S = struct
   module Layer1_helpers = Layer1_helpers
   module L1_processing = Daemon_helpers
   module Pvm = Pvm_plugin
+
+  module Wasm = struct
+    let on_fast_exec_panicked = Wasm_2_0_0_pvm.on_fast_exec_panicked
+  end
 end
 
 let () = Protocol_plugins.register (module Plugin)
