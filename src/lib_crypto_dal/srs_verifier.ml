@@ -839,3 +839,16 @@ let srs_g2 =
     );
   ]
   |> read_srs_g2
+
+let get_verifier_srs2 ~max_polynomial_length ~page_length_domain ~shard_length =
+  let srs_g2_shards = get_srs2 srs_g2 shard_length in
+  let srs_g2_pages = get_srs2 srs_g2 page_length_domain in
+  let srs_g2_commitment =
+    let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
+    let max_committable_degree = Parameters_bounds_for_tests.max_srs_size - 1 in
+    let offset_monomial_degree =
+      max_committable_degree - max_allowed_committed_poly_degree
+    in
+    get_srs2 srs_g2 offset_monomial_degree
+  in
+  (srs_g2_shards, srs_g2_pages, srs_g2_commitment)

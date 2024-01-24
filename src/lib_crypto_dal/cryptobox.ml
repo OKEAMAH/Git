@@ -517,58 +517,16 @@ module Inner = struct
     let shard_length = erasure_encoded_polynomial_length / number_of_shards in
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = FFT.select_fft_domain page_length in
-    let ( mode,
-          srs_g2_shards,
-          srs_g2_pages,
-          srs_g2_commitment,
-          kate_amortized,
-          srs_g2_length ) =
+    let srs_g2_shards, srs_g2_pages, srs_g2_commitment =
+      Srs_verifier.get_verifier_srs2
+        ~max_polynomial_length
+        ~page_length_domain
+        ~shard_length
+    in
+    let mode, srs_g1 =
       match !initialisation_parameters with
-      | Some (srs_g1, srs_g2) ->
-          let srs_g2_shards = Srs_g2.get srs_g2 shard_length in
-          let srs_g2_pages = Srs_g2.get srs_g2 page_length_domain in
-          let srs_g2_commitment =
-            let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
-            let max_committable_degree = Srs_g1.size srs_g1 - 1 in
-            let offset_monomial_degree =
-              max_committable_degree - max_allowed_committed_poly_degree
-            in
-            Srs_g2.get srs_g2 offset_monomial_degree
-          in
-          let kate_amortized =
-            Kate_amortized.
-              {max_polynomial_length; shard_length; srs_g1; number_of_shards}
-          in
-          ( `Prover,
-            srs_g2_shards,
-            srs_g2_pages,
-            srs_g2_commitment,
-            kate_amortized,
-            Srs_g2.size srs_g2 )
-      | None ->
-          let srs_g1, srs_g2 = Srs_verifier.(srs_g1, srs_g2) in
-          let srs_g2_shards = Srs_verifier.get_srs2 srs_g2 shard_length in
-          let srs_g2_pages = Srs_verifier.get_srs2 srs_g2 page_length_domain in
-          let srs_g2_commitment =
-            let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
-            let max_committable_degree =
-              Parameters_bounds_for_tests.max_srs_size - 1
-            in
-            let offset_monomial_degree =
-              max_committable_degree - max_allowed_committed_poly_degree
-            in
-            Srs_verifier.get_srs2 srs_g2 offset_monomial_degree
-          in
-          let kate_amortized =
-            Kate_amortized.
-              {max_polynomial_length; shard_length; srs_g1; number_of_shards}
-          in
-          ( `Verifier,
-            srs_g2_shards,
-            srs_g2_pages,
-            srs_g2_commitment,
-            kate_amortized,
-            max_int )
+      | Some (srs_g1, _srs_g2) -> (`Prover, srs_g1)
+      | None -> (`Verifier, Srs_verifier.srs_g1)
     in
     let* () =
       ensure_validity
@@ -577,8 +535,12 @@ module Inner = struct
         ~page_size
         ~redundancy_factor
         ~number_of_shards
-        ~srs_g1_length:(Srs_g1.size kate_amortized.srs_g1)
-        ~srs_g2_length
+        ~srs_g1_length:(Srs_g1.size srs_g1)
+        ~srs_g2_length:max_int
+    in
+    let kate_amortized =
+      Kate_amortized.
+        {max_polynomial_length; shard_length; srs_g1; number_of_shards}
     in
     return
       {
