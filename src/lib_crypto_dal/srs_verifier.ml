@@ -91,8 +91,7 @@ module For_tests = struct
   let fake_srs =
     let length = Parameters_bounds_for_tests.max_srs_size in
     let srs_g1 = Srs_g1.generate_insecure length fake_srs_seed in
-    let srs_g2 = Srs_g2.generate_insecure length fake_srs_seed in
-    (srs_g1, srs_g2)
+    srs_g1
 
   let get_srs1 i = G1.mul G1.one (Scalar.pow fake_srs_seed (Z.of_int i))
 
@@ -189,8 +188,7 @@ let generate_poly_lengths p =
   in
   List.sort_uniq Int.compare (page_srs @ commitment_srs @ shard_srs)
 
-let print_verifier_srs () =
-  let srs_g1, srs_g2 = For_tests.fake_srs in
+let print_verifier_srs srs_g1 srs_g2 =
   let srs2 =
     List.map
       (fun i ->

@@ -48,7 +48,7 @@ let () =
     (fun parameter -> Failed_to_load_trusted_setup parameter)
   [@@coverage off]
 
-type initialisation_parameters = Srs_g1.t * Srs_g2.t
+type initialisation_parameters = Srs_g1.t
 
 (* Initialisation parameters are supposed to be instantiated once. *)
 let initialisation_parameters = ref None
@@ -130,7 +130,7 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
   | Error (`Invalid_point p) ->
       tzfail
         (Failed_to_load_trusted_setup (Printf.sprintf "Invalid point %i" p))
-  | Ok (srs_g1, srs_g2) -> return (srs_g1, srs_g2)
+  | Ok (srs_g1, _srs_g2) -> return srs_g1
 
 module Inner = struct
   module Commitment = struct
@@ -525,7 +525,7 @@ module Inner = struct
     in
     let mode, srs_g1 =
       match !initialisation_parameters with
-      | Some (srs_g1, _srs_g2) -> (`Prover, srs_g1)
+      | Some srs_g1 -> (`Prover, srs_g1)
       | None -> (`Verifier, Srs_verifier.srs_g1)
     in
     let* () =
@@ -1318,7 +1318,7 @@ module Internal_for_tests = struct
 
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
-    let mode, (srs_g1, srs_g2) =
+    let mode, srs_g1 =
       match !initialisation_parameters with
       | Some srs -> (`Prover, srs)
       | None -> (`Verifier, Srs_verifier.For_tests.fake_srs)
@@ -1330,7 +1330,7 @@ module Internal_for_tests = struct
       ~redundancy_factor
       ~number_of_shards
       ~srs_g1_length:(Srs_g1.size srs_g1)
-      ~srs_g2_length:(Srs_g2.size srs_g2)
+      ~srs_g2_length:max_int
 
   let ensure_validity parameters =
     match ensure_validity parameters with Ok _ -> true | _ -> false
