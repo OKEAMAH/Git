@@ -192,6 +192,20 @@ fn read_next_blueprint_number<Host: Runtime>(host: &Host) -> Result<U256, Error>
     }
 }
 
+// Used to store a blueprint made out of forced delayed transactions.
+// It will have the number of the next block to be produced.
+pub fn store_immediate_blueprint<Host: Runtime>(
+    host: &mut Host,
+    blueprint: Blueprint,
+) -> Result<(), Error> {
+    let number = read_next_blueprint_number(host)?;
+    let blueprint_path = blueprint_path(number)?;
+    store_blueprint_nb_chunks(host, &blueprint_path, 1)?;
+    let chunk_path = blueprint_chunk_path(&blueprint_path, 0)?;
+    let store_blueprint = StoreBlueprint::InboxBlueprint(blueprint);
+    store_rlp(&store_blueprint, host, &chunk_path)
+}
+
 /// Possible errors when validating a blueprint
 /// Only used for test, as all errors are handled in the same way
 #[derive(Debug, PartialEq)]

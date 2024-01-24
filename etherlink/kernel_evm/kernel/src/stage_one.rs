@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: MIT
 
 use crate::blueprint::Blueprint;
-use crate::blueprint_storage::{store_inbox_blueprint, store_sequencer_blueprint};
+use crate::blueprint_storage::{
+    store_immediate_blueprint, store_inbox_blueprint, store_sequencer_blueprint,
+};
 use crate::current_timestamp;
 use crate::delayed_inbox::DelayedInbox;
 use crate::inbox::InboxContent;
@@ -90,23 +92,39 @@ fn fetch_sequencer_blueprints<Host: Runtime>(
         Some(delayed_bridge),
         Some(sequencer),
     )? {
-        let timestamp = read_last_info_per_level_timestamp(host)
-            .unwrap_or_else(|_| Timestamp::from(0));
+        let previous_timestamp = read_last_info_per_level_timestamp(host)?;
         // Store the transactions in the delayed inbox.
         for transaction in transactions {
-            delayed_inbox.save_transaction(host, transaction, timestamp)?;
+            delayed_inbox.save_transaction(host, transaction, previous_timestamp)?;
         }
-
-        // Store the blueprints.
-        for seq_blueprint in sequencer_blueprints {
+        // Fetch timed out transactions if any
+        let timed_out = delayed_inbox.timed_out_transactions(host)?;
+        if timed_out.is_empty() {
+            // Store the sequencer blueprints.
+            for seq_blueprint in sequencer_blueprints {
+                log!(
+                    host,
+                    Debug,
+                    "Storing chunk {} of sequencer blueprint number {}",
+                    seq_blueprint.blueprint.chunk_index,
+                    seq_blueprint.blueprint.number
+                );
+                store_sequencer_blueprint(host, seq_blueprint)?
+            }
+        } else {
             log!(
                 host,
-                Debug,
-                "Storing chunk {} of sequencer blueprint number {}",
-                seq_blueprint.blueprint.chunk_index,
-                seq_blueprint.blueprint.number
+                Info,
+                "Creating blueprint from timed out delayed transactions"
             );
-            store_sequencer_blueprint(host, seq_blueprint)?
+            let timestamp = current_timestamp(host);
+            // Create a new blueprint with the timed out transactions
+            let blueprint = Blueprint {
+                transactions: timed_out,
+                timestamp,
+            };
+            // Store the blueprint.
+            store_immediate_blueprint(host, blueprint)?
         }
         // Store kernel upgrade.
         if let Some(kernel_upgrade) = kernel_upgrade {
