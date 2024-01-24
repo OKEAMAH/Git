@@ -36,6 +36,7 @@ module type S = sig
 
   val eval_until_stuck :
     ?reveal_builtins:Builtins.reveals ->
+    ?hooks:Hooks.t ->
     ?write_debug:Builtins.write_debug ->
     ?max_steps:int64 ->
     tree ->
@@ -43,6 +44,7 @@ module type S = sig
 
   val eval_to_snapshot :
     ?reveal_builtins:Builtins.reveals ->
+    ?hooks:Hooks.t ->
     ?write_debug:Builtins.write_debug ->
     ?max_steps:int64 ->
     tree ->
@@ -50,16 +52,16 @@ module type S = sig
 
   val eval_until_input_requested :
     ?reveal_builtins:Builtins.reveals option ->
+    ?hooks:Hooks.t ->
     ?write_debug:Builtins.write_debug ->
-    ?after_fast_exec:(unit -> unit) ->
     ?fast_exec:bool ->
     ?max_steps:int64 ->
     tree ->
     tree Lwt.t
 
   val eval_until_input_or_reveal_requested :
+    ?hooks:Hooks.t ->
     ?write_debug:Builtins.write_debug ->
-    ?after_fast_exec:(unit -> unit) ->
     ?fast_exec:bool ->
     ?max_steps:int64 ->
     tree ->
@@ -119,6 +121,7 @@ module type S = sig
   val eval_to_result :
     ?write_debug:Builtins.write_debug ->
     ?reveal_builtins:Builtins.reveals ->
+    ?hooks:Hooks.t ->
     tree ->
     (tree * int64) Lwt.t
 

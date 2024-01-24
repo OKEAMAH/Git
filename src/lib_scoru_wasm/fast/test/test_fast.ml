@@ -34,7 +34,7 @@ module Preimage_map = Map.Make (String)
 open Wasm_utils
 open Tztest_helper
 
-let run_fast = Wasm_fast.Internal_for_tests.compute_step_many_with_hooks
+let run_fast = Wasm_fast.compute_step_many
 
 let run_slow = Wasm.compute_step_many
 
@@ -54,6 +54,13 @@ let apply_fast ?write_debug ?(fast_should_run = true)
         | Some reveal -> Lwt.return reveal
         | None -> Stdlib.failwith "reveal_metadata is not available")
   in
+  let hooks =
+    Tezos_scoru_wasm.Hooks.(
+      no_hooks
+      |> on_fast_exec_completed (fun () ->
+             run_counter := Int32.succ !run_counter ;
+             Lwt_syntax.return_unit))
+  in
   let+ tree, ticks =
     run_fast
       ?write_debug
@@ -62,7 +69,7 @@ let apply_fast ?write_debug ?(fast_should_run = true)
            implementation. This allows us to run Fast Exec with kernels that
            want to reveal stuff. *)
       ~stop_at_snapshot
-      ~after_fast_exec:(fun () -> run_counter := Int32.succ !run_counter)
+      ~hooks
       ~max_steps
       tree
   in

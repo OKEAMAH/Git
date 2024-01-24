@@ -26,19 +26,6 @@
 open Wasm_pvm_state
 open Internal_state
 
-module type Internal_for_tests = sig
-  type state
-
-  val compute_step_many_with_hooks :
-    ?reveal_builtins:Builtins.reveals ->
-    ?write_debug:Builtins.write_debug ->
-    ?after_fast_exec:(unit -> unit) ->
-    ?stop_at_snapshot:bool ->
-    max_steps:int64 ->
-    state ->
-    (state * int64) Lwt.t
-end
-
 module type Generic = sig
   type state
 
@@ -52,6 +39,7 @@ module type Generic = sig
       pvm_state. *)
   val compute_step_many :
     ?reveal_builtins:Builtins.reveals ->
+    ?hooks:Hooks.t ->
     ?write_debug:Builtins.write_debug ->
     ?stop_at_snapshot:bool ->
     max_steps:int64 ->
@@ -89,8 +77,6 @@ module type Generic = sig
   (** [get_wasm_version pvm_state] returns the current version at
       which the WASM PVM operates. *)
   val get_wasm_version : state -> version Lwt.t
-
-  module Internal_for_tests : Internal_for_tests with type state := state
 end
 
 module type S = sig
@@ -110,6 +96,7 @@ module type S = sig
   *)
   val compute_step_many_until :
     ?max_steps:int64 ->
+    ?hooks:Hooks.t ->
     ?reveal_builtins:Builtins.reveals ->
     ?write_debug:Builtins.write_debug ->
     (pvm_state -> bool Lwt.t) ->

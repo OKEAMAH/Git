@@ -76,11 +76,16 @@ let compute_fast ~reveal_builtins ~write_debug pvm_state =
 
   Lwt.return pvm_state
 
-let rec compute_step_many accum_ticks ?reveal_builtins
-    ?(write_debug = Builtins.Noop) ?(after_fast_exec = fun () -> ())
-    ?(stop_at_snapshot = false) ~max_steps pvm_state =
+let rec compute_step_many accum_ticks ?reveal_builtins ?(hooks = Hooks.no_hooks)
+    ?(write_debug = Builtins.Noop) ?(stop_at_snapshot = false) ~max_steps
+    pvm_state =
   let open Lwt.Syntax in
   assert (max_steps > 0L) ;
+  let after_fast_exec =
+    match hooks.fast_exec_completed with
+    | Some hook -> hook
+    | None -> fun () -> Lwt_syntax.return_unit
+  in
   let eligible_for_fast_exec =
     Z.Compare.(pvm_state.max_nb_ticks <= Z.of_int64 max_steps)
   in
@@ -92,8 +97,14 @@ let rec compute_step_many accum_ticks ?reveal_builtins
       pvm_state.buffers.output
   in
   let backup pvm_state =
+    let* _ =
+      match hooks.Hooks.fast_exec_panicked with
+      | Some hook -> hook ()
+      | None -> Lwt_syntax.return_unit
+    in
     let+ pvm_state, ticks =
       Wasm_vm.compute_step_many
+        ~hooks
         ?reveal_builtins
         ~write_debug
         ~stop_at_snapshot
@@ -122,7 +133,6 @@ let rec compute_step_many accum_ticks ?reveal_builtins
                 ~reveal_builtins
                 ~write_debug
                 ~stop_at_snapshot
-                ~after_fast_exec
                 ~max_steps
                 pvm_state
             else Lwt.return (pvm_state, accum_ticks)
@@ -133,7 +143,7 @@ let rec compute_step_many accum_ticks ?reveal_builtins
         let accum_ticks =
           Int64.add accum_ticks (Z.to_int64 pvm_state.max_nb_ticks)
         in
-        after_fast_exec () ;
+        let* () = after_fast_exec () in
         let max_steps =
           Int64.sub max_steps (Z.to_int64 pvm_state.max_nb_ticks)
         in
@@ -148,7 +158,6 @@ let rec compute_step_many accum_ticks ?reveal_builtins
             ~reveal_builtins
             ~write_debug
             ~stop_at_snapshot
-            ~after_fast_exec
             pvm_state
         else Lwt.return (pvm_state, accum_ticks)
       in
@@ -165,8 +174,4 @@ let compute_step_many = compute_step_many 0L
 
 let get_wasm_version = Wasm_vm.get_wasm_version
 
-module Internal_for_tests = struct
-  let compute_step_many_with_hooks = compute_step_many
-end
-
-let compute_step_many = compute_step_many ?after_fast_exec:None
+let compute_step_many = compute_step_many

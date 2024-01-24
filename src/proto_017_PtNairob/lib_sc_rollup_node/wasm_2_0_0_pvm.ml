@@ -191,7 +191,7 @@ module Impl : Pvm_sig.S = struct
   module Backend = Make_backend (Wasm_2_0_0_proof_format.Tree)
 
   let eval_many ~reveal_builtins ~write_debug =
-    Backend.compute_step_many ~reveal_builtins ~write_debug
+    Backend.compute_step_many ~reveal_builtins ~write_debug ?hooks:None
 end
 
 include Impl
