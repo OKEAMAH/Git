@@ -284,9 +284,9 @@ module Inner = struct
     remaining_bytes : int;
     (* Log of the number of evaluations that constitute an erasure encoded
        polynomial. *)
-    kate_amortized_srs_g2_shards : G2.t;
-    kate_amortized_srs_g2_pages : G2.t;
-    kate_amortized_srs_g2_commitment : G2.t;
+    srs_g2_shards : G2.t;
+    srs_g2_pages : G2.t;
+    srs_g2_commitment : G2.t;
     mode : [`Verifier | `Prover];
     kate_amortized : Kate_amortized.public_parameters;
   }
@@ -518,18 +518,16 @@ module Inner = struct
     let page_length = page_length ~page_size in
     let page_length_domain, _, _ = FFT.select_fft_domain page_length in
     let ( mode,
-          kate_amortized_srs_g2_shards,
-          kate_amortized_srs_g2_pages,
-          kate_amortized_srs_g2_commitment,
+          srs_g2_shards,
+          srs_g2_pages,
+          srs_g2_commitment,
           kate_amortized,
           srs_g2_length ) =
       match !initialisation_parameters with
       | Some (srs_g1, srs_g2) ->
-          let kate_amortized_srs_g2_shards = Srs_g2.get srs_g2 shard_length in
-          let kate_amortized_srs_g2_pages =
-            Srs_g2.get srs_g2 page_length_domain
-          in
-          let kate_amortized_srs_g2_commitment =
+          let srs_g2_shards = Srs_g2.get srs_g2 shard_length in
+          let srs_g2_pages = Srs_g2.get srs_g2 page_length_domain in
+          let srs_g2_commitment =
             let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
             let max_committable_degree = Srs_g1.size srs_g1 - 1 in
             let offset_monomial_degree =
@@ -542,20 +540,16 @@ module Inner = struct
               {max_polynomial_length; shard_length; srs_g1; number_of_shards}
           in
           ( `Prover,
-            kate_amortized_srs_g2_shards,
-            kate_amortized_srs_g2_pages,
-            kate_amortized_srs_g2_commitment,
+            srs_g2_shards,
+            srs_g2_pages,
+            srs_g2_commitment,
             kate_amortized,
             Srs_g2.size srs_g2 )
       | None ->
           let srs_g1, srs_g2 = Srs_verifier.(srs_g1, srs_g2) in
-          let kate_amortized_srs_g2_shards =
-            Srs_verifier.get_srs2 srs_g2 shard_length
-          in
-          let kate_amortized_srs_g2_pages =
-            Srs_verifier.get_srs2 srs_g2 page_length_domain
-          in
-          let kate_amortized_srs_g2_commitment =
+          let srs_g2_shards = Srs_verifier.get_srs2 srs_g2 shard_length in
+          let srs_g2_pages = Srs_verifier.get_srs2 srs_g2 page_length_domain in
+          let srs_g2_commitment =
             let max_allowed_committed_poly_degree = max_polynomial_length - 1 in
             let max_committable_degree =
               Parameters_bounds_for_tests.max_srs_size - 1
@@ -570,9 +564,9 @@ module Inner = struct
               {max_polynomial_length; shard_length; srs_g1; number_of_shards}
           in
           ( `Verifier,
-            kate_amortized_srs_g2_shards,
-            kate_amortized_srs_g2_pages,
-            kate_amortized_srs_g2_commitment,
+            srs_g2_shards,
+            srs_g2_pages,
+            srs_g2_commitment,
             kate_amortized,
             max_int )
     in
@@ -604,9 +598,9 @@ module Inner = struct
         page_length;
         page_length_domain;
         remaining_bytes = page_size mod scalar_bytes_amount;
-        kate_amortized_srs_g2_shards;
-        kate_amortized_srs_g2_pages;
-        kate_amortized_srs_g2_commitment;
+        srs_g2_shards;
+        srs_g2_pages;
+        srs_g2_commitment;
         mode;
         kate_amortized;
       }
@@ -1115,7 +1109,7 @@ module Inner = struct
   (* Verifies that the degree of the committed polynomial is < t.max_polynomial_length *)
   let verify_commitment (t : t) cm proof =
     let srs_0 = G2.one in
-    let srs_n_d = t.kate_amortized_srs_g2_commitment in
+    let srs_n_d = t.srs_g2_commitment in
     Degree_check.verify {srs_0; srs_n_d} cm proof
 
   let save_precompute_shards_proofs precomputation ~filename =
@@ -1202,7 +1196,7 @@ module Inner = struct
           Domain.get t.domain_erasure_encoded_polynomial_length shard_index
         in
         let domain = Domain.build t.shard_length in
-        let srs_point = t.kate_amortized_srs_g2_shards in
+        let srs_point = t.srs_g2_shards in
         if
           Kate_amortized.verify
             t.kate_amortized
@@ -1268,7 +1262,7 @@ module Inner = struct
               | _ -> Scalar.(copy zero))
         in
         let root = Domain.get t.domain_polynomial_length page_index in
-        let srs_point = t.kate_amortized_srs_g2_pages in
+        let srs_point = t.srs_g2_pages in
         if
           Kate_amortized.verify
             t.kate_amortized
