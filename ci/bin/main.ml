@@ -114,7 +114,7 @@ let variables : variables =
    {{:https://gitlab.com/tezos/opam-repository/}
    tezos/opam-repository}. *)
 module Images = struct
-  let _runtime_e2etest_dependencies =
+  let runtime_e2etest_dependencies =
     Image.register
       ~name:"runtime_e2etest_dependencies"
       ~image_path:
@@ -768,7 +768,7 @@ let job_build_arm64_exp_dev_extra =
     ()
 
 (* Used in [before_merging] and [schedule_extended_test] pipelines *)
-let _job_build_x86_64_release =
+let job_build_x86_64_release =
   job_build_dynamic_binaries
     ~external_:true
     ~arch:Amd64
@@ -778,7 +778,7 @@ let _job_build_x86_64_release =
     ()
 
 (* Used in [before_merging] and [schedule_extended_test] pipelines *)
-let _job_build_x86_64_exp_dev_extra =
+let job_build_x86_64_exp_dev_extra =
   job_build_dynamic_binaries
     ~external_:true
     ~arch:Amd64
@@ -971,7 +971,7 @@ let enable_kernels job =
     ]
     job
 
-let _job_build_kernels : job =
+let job_build_kernels : job =
   job_external @@ enable_kernels @@ enable_sccache
   @@ job
        ~name:"oc.build_kernels"
@@ -1098,7 +1098,7 @@ let _jobs_install_octez : job list =
 (* Fetch records for Tezt generated on the last merge request pipeline
    on the most recently merged MR and makes them available in artifacts
    for future merge request pipelines. *)
-let _job_tezt_fetch_records : job =
+let job_tezt_fetch_records : job =
   job_external
   @@ job
        ~name:"oc.tezt:fetch-records"
@@ -1129,6 +1129,124 @@ let _job_tezt_fetch_records : job =
               (* Keep broken records for debugging *)
               "tezt/records/*.json.broken";
             ])
+
+let job_tezt ?rules ?parallel ?(tags = ["gcp_tezt"]) ~name ~tezt_tests
+    ?(retry = 2) ?(tezt_retry = 1) ?(tezt_parallel = 1) ?(tezt_variant = "")
+    ?(before_script = before_script ~source_version:true ~eval_opam:true [])
+    ~dependencies () : job =
+  let variables =
+    [
+      ("JUNIT", "tezt-junit.xml");
+      ("TEZT_VARIANT", tezt_variant);
+      ("TESTS", tezt_tests);
+      ("TEZT_RETRY", string_of_int tezt_retry);
+      ("TEZT_PARALLEL", string_of_int tezt_parallel);
+    ]
+  in
+  let artifacts =
+    artifacts
+      ~name:("coverage-files-" ^ Predefined_vars.(show ci_job_id))
+      ~reports:(reports ~junit:"$JUNIT" ())
+      [
+        "tezt.log";
+        "tezt-*.log";
+        "tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json";
+        "$BISECT_FILE";
+        "$JUNIT";
+      ]
+      (* The record artifacts [tezt-results-$CI_NODE_INDEX.json]
+         should be stored for as long as a given commit on master is
+         expected to be HEAD in order to support auto-balancing. At
+         the time of writing, we have approximately 6 merges per day,
+         so 1 day should more than enough. However, we set it to 3
+         days to keep records over the weekend. The tezt artifacts
+         (including records and coverage) take up roughly 2MB /
+         job. Total artifact storage becomes [N*P*T*W] where [N] is
+         the days of retention (3 atm), [P] the number of pipelines
+         per day (~200 atm), [T] the number of Tezt jobs per pipeline
+         (60) and [W] the artifact size per tezt job (2MB). This makes
+         35GB which is less than 0.5% than our
+         {{:https://gitlab.com/tezos/tezos/-/artifacts}total artifact
+         usage}. *)
+      ~expire_in:(Days 3)
+      ~when_:Always
+  in
+  let print_variables =
+    [
+      "TESTS";
+      "JUNIT";
+      "CI_NODE_INDEX";
+      "CI_NODE_TOTAL";
+      "TEZT_PARALLEL";
+      "TEZT_VARIANT";
+    ]
+  in
+  let retry = if retry = 0 then None else Some retry in
+  job
+    ~image:Images.runtime_e2etest_dependencies
+    ~name
+    ?parallel
+    ~tags
+    ~stage:Stages.test
+    ?rules
+    ~artifacts
+    ~variables
+    ~dependencies
+    ?retry
+    ~before_script
+    [
+      (* Print [print_variables] in a shell-friendly manner for easier debugging *)
+      "echo \""
+      ^ String.concat
+          " "
+          (List.map (fun var -> sf {|%s=\"${%s}\"|} var var) print_variables)
+      ^ "\"";
+      (* For Tezt tests, there are multiple timeouts:
+         - --global-timeout is the internal timeout of Tezt, which only works if tests
+           are cooperative;
+         - the "timeout" command, which we set to send SIGTERM to Tezt 60s after --global-timeout
+           in case tests are not cooperative;
+         - the "timeout" command also sends SIGKILL 60s after having sent SIGTERM in case
+           Tezt is still stuck;
+         - the CI timeout.
+         The use of the "timeout" command is to make sure that Tezt eventually exits,
+         because if the CI timeout is reached, there are no artefacts,
+         and thus no logs to investigate.
+         See also: https://gitlab.com/gitlab-org/gitlab/-/issues/19818 *)
+      "./scripts/ci/exit_code.sh timeout -k 60 1860 ./scripts/ci/exit_code.sh \
+       _build/default/tezt/tests/main.exe ${TESTS} --color --log-buffer-size \
+       5000 --log-file tezt.log --global-timeout 1800 \
+       --on-unknown-regression-files fail --junit ${JUNIT} --from-record \
+       tezt/records --job ${CI_NODE_INDEX:-1}/${CI_NODE_TOTAL:-1} --record \
+       tezt-results-${CI_NODE_INDEX}${TEZT_VARIANT}.json --job-count \
+       ${TEZT_PARALLEL:-3} --retry ${TEZT_RETRY:-1}";
+      "./scripts/ci/merge_coverage.sh";
+    ]
+
+let _job_tezt_flaky : job =
+  let tezt_flaky_dependencies =
+    [
+      job_build_x86_64_release;
+      job_build_x86_64_exp_dev_extra;
+      job_build_kernels;
+      job_tezt_fetch_records;
+    ]
+  in
+  job_external @@ job_enable_coverage
+  @@ job_tezt
+       ~name:"tezt_flaky"
+       ~tezt_tests:"flaky"
+         (* To handle flakiness, consider tweaking [~tezt_parallel] (passed to
+            Tezt's '--job-count'), and [~tezt_retry] (passed to Tezt's
+            '--retry') *)
+       ~retry:2
+       ~tezt_retry:3
+       ~tezt_parallel:1
+       ~parallel:1
+       ~dependencies:
+         (Dependent
+            (List.map (fun job -> Artifacts job) tezt_flaky_dependencies))
+       ()
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
