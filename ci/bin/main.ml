@@ -728,7 +728,24 @@ let build_arm_rules =
       ();
   ]
 
-(* Write external files for build_arm64_jobs *)
+let changeset_octez =
+  [
+    "src/**/*";
+    "etherlink/**/*";
+    "tezt/**/*";
+    ".gitlab/**/*";
+    ".gitlab-ci.yml";
+    "michelson_test_scripts/**/*";
+    "tzt_reference_test_suite/**/*";
+  ]
+
+let build_x86_64_rules =
+  [
+    job_rule ~changes:changeset_octez ();
+    job_rule ~if_:Rules.triggered_by_marge_bot ();
+  ]
+
+(* Write external files for build_{arm64, x86_64} jobs *)
 
 (* Used in [before_merging] and [schedule_extended_test] pipelines *)
 let job_build_arm64_release =
@@ -748,6 +765,26 @@ let job_build_arm64_exp_dev_extra =
     ~needs_trigger:false
     ~release:false
     ~rules:build_arm_rules
+    ()
+
+(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+let _job_build_x86_64_release =
+  job_build_dynamic_binaries
+    ~external_:true
+    ~arch:Amd64
+    ~needs_trigger:true
+    ~release:true
+    ~rules:build_x86_64_rules
+    ()
+
+(* Used in [before_merging] and [schedule_extended_test] pipelines *)
+let _job_build_x86_64_exp_dev_extra =
+  job_build_dynamic_binaries
+    ~external_:true
+    ~arch:Amd64
+    ~needs_trigger:true
+    ~release:false
+    ~rules:build_x86_64_rules
     ()
 
 let job_enable_coverage_report job : job =
@@ -776,17 +813,6 @@ let enable_sccache ?(sccache_dir = "$CI_PROJECT_DIR/_sccache") job =
   job_append_variables
     [("SCCACHE_DIR", sccache_dir); ("RUSTC_WRAPPER", "sccache")]
     job
-
-let changeset_octez =
-  [
-    "src/**/*";
-    "etherlink/**/*";
-    "tezt/**/*";
-    ".gitlab/**/*";
-    ".gitlab-ci.yml";
-    "michelson_test_scripts/**/*";
-    "tzt_reference_test_suite/**/*";
-  ]
 
 let changeset_octez_docs =
   [
