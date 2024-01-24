@@ -16,7 +16,7 @@ let contracts = compile_contract_file(contracts_directory, 'erc1155.sol');
 let contract = find_contract(contracts, "MyMultiToken");
 let create_data = contract.bytecode;
 
-let number_of_tokens = 100;
+let number_of_tokens = 200;
 let initial_value = 100000;
 
 // Currently takes 2154662 gas
@@ -44,7 +44,7 @@ let safeBatchTransferFrom_data =
 
 // Safe margin to ensure the scenario still works with changes in the gas
 // accounting of the kernel
-let gasLimit = 3_000_000;
+let gasLimit = 6_000_000;
 
 let txs = [];
 txs.push(utils.transfer(faucet, player1, 100000000000));
