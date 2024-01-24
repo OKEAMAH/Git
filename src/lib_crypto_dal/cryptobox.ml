@@ -30,39 +30,7 @@ module FFT = Kzg.Utils.FFT
 module Degree_check = Kzg.Degree_check
 module Kate_amortized = Kzg.Kate_amortized
 module Base58 = Tezos_crypto.Base58
-
-module Parameters_bounds_for_tests = struct
-  (* The following bounds are chosen to fit the invariants of [ensure_validity] *)
-
-  (* The maximum value for the slot size is chosen to trigger
-     cases where some domain sizes for the FFT are not powers
-     of two.*)
-  let max_slot_size_log2 = 13
-
-  let max_redundancy_factor_log2 = 4
-
-  (* The difference between slot size & page size ; also the minimal bound of
-     the number of shards.
-     To keep shard length < max_polynomial_length, we need to set nb_shard
-     strictly greater (-> +1) than redundancy_factor *)
-  let size_offset_log2 = max_redundancy_factor_log2 + 1
-
-  (* The pages must be strictly smaller than the slot, and the difference of
-     their length must be greater than the number of shards. *)
-  let max_page_size_log2 = max_slot_size_log2 - size_offset_log2
-
-  (* The set of parameters maximizing the SRS length, and which
-     is in the codomain of [generate_parameters]. *)
-  let max_parameters : Dal_config.parameters =
-    {
-      (* The +1 is here to ensure that the SRS will be large enough for the
-         erasure polynomial *)
-      slot_size = 1 lsl (max_slot_size_log2 + 1);
-      page_size = 1 lsl max_page_size_log2;
-      redundancy_factor = 1 lsl max_redundancy_factor_log2;
-      number_of_shards = 1;
-    }
-end
+module Parameters_bounds_for_tests = Srs_verifier.Parameters_bounds_for_tests
 
 type error += Failed_to_load_trusted_setup of string
 
@@ -100,22 +68,11 @@ let () =
     (function () -> Dal_initialisation_twice)
   [@@coverage off]
 
-(* Number of bytes fitting in a Scalar.t. Since scalars are integer modulo
-   r~2^255, we restrict ourselves to 248-bit integers (31 bytes). *)
-let scalar_bytes_amount = Scalar.size_in_bytes - 1
+let scalar_bytes_amount = Srs_verifier.scalar_bytes_amount
 
-(* The page size is a power of two and thus not a multiple of [scalar_bytes_amount],
-   hence the + 1 to account for the remainder of the division. *)
-let page_length ~page_size = Int.div page_size scalar_bytes_amount + 1
+let page_length = Srs_verifier.page_length
 
-(* [slot_as_polynomial_length ~slot_size ~page_size] returns the length of the
-   polynomial of maximal degree representing a slot of size [slot_size] with
-   [slot_size / page_size] pages. The returned length thus depends on the number
-   of pages. *)
-let slot_as_polynomial_length ~slot_size ~page_size =
-  let page_length = page_length ~page_size in
-  let page_length_domain, _, _ = FFT.select_fft_domain page_length in
-  slot_size / page_size * page_length_domain
+let slot_as_polynomial_length = Srs_verifier.slot_as_polynomial_length
 
 (* This function is expected to be called once. *)
 let load_parameters parameters =
