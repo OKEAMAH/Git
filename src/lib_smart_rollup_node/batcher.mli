@@ -30,11 +30,11 @@ type status =
       (** The message has already been batched and sent to the injector in an L1
           operation whose hash is given. *)
 
-(** [init plugin config] initializes and starts the batcher for
-    [signer].  [plugin] is the protocol plugin with which the batcher
-    is started, but it will automatically change plugins on protocol
-    migrations. The batcher worker is launched only if the current
-    rollup node mode supports batching L2 operations. *)
+(** [init plugin config] initializes and starts the batcher for [signer].
+    [plugin] is the protocol plugin with which the batcher is started, but it
+    will automatically change plugins on protocol migrations. The batcher worker
+    is launched only if the current rollup node mode supports batching L2
+    operations. *)
 val init :
   (module Protocol_plugin_sig.S) -> Configuration.t -> unit tzresult Lwt.t
 
@@ -69,3 +69,12 @@ val message_status :
   (string option * Rollup_node_services.message_status) tzresult
 
 val rpc_directory : unit Tezos_rpc.Directory.t
+
+module Autonomous : sig
+  (** Run an autonmous batcher with its own injector and RPC server. *)
+  val run :
+    data_dir:string ->
+    Configuration.t ->
+    Client_context.full ->
+    unit tzresult Lwt.t
+end

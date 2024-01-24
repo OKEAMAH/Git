@@ -48,6 +48,14 @@ struct
       ("nb_batches", Data_encoding.int31)
       ("nb_messages", Data_encoding.int31)
 
+  let monitoring_error =
+    declare_1
+      ~section
+      ~name:"batcher_monitoring_error"
+      ~msg:"[Warning] (ignored) in monitoring: {error}"
+      ~level:Warning
+      ("error", trace_encoding)
+
   module Worker = struct
     open Batcher_worker_types
 

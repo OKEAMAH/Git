@@ -36,13 +36,27 @@ end
 
 module Batched_messages = Hash_queue.Make (L2_message.Hash) (L2_batched_message)
 
+module Int_cache =
+  Aches_lwt.Lache.Make_result
+    (Aches.Rache.Transfer
+       (Aches.Rache.LRU)
+       (struct
+         include Int
+
+         let hash x = x
+       end))
+
 type status = Pending_batch | Batched of Injector.Inj_operation.hash
+
+type last_seen_head = {block_hash : Block_hash.t; level : int32}
 
 type state = {
   config : Configuration.t;
   messages : Message_queue.t;
   batched : Batched_messages.t;
   mutable plugin : (module Protocol_plugin_sig.S);
+  mutable last_seen_head : last_seen_head option;
+  mutable stop : unit -> unit Lwt.t;
 }
 
 let message_size s =
@@ -187,6 +201,8 @@ let init_batcher_state plugin config =
     messages = Message_queue.create 100_000 (* ~ 400MB *);
     batched = Batched_messages.create 100_000 (* ~ 400MB *);
     plugin;
+    last_seen_head = None;
+    stop = (fun () -> Lwt.return_unit);
   }
 
 module Types = struct
@@ -275,7 +291,6 @@ let check_batcher_config (module Plugin : Protocol_plugin_sig.S)
 
 let start plugin config =
   let open Lwt_result_syntax in
-  let*? () = check_batcher_config plugin config.Configuration.batcher in
   let+ worker = Worker.launch table () {config; plugin} (module Handlers) in
   Lwt.wakeup worker_waker worker
 
@@ -352,11 +367,15 @@ let produce_batches () =
       |> handle_request_error
 
 let shutdown () =
+  let open Lwt_syntax in
   match Lazy.force worker with
   | Error _ ->
       (* There is no batcher, nothing to do *)
-      Lwt.return_unit
-  | Ok w -> Worker.shutdown w
+      return_unit
+  | Ok w ->
+      let state = Worker.state w in
+      let* () = state.stop () in
+      Worker.shutdown w
 
 let message_status state msg_hash =
   let open Result_syntax in
@@ -435,3 +454,119 @@ module RPC_directory = struct
 end
 
 let rpc_directory = RPC_directory.Local_directory.build_directory ()
+
+(** Retrieve next protocol of a block with a small cache from protocol levels to
+    protocol hashes. *)
+let next_protocol_of_block =
+  let proto_levels_cache = Int_cache.create 7 in
+  fun (cctxt : Client_context.full) (block_hash, (block_header : Block_header.t))
+      ->
+    let open Lwt_result_syntax in
+    let proto_level = block_header.shell.proto_level in
+    Int_cache.bind_or_put
+      proto_levels_cache
+      proto_level
+      (fun _proto_level ->
+        let+ protos =
+          Tezos_shell_services.Shell_services.Blocks.protocols
+            cctxt
+            ~chain:cctxt#chain
+            ~block:(`Hash (block_hash, 0))
+            ()
+        in
+        protos.next_protocol)
+      Lwt.return
+
+let update_plugin state protocol =
+  let open Result_syntax in
+  let+ plugin = Protocol_plugins.proto_plugin_for_protocol protocol in
+  state.plugin <- plugin
+
+let rec monitor_l1_chain l1_ctxt cctxt state =
+  let open Lwt_result_syntax in
+  let*! res =
+    Layer_1.iter_heads l1_ctxt @@ fun (head_hash, header) ->
+    let head = {block_hash = head_hash; level = header.shell.level} in
+    let* next_protocol = next_protocol_of_block cctxt (head_hash, header) in
+    let*? () = update_plugin state next_protocol in
+    (* Produces batches on level change *)
+    let* () =
+      match state.last_seen_head with
+      | Some {level = last_level; _} when last_level >= header.shell.level ->
+          return_unit
+      | _ -> produce_batches ()
+    in
+    state.last_seen_head <- Some head ;
+    let*! () = Injector.inject ~header:header.shell () in
+    return_unit
+  in
+  (* Ignore errors *)
+  let*! () =
+    match res with
+    | Error error ->
+        Internal_event.Simple.emit Batcher_events.monitoring_error error
+    | Ok () -> Lwt.return_unit
+  in
+  monitor_l1_chain l1_ctxt cctxt state
+
+module Autonomous = struct
+  let run ~data_dir config cctxt =
+    let open Lwt_result_syntax in
+    let*? plugin =
+      Protocol_plugins.(proto_plugin_for_protocol @@ last_registered ())
+    in
+    let*? () = check_batcher_config plugin config.Configuration.batcher in
+    let*? signers =
+      match Purpose.find_operator Batching config.operators with
+      | None -> error_with "No signers configured for batcher"
+      | Some (Multiple []) -> error_with "No signers configured for batcher"
+      | Some (Multiple pkhs) ->
+          (* For the batcher we delay of 0.5 sec to allow more
+             operations to get in. *)
+          Ok
+            [
+              (pkhs, `Delay_block 0.5, Purpose.operation_kind (Purpose Batching));
+            ]
+    in
+    let (module Plugin) = plugin in
+    let* constants = Plugin.Layer1_helpers.retrieve_constants cctxt in
+    let* () =
+      Injector.init
+        cctxt
+        ~reconnection_delay:config.reconnection_delay
+        {
+          cctxt = (cctxt :> Client_context.full);
+          fee_parameters = config.fee_parameters;
+          minimal_block_delay = constants.minimal_block_delay;
+          delay_increment_per_round = constants.delay_increment_per_round;
+        }
+        ~data_dir
+        ~signers
+        ~retention_period:config.injector.retention_period
+        ~allowed_attempts:config.injector.attempts
+    in
+    let*! l1_ctxt =
+      Layer_1.start
+        ~name:"batcher"
+        ~reconnection_delay:config.reconnection_delay
+        cctxt
+    in
+    let* worker = Worker.launch table () {config; plugin} (module Handlers) in
+    let state = Worker.state worker in
+    Lwt.wakeup worker_waker worker ;
+    let* rpc_server = Rpc_server.start config rpc_directory in
+    let*! () =
+      Event.node_is_ready ~rpc_addr:config.rpc_addr ~rpc_port:config.rpc_port
+    in
+    let monitoring_promise = monitor_l1_chain l1_ctxt cctxt state in
+    state.stop <-
+      (fun () ->
+        let*! () = Rpc_server.shutdown rpc_server in
+        let*! () =
+          Injector.shutdown ~tags:(Purpose.operation_kind (Purpose Batching)) ()
+        in
+        Lwt.cancel monitoring_promise ;
+        let*! () = Layer_1.shutdown l1_ctxt in
+        Lwt.return_unit) ;
+    Lwt_utils.never_ending ()
+end
