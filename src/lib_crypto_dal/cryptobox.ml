@@ -132,15 +132,6 @@ let initialisation_parameters_from_files ~srs_g1_path ~srs_g2_path
         (Failed_to_load_trusted_setup (Printf.sprintf "Invalid point %i" p))
   | Ok (srs_g1, srs_g2) -> return (srs_g1, srs_g2)
 
-let fake_srs =
-  let length = Parameters_bounds_for_tests.max_srs_size in
-  let secret =
-    Scalar.of_string
-      "20812168509434597367146703229805575690060615791308155437936410982393987532344"
-  in
-  ( Srs_g1.generate_insecure length secret,
-    Srs_g2.generate_insecure length secret )
-
 module Inner = struct
   module Commitment = struct
     include Kzg.Commitment.Single
@@ -1293,7 +1284,7 @@ module Verifier = Inner
 module Internal_for_tests = struct
   module Parameters_bounds = Parameters_bounds_for_tests
 
-  let parameters_initialisation () = fake_srs
+  let parameters_initialisation () = Srs_verifier.fake_srs
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1370,7 +1361,7 @@ module Internal_for_tests = struct
     let mode, (srs_g1, srs_g2) =
       match !initialisation_parameters with
       | Some srs -> (`Prover, srs)
-      | None -> (`Verifier, fake_srs)
+      | None -> (`Verifier, Srs_verifier.fake_srs)
     in
     ensure_validity
       ~mode

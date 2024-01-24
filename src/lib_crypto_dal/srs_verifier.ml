@@ -82,3 +82,13 @@ let domain_length ~size =
 let slot_as_polynomial_length ~slot_size ~page_size =
   let page_length_domain = domain_length ~size:page_size in
   slot_size / page_size * page_length_domain
+
+let fake_srs =
+  let length = Parameters_bounds_for_tests.max_srs_size in
+  let secret =
+    Scalar.of_string
+      "20812168509434597367146703229805575690060615791308155437936410982393987532344"
+  in
+  let srs_g1 = Srs_g1.generate_insecure length secret in
+  let srs_g2 = Srs_g2.generate_insecure length secret in
+  (srs_g1, srs_g2)
