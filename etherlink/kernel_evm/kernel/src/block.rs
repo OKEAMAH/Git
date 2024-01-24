@@ -67,10 +67,24 @@ fn compute<Host: Runtime>(
     while block_in_progress.has_tx() {
         // is reboot necessary ?
         if block_in_progress.would_overflow() {
-            // TODO: https://gitlab.com/tezos/tezos/-/issues/6094
-            // there should be an upper bound on gasLimit
-            return Ok(ComputationResult::RebootNeeded);
+            // If it is not the first transaction this means there will never be
+            // enough ticks for this transaction.
+            if !is_first_transaction {
+                return Ok(ComputationResult::RebootNeeded);
+            } else {
+                let transaction = block_in_progress.pop_tx().ok_or(Error::Reboot)?;
+                let data_size: u64 = transaction.data_size();
+                block_in_progress.account_for_invalid_transaction(data_size);
+                log!(
+                    host,
+                    Debug,
+                    "Discarding transaction {} as it overflows",
+                    hex::encode(transaction.tx_hash)
+                );
+                continue;
+            }
         }
+
         let transaction = block_in_progress.pop_tx().ok_or(Error::Reboot)?;
         let data_size: u64 = transaction.data_size();
 
