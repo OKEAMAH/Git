@@ -450,8 +450,8 @@ module Inner = struct
           max_polynomial_length
           shard_length)
 
-  let ensure_validity ~slot_size ~page_size ~redundancy_factor ~number_of_shards
-      ~srs_g1_length ~srs_g2_length =
+  let ensure_validity ~mode ~slot_size ~page_size ~redundancy_factor
+      ~number_of_shards ~srs_g1_length ~srs_g2_length:_ =
     let open Result_syntax in
     let assert_result condition error_message =
       if not condition then fail (`Fail (error_message ())) else return_unit
@@ -463,37 +463,42 @@ module Inner = struct
         ~redundancy_factor
         ~number_of_shards
     in
-    let max_polynomial_length =
-      slot_as_polynomial_length ~slot_size ~page_size
+    let min_g1 =
+      let max_polynomial_length =
+        slot_as_polynomial_length ~slot_size ~page_size
+      in
+      match mode with
+      | `Prover -> max_polynomial_length
+      | `Verifier ->
+          (* compute shard length *)
+          let erasure_encoded_polynomial_length =
+            redundancy_factor * max_polynomial_length
+          in
+          erasure_encoded_polynomial_length / number_of_shards
     in
-    let* () =
-      assert_result
-        (max_polynomial_length <= srs_g1_length)
-        (* The committed polynomials have degree t.max_polynomial_length - 1 at most,
-           so t.max_polynomial_length coefficients. *)
-        (fun () ->
-          Format.asprintf
-            "SRS on G1 size is too small. Expected more than %d. Got %d. Hint: \
-             you can reduce the size of a slot."
-            max_polynomial_length
-            srs_g1_length)
-    in
-    (* TODO: Students this your job! *)
-    let erasure_encoded_polynomial_length =
-      redundancy_factor * max_polynomial_length
-    in
-    let shard_length = erasure_encoded_polynomial_length / number_of_shards in
+    (* let* () = *)
     assert_result
-      (let srs_g2_expected_length =
-         max max_polynomial_length shard_length + 1
-       in
-       srs_g2_expected_length <= srs_g2_length)
+      (min_g1 <= srs_g1_length)
+      (* The committed polynomials have degree t.max_polynomial_length - 1 at most,
+         so t.max_polynomial_length coefficients. *)
       (fun () ->
         Format.asprintf
-          "SRS on G2 size is too small. Expected more than %d. Got %d. Hint: \
-           you can increase the number of shards/number of pages."
-          max_polynomial_length
-          srs_g2_length)
+          "SRS on G1 size is too small. Expected more than %d. Got %d. Hint: \
+           you can reduce the size of a slot."
+          min_g1
+          srs_g1_length)
+  (* TODO: Students this your job! *)
+  (* assert_result
+       (let srs_g2_expected_length =
+          max max_polynomial_length shard_length + 1
+        in
+        srs_g2_expected_length <= srs_g2_length)
+       (fun () ->
+         Format.asprintf
+           "SRS on G2 size is too small. Expected more than %d. Got %d. Hint: \
+            you can increase the number of shards/number of pages."
+           max_polynomial_length
+           srs_g2_length) *)
 
   type parameters = Dal_config.parameters = {
     redundancy_factor : int;
@@ -578,6 +583,7 @@ module Inner = struct
     in
     let* () =
       ensure_validity
+        ~mode
         ~slot_size
         ~page_size
         ~redundancy_factor
@@ -1361,10 +1367,13 @@ module Internal_for_tests = struct
 
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
-    let srs_g1, srs_g2 =
-      match !initialisation_parameters with Some srs -> srs | None -> fake_srs
+    let mode, (srs_g1, srs_g2) =
+      match !initialisation_parameters with
+      | Some srs -> (`Prover, srs)
+      | None -> (`Verifier, fake_srs)
     in
     ensure_validity
+      ~mode
       ~slot_size
       ~page_size
       ~redundancy_factor
