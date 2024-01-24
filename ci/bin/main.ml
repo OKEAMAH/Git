@@ -468,13 +468,12 @@ let job_docker_promote_to_latest ~ci_docker_hub : job =
      (no need to test that we pass the -static flag twice)
    - released variants exist, that are used in release tag pipelines
      (they do not build experimental executables) *)
-let job_build_static_binaries ~arch ?(external_ = false) ?(release = false)
-    ?(needs_trigger = false) () =
+let job_build_static_binaries ~arch ?(release = false) ?(needs_trigger = false)
+    () =
   let arch_string =
     match arch with Tezos_ci.Amd64 -> "x86_64" | Arm64 -> "arm64"
   in
   let name = "oc.build:static-" ^ arch_string ^ "-linux-binaries" in
-  let filename_suffix = if release then "release" else "experimental" in
   let artifacts =
     (* Extend the lifespan to prevent failure for external tools using artifacts. *)
     let expire_in = if release then Some (Days 90) else None in
@@ -504,11 +503,11 @@ let job_build_static_binaries ~arch ?(external_ = false) ?(release = false)
       ~artifacts
       ["./scripts/ci/build_static_binaries.sh"]
   in
-  if external_ then job_external ~filename_suffix job else job
+  job
 
 (* Used in [before_merging] pipeline. *)
 let job_static_x86_64_experimental =
-  job_build_static_binaries ~external_:true ~arch:Amd64 ~needs_trigger:true ()
+  job_build_static_binaries ~arch:Amd64 ~needs_trigger:true ()
 
 (** Type of Docker build jobs.
 
@@ -532,11 +531,8 @@ let job_static_x86_64_experimental =
       stage, run [on_success] and are not allowed to fail. *)
 type docker_build_type = Experimental | Release | Test | Test_manual
 
-(** Creates a Docker build job of the given [arch] and [docker_build_type].
-
-    If [external_] is set to true (default [false]), then the job is
-    also written to an external file. *)
-let job_docker_build ?rules ~arch ?(external_ = false) docker_build_type : job =
+(** Creates a Docker build job of the given [arch] and [docker_build_type]. *)
+let job_docker_build ?rules ~arch docker_build_type : job =
   let arch_string =
     match arch with Tezos_ci.Amd64 -> "amd64" | Arm64 -> "arm64"
   in
@@ -566,13 +562,6 @@ let job_docker_build ?rules ~arch ?(external_ = false) docker_build_type : job =
     | _ -> (Stages.build, Staged, None, None)
   in
   let name = "oc.docker:" ^ arch_string in
-  let filename_suffix =
-    match docker_build_type with
-    | Release -> "release"
-    | Experimental -> "experimental"
-    | Test -> "test"
-    | Test_manual -> "test_manual"
-  in
   let job =
     job_docker_authenticated
       ?when_
@@ -585,16 +574,13 @@ let job_docker_build ?rules ~arch ?(external_ = false) docker_build_type : job =
       ~variables
       ["./scripts/ci/docker_release.sh"]
   in
-  if external_ then job_external ~directory:"build" ~filename_suffix job
-  else job
+  job
 
-(* Used in external [before_merging] pipeline *)
 let job_docker_amd64_test_manual : job =
-  job_docker_build ~external_:true ~arch:Amd64 Test_manual
+  job_docker_build ~arch:Amd64 Test_manual
 
-(* Used in external [before_merging] pipeline *)
 let job_docker_arm64_test_manual : job =
-  job_docker_build ~external_:true ~arch:Arm64 Test_manual
+  job_docker_build ~arch:Arm64 Test_manual
 
 (* Note: here we rely on [$IMAGE_ARCH_PREFIX] to be empty.
    Otherwise, [$DOCKER_IMAGE_TAG] would contain [$IMAGE_ARCH_PREFIX] too.
@@ -694,11 +680,10 @@ let job_build_rpm_amd64 =
 let jobs_build_bin_packages_manual =
   let manual = true in
   let arch = Tezos_ci.Amd64 in
-  jobs_external ~path:"build/bin_packages_manual.yml"
-  @@ [
-       job_build_bin_package ~manual ~arch ~target:Dpkg ();
-       job_build_bin_package ~manual ~arch ~target:Rpm ();
-     ]
+  [
+    job_build_bin_package ~manual ~arch ~target:Dpkg ();
+    job_build_bin_package ~manual ~arch ~target:Rpm ();
+  ]
 
 let _job_build_rpm_amd64 =
   job_build_bin_package ~manual:true ~target:Rpm ~arch:Tezos_ci.Amd64
@@ -818,8 +803,8 @@ let amd64_build_extra =
     "contrib/octez_injector_server/octez_injector_server.exe";
   ]
 
-let job_build_dynamic_binaries ?rules ~arch ?(external_ = false)
-    ?(release = false) ?(needs_trigger = false) () =
+let job_build_dynamic_binaries ?rules ~arch ?(release = false)
+    ?(needs_trigger = false) () =
   let arch_string =
     match arch with Tezos_ci.Amd64 -> "x86_64" | Arm64 -> "arm64"
   in
@@ -900,7 +885,7 @@ let job_build_dynamic_binaries ?rules ~arch ?(external_ = false)
     (* Disable coverage for arm64 *)
     if arch = Amd64 then job |> job_enable_coverage_instrumentation else job
   in
-  if external_ then job_external job else job
+  job
 
 let build_arm_rules =
   [
@@ -930,42 +915,32 @@ let build_x86_64_rules =
     job_rule ~if_:Rules.triggered_by_marge_bot ();
   ]
 
-(* Write external files for build_{arm64, x86_64} jobs *)
-
-(* Used in external [before_merging] pipelines *)
 let job_build_arm64_release =
   job_build_dynamic_binaries
-    ~external_:true
     ~arch:Arm64
     ~needs_trigger:false
     ~release:true
     ~rules:build_arm_rules
     ()
 
-(* Used in external [before_merging] pipelines *)
 let job_build_arm64_exp_dev_extra =
   job_build_dynamic_binaries
-    ~external_:true
     ~arch:Arm64
     ~needs_trigger:false
     ~release:false
     ~rules:build_arm_rules
     ()
 
-(* Used in external [before_merging] pipelines *)
 let job_build_x86_64_release =
   job_build_dynamic_binaries
-    ~external_:true
     ~arch:Amd64
     ~needs_trigger:true
     ~release:true
     ~rules:build_x86_64_rules
     ()
 
-(* Used in [before_merging] and [schedule_extended_test] pipelines *)
 let job_build_x86_64_exp_dev_extra =
   job_build_dynamic_binaries
-    ~external_:true
     ~arch:Amd64
     ~needs_trigger:true
     ~release:false
@@ -1034,21 +1009,20 @@ let opam_rules ~only_marge_bot ?batch_index () =
   ]
 
 let job_opam_prepare : job =
-  job_external
-  @@ job
-       ~name:"opam:prepare"
-       ~image:Images.runtime_prebuild_dependencies
-       ~stage:Stages.packaging
-       ~dependencies:(Dependent [Job trigger])
-       ~before_script:(before_script ~eval_opam:true [])
-       ~artifacts:(artifacts ["_opam-repo-for-release/"])
-       ~rules:(opam_rules ~only_marge_bot:false ~batch_index:1 ())
-       [
-         "git init _opam-repo-for-release";
-         "./scripts/opam-prepare-repo.sh dev ./ ./_opam-repo-for-release";
-         "git -C _opam-repo-for-release add packages";
-         "git -C _opam-repo-for-release commit -m \"tezos packages\"";
-       ]
+  job
+    ~name:"opam:prepare"
+    ~image:Images.runtime_prebuild_dependencies
+    ~stage:Stages.packaging
+    ~dependencies:(Dependent [Job trigger])
+    ~before_script:(before_script ~eval_opam:true [])
+    ~artifacts:(artifacts ["_opam-repo-for-release/"])
+    ~rules:(opam_rules ~only_marge_bot:false ~batch_index:1 ())
+    [
+      "git init _opam-repo-for-release";
+      "./scripts/opam-prepare-repo.sh dev ./ ./_opam-repo-for-release";
+      "git -C _opam-repo-for-release add packages";
+      "git -C _opam-repo-for-release commit -m \"tezos packages\"";
+    ]
 
 let job_opam_package {name; group; batch_index} : job =
   (* We store caches in [_build] for two reasons: (1) the [_build]
@@ -1116,7 +1090,7 @@ let read_opam_packages =
 
 let make_opam_packages (packages : opam_package list) : job list =
   let jobs = List.map job_opam_package packages in
-  jobs_external ~path:"packaging/opam_package.yml" jobs
+  jobs
 
 let jobs_opam_package : job list = make_opam_packages read_opam_packages
 
@@ -1130,7 +1104,7 @@ let enable_kernels job =
     job
 
 let job_build_kernels : job =
-  job_external @@ enable_kernels @@ enable_sccache
+  enable_kernels @@ enable_sccache
   @@ job
        ~name:"oc.build_kernels"
        ~image:Images.rust_toolchain
@@ -1233,9 +1207,8 @@ let jobs_install_octez : job list =
       ~stage:Stages.test
       [sf "./docs/introduction/compile-sources.sh %s %s" project branch]
   in
-  jobs_external ~path:"test/install_octez.yml"
   (* Test installing binary / binary RC distributions in all distributions *)
-  @@ List.map job_install_bin all_install_octez_distribution
+  List.map job_install_bin all_install_octez_distribution
   @ List.map (job_install_bin ~rc:true) all_install_octez_distribution
   (* Test installing through opam *)
   @ [job_install_opam_focal]
@@ -1257,36 +1230,35 @@ let jobs_install_octez : job list =
    on the most recently merged MR and makes them available in artifacts
    for future merge request pipelines. *)
 let job_tezt_fetch_records : job =
-  job_external
-  @@ job
-       ~name:"oc.tezt:fetch-records"
-       ~image:Images.runtime_build_dependencies
-       ~stage:Stages.build
-       ~before_script:
-         (before_script
-            ~take_ownership:true
-            ~source_version:true
-            ~eval_opam:true
-            [])
-       ~rules:[job_rule ~changes:changeset_octez ()]
-       [
-         "dune exec scripts/ci/update_records/update.exe -- --log-file \
-          tezt-fetch-records.log --test-arg from=last-merged-pipeline --info";
-       ]
-       ~after_script:["./scripts/ci/filter_corrupted_records.sh"]
-         (* Allow failure of this job, since Tezt can use the records
-            stored in the repo as backup for balancing. *)
-       ~allow_failure:Yes
-       ~artifacts:
-         (artifacts
-            ~expire_in:(Hours 4)
-            ~when_:Always
-            [
-              "tezt-fetch-records.log";
-              "tezt/records/*.json";
-              (* Keep broken records for debugging *)
-              "tezt/records/*.json.broken";
-            ])
+  job
+    ~name:"oc.tezt:fetch-records"
+    ~image:Images.runtime_build_dependencies
+    ~stage:Stages.build
+    ~before_script:
+      (before_script
+         ~take_ownership:true
+         ~source_version:true
+         ~eval_opam:true
+         [])
+    ~rules:[job_rule ~changes:changeset_octez ()]
+    [
+      "dune exec scripts/ci/update_records/update.exe -- --log-file \
+       tezt-fetch-records.log --test-arg from=last-merged-pipeline --info";
+    ]
+    ~after_script:["./scripts/ci/filter_corrupted_records.sh"]
+      (* Allow failure of this job, since Tezt can use the records
+         stored in the repo as backup for balancing. *)
+    ~allow_failure:Yes
+    ~artifacts:
+      (artifacts
+         ~expire_in:(Hours 4)
+         ~when_:Always
+         [
+           "tezt-fetch-records.log";
+           "tezt/records/*.json";
+           (* Keep broken records for debugging *)
+           "tezt/records/*.json.broken";
+         ])
 
 let job_tezt ?rules ?parallel ?(tags = ["gcp_tezt"]) ~name ~tezt_tests
     ?(retry = 2) ?(tezt_retry = 1) ?(tezt_parallel = 1) ?(tezt_variant = "")
@@ -1381,47 +1353,45 @@ let job_tezt ?rules ?parallel ?(tags = ["gcp_tezt"]) ~name ~tezt_tests
     ]
 
 let job_documentation_linkcheck =
-  job_external
-  @@ job
-       ~name:"documentation:linkcheck"
-       ~image:Images.runtime_build_test_dependencies
-       ~stage:Stages.doc
-       ~dependencies:(Dependent [])
-       ~rules:
-         [
-           job_rule ~if_:Rules.schedule_extended_tests ~when_:Always ();
-           job_rule ~if_:(Rules.has_mr_label "ci--docs") ();
-           job_rule ~when_:Manual ();
-         ]
-       ~before_script:
-         (before_script
-            ~source_version:true
-            ~eval_opam:true
-            ~init_python_venv:true
-            [])
-       ~allow_failure:Yes
-       ["make all"; "make -C docs redirectcheck"; "make -C docs linkcheck"]
+  job
+    ~name:"documentation:linkcheck"
+    ~image:Images.runtime_build_test_dependencies
+    ~stage:Stages.doc
+    ~dependencies:(Dependent [])
+    ~rules:
+      [
+        job_rule ~if_:Rules.schedule_extended_tests ~when_:Always ();
+        job_rule ~if_:(Rules.has_mr_label "ci--docs") ();
+        job_rule ~when_:Manual ();
+      ]
+    ~before_script:
+      (before_script
+         ~source_version:true
+         ~eval_opam:true
+         ~init_python_venv:true
+         [])
+    ~allow_failure:Yes
+    ["make all"; "make -C docs redirectcheck"; "make -C docs linkcheck"]
 
 let job_documentation_build_all =
-  job_external
-  @@ job
-       ~name:"documentation:build_all"
-       ~image:Images.runtime_build_test_dependencies
-       ~stage:Stages.doc
-       ~dependencies:(Dependent [Job trigger])
-         (* Warning: the [documentation:linkcheck] job must have at least the same
-            restrictions in the rules as [documentation:build_all], otherwise the CI
-            may complain that [documentation:linkcheck] depends on [documentation:build_all]
-            which does not exist. *)
-       ~rules:[job_rule ~changes:changeset_octez_docs ()]
-       ~before_script:(before_script ~eval_opam:true ~init_python_venv:true [])
-       ~artifacts:
-         (artifacts
-            ~expose_as:"Documentation - excluding old protocols"
-            ~expire_in:(Weeks 1)
-            (* Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706) *)
-            ["docs/_build/"])
-       ["./.gitlab/ci/jobs/doc/documentation:build_all.sh"]
+  job
+    ~name:"documentation:build_all"
+    ~image:Images.runtime_build_test_dependencies
+    ~stage:Stages.doc
+    ~dependencies:(Dependent [Job trigger])
+      (* Warning: the [documentation:linkcheck] job must have at least the same
+         restrictions in the rules as [documentation:build_all], otherwise the CI
+         may complain that [documentation:linkcheck] depends on [documentation:build_all]
+         which does not exist. *)
+    ~rules:[job_rule ~changes:changeset_octez_docs ()]
+    ~before_script:(before_script ~eval_opam:true ~init_python_venv:true [])
+    ~artifacts:
+      (artifacts
+         ~expose_as:"Documentation - excluding old protocols"
+         ~expire_in:(Weeks 1)
+         (* Path must be terminated with / to expose artifact (gitlab-org/gitlab#/36706) *)
+         ["docs/_build/"])
+    ["./.gitlab/ci/jobs/doc/documentation:build_all.sh"]
 
 let job_install_python ~name ~image =
   job
@@ -1447,73 +1417,66 @@ let job_install_python ~name ~image =
     ]
 
 let jobs_install_python =
-  jobs_external
-    ~path:"doc/oc.install_python.yml"
-    [
-      job_install_python
-        ~name:"oc.install_python_focal"
-        ~image:Images.ubuntu_focal;
-      job_install_python
-        ~name:"oc.install_python_jammy"
-        ~image:Images.ubuntu_jammy;
-      job_install_python
-        ~name:"oc.install_python_bullseye"
-        ~image:Images.debian_bullseye;
-    ]
+  [
+    job_install_python ~name:"oc.install_python_focal" ~image:Images.ubuntu_focal;
+    job_install_python
+      ~name:"oc.install_python_jammy"
+      ~image:Images.ubuntu_jammy;
+    job_install_python
+      ~name:"oc.install_python_bullseye"
+      ~image:Images.debian_bullseye;
+  ]
 
 let job_sanity_ci =
-  job_external
-  @@ job
-       ~name:"sanity_ci"
-       ~image:Images.runtime_build_dependencies
-       ~stage:Stages.sanity
-       ~before_script:(before_script ~take_ownership:true ~eval_opam:true [])
-       [
-         "make -C manifest check";
-         "./scripts/lint.sh --check-gitlab-ci-yml";
-         (* Check that the opam-repo images' Alpine version corresponds to
-            the value in scripts/version.sh. *)
-         "./scripts/ci/check_alpine_version.sh";
-         (* Check that .gitlab-ci.yml is up to date. *)
-         "make -C ci check";
-       ]
+  job
+    ~name:"sanity_ci"
+    ~image:Images.runtime_build_dependencies
+    ~stage:Stages.sanity
+    ~before_script:(before_script ~take_ownership:true ~eval_opam:true [])
+    [
+      "make -C manifest check";
+      "./scripts/lint.sh --check-gitlab-ci-yml";
+      (* Check that the opam-repo images' Alpine version corresponds to
+         the value in scripts/version.sh. *)
+      "./scripts/ci/check_alpine_version.sh";
+      (* Check that .gitlab-ci.yml is up to date. *)
+      "make -C ci check";
+    ]
 
 let changeset_docker_files = ["build.Dockerfile"; "Dockerfile"]
 
 let job_docker_hadolint =
-  job_external
-  @@ job
-       ~name:"docker:hadolint"
-       ~image:Images.hadolint
-       ~stage:Stages.sanity
-       ~rules:
-         [
-           job_rule
-             ~if_:Rules.merge_request
-             ~changes:changeset_docker_files
-             ~allow_failure:Yes
-             ();
-         ]
-       ["hadolint build.Dockerfile"; "hadolint Dockerfile"]
+  job
+    ~name:"docker:hadolint"
+    ~image:Images.hadolint
+    ~stage:Stages.sanity
+    ~rules:
+      [
+        job_rule
+          ~if_:Rules.merge_request
+          ~changes:changeset_docker_files
+          ~allow_failure:Yes
+          ();
+      ]
+    ["hadolint build.Dockerfile"; "hadolint Dockerfile"]
 
 let changeset_ocaml_files =
   ["src/**/*"; "tezt/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"; "devtools/**/*"]
 
 let job_ocaml_check =
-  job_external
-  @@ job
-       ~name:"ocaml-check"
-       ~image:Images.runtime_build_dependencies
-       ~stage:Stages.build
-       ~dependencies:(Dependent [Job trigger])
-       ~rules:[job_rule ~changes:changeset_ocaml_files ()]
-       ~before_script:
-         (before_script
-            ~take_ownership:true
-            ~source_version:true
-            ~eval_opam:true
-            [])
-       ["dune build @check"]
+  job
+    ~name:"ocaml-check"
+    ~image:Images.runtime_build_dependencies
+    ~stage:Stages.build
+    ~dependencies:(Dependent [Job trigger])
+    ~rules:[job_rule ~changes:changeset_ocaml_files ()]
+    ~before_script:
+      (before_script
+         ~take_ownership:true
+         ~source_version:true
+         ~eval_opam:true
+         [])
+    ["dune build @check"]
 
 (* Misc checks *)
 
@@ -1533,71 +1496,66 @@ let changeset_lint_files =
   ]
 
 let job_oc_misc_checks =
-  job_external
-  @@ job
-       ~name:"oc.misc_checks"
-       ~image:Images.runtime_build_test_dependencies
-       ~stage:Stages.test
-       ~dependencies:(Dependent [Job trigger])
-       ~rules:[job_rule ~changes:changeset_lint_files ()]
-       ~before_script:
-         (before_script
-            ~take_ownership:true
-            ~source_version:true
-            ~eval_opam:true
-            ~init_python_venv:true
-            [])
-       [
-         "./scripts/ci/lint_misc_check.sh";
-         "scripts/check_wasm_pvm_regressions.sh check";
-       ]
+  job
+    ~name:"oc.misc_checks"
+    ~image:Images.runtime_build_test_dependencies
+    ~stage:Stages.test
+    ~dependencies:(Dependent [Job trigger])
+    ~rules:[job_rule ~changes:changeset_lint_files ()]
+    ~before_script:
+      (before_script
+         ~take_ownership:true
+         ~source_version:true
+         ~eval_opam:true
+         ~init_python_venv:true
+         [])
+    [
+      "./scripts/ci/lint_misc_check.sh";
+      "scripts/check_wasm_pvm_regressions.sh check";
+    ]
 
 let job_oc_commit_titles =
-  job_external
-  @@ job
-       ~name:"commit_titles"
-       ~image:Images.runtime_prebuild_dependencies
-       ~stage:Stages.test
-       ~dependencies:(Dependent [Job trigger])
-         (* ./scripts/ci/check_commit_messages.sh exits with code 65 when a git history contains invalid commits titles in situations where that is allowed. *)
-       ["./scripts/ci/check_commit_messages.sh || exit $?"]
-       ~allow_failure:(With_exit_codes [65])
+  job
+    ~name:"commit_titles"
+    ~image:Images.runtime_prebuild_dependencies
+    ~stage:Stages.test
+    ~dependencies:(Dependent [Job trigger])
+      (* ./scripts/ci/check_commit_messages.sh exits with code 65 when a git history contains invalid commits titles in situations where that is allowed. *)
+    ["./scripts/ci/check_commit_messages.sh || exit $?"]
+    ~allow_failure:(With_exit_codes [65])
 
 let changeset_kaitai_files =
   ["src/**/*"; "contrib/*kaitai*/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
 
 (* check that ksy files are still up-to-date with octez *)
 let job_kaitai_checks =
-  job_external
-  @@ job
-       ~name:"kaitai_checks"
-       ~image:Images.runtime_build_dependencies
-       ~stage:Stages.test
-       ~dependencies:(Dependent [Job job_build_x86_64_release])
-       ~rules:[job_rule ~changes:changeset_kaitai_files ()]
-       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
-       [
-         "make -C ${CI_PROJECT_DIR} check-kaitai-struct-files || (echo 'Octez \
-          encodings and Kaitai files seem to be out of sync. You might need to \
-          run `make check-kaitai-struct-files` and commit the resulting diff.' \
-          ; false)";
-       ]
+  job
+    ~name:"kaitai_checks"
+    ~image:Images.runtime_build_dependencies
+    ~stage:Stages.test
+    ~dependencies:(Dependent [Job job_build_x86_64_release])
+    ~rules:[job_rule ~changes:changeset_kaitai_files ()]
+    ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+    [
+      "make -C ${CI_PROJECT_DIR} check-kaitai-struct-files || (echo 'Octez \
+       encodings and Kaitai files seem to be out of sync. You might need to \
+       run `make check-kaitai-struct-files` and commit the resulting diff.' ; \
+       false)";
+    ]
 
 (* check that ksy files are still up-to-date with octez *)
 let job_kaitai_e2e_checks =
-  job_external
-  @@ job
-       ~name:"kaitai_e2e_checks"
-       ~image:Images.runtime_client_libs_dependencies
-       ~stage:Stages.test
-       ~dependencies:(Dependent [Job job_kaitai_checks])
-       ~rules:[job_rule ~changes:changeset_kaitai_files ()]
-       ~before_script:
-         (before_script ~source_version:true ~install_js_deps:true [])
-       [
-         "./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh \
-          contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input";
-       ]
+  job
+    ~name:"kaitai_e2e_checks"
+    ~image:Images.runtime_client_libs_dependencies
+    ~stage:Stages.test
+    ~dependencies:(Dependent [Job job_kaitai_checks])
+    ~rules:[job_rule ~changes:changeset_kaitai_files ()]
+    ~before_script:(before_script ~source_version:true ~install_js_deps:true [])
+    [
+      "./contrib/kaitai-struct-files/scripts/kaitai_e2e.sh \
+       contrib/kaitai-struct-files/files contrib/kaitai-struct-files/input";
+    ]
 
 let changeset_lift_limits_patch =
   [
@@ -1608,40 +1566,37 @@ let changeset_lift_limits_patch =
   ]
 
 let job_oc_check_lift_limits_patch =
-  job_external
-  @@ job
-       ~name:"oc.check_lift_limits_patch"
-       ~image:Images.runtime_build_dependencies
-       ~stage:Stages.test
-       ~dependencies:(Dependent [Job trigger])
-       ~rules:[job_rule ~changes:changeset_lift_limits_patch ()]
-       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
-       [
-         (* Check that the patch only modifies the
-            src/proto_alpha/lib_protocol. If not, the rules above have to be
-            updated. *)
-         "[ $(git apply --numstat src/bin_tps_evaluation/lift_limits.patch | \
-          cut -f3) = \"src/proto_alpha/lib_protocol/main.ml\" ]";
-         "git apply src/bin_tps_evaluation/lift_limits.patch";
-         "dune build @src/proto_alpha/lib_protocol/check";
-       ]
+  job
+    ~name:"oc.check_lift_limits_patch"
+    ~image:Images.runtime_build_dependencies
+    ~stage:Stages.test
+    ~dependencies:(Dependent [Job trigger])
+    ~rules:[job_rule ~changes:changeset_lift_limits_patch ()]
+    ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+    [
+      (* Check that the patch only modifies the
+         src/proto_alpha/lib_protocol. If not, the rules above have to be
+         updated. *)
+      "[ $(git apply --numstat src/bin_tps_evaluation/lift_limits.patch | cut \
+       -f3) = \"src/proto_alpha/lib_protocol/main.ml\" ]";
+      "git apply src/bin_tps_evaluation/lift_limits.patch";
+      "dune build @src/proto_alpha/lib_protocol/check";
+    ]
 
 let job_misc_opam_checks =
-  job_external
-  @@ job
-       ~name:"misc_opam_checks"
-       ~image:Images.runtime_build_dependencies
-       ~stage:Stages.test
-       ~retry:2
-       ~dependencies:(Dependent [Job trigger])
-       ~rules:[job_rule ~changes:changeset_octez ()]
-       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
-       [
-         (* checks that all deps of opam packages are already installed *)
-         "./scripts/opam-check.sh";
-       ]
-       ~artifacts:
-         (artifacts ~when_:Always ["opam_repo.patch"] ~expire_in:(Days 1))
+  job
+    ~name:"misc_opam_checks"
+    ~image:Images.runtime_build_dependencies
+    ~stage:Stages.test
+    ~retry:2
+    ~dependencies:(Dependent [Job trigger])
+    ~rules:[job_rule ~changes:changeset_octez ()]
+    ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+    [
+      (* checks that all deps of opam packages are already installed *)
+      "./scripts/opam-check.sh";
+    ]
+    ~artifacts:(artifacts ~when_:Always ["opam_repo.patch"] ~expire_in:(Days 1))
 
 let changeset_semgrep_files =
   [
@@ -1654,18 +1609,17 @@ let changeset_semgrep_files =
   ]
 
 let job_semgrep =
-  job_external
-  @@ job
-       ~name:"oc.semgrep"
-       ~image:Images.semgrep_agent
-       ~stage:Stages.test
-       ~dependencies:(Dependent [Job trigger])
-       ~rules:[job_rule ~changes:changeset_semgrep_files ()]
-       [
-         "echo \"OCaml code linting. For information on how to reproduce \
-          locally, check out scripts/semgrep/README.md\"";
-         "sh ./scripts/semgrep/lint-all-ocaml-sources.sh";
-       ]
+  job
+    ~name:"oc.semgrep"
+    ~image:Images.semgrep_agent
+    ~stage:Stages.test
+    ~dependencies:(Dependent [Job trigger])
+    ~rules:[job_rule ~changes:changeset_semgrep_files ()]
+    [
+      "echo \"OCaml code linting. For information on how to reproduce locally, \
+       check out scripts/semgrep/README.md\"";
+      "sh ./scripts/semgrep/lint-all-ocaml-sources.sh";
+    ]
 
 let changeset_unit_test_arm64 = ["src/**/*"; ".gitlab/**/*"; ".gitlab-ci.yml"]
 
@@ -1811,29 +1765,27 @@ let jobs_unit_tests =
       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
       ["dune build @runtest_compile_protocol"]
   in
-  jobs_external ~path:"test/oc.unit.yml"
-  @@ [
-       oc_unit_non_proto_x86_64;
-       oc_unit_other_x86_64;
-       oc_unit_proto_x86_64;
-       oc_unit_non_proto_arm64;
-       oc_unit_webassembly_x86_64;
-       oc_unit_js_components;
-       oc_unit_protocol_compiles;
-     ]
+  [
+    oc_unit_non_proto_x86_64;
+    oc_unit_other_x86_64;
+    oc_unit_proto_x86_64;
+    oc_unit_non_proto_arm64;
+    oc_unit_webassembly_x86_64;
+    oc_unit_js_components;
+    oc_unit_protocol_compiles;
+  ]
 
 let job_oc_integration_compiler_rejections =
-  job_external
-  @@ job
-       ~name:"oc.integration:compiler-rejections"
-       ~stage:Stages.test
-       ~image:Images.runtime_build_dependencies
-       ~rules:[job_rule ~changes:changeset_octez ()]
-       ~dependencies:
-         (Dependent
-            [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra])
-       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
-       ["dune build @runtest_rejections"]
+  job
+    ~name:"oc.integration:compiler-rejections"
+    ~stage:Stages.test
+    ~image:Images.runtime_build_dependencies
+    ~rules:[job_rule ~changes:changeset_octez ()]
+    ~dependencies:
+      (Dependent
+         [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra])
+    ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+    ["dune build @runtest_rejections"]
 
 let changeset_script_snapshot_alpha_and_link =
   [
@@ -1846,64 +1798,61 @@ let changeset_script_snapshot_alpha_and_link =
   ]
 
 let job_oc_script_snapshot_alpha_and_link =
-  job_external
-  @@ job
-       ~name:"oc.script:snapshot_alpha_and_link"
-       ~stage:Stages.test
-       ~image:Images.runtime_build_dependencies
-       ~rules:
+  job
+    ~name:"oc.script:snapshot_alpha_and_link"
+    ~stage:Stages.test
+    ~image:Images.runtime_build_dependencies
+    ~rules:
+      [
+        job_rule
+          ~if_:Rules.merge_request
+          ~changes:changeset_script_snapshot_alpha_and_link
+          ();
+      ]
+      (* Note: this job actually probably doesn't need the oc.build_x86_64 job
+         to have finished, but we don't want to start before oc.build_x86_64 has finished either.
+         However, when oc.build_x86_64-* don't exist, we don't need to wait for them. *)
+    ~dependencies:
+      (Dependent
          [
-           job_rule
-             ~if_:Rules.merge_request
-             ~changes:changeset_script_snapshot_alpha_and_link
-             ();
-         ]
-         (* Note: this job actually probably doesn't need the oc.build_x86_64 job
-            to have finished, but we don't want to start before oc.build_x86_64 has finished either.
-            However, when oc.build_x86_64-* don't exist, we don't need to wait for them. *)
-       ~dependencies:
-         (Dependent
-            [
-              Job trigger;
-              Optional job_build_x86_64_release;
-              Optional job_build_x86_64_exp_dev_extra;
-            ])
-       ~before_script:
-         (before_script
-            ~take_ownership:true
-            ~source_version:true
-            ~eval_opam:true
-            [])
-       ["./.gitlab/ci/jobs/test/script:snapshot_alpha_and_link.sh"]
+           Job trigger;
+           Optional job_build_x86_64_release;
+           Optional job_build_x86_64_exp_dev_extra;
+         ])
+    ~before_script:
+      (before_script
+         ~take_ownership:true
+         ~source_version:true
+         ~eval_opam:true
+         [])
+    ["./.gitlab/ci/jobs/test/script:snapshot_alpha_and_link.sh"]
 
 let job_oc_script_test_gen_genesis =
-  job_external
-  @@ job
-       ~name:"oc.script:test-gen-genesis"
-       ~stage:Stages.test
-       ~image:Images.runtime_build_dependencies
-       ~rules:[job_rule ~changes:changeset_octez ()]
-       ~dependencies:(Dependent [Job trigger])
-       ~before_script:(before_script ~eval_opam:true ["cd scripts/gen-genesis"])
-       ["dune build gen_genesis.exe"]
+  job
+    ~name:"oc.script:test-gen-genesis"
+    ~stage:Stages.test
+    ~image:Images.runtime_build_dependencies
+    ~rules:[job_rule ~changes:changeset_octez ()]
+    ~dependencies:(Dependent [Job trigger])
+    ~before_script:(before_script ~eval_opam:true ["cd scripts/gen-genesis"])
+    ["dune build gen_genesis.exe"]
 
 let job_oc_script_test_release_versions =
-  job_external
-  @@ job
-       ~name:"oc.script:test_release_versions"
-       ~stage:Stages.test
-       ~image:Images.runtime_build_dependencies
-       ~rules:[job_rule ~changes:changeset_octez ()]
-       ~dependencies:
-         (Dependent
-            [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra])
-       ~before_script:
-         (before_script
-            ~take_ownership:true
-            ~source_version:true
-            ~eval_opam:true
-            [])
-       ["./scripts/test_release_version.sh"]
+  job
+    ~name:"oc.script:test_release_versions"
+    ~stage:Stages.test
+    ~image:Images.runtime_build_dependencies
+    ~rules:[job_rule ~changes:changeset_octez ()]
+    ~dependencies:
+      (Dependent
+         [Job job_build_x86_64_release; Job job_build_x86_64_exp_dev_extra])
+    ~before_script:
+      (before_script
+         ~take_ownership:true
+         ~source_version:true
+         ~eval_opam:true
+         [])
+    ["./scripts/test_release_version.sh"]
 
 let changeset_script_b58_prefix =
   [
@@ -1914,23 +1863,22 @@ let changeset_script_b58_prefix =
   ]
 
 let job_oc_script_b58_prefix =
-  job_external
-  @@ job
-       ~name:"oc.script:b58_prefix"
-       ~stage:Stages.test
-         (* Requires Python. Can be changed to a python image, but using
-            the build docker image to keep in sync with the python
-            version used for the tests *)
-       ~image:Images.runtime_build_test_dependencies
-       ~rules:[job_rule ~changes:changeset_script_b58_prefix ()]
-       ~dependencies:(Dependent [Job trigger])
-       ~before_script:
-         (before_script ~source_version:true ~init_python_venv:true [])
-       [
-         "poetry run pylint scripts/b58_prefix/b58_prefix.py \
-          --disable=missing-docstring --disable=invalid-name";
-         "poetry run pytest scripts/b58_prefix/test_b58_prefix.py";
-       ]
+  job
+    ~name:"oc.script:b58_prefix"
+    ~stage:Stages.test
+      (* Requires Python. Can be changed to a python image, but using
+         the build docker image to keep in sync with the python
+         version used for the tests *)
+    ~image:Images.runtime_build_test_dependencies
+    ~rules:[job_rule ~changes:changeset_script_b58_prefix ()]
+    ~dependencies:(Dependent [Job trigger])
+    ~before_script:
+      (before_script ~source_version:true ~init_python_venv:true [])
+    [
+      "poetry run pylint scripts/b58_prefix/b58_prefix.py \
+       --disable=missing-docstring --disable=invalid-name";
+      "poetry run pytest scripts/b58_prefix/test_b58_prefix.py";
+    ]
 
 let changeset_test_liquidity_baking_scripts =
   [
@@ -1942,20 +1890,19 @@ let changeset_test_liquidity_baking_scripts =
   ]
 
 let job_oc_test_liquidity_baking_scripts =
-  job_external
-  @@ job
-       ~name:"oc.test-liquidity-baking-scripts"
-       ~stage:Stages.test
-       ~image:Images.runtime_build_dependencies
-       ~rules:[job_rule ~changes:changeset_test_liquidity_baking_scripts ()]
-       ~dependencies:
-         (Dependent
-            [
-              Artifacts job_build_x86_64_release;
-              Artifacts job_build_x86_64_exp_dev_extra;
-            ])
-       ~before_script:(before_script ~source_version:true ~eval_opam:true [])
-       ["./scripts/ci/test_liquidity_baking_scripts.sh"]
+  job
+    ~name:"oc.test-liquidity-baking-scripts"
+    ~stage:Stages.test
+    ~image:Images.runtime_build_dependencies
+    ~rules:[job_rule ~changes:changeset_test_liquidity_baking_scripts ()]
+    ~dependencies:
+      (Dependent
+         [
+           Artifacts job_build_x86_64_release;
+           Artifacts job_build_x86_64_exp_dev_extra;
+         ])
+    ~before_script:(before_script ~source_version:true ~eval_opam:true [])
+    ["./scripts/ci/test_liquidity_baking_scripts.sh"]
 
 let jobs_tezt =
   let dependencies =
@@ -2037,15 +1984,13 @@ let jobs_tezt =
       ~before_script:(before_script ["mv octez-binaries/x86_64/octez-* ."])
       ()
   in
-  jobs_external
-    ~path:"test/tezt.yml"
-    [
-      tezt;
-      tezt_memory_4k;
-      tezt_memory_3k;
-      tezt_time_sensitive;
-      tezt_static_binaries;
-    ]
+  [
+    tezt;
+    tezt_memory_4k;
+    tezt_memory_3k;
+    tezt_time_sensitive;
+    tezt_static_binaries;
+  ]
 
 let changeset_test_kernels =
   [
@@ -2059,7 +2004,7 @@ let changeset_test_kernels =
   ]
 
 let job_test_kernels : job =
-  job_external @@ enable_kernels
+  enable_kernels
   @@ job
        ~name:"test_kernels"
        ~image:Images.rust_toolchain
@@ -2076,8 +2021,7 @@ let job_unified_coverage_before_merging : job =
   let dependencies =
     List.map (fun job -> Artifacts job) (List.rev !jobs_with_coverage_output)
   in
-  job_external ~directory:"coverage" ~filename_suffix:"before_merging"
-  @@ job_enable_coverage_report
+  job_enable_coverage_report
   @@ job
        ~image:Images.runtime_e2etest_dependencies
        ~name:"oc.unified_coverage"
