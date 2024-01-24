@@ -66,3 +66,7 @@ val delayed_bridge_path : path
 
 (** [flat_fee_path] is the path to the flat fee, charged on every transaction. *)
 val flat_fee_path : path
+
+(** [delayed_inbox_timeout] is the path to the timeout for
+    delayed transactions. *)
+val delayed_inbox_timeout : path

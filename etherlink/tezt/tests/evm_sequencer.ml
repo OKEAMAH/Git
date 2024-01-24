@@ -112,6 +112,7 @@ let setup_l1_contracts ?(admin = Constant.bootstrap1) client =
   return {delayed_transaction_bridge; exchanger; bridge; admin}
 
 let setup_sequencer ?genesis_timestamp ?time_between_blocks
+    ?delayed_inbox_timeout
     ?(bootstrap_accounts = Eth_account.bootstrap_accounts)
     ?(sequencer = Constant.bootstrap1) protocol =
   let* node, client = setup_l1 ?timestamp:genesis_timestamp protocol in
@@ -131,6 +132,7 @@ let setup_sequencer ?genesis_timestamp ?time_between_blocks
       ~delayed_bridge:l1_contracts.delayed_transaction_bridge
       ~ticketer:l1_contracts.exchanger
       ~administrator:l1_contracts.admin
+      ?delayed_inbox_timeout
       ()
   in
   let* {output; _} =
