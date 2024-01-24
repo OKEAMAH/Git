@@ -353,7 +353,13 @@ let job_enable_coverage_instrumentation (job : job) =
     [("COVERAGE_OPTIONS", "--instrument-with bisect_ppx")]
     job
 
+(* TODO: this will not work very well -- for instance if we had
+   several different pipeline types that both produce and report
+   coverage information, but for which the set of test jobs differs. *)
+let jobs_with_coverage_output : job list ref = ref []
+
 let job_enable_coverage_output ?(expire_in = Days 1) (job : job) =
+  jobs_with_coverage_output := job :: !jobs_with_coverage_output ;
   job
   (* Set the run-time environment variable that specifies the
      directory where coverage traces should be stored. *)
@@ -2062,6 +2068,38 @@ let _job_test_kernels : job =
        ~rules:[job_rule ~changes:changeset_test_kernels ()]
        ["make -f kernels.mk check"; "make -f kernels.mk test"]
        ~cache:[{key = "kernels"; paths = ["cargo/"]}]
+
+(* This job fetches coverage files by precedent test stage. It creates
+   the html, summary and cobertura reports. It also provide a coverage %
+   for the merge request. *)
+let _job_unified_coverage_before_merging : job =
+  let dependencies =
+    List.map (fun job -> Artifacts job) (List.rev !jobs_with_coverage_output)
+  in
+  job_external ~directory:"coverage" ~filename_suffix:"before_merging"
+  @@ job_enable_coverage_report
+  @@ job
+       ~image:Images.runtime_e2etest_dependencies
+       ~name:"oc.unified_coverage"
+       ~stage:Stages.test_coverage
+       ~rules:
+         [
+           job_rule ~if_:Rules.triggered_by_marge_bot ~when_:Never ();
+           job_rule ~changes:changeset_octez ();
+         ]
+       ~variables:
+         [
+           (* This inhibites the Makefile's opam version check, which
+              this job's opam-less image
+              ([runtime_e2etest_dependencies]) cannot pass. *)
+           ("TEZOS_WITHOUT_OPAM", "true");
+         ]
+       ~dependencies:(Dependent dependencies)
+       (* On the development branches, we compute coverage.
+          TODO: https://gitlab.com/tezos/tezos/-/issues/6173
+          We propagate the exit code to temporarily allow corrupted coverage files. *)
+       ["./scripts/ci/report_coverage.sh || exit $?"]
+       ~allow_failure:(With_exit_codes [64])
 
 (* Register pipelines types. Pipelines types are used to generate
    workflow rules and includes of the files where the jobs of the
