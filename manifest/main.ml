@@ -5531,6 +5531,7 @@ end = struct
             ("test_adaptive_issuance", N.(number >= 018));
             ("test_adaptive_issuance_ema", N.(number >= 018));
             ("test_percentage", N.(number >= 019));
+            ("test_cnt_repr", N.(number >= 019));
           ]
           |> conditional_list
         in

@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2021 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2023 Trilitech <contact@trili.tech>                         *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -22,10 +22,45 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+(* Testing
+   -------
+   Component:    Protocol
+   Invocation:   dune exec tezt/tests/main.exe -- --file cnt.ml
+   Subject:      Test the internal counter with baking
+*)
+let test_cnt =
+  Protocol.register_test
+    ~__FILE__
+    ~title:"Increasing intrernal counter with RPC"
+    ~tags:["cnt"; "rpc"]
+    ~supports:(Protocol.From_protocol 019)
+  @@ fun protocol ->
+  let* _, client =
+    Client.init_with_protocol
+      ~nodes_args:[Synchronisation_threshold 0]
+      ~protocol
+      `Client
+      ()
+  in
+  let* new_counter =
+    Client.cnt ~src:"bootstrap1" ?burn_cap:(Some (Tez.of_int 100)) client
+  in
+  Check.(
+    (new_counter = 1l)
+      int32
+      ~__LOC__
+      ~error_msg:"Expected the counter %R instead of %L") ;
+  let* () = Client.bake_for_and_wait client in
+  let* new_counter =
+    Client.cnt ~src:"bootstrap1" ?burn_cap:(Some (Tez.of_int 100)) client
+  in
+  (* updating the counter again *)
+  Check.(
+    (new_counter = 2l)
+      int32
+      ~__LOC__
+      ~error_msg:"Expected the counter %R instead of %L") ;
+  let* () = Client.bake_for_and_wait client in
+  unit
 
-(* val current : Raw_context.t -> Cnt_repr.t *)
-val current : Raw_context.t -> int32 tzresult Lwt.t
-
-val increase : Raw_context.t -> Raw_context.t tzresult Lwt.t
-
-(* val increase : Raw_context.t -> (Raw_context.t, error trace) result Lwt.t *)
+let register ~protocols = test_cnt protocols

@@ -2014,6 +2014,24 @@ let register_global_constant ?wait ?burn_cap ~src ~value client =
         client_output
   | Some hash -> return hash
 
+let spawn_cnt ?(wait = "none") ?burn_cap ~src client =
+  spawn_command
+    client
+    (["--wait"; wait]
+    @ ["increase"; "counter"; "from"; src]
+    @ optional_arg "burn-cap" Tez.to_string burn_cap)
+
+let cnt ?wait ?burn_cap ~src client =
+  let* client_output =
+    spawn_cnt ?wait ?burn_cap ~src client |> Process.check_and_read_stdout
+  in
+  match client_output =~* rex "Updated counter: (\\d+)" with
+  | None ->
+      Test.fail
+        "Cannot extract updated counter from client_output: %s"
+        client_output
+  | Some new_counter_value -> return (Int32.of_string new_counter_value)
+
 type hash_script_format = TSV | CSV
 
 let show_hash_script_format = function TSV -> "tsv" | CSV -> "csv"

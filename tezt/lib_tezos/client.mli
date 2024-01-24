@@ -1516,6 +1516,10 @@ val spawn_register_global_constant :
   t ->
   Process.t
 
+val cnt : ?wait:string -> ?burn_cap:Tez.t -> src:string -> t -> int32 Lwt.t
+
+val spawn_cnt : ?wait:string -> ?burn_cap:Tez.t -> src:string -> t -> Process.t
+
 (** Represents the result of a [octez-client hash data .. of type ...] call.
 
     Given the output:
