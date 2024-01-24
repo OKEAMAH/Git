@@ -55,6 +55,7 @@ fn compute<Host: Runtime>(
     precompiles: &PrecompileBTreeMap<Host>,
     evm_account_storage: &mut EthereumAccountStorage,
     accounts_index: &mut IndexableStorage,
+    is_first_block_of_reboot: bool,
 ) -> Result<ComputationResult, anyhow::Error> {
     log!(
         host,
@@ -69,7 +70,7 @@ fn compute<Host: Runtime>(
         if block_in_progress.would_overflow() {
             // If it is not the first transaction this means there will never be
             // enough ticks for this transaction.
-            if !is_first_transaction {
+            if !is_first_transaction || !is_first_block_of_reboot {
                 return Ok(ComputationResult::RebootNeeded);
             } else {
                 let transaction = block_in_progress.pop_tx().ok_or(Error::Reboot)?;
@@ -134,7 +135,7 @@ fn compute<Host: Runtime>(
                 );
             }
             ExecutionResult::OutOfTicks => {
-                if !is_first_transaction {
+                if !is_first_transaction || !is_first_block_of_reboot {
                     block_in_progress.repush_tx(transaction);
                     return Ok(ComputationResult::RebootNeeded);
                 } else {
@@ -184,6 +185,7 @@ fn compute_bip<Host: KernelRuntime>(
     evm_account_storage: &mut EthereumAccountStorage,
     accounts_index: &mut IndexableStorage,
     tick_counter: &mut TickCounter,
+    is_first_block_of_reboot: bool,
 ) -> anyhow::Result<ComputationResult> {
     let result = compute(
         host,
@@ -192,6 +194,7 @@ fn compute_bip<Host: KernelRuntime>(
         precompiles,
         evm_account_storage,
         accounts_index,
+        is_first_block_of_reboot,
     )?;
     match result {
         ComputationResult::RebootNeeded => {
@@ -250,25 +253,30 @@ pub fn produce<Host: KernelRuntime>(
     let precompiles = precompiles::precompile_set::<Host>();
     let mut tick_counter = TickCounter::new(0u64);
 
+    let mut first_block_of_reboot = true;
     // Check if there's a BIP in storage to resume its execution
     match storage::read_block_in_progress(host)? {
         None => (),
-        Some(block_in_progress) => match compute_bip(
-            host,
-            block_in_progress,
-            &mut current_constants,
-            &mut current_block_number,
-            &mut current_block_parent_hash,
-            &precompiles,
-            &mut evm_account_storage,
-            &mut accounts_index,
-            &mut tick_counter,
-        )? {
-            ComputationResult::Finished => storage::delete_block_in_progress(host)?,
-            ComputationResult::RebootNeeded => {
-                return Ok(ComputationResult::RebootNeeded)
-            }
-        },
+        Some(block_in_progress) => {
+            match compute_bip(
+                host,
+                block_in_progress,
+                &mut current_constants,
+                &mut current_block_number,
+                &mut current_block_parent_hash,
+                &precompiles,
+                &mut evm_account_storage,
+                &mut accounts_index,
+                &mut tick_counter,
+                true,
+            )? {
+                ComputationResult::Finished => storage::delete_block_in_progress(host)?,
+                ComputationResult::RebootNeeded => {
+                    return Ok(ComputationResult::RebootNeeded)
+                }
+            };
+            first_block_of_reboot = false
+        }
     }
 
     // Execute stored blueprints
@@ -289,6 +297,7 @@ pub fn produce<Host: KernelRuntime>(
             &mut evm_account_storage,
             &mut accounts_index,
             &mut tick_counter,
+            first_block_of_reboot,
         )? {
             ComputationResult::Finished => (),
             ComputationResult::RebootNeeded => {
@@ -1040,6 +1049,7 @@ mod tests {
             &precompiles,
             &mut evm_account_storage,
             &mut accounts_index,
+            true,
         )
         .expect("Should have computed block");
 
