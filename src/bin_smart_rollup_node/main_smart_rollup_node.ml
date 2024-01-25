@@ -221,13 +221,16 @@ let legacy_run_command =
           ~allowed_origins
           ~allowed_headers
       in
-      Rollup_node_daemon.run
-        ~data_dir
-        ~irmin_cache_size:Configuration.default_irmin_cache_size
-        ~index_buffer_size:Configuration.default_index_buffer_size
-        ?log_kernel_debug_file
-        configuration
-        cctxt)
+      match configuration.mode with
+      | Batcher -> Batcher.Autonomous.run ~data_dir configuration cctxt
+      | _ ->
+          Rollup_node_daemon.run
+            ~data_dir
+            ~irmin_cache_size:Configuration.default_irmin_cache_size
+            ~index_buffer_size:Configuration.default_index_buffer_size
+            ?log_kernel_debug_file
+            configuration
+            cctxt)
 
 let run_command =
   let open Tezos_clic in
@@ -321,13 +324,16 @@ let run_command =
           ~allowed_origins
           ~allowed_headers
       in
-      Rollup_node_daemon.run
-        ~data_dir
-        ~irmin_cache_size:Configuration.default_irmin_cache_size
-        ~index_buffer_size:Configuration.default_index_buffer_size
-        ?log_kernel_debug_file
-        configuration
-        cctxt)
+      match configuration.mode with
+      | Batcher -> Batcher.Autonomous.run ~data_dir configuration cctxt
+      | _ ->
+          Rollup_node_daemon.run
+            ~data_dir
+            ~irmin_cache_size:Configuration.default_irmin_cache_size
+            ~index_buffer_size:Configuration.default_index_buffer_size
+            ?log_kernel_debug_file
+            configuration
+            cctxt)
 
 let protocols_command =
   let open Tezos_clic in
