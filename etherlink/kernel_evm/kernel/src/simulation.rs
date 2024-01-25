@@ -231,9 +231,7 @@ impl TxValidation {
             return Ok(TxValidationOutcome::GasLimitTooHigh);
         }
         // Check if the gas price is high enough
-        if tx.max_fee_per_gas < block_fees.base_fee_per_gas()
-            || tx.max_fee_per_gas < tx.max_priority_fee_per_gas
-        {
+        if tx.max_fee_per_gas < block_fees.base_fee_per_gas() {
             return Ok(TxValidationOutcome::MaxGasFeeTooLow);
         }
         // TODO: #6498
