@@ -65,8 +65,13 @@ struct
     let index = mk_slot_index id in
     let*? _data, _poly, slot = mk_slot ~level ~index () in
     let@ result =
-      Hist.add_confirmed_slot_headers_no_cache skip_list level [slot]
+      Hist.add_confirmed_slot_headers_no_cache
+        skip_list
+        level
+        [slot]
+        ~number_of_slots:Parameters.dal_parameters.number_of_slots
     in
+
     check_result result
 
   (** This test attempts to add a slot on top of genesis cell zero which would
@@ -145,6 +150,7 @@ struct
     let*? _slot_data, polynomial, slot = mk_slot ~level ?index () in
     let*?@ skip_list, cache =
       Hist.add_confirmed_slot_headers
+        ~number_of_slots:Parameters.dal_parameters.number_of_slots
         genesis_history
         genesis_history_cache
         level

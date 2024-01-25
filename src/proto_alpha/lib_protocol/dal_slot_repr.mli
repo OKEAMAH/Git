@@ -248,9 +248,10 @@ module History : sig
   module History_cache :
     Bounded_history_repr.S with type key = hash and type value = t
 
-  (** [add_confirmed_slots hist cache published_level slot_headers] updates the
-      given structure [hist] with the list of [slot_headers]. The given [cache]
-      is also updated to add successive values of [cell] to it.
+  (** [add_confirmed_slots hist cache published_level ~number_of_slots
+      slot_headers] updates the given structure [hist] with the list of
+      [slot_headers]. The given [cache] is also updated to add successive values
+      of [cell] to it.
 
 
       This function checks the following pre-conditions before updating the
@@ -267,16 +268,19 @@ module History : sig
     t ->
     History_cache.t ->
     Raw_level_repr.t ->
+    number_of_slots:int ->
     Header.t list ->
     (t * History_cache.t) tzresult
 
   (** Similiar to {!add_confirmed_slot_headers}, but not cache is provided or
       updated. *)
   val add_confirmed_slot_headers_no_cache :
-    t -> Raw_level_repr.t -> Header.t list -> t tzresult
+    t -> Raw_level_repr.t -> number_of_slots:int -> Header.t list -> t tzresult
 
   (** [equal a b] returns true iff a is equal to b. *)
   val equal : t -> t -> bool
+
+  val pp : Format.formatter -> t -> unit
 
   (** {1 Dal slots/pages proofs} *)
 

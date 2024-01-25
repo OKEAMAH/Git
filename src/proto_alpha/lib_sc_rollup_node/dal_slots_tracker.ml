@@ -320,6 +320,7 @@ module Confirmed_slots_history = struct
     let*? level = Raw_level.of_int32 level |> Environment.wrap_tzresult in
     let*? slots_history, slots_cache =
       Dal.Slots_history.add_confirmed_slot_headers
+        ~number_of_slots:constants.dal.number_of_slots
         slots_history
         slots_cache
         level

@@ -52,11 +52,13 @@ let get_slot_headers_history ctxt =
   | None -> Dal_slot_repr.History.genesis
   | Some slots_history -> slots_history
 
-let update_skip_list ctxt ~confirmed_slot_headers ~level_attested =
+let update_skip_list ctxt ~confirmed_slot_headers ~level_attested
+    ~number_of_slots =
   let open Lwt_result_syntax in
   let* slots_history = get_slot_headers_history ctxt in
   let*? slots_history =
     Dal_slot_repr.History.add_confirmed_slot_headers_no_cache
+      ~number_of_slots
       slots_history
       level_attested
       confirmed_slot_headers
@@ -71,7 +73,7 @@ let update_skip_list ctxt ~confirmed_slot_headers ~level_attested =
   let*! ctxt = Storage.Dal.Slot.History.add ctxt slots_history in
   return ctxt
 
-let finalize_pending_slot_headers ctxt =
+let finalize_pending_slot_headers ctxt ~number_of_slots =
   let open Lwt_result_syntax in
   let {Level_repr.level = raw_level; _} = Raw_context.current_level ctxt in
   let Constants_parametric_repr.{dal; _} = Raw_context.constants ctxt in
@@ -91,6 +93,10 @@ let finalize_pending_slot_headers ctxt =
             return (ctxt, attestation, attested_slot_headers)
       in
       let* ctxt =
-        update_skip_list ctxt ~confirmed_slot_headers ~level_attested
+        update_skip_list
+          ctxt
+          ~confirmed_slot_headers
+          ~level_attested
+          ~number_of_slots
       in
       return (ctxt, attestation)

@@ -462,6 +462,8 @@ module History = struct
         (Skip_list.pp ~pp_content:Content.pp ~pp_ptr:Pointer_hash.pp)
         history
 
+    let pp = pp_history
+
     module History_cache =
       Bounded_history_repr.Make
         (struct
@@ -545,7 +547,7 @@ module History = struct
 
     let add_confirmed_slot_headers_with_default_cache
         ?(cache = History_cache.empty ~capacity:0L) (t : t) published_level
-        attested_slot_headers =
+        ~number_of_slots attested_slot_headers =
       let open Result_syntax in
       let* () =
         error_unless
@@ -554,7 +556,6 @@ module History = struct
              attested_slot_headers)
           Add_element_in_slots_skip_list_violates_ordering
       in
-      let number_of_slots = 256 (* TODO: add this as argument. *) in
       let* slot_headers =
         fill_slot_headers
           ~number_of_slots
@@ -566,10 +567,15 @@ module History = struct
     let add_confirmed_slot_headers (t : t) cache =
       add_confirmed_slot_headers_with_default_cache t ~cache
 
-    let add_confirmed_slot_headers_no_cache t published_level slots =
+    let add_confirmed_slot_headers_no_cache t published_level ~number_of_slots
+        slots =
       let open Result_syntax in
       let+ cell, (_ : History_cache.t) =
-        add_confirmed_slot_headers_with_default_cache t published_level slots
+        add_confirmed_slot_headers_with_default_cache
+          t
+          published_level
+          ~number_of_slots
+          slots
       in
       cell
 

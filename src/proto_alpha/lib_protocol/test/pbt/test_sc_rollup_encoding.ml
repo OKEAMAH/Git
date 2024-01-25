@@ -144,6 +144,7 @@ let pack_slots_headers_by_level list =
 let gen_dal_slots_history () =
   let open Gen in
   let open Dal_slot_repr in
+  let number_of_slots = 256 in
   (* Generate a list of (level * confirmed slot ID). *)
   let* list = small_list (pair small_nat small_nat) in
   let list =
@@ -156,7 +157,7 @@ let gen_dal_slots_history () =
             succ @@ try of_int32_exn (Int32.of_int level) with _ -> root)
         in
         let index =
-          Index.of_int_opt ~number_of_slots:256 slot_index
+          Index.of_int_opt ~number_of_slots slot_index
           |> Option.value ~default:Index.zero
         in
         Header.{id = {published_level; index}; commitment = Commitment.zero})
@@ -175,7 +176,12 @@ let gen_dal_slots_history () =
               if c <> 0 then c else Index.compare a.index b.index)
             slot_headers
         in
-        History.(add_confirmed_slot_headers_no_cache history level slot_headers)
+        History.(
+          add_confirmed_slot_headers_no_cache
+            ~number_of_slots
+            history
+            level
+            slot_headers)
         |> function
         | Ok history -> loop history llist
         | Error e ->
