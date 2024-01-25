@@ -526,7 +526,7 @@ module Inner = struct
     let mode, srs_g1 =
       match !initialisation_parameters with
       | Some srs_g1 -> (`Prover, srs_g1)
-      | None -> (`Verifier, Srs_verifier.srs_g1)
+      | None -> (`Verifier, Srs_verifier.For_tests.fake_srs)
     in
     let* () =
       ensure_validity
