@@ -65,6 +65,11 @@ let derive_dal_parameters (reference : Cryptobox.parameters) ~redundancy_factor
     number_of_shards = reference.number_of_shards / constants_divider;
   }
 
+let level_of = function
+  | Hist.Internal_for_tests.Unattested {published_level; _}
+  | Attested {id = {published_level; _}; _} ->
+      published_level
+
 module Make (Parameters : sig
   val dal_parameters : Alpha_context.Constants.Parametric.dal
 
@@ -82,8 +87,6 @@ struct
   let genesis_history_cache = Hist.History_cache.empty ~capacity:3000L
 
   let level_one = Raw_level_repr.(succ root)
-
-  let level_ten = Raw_level_repr.(of_int32_exn 10l)
 
   (* Helper functions. *)
 
@@ -139,13 +142,17 @@ struct
 
   let no_data = Some (fun ~default_char:_ _ -> None)
 
-  let mk_page_info ?(default_char = 'x') ?level ?(page_index = P.Index.zero)
-      ?(custom_data = None) (slot : S.Header.t) polynomial =
+  let mk_page_info ?(default_char = 'x') ?level ?slot_index
+      ?(page_index = P.Index.zero) ?(custom_data = None) (slot : S.Header.t)
+      polynomial =
     let open Result_syntax in
     let level =
       match level with None -> slot.id.published_level | Some level -> level
     in
-    let page_id = mk_page_id level slot.id.index page_index in
+    let slot_index =
+      match slot_index with None -> slot.id.index | Some index -> index
+    in
+    let page_id = mk_page_id level slot_index page_index in
     let* page_proof = dal_mk_prove_page polynomial page_id in
     match custom_data with
     | None ->

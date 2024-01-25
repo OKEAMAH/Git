@@ -38,6 +38,10 @@ val derive_dal_parameters :
   constants_divider:int ->
   Cryptobox.parameters
 
+(** Returns the level of the given cell. *)
+val level_of :
+  Dal_slot_repr.History.Internal_for_tests.cell_content -> Raw_level_repr.t
+
 module Make (P : sig
   val dal_parameters : Alpha_context.Constants.Parametric.dal
 
@@ -50,8 +54,6 @@ end) : sig
   val genesis_history_cache : Dal_slot_repr.History.History_cache.t
 
   val level_one : Raw_level_repr.t
-
-  val level_ten : Raw_level_repr.t
 
   (** Helper functions. *)
 
@@ -103,6 +105,7 @@ end) : sig
   val mk_page_info :
     ?default_char:char ->
     ?level:Raw_level_repr.t ->
+    ?slot_index:Dal_slot_index_repr.t ->
     ?page_index:int ->
     ?custom_data:(default_char:char -> int -> bytes option) option ->
     Dal_slot_repr.Header.t ->

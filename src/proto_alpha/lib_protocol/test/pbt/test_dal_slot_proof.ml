@@ -63,6 +63,18 @@ struct
 
   type levels = slots list
 
+  let pack_slots_headers_by_level list =
+    let module ML = Map.Make (Raw_level_repr) in
+    let map =
+      List.fold_left
+        (fun map (Dal_slot_repr.Header.{id = {published_level; _}; _} as sh) ->
+          let l = ML.find published_level map |> Option.value ~default:[] in
+          ML.add published_level (sh :: l) map)
+        ML.empty
+        list
+    in
+    ML.bindings map
+
   (** Given a list of {!levels}, where each element is of type {!slots} = {!slot}
       list, and where each slot is a boolean, this function populates an
       empty slots_history skip list and a corresponding history_cache as follows:
@@ -82,30 +94,48 @@ struct
     let* polynomial = dal_mk_polynomial_from_slot slot_data in
     let cryptobox = Lazy.force ARG.cryptobox in
     let* commitment = dal_commit cryptobox polynomial in
-    let add_slot level sindex (cell, cache, slots_info) skip_slot =
-      let index =
-        Option.value_f
-          (Dal_slot_index_repr.of_int_opt
-             ~number_of_slots:Parameters.(dal_parameters.number_of_slots)
-             sindex)
-          ~default:(fun () -> assert false)
-      in
-      let slot =
-        Dal_slot_repr.Header.{id = {published_level = level; index}; commitment}
-      in
-      let*@ cell, cache =
-        if skip_slot then return (cell, cache)
-        else Dal_slot_repr.History.add_confirmed_slot_headers cell cache [slot]
-      in
-      return (cell, cache, (polynomial, slot, skip_slot) :: slots_info)
-    in
     (* Insert the slots of a level. *)
-    let add_slots accu (level, slots_data) =
+    let add_slots (cell, cache, slots_info) (level, slots_data) =
       (* We start at level one, and we skip even levels for test purpose (which
          means that no DAL slot is confirmed for them). *)
       let curr_level = Raw_level_repr.of_int32_exn (Int32.of_int level) in
-      List.fold_left_i_e (add_slot curr_level) accu slots_data
+      let slots_headers =
+        List.mapi
+          (fun sindex skip_slot ->
+            let index =
+              Option.value_f
+                (Dal_slot_index_repr.of_int_opt
+                   ~number_of_slots:Parameters.(dal_parameters.number_of_slots)
+                   sindex)
+                ~default:(fun () -> assert false)
+            in
+            ( Dal_slot_repr.Header.
+                {id = {published_level = curr_level; index}; commitment},
+              skip_slot ))
+          slots_data
+      in
+      let attested_slots_headers =
+        List.filter_map
+          (fun (slot, skip_slot) -> if skip_slot then None else Some slot)
+          slots_headers
+      in
+      let*@ cell, cache =
+        Dal_slot_repr.History.add_confirmed_slot_headers
+          cell
+          cache
+          curr_level
+          attested_slots_headers
+      in
+      let slots_info =
+        List.fold_left
+          (fun slots_info (slot, skip_slot) ->
+            (polynomial, slot, skip_slot) :: slots_info)
+          slots_info
+          slots_headers
+      in
+      return (cell, cache, slots_info)
     in
+
     (* Insert the slots of all the levels. *)
     let add_levels = List.fold_left_e add_slots in
     add_levels (genesis_history, genesis_history_cache, []) levels_data
@@ -182,27 +212,28 @@ struct
     let*? last_cell, last_cache, slots_info =
       populate_slots_history levels_data
     in
-    let unconfirmed_level =
-      let last_level =
-        List.last (0, []) levels_data
-        |> fst |> Int32.of_int |> Raw_level_repr.of_int32_exn
-      in
-      Raw_level_repr.succ last_level
-    in
-    helper_check_pbt_pages
-      last_cell
-      last_cache
-      slots_info
-      ~page_to_request:(request_unconfirmed_page unconfirmed_level)
-      ~check_produce:(successful_check_produce_result ~__LOC__ `Unconfirmed)
-      ~check_verify:(successful_check_verify_result ~__LOC__ `Unconfirmed)
+    match
+      List.filter (fun (_lvl, slots) -> List.for_all Fun.id slots) levels_data
+    with
+    | [] -> return_unit
+    | (lvl, _) :: _ ->
+        let unconfirmed_level =
+          Int32.of_int lvl |> Raw_level_repr.of_int32_exn
+        in
+        helper_check_pbt_pages
+          last_cell
+          last_cache
+          slots_info
+          ~page_to_request:(request_unconfirmed_page unconfirmed_level)
+          ~check_produce:(successful_check_produce_result ~__LOC__ `Unconfirmed)
+          ~check_verify:(successful_check_verify_result ~__LOC__ `Unconfirmed)
 
   let tests =
     let gen_dal_config : levels QCheck2.Gen.t =
       QCheck2.Gen.(
-        let nb_slots = 10 -- 20 in
-        let nb_levels = 4 -- 8 in
-        let gaps_between_levels = 1 -- 20 in
+        let nb_slots = 0 -- 10 in
+        let nb_levels = 20 -- 50 in
+        let gaps_between_levels = 1 -- 1 in
         (* The slot is confirmed iff the boolean is true *)
         let slot = bool in
         let slots = list_size nb_slots slot in
