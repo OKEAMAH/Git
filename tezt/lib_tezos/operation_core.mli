@@ -61,7 +61,7 @@ type t
 
 type operation := t
 
-type consensus_kind = Attestation | Preattestation | Dal_attestation
+type consensus_kind = Attestation | Preattestation
 
 (** The kind is necessary because it determines the watermark of an
    operation which is necessary for signing an operation. This type
@@ -235,8 +235,8 @@ module Consensus : sig
       published at level [level + 1 - attestation_lag].  For each slot, the
       value of the booleans in [attestation] indicates whether the data is
       deemed available. *)
-  val dal_attestation :
-    attestation:bool array -> level:int -> round:int -> slot:int -> t
+  (* val dal_attestation : *)
+  (*   attestation:bool array -> level:int -> round:int -> slot:int -> t *)
 
   (** [consensus ~kind ~use_legacy_name ~level ~round ~slot ~block_payload_hash]
       crafts a consensus operation with the [kind] at [level] on the [round]
@@ -275,12 +275,16 @@ module Consensus : sig
     level:int ->
     round:int ->
     block_payload_hash:string ->
+    ?dal_attestation:bool array ->
+    unit ->
     t
 
-  (** [kind_to_string kind use_legacy_name] return the name of the [kind]. If
-      [use_legacy_name] is set, the name corresponding to the [kind] will be
-      "(pre)endorsement" instead of "(pre)attestation". *)
-  val kind_to_string : consensus_kind -> bool -> string
+  (** [kind_to_string kind ~use_legacy_name ~with_dal] returns the name of the
+      [kind]. If [use_legacy_name] is set, the name corresponding to the [kind]
+      will be "(pre)endorsement" instead of "(pre)attestation". If [with_dal] is
+      set, then the name is suffixed by "_with_dal". *)
+  val kind_to_string :
+    consensus_kind -> use_legacy_name:bool -> with_dal:bool -> string
 
   (** [operation] constructs an operation from a consensus
      operation. the [client] is used to fetch the branch and the
@@ -364,11 +368,12 @@ module Anonymous : sig
     operation * Tezos_crypto.Signature.t ->
     t
 
-  (** [kind_to_string kind use_legacy_name] return the name of the [kind]. If
+  (** [kind_to_string kind ~use_legacy_name] return the name of the [kind]. If
       [use_legacy_name] is set, the name corresponding to the [kind] will be
       "double_(pre)endorsement_evidence" instead of
       "double_(pre)attestation_evidence". *)
-  val kind_to_string : double_consensus_evidence_kind -> bool -> string
+  val kind_to_string :
+    double_consensus_evidence_kind -> use_legacy_name:bool -> string
 
   (** [operation] constructs an operation from an anonymous operation. the
       [client] is used to fetch the branch and the [chain_id]. *)

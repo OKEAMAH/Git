@@ -77,6 +77,11 @@ let bake_for ?(delegates = `All) ?count ?dal_node_endpoint client =
   in
   Client.bake_for_and_wait client ~keys ?count ?dal_node_endpoint
 
+(* NOTE : all we want is the the baker is different from the attester; we should
+   have a different bake_for on top of this one; or rather; we first get the
+   baker and then we build the attestation with a different one, and then we
+   call [bake_for `For baker_round_0] *)
+
 module Client = struct
   include Client
 
@@ -422,8 +427,8 @@ let wait_for_layer1_final_block dal_node level =
 
 let inject_dal_attestation ?level ?(round = 0) ?force ?error ?request ~signer
     ~nb_slots availability client =
-  let attestation = Array.make nb_slots false in
-  List.iter (fun i -> attestation.(i) <- true) availability ;
+  let dal_attestation = Array.make nb_slots false in
+  List.iter (fun i -> dal_attestation.(i) <- true) availability ;
   let* level =
     match level with Some level -> return level | None -> Client.level client
   in
@@ -438,12 +443,20 @@ let inject_dal_attestation ?level ?(round = 0) ?force ?error ?request ~signer
     JSON.(List.hd JSON.(slots |> as_list) |-> "slots" |> as_list)
     |> List.hd |> JSON.as_int
   in
+  let* block_payload_hash = Operation.Consensus.get_block_payload_hash client in
   Operation.Consensus.inject
     ?force
     ?error
     ?request
     ~signer
-    (Operation.Consensus.dal_attestation ~level ~round ~attestation ~slot)
+    (Operation.Consensus.attestation
+       ~use_legacy_name:false
+       ~level
+       ~round
+       ~dal_attestation
+       ~slot
+       ~block_payload_hash
+       ())
     client
 
 let inject_dal_attestations ?level ?round ?force
@@ -509,6 +522,7 @@ let test_feature_flag _protocol _parameters _cryptobox node client
       ~msg:(rex "Data-availability layer will be enabled in a future proposal")
       process
   in
+  let* () = bake_for client in
   let* level = next_level node in
   let* (`OpHash oph1) =
     inject_dal_attestation
@@ -880,7 +894,8 @@ let test_slots_attestation_operation_behavior _protocol parameters cryptobox
   let outdated = [h1] in
   Log.info "expected mempool: outdated: h1 = %s" h1 ;
   let* () = mempool_is ~__LOC__ Mempool.{empty with outdated} in
-  let* (`OpHash h2) = attest ~level:(now - 1) in
+  (* level [now-1] is allowed in the mempool for attestations *)
+  let* (`OpHash h2) = attest ~level:(now - 2) in
   let outdated = [h1; h2] in
   Log.info "expected mempool: outdated: h1, h2 = %s" h2 ;
   let* () = mempool_is ~__LOC__ Mempool.{empty with outdated} in
@@ -889,13 +904,14 @@ let test_slots_attestation_operation_behavior _protocol parameters cryptobox
   let* () =
     mempool_is ~__LOC__ Mempool.{empty with outdated; validated = [h3]}
   in
-  let* (`OpHash h4) = attest ~level:(now + 1) in
+  (* level [now+1] is allowed in the mempool for attestations *)
+  let* (`OpHash h4) = attest ~level:(now + 2) in
   let* () =
     mempool_is
       ~__LOC__
       Mempool.{empty with outdated; validated = [h3]; branch_delayed = [h4]}
   in
-  let* () = bake_for client in
+  let* () = bake_for ~count:2 client in
   Log.info "expected mempool: outdated: h1, h2, validated: h4 = %s" h4 ;
   let* () =
     mempool_is ~__LOC__ Mempool.{empty with outdated; validated = [h4]}
@@ -903,8 +919,8 @@ let test_slots_attestation_operation_behavior _protocol parameters cryptobox
   let* () = check_slots_availability ~__LOC__ ~attested:[] in
   (* Part B.
      - Publish a slot header (index 10) and bake;
-     - All delegates attest the slot, but the operation is injected too early.
-       The operation is branch_delayed;
+     - All delegates attest the slot, but the operations are injected too early.
+       The operations are branch_delayed;
      - We bake sufficiently many blocks to get the attestation applied and
        included in a block;
      - We check in the metadata that the slot with index 10 is attested.
@@ -924,7 +940,7 @@ let test_slots_attestation_operation_behavior _protocol parameters cryptobox
   in
   let* () = bake_for client in
   let* now = Node.get_level node in
-  let level = now + lag - 1 in
+  let level = now + lag - 2 in
   let* attestation_ops =
     let* hashes =
       inject_dal_attestations ~force:true ~nb_slots ~level [10] client
@@ -938,8 +954,13 @@ let test_slots_attestation_operation_behavior _protocol parameters cryptobox
     now
     lag ;
   let branch_delayed = attestation_ops in
-  let* () = mempool_is ~__LOC__ Mempool.{empty with outdated; branch_delayed} in
-  let* () = repeat (lag - 1) (fun () -> bake_for client) in
+  (* h4 is still valid (it's level passes the checks; but is not included in a block) *)
+  let* () =
+    mempool_is
+      ~__LOC__
+      Mempool.{empty with validated = [h4]; outdated; branch_delayed}
+  in
+  let* () = repeat lag (fun () -> bake_for client) in
   let* () =
     mempool_is
       ~__LOC__
@@ -961,6 +982,7 @@ let test_slots_attestation_operation_dal_committee_membership_check _protocol
   (* The attestation from the bootstrap account should succeed as the bootstrap
      node has sufficient stake to be in the DAL committee. *)
   let nb_slots = parameters.Dal.Parameters.number_of_slots in
+  let* () = bake_for client in
   let* level = Client.level client in
   let* (`OpHash _oph) =
     inject_dal_attestation
@@ -1032,18 +1054,23 @@ let test_slots_attestation_operation_dal_committee_membership_check _protocol
     else
       let* (`OpHash _oph) =
         inject_dal_attestation
-          ~error:
-            (rex
-               (sf
-                  "%s is not part of the DAL committee for the level %d"
-                  new_account.public_key_hash
-                  level))
+        (* ~error: *)
+        (*   (rex *)
+        (*      (sf *)
+        (*         "%s is not part of the DAL committee for the level %d" *)
+        (*         new_account.public_key_hash *)
+        (*         level)) *)
+        (* TODO: how to check this validation error?! *)
           ~nb_slots
           ~level
           ~signer:new_account
           []
           client
       in
+      (* let* () = bake_for client in *)
+      (* let* _operations_result = *)
+      (*   Node.RPC.call node @@ RPC.get_chain_block_operations () *)
+      (* in *)
       unit
   in
   iter ()

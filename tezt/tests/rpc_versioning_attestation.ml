@@ -78,7 +78,7 @@ let check_kind json kind =
 
 let check_version ~version ~use_legacy_name ~check ~rpc ~get_name ~data client =
   let* t = Client.RPC.call client @@ rpc ~version data in
-  return (check ~use_legacy_name t (get_name use_legacy_name))
+  return (check ~use_legacy_name t (get_name ~use_legacy_name))
 
 let check_unknown_version ~version ~rpc ~data client =
   let*? p = Client.RPC.spawn client @@ rpc ~version data in
@@ -119,7 +119,7 @@ let check_rpc_versions ?(old = "0") ?(new_ = "1") ?(unknown = "2") ~check ~rpc
 let create_consensus_op ?slot ?level ?round ?block_payload_hash ~use_legacy_name
     ~signer ~kind client =
   let consensus_name =
-    Operation.Consensus.kind_to_string kind use_legacy_name
+    Operation.Consensus.kind_to_string kind ~use_legacy_name ~with_dal:false
   in
   Log.info "Create an %s operation" consensus_name ;
   let consensus =
@@ -153,7 +153,7 @@ let create_double_consensus_evidence ~use_legacy_name ~double_evidence_kind
         Operation.Preattestation
   in
   let consensus_name =
-    Operation.Anonymous.kind_to_string double_evidence_kind use_legacy_name
+    Operation.Anonymous.kind_to_string double_evidence_kind ~use_legacy_name
   in
   Log.info "Create an %s operation" consensus_name ;
 
@@ -292,7 +292,7 @@ module Forge = struct
             Operation.Preattestation
       in
       let consensus_name =
-        Operation.Anonymous.kind_to_string double_evidence_kind use_legacy_name
+        Operation.Anonymous.kind_to_string double_evidence_kind ~use_legacy_name
       in
       Log.info "Create an %s operation" consensus_name ;
 
@@ -406,7 +406,7 @@ module Parse = struct
     check_rpc_versions
       ~check:check_parsed_kind
       ~rpc
-      ~get_name:(Operation.Consensus.kind_to_string kind)
+      ~get_name:(Operation.Consensus.kind_to_string kind ~with_dal:false)
       ~data:raw
       client
 
@@ -492,7 +492,7 @@ module Mempool = struct
     let check ~use_legacy_name:_ json =
       check_kind JSON.(json |-> "refused" |> as_list |> List.hd)
     in
-    let get_name = Operation.Consensus.kind_to_string kind in
+    let get_name = Operation.Consensus.kind_to_string kind ~with_dal:false in
     check_rpc_versions
       ~old:"1"
       ~new_:"2"
@@ -638,7 +638,9 @@ module Mempool = struct
     let* () = Client.bake_for_and_wait ~node client in
 
     let check_monitor_mempool p ~use_legacy_name =
-      let name = Operation.Consensus.kind_to_string kind use_legacy_name in
+      let name =
+        Operation.Consensus.kind_to_string kind ~use_legacy_name ~with_dal:false
+      in
       check_monitor_mempool p name
     in
     let* () = check_monitor_mempool p_legacy ~use_legacy_name:true in
@@ -680,7 +682,7 @@ module Mempool = struct
 
     let check_monitor_mempool p ~use_legacy_name =
       let name =
-        Operation.Anonymous.kind_to_string double_evidence_kind use_legacy_name
+        Operation.Anonymous.kind_to_string double_evidence_kind ~use_legacy_name
       in
       check_monitor_mempool p name
     in
@@ -763,7 +765,10 @@ module Run_Simulate = struct
     let call_and_check_error ~use_legacy_name =
       Log.info
         "Create a %s operation, call %s and check that the call fail"
-        (Operation.Consensus.kind_to_string kind use_legacy_name)
+        (Operation.Consensus.kind_to_string
+           kind
+           ~use_legacy_name
+           ~with_dal:false)
         (get_rpc_name rpc) ;
 
       let* consensus_op =
@@ -812,7 +817,7 @@ module Run_Simulate = struct
         "Create a %s operation and call %s "
         (Operation.Anonymous.kind_to_string
            double_evidence_kind
-           use_legacy_name_in_input)
+           ~use_legacy_name:use_legacy_name_in_input)
         (get_rpc_name rpc) ;
 
       let* consensus_op =
@@ -918,7 +923,7 @@ module Preapply = struct
           ~signature
           consensus_op
       in
-      let get_name = Operation.Consensus.kind_to_string kind in
+      let get_name = Operation.Consensus.kind_to_string kind ~with_dal:false in
       let check ~use_legacy_name:_ json =
         check_kind JSON.(json |> as_list |> List.hd)
       in
@@ -1069,7 +1074,7 @@ module Block = struct
     in
     let* () = Client.bake_for_and_wait ~node client in
 
-    let get_name = Operation.Consensus.kind_to_string kind in
+    let get_name = Operation.Consensus.kind_to_string kind ~with_dal:false in
     let validation_pass = 0 (* Consensus operations *) in
     let* () = call_and_check_operation ~validation_pass get_name client in
     let* () =
@@ -1137,8 +1142,8 @@ module Block = struct
       "Bake 7 blocks to reach the end of a cycle with the metadata containing \
        consensus rewards" ;
     let* () = repeat 7 (fun () -> Client.bake_for_and_wait ~node client) in
-    let get_name use_legacy_attestation_name =
-      if use_legacy_attestation_name then "endorsing" else "attesting"
+    let get_name ~use_legacy_name =
+      if use_legacy_name then "endorsing" else "attesting"
     in
 
     Log.info "Check block info RPC" ;
