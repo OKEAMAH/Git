@@ -353,8 +353,8 @@ trait Decodable {
 
 impl<const N: usize> Decodable for [u64; N] {
     fn decode_from_le_slice(&mut self, src: &[u8]) {
+        let mut word_buf = [0_u8; 8];
         for (i, word) in self.iter_mut().enumerate() {
-            let mut word_buf = [0_u8; 8];
             word_buf.copy_from_slice(&src[i * 8..(i + 1) * 8]);
             *word = u64::from_le_bytes(word_buf);
         }
@@ -427,7 +427,7 @@ fn blake2f_precompile<Host: Runtime>(
 
     eip152::compress(&mut h, m, t, f, rounds as usize);
 
-    let mut output = [0_u8; u64::BITS as usize];
+    let mut output = [0_u8; 64];
     for (i, state_word) in h.iter().enumerate() {
         output[i * 8..(i + 1) * 8].copy_from_slice(&state_word.to_le_bytes());
     }
@@ -549,6 +549,10 @@ pub fn precompile_set<Host: Runtime>() -> PrecompileBTreeMap<Host> {
         (
             H160::from_low_u64_be(5u64),
             modexp_precompile as PrecompileFn<Host>,
+        ),
+        (
+            H160::from_low_u64_be(9u64),
+            blake2f_precompile as PrecompileFn<Host>,
         ),
         (
             // Prefixed by 'ff' to make sure we will not conflict with any
