@@ -862,7 +862,6 @@ module History = struct
         activation. *)
     let produce_proof_repr dal_params page_id ~page_info ~get_history slots_hist
         =
-      (* TODO: check that slot id is below number of slots. *)
       let open Lwt_result_syntax in
       let Page.{slot_id = target_slot_id; page_index = _} = page_id in
       (* We first search for the slots attested at level [published_level]. *)

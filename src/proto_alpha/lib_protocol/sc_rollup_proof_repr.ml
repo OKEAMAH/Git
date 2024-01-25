@@ -253,17 +253,26 @@ module Dal_helpers = struct
     in
     dal_was_activated && not_too_old && not_too_recent
 
+  let valid_slot_index ~number_of_slots ~slot_index =
+    match Dal_slot_index_repr.check_is_in_range ~number_of_slots slot_index with
+    | Ok () -> true
+    | Error _ -> false
+
   let verify ~metadata ~dal_activation_level ~dal_attestation_lag
-      ~commit_inbox_level dal_parameters page_id dal_snapshot proof =
+      ~number_of_slots ~commit_inbox_level dal_parameters page_id dal_snapshot
+      proof =
     let open Result_syntax in
     if
-      valid_published_level
-        ~dal_activation_level
-        ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
-        ~dal_attestation_lag
-        ~commit_inbox_level
-        ~published_level:
-          Dal_slot_repr.(page_id.Page.slot_id.Header.published_level)
+      valid_slot_index
+        ~number_of_slots
+        ~slot_index:Dal_slot_repr.(page_id.Page.slot_id.Header.index)
+      && valid_published_level
+           ~dal_activation_level
+           ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
+           ~dal_attestation_lag
+           ~commit_inbox_level
+           ~published_level:
+             Dal_slot_repr.(page_id.Page.slot_id.Header.published_level)
     then
       let* input =
         Dal_slot_repr.History.verify_proof
@@ -276,17 +285,20 @@ module Dal_helpers = struct
     else return_none
 
   let produce ~metadata ~dal_activation_level ~dal_attestation_lag
-      ~commit_inbox_level dal_parameters page_id ~page_info ~get_history
-      confirmed_slots_history =
+      ~number_of_slots ~commit_inbox_level dal_parameters page_id ~page_info
+      ~get_history confirmed_slots_history =
     let open Lwt_result_syntax in
     if
-      valid_published_level
-        ~dal_activation_level
-        ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
-        ~dal_attestation_lag
-        ~commit_inbox_level
-        ~published_level:
-          Dal_slot_repr.(page_id.Page.slot_id.Header.published_level)
+      valid_slot_index
+        ~number_of_slots
+        ~slot_index:Dal_slot_repr.(page_id.Page.slot_id.Header.index)
+      && valid_published_level
+           ~dal_activation_level
+           ~origination_level:metadata.Sc_rollup_metadata_repr.origination_level
+           ~dal_attestation_lag
+           ~commit_inbox_level
+           ~published_level:
+             Dal_slot_repr.(page_id.Page.slot_id.Header.published_level)
     then
       let* proof, content_opt =
         Dal_slot_repr.History.produce_proof
@@ -334,6 +346,7 @@ let valid (type state proof output)
         return_some (Sc_rollup_PVM_sig.Reveal (Metadata metadata))
     | Some (Reveal_proof (Dal_page_proof {proof; page_id})) ->
         Dal_helpers.verify
+          ~number_of_slots:dal_number_of_slots
           ~metadata
           ~dal_activation_level
           dal_parameters
@@ -509,6 +522,7 @@ let produce ~metadata pvm_and_state commit_inbox_level ~is_reveal_enabled =
     | Needs_reveal (Request_dal_page page_id) ->
         let open Dal_with_history in
         Dal_helpers.produce
+          ~number_of_slots:dal_number_of_slots
           ~metadata
           ~dal_activation_level
           dal_parameters
