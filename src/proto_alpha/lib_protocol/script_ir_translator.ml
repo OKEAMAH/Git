@@ -2339,12 +2339,11 @@ let rec parse_data :
         let*? Ex_ty expected, ctxt =
           parse_any_ty ctxt ~stack_depth:(stack_depth + 1) ~legacy contents_type
         in
-        let*? eq, _ctxt =
+        let*? eq, ctxt =
           Gas_monad.run ctxt
           @@
           let open Gas_monad.Syntax in
           let error_details = Informative loc in
-          let* Eq = ty_eq ~error_details t expected in
           ty_eq ~error_details t expected
         in
         let*? Eq = eq in
