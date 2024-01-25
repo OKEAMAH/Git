@@ -703,43 +703,47 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
   let* () =
     Sc_rollup_node.run ~event_level:`Debug sc_rollup_node sc_rollup []
   in
+  let batcher =
+    Sc_rollup_node.create
+      Batcher
+      node
+      ~base_dir:(Client.base_dir client)
+      ~default_operator:Constant.bootstrap5.alias
+  in
+  let* () = Sc_rollup_node.run ~event_level:`Debug batcher sc_rollup [] in
   let* _level = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:10. in
   Log.info "Sending one message to the batcher" ;
   let msg1 = "3 3 + out" in
   let* hashes =
-    Sc_rollup_node.RPC.call sc_rollup_node
+    Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.post_local_batcher_injection ~messages:[msg1]
   in
   let msg1_hash = match hashes with [h] -> h | _ -> assert false in
   let* retrieved_msg1, status_msg1 =
-    Sc_rollup_node.RPC.call sc_rollup_node
+    Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
-
   check_batcher_message_status status_msg1 "pending_batch" ;
   Check.((retrieved_msg1 = msg1) string)
     ~error_msg:"Message in queue is %L but injected %R." ;
   let* queue =
-    Sc_rollup_node.RPC.call sc_rollup_node
-    @@ Sc_rollup_rpc.get_local_batcher_queue ()
+    Sc_rollup_node.RPC.call batcher @@ Sc_rollup_rpc.get_local_batcher_queue ()
   in
   Check.((queue = [(msg1_hash, msg1)]) (list (tuple2 string string)))
     ~error_msg:"Queue is %L but should be %R." ;
   (* This block triggers injection in the injector. *)
-  let injected =
-    wait_for_injecting_event ~tags:["add_messages"] sc_rollup_node
-  in
+  let injected = wait_for_injecting_event ~tags:["add_messages"] batcher in
   let* () = Client.bake_for_and_wait client in
   let* _ = injected in
   let* _msg1, status_msg1 =
-    Sc_rollup_node.RPC.call sc_rollup_node
+    Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
   check_batcher_message_status status_msg1 "injected" ;
   (* We bake so that msg1 is included. *)
   let* () = Client.bake_for_and_wait client in
   let* _msg1, status_msg1 =
-    Sc_rollup_node.RPC.call sc_rollup_node
+    Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
   check_batcher_message_status status_msg1 "included" ;
@@ -752,16 +756,15 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
         if i = 10 then ' ' else Char.chr (i + 48))
   in
   let* hashes1 =
-    Sc_rollup_node.RPC.call sc_rollup_node
+    Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.post_local_batcher_injection
          ~messages:(List.init 9 (Fun.const msg2))
   in
   let* hashes2 =
-    send_message_batcher client sc_rollup_node (List.init 9 (Fun.const msg2))
+    send_message_batcher client batcher (List.init 9 (Fun.const msg2))
   in
   let* queue =
-    Sc_rollup_node.RPC.call sc_rollup_node
-    @@ Sc_rollup_rpc.get_local_batcher_queue ()
+    Sc_rollup_node.RPC.call batcher @@ Sc_rollup_rpc.get_local_batcher_queue ()
   in
   Check.((queue = []) (list (tuple2 string string)))
     ~error_msg:"Queue is %L should be %empty R." ;
@@ -814,7 +817,7 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
     bake_until_lpc_updated ~at_least:levels ~timeout:5. client sc_rollup_node
   in
   let* _msg1, status_msg1 =
-    Sc_rollup_node.RPC.call sc_rollup_node
+    Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
   check_batcher_message_status status_msg1 "committed" ;
