@@ -174,6 +174,7 @@ Platform developers are also provided reference materials for internal APIs of O
    shell/data_availability_committees
    shell/dal
    shell/smart_rollup_node
+   shell/evm_node
    shell/p2p_api
    shell/cli-commands
    shell/rpc
