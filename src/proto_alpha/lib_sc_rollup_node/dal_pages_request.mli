@@ -56,6 +56,7 @@ type error += Dal_slot_not_found_in_store of Dal.Slot.Header.id
 val slot_pages :
   dal_activation_level:Raw_level.t option ->
   dal_attestation_lag:int ->
+  dal_number_of_slots:int ->
   inbox_level:int32 ->
   _ Node_context.t ->
   Dal.slot_id ->
@@ -74,6 +75,7 @@ val slot_pages :
 val page_content :
   dal_activation_level:Raw_level.t option ->
   dal_attestation_lag:int ->
+  dal_number_of_slots:int ->
   inbox_level:int32 ->
   _ Node_context.t ->
   Dal.Page.t ->
