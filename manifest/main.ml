@@ -2352,7 +2352,7 @@ let _octez_base_tests =
 
 let _octez_base_unix_tests =
   tezt
-    ["test_unix_error"; "test_syslog"]
+    ["test_unix_error"; "test_syslog"; "test_simple_profiler"]
     ~path:"src/lib_base/unix/test"
     ~with_macos_security_framework:true
     ~opam:"octez-libs"

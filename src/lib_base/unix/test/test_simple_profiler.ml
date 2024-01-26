@@ -30,65 +30,63 @@
    Subject:      Check syslog primitives
 *)
 
-open Tezt
+(* open Tezt *)
 open Tezt_core.Base
+
+(* open Tezos_base.TzPervasives *)
+open Profiler
+
+let print_file_content file_path =
+  let rec read_and_print chan =
+    try
+      let line = input_line chan in
+      print_endline line ;
+      read_and_print chan
+    with
+    | End_of_file -> close_in chan
+    | ex ->
+        close_in chan ;
+        raise ex
+  in
+  try
+    let chan = open_in file_path in
+    read_and_print chan
+  with Sys_error msg -> Printf.eprintf "Error: %s\n" msg
+
+let sleep10ms profiler =
+  Profiler.record profiler "sleep10ms" ;
+  print_endline "---sleep---" ;
+  Unix.sleepf 0.01 ;
+  Profiler.stop profiler
+
+let foo profiler =
+  Profiler.record profiler "foo" ;
+  sleep10ms profiler ;
+  sleep10ms profiler ;
+  Profiler.stop profiler
+
+let bar profiler =
+  Profiler.record profiler "bar" ;
+  sleep10ms profiler ;
+  foo profiler ;
+  foo profiler ;
+  Profiler.stop profiler
 
 let () =
   Tezt_core.Test.register
     ~__FILE__
-    ~title:"Syslog: check formatting function"
-    ~tags:["unix"; "syslog"]
+    ~title:"Simple profiler: invoke"
+    ~tags:["unix"; "profiler"]
   @@ fun () ->
-  let prefix_without_tag_len =
-    (* e.g. : "<117>Apr 13 14:00:50 " *)
-    21
+  let profiler = unplugged () in
+  let test_profiler_instance =
+    Profiler.instance
+      Tezos_base_unix.Simple_profiler.auto_write_to_txt_file
+      ("/tmp/test_simple_profiling.txt", Profiler.Detailed)
   in
-  let check_format tag msg expected =
-    let formatted =
-      Syslog.format_message ~tag ~facility:Console ~with_pid:false Notice msg
-    in
-    let formatted =
-      String.sub formatted prefix_without_tag_len (String.length formatted - 21)
-    in
-    Check.(
-      (tag ^ ": " ^ expected = formatted)
-        string
-        ~error_msg:"Expected %L, got %R"
-        ~__LOC__)
-  in
-  check_format
-    "test1"
-    (String.make 1024 'a')
-    (String.make (1024 - 31) 'a' ^ "...") ;
-  check_format
-    "test2"
-    (String.make (1024 - 28) 'b')
-    (String.make (1024 - 28) 'b') ;
-  check_format "test3" "hello hello" "hello hello" ;
-  check_format "test4" "" "" ;
-  unit
+  plug profiler test_profiler_instance ;
+  bar profiler ;
 
-(* let () =
-   Tezt_core.Test.register
-     ~__FILE__
-     ~title:"Syslog: send message through socket"
-     ~tags:["unix"; "syslog"]
-   @@ fun () ->
-   let pid = Unix.getpid () in
-   let path = Temp.file @@ Format.asprintf "test-syslog-%d.sock" pid in
-   let main_socket = Lwt_unix.(socket PF_UNIX SOCK_RAW 0) in
-   let* () = Lwt_unix.bind main_socket (ADDR_UNIX path) in
-   let* logger = Syslog.create ~path ~tag:"test" Console in
-   let msg = "hello user" in
-   let expected_msg = "test: hello user" in
-   let len = String.length expected_msg + 21 in
-   let* () = Syslog.syslog logger Notice msg in
-   let buf = Bytes.create len in
-   let* () =
-     Lwt.finalize
-       (fun () -> Lwt_utils_unix.read_bytes ~len main_socket buf)
-       (fun () -> Syslog.close logger)
-   in
-   let res = String.sub (Bytes.to_string buf) 21 (len - 21) in
-   Check.((expected_msg = res) string ~error_msg:"Expected %L, got %R" ~__LOC__) ;
-   unit *)
+  print_endline "Profiling result\n================" ;
+  print_file_content "/tmp/test_simple_profiling.txt" ;
+  unit
