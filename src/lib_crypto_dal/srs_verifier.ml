@@ -45,7 +45,7 @@ module Parameters_bounds_for_tests = struct
      their length must be greater than the number of shards. *)
   let max_page_size_log2 = max_slot_size_log2 - size_offset_log2
 
-  let max_srs_size = 1 lsl 15
+  let max_srs_size = 1 lsl 16
 
   (* The set of parameters maximizing the SRS length, and which
      is in the codomain of [generate_parameters]. *)
