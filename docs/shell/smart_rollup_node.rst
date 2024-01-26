@@ -1665,3 +1665,30 @@ preimage of a given hash, there are two possible solutions:
   ``preimage`` subdirectory.
 * ``reveal preimage of <hex encoded value>`` can be used to feed a custom
   preimage hash.
+
+
+EVM  Kernel
+-----------
+
+The repo
+
+Setting-up
+""""""""""
+
+rustup
+wabt
+clang
+
+Control flow
+""""""""""""
+
+3 stages, blueprints, reboot
+
+deposit and withdraw
+
+Testing
+"""""""
+
+How to use the chunker, compile in debug and use the debugger.
+
+Flamecharts
