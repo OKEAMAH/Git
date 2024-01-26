@@ -68,7 +68,7 @@ val message_status :
   L2_message.hash ->
   (string option * Rollup_node_services.message_status) tzresult
 
-val rpc_directory : unit Tezos_rpc.Directory.t
+val rpc_directory : Configuration.t -> unit Tezos_rpc.Directory.t
 
 module Autonomous : sig
   (** Run an autonmous batcher with its own injector and RPC server. *)

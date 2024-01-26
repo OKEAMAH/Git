@@ -314,7 +314,7 @@ let top_directory (node_ctxt : _ Node_context.t) =
   List.fold_left
     (fun dir f ->
       Tezos_rpc.Directory.merge ~strategy:`Pick_right dir (f node_ctxt))
-    Batcher.rpc_directory
+    (Batcher.rpc_directory node_ctxt.config)
     [
       Root_directory.build_directory;
       Global_directory.build_directory;

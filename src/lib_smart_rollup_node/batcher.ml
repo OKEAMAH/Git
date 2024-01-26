@@ -437,6 +437,20 @@ module RPC_directory = struct
     let context_of_prefix () () = Lwt_result.return ()
   end)
 
+  module Global_directory = Rpc_directory_helpers.Make_directory (struct
+    include Rollup_node_services.Global
+
+    type context = Configuration.t
+
+    type subcontext = Configuration.t
+
+    let context_of_prefix config () = Lwt_result.return config
+  end)
+
+  let () =
+    Global_directory.register0 Rollup_node_services.Global.sc_rollup_address
+    @@ fun config () () -> Lwt_result.return config.sc_rollup_address
+
   let () =
     Local_directory.register0 Rollup_node_services.Local.injection
     @@ fun _node_ctxt () messages -> register_messages messages
@@ -453,7 +467,10 @@ module RPC_directory = struct
     @@ fun () hash () () -> message_status hash |> Lwt.return
 end
 
-let rpc_directory = RPC_directory.Local_directory.build_directory ()
+let rpc_directory config =
+  Tezos_rpc.Directory.merge
+    (RPC_directory.Global_directory.build_directory config)
+    (RPC_directory.Local_directory.build_directory ())
 
 (** Retrieve next protocol of a block with a small cache from protocol levels to
     protocol hashes. *)
@@ -554,7 +571,7 @@ module Autonomous = struct
     let* worker = Worker.launch table () {config; plugin} (module Handlers) in
     let state = Worker.state worker in
     Lwt.wakeup worker_waker worker ;
-    let* rpc_server = Rpc_server.start config rpc_directory in
+    let* rpc_server = Rpc_server.start config (rpc_directory config) in
     let*! () =
       Event.node_is_ready ~rpc_addr:config.rpc_addr ~rpc_port:config.rpc_port
     in
