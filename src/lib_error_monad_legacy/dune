@@ -6,14 +6,6 @@
  (public_name octez-libs.error-monad-legacy)
  (instrumentation (backend bisect_ppx))
  (libraries
-  octez-libs.stdlib
-  data-encoding
-  lwt-canceler
   lwt
-  octez-libs.lwt-result-stdlib
   octez-libs.error-monad)
- (js_of_ocaml)
- (flags
-  (:standard)
-  -open Tezos_stdlib
-  -open Data_encoding))
+ (js_of_ocaml))

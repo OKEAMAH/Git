@@ -778,15 +778,7 @@ let octez_error_monad_legacy =
     ~internal_name:"tezos_error_monad_legacy"
     ~path:"src/lib_error_monad_legacy"
     ~synopsis:"Error monad (legacy)"
-    ~deps:
-      [
-        octez_stdlib |> open_;
-        data_encoding |> open_;
-        lwt_canceler;
-        lwt;
-        octez_lwt_result_stdlib;
-        octez_error_monad;
-      ]
+    ~deps:[lwt; octez_error_monad]
     ~conflicts:[external_lib "result" V.(less_than "1.5")]
     ~js_compatible:true
 
@@ -5233,8 +5225,7 @@ end = struct
     List.filter_map (fun (x, b) -> if b then Some x else None)
 
   let error_monad_module should_use_infix =
-    if should_use_infix then
-      open_ ~m:"TzPervasives.Error_monad_legacy.Legacy_monad_globals"
+    if should_use_infix then open_ ~m:"TzPervasives.Error_monad_legacy"
     else open_ ~m:"TzPervasives.Error_monad"
 
   module Lib_protocol = struct
