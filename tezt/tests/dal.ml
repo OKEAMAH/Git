@@ -3898,6 +3898,10 @@ let test_migration_plugin ~migrate_from ~migrate_to =
     ~description
     ()
 
+let test_amplification _protocol _dal_parameters _cryptobox _node _client
+    _dal_node =
+  unit
+
 module Tx_kernel_e2e = struct
   open Tezos_protocol_alpha.Protocol
   open Tezt_tx_kernel
@@ -4358,6 +4362,11 @@ let register ~protocols =
     ~bootstrap_profile:true
     "trusted peers reconnection"
     test_peers_reconnection
+    protocols ;
+  scenario_with_layer1_and_dal_nodes
+    ~tags:["amplification"]
+    "amplification"
+    test_amplification
     protocols ;
 
   (* Tests with all nodes *)
