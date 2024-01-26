@@ -47,6 +47,8 @@ module Parameters_bounds_for_tests = struct
 
   let max_srs_size = 1 lsl 16
 
+  let max_verifier_srs_size = 1 lsl 8
+
   (* The set of parameters maximizing the SRS length, and which
      is in the codomain of [generate_parameters]. *)
   let max_parameters : Dal_config.parameters =
@@ -88,10 +90,8 @@ module For_tests = struct
     Scalar.of_string
       "20812168509434597367146703229805575690060615791308155437936410982393987532344"
 
-  let fake_srs =
-    let length = Parameters_bounds_for_tests.max_srs_size in
-    let srs_g1 = Srs_g1.generate_insecure length fake_srs_seed in
-    srs_g1
+  let fake_srs ?(size = Parameters_bounds_for_tests.max_srs_size) () =
+    Srs_g1.generate_insecure size fake_srs_seed
 
   let get_srs1 i = G1.mul G1.one (Scalar.pow fake_srs_seed (Z.of_int i))
 

@@ -526,7 +526,12 @@ module Inner = struct
     let mode, srs_g1 =
       match !initialisation_parameters with
       | Some srs_g1 -> (`Prover, srs_g1)
-      | None -> (`Verifier, Srs_verifier.For_tests.fake_srs)
+      | None ->
+          ( `Verifier,
+            Srs_verifier.For_tests.fake_srs
+              ~size:
+                Srs_verifier.Parameters_bounds_for_tests.max_verifier_srs_size
+              () )
     in
     let* () =
       ensure_validity
@@ -535,7 +540,7 @@ module Inner = struct
         ~page_size
         ~redundancy_factor
         ~number_of_shards
-        ~srs_g1_length:max_int
+        ~srs_g1_length:(Srs_g1.size srs_g1)
         ~srs_g2_length:max_int
     in
     let kate_amortized =
@@ -1244,7 +1249,7 @@ module Verifier = Inner
 module Internal_for_tests = struct
   module Parameters_bounds = Parameters_bounds_for_tests
 
-  let parameters_initialisation () = Srs_verifier.For_tests.fake_srs
+  let parameters_initialisation () = Srs_verifier.For_tests.fake_srs ()
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
@@ -1318,10 +1323,13 @@ module Internal_for_tests = struct
 
   let ensure_validity
       {redundancy_factor; slot_size; page_size; number_of_shards} =
-    let mode, srs_g1 =
+    let mode, srs_g1_length =
       match !initialisation_parameters with
-      | Some srs -> (`Prover, srs)
-      | None -> (`Verifier, Srs_verifier.For_tests.fake_srs)
+      | Some srs -> (`Prover, Srs_g1.size srs)
+      (* todo fix that *)
+      | None ->
+          ( `Verifier,
+            Srs_verifier.Parameters_bounds_for_tests.max_verifier_srs_size )
     in
     ensure_validity
       ~mode
@@ -1329,7 +1337,7 @@ module Internal_for_tests = struct
       ~page_size
       ~redundancy_factor
       ~number_of_shards
-      ~srs_g1_length:(Srs_g1.size srs_g1)
+      ~srs_g1_length
       ~srs_g2_length:max_int
 
   let ensure_validity parameters =
