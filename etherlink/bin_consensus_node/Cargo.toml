@@ -5,11 +5,39 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/node"
+    "crates/node",
+    "crates/client",
+    "crates/api",
+    "crates/primitives/pre-block",
+    "crates/primitives/transaction",
+    "crates/protocols/loopback",
 ]
 
 [workspace.package]
 version = "0.1.0"
+license = "MIT"
+authors = ["TriliTech <contact@trili.tech>"]
+edition = "2021"
 
 [workspace.dependencies]
+async-trait = "0.1.61"
+env_logger = "0.10.0"
+futures = "0.3.28"
+log = "0.4"
+bcs = "0.1.4"
+prost = "0.12.1"
+prost-build = "0.12.1"
+protobuf-src = "1.1.0"
+serde = { version = "1.0.144", features = ["derive", "rc"] }
 tokio = "1.28.1"
+tokio-stream = { version = "0.1.14", features = ["sync", "net"] }
+tonic = { version = "0.10" }
+tonic-build = { version = "0.10" }
+thiserror = "1.0.40"
+
+# DSN
+dsn-api = { path = "crates/api" }
+dsn-client = { path = "crates/client" }
+dsn-pre-block = { path = "crates/primitives/pre-block" }
+dsn-transaction = { path = "crates/primitives/transaction" }
+dsn-loopback = { path = "crates/protocols/loopback" }

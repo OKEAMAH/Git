@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 [package]
-name = "dsn-node"
+name = "dsn-transaction"
 publish = false
 license = { workspace = true }
 authors = { workspace = true }
@@ -11,12 +11,4 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-tokio = { workspace = true, features = ["full"] }
-
-# DSN
-dsn-client = { workspace = true }
-dsn-loopback = { workspace = true }
-
-[[bin]]
-name = "dsn-node"
-path = "src/main.rs"
+serde = { workspace = true }

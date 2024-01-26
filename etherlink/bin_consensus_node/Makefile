@@ -3,4 +3,4 @@
 # SPDX-License-Identifier: MIT
 
 build-node:
-	cargo build --profile release --bin consensus-node
+	cargo build --profile release --bin dsn-node
