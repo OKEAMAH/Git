@@ -42,7 +42,7 @@ val verify_shard :
   commitment:Commitment.Single.t ->
   commitment_remainder:Commitment.Single.t ->
   srs_point:G2.t ->
-  domain:Domain.t ->
+  domain_length:int ->
   root:scalar ->
   proof:shard_proof ->
   bool

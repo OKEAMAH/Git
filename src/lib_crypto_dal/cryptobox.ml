@@ -1297,6 +1297,24 @@ module Inner = struct
       quotients
       remainder_proofs
 
+  (*TODO: find a better name.
+    This computes P(x) where P is the interpolation of
+    evals on shift*domain. Adapted from the second part of
+    https://hackmd.io/@vbuterin/barycentric_evaluation*)
+  let eval_from_evals x evals generator shift =
+    let init = (Scalar.zero, shift) in
+    let f (acc, domain_i) eval_i =
+      let den = Scalar.(sub x (domain_i * shift)) in
+      (Scalar.(acc + (eval_i * domain_i / den)), Scalar.(domain_i * generator))
+    in
+    let sum, _ = Array.fold_left f init evals in
+    let n = Array.length evals in
+    let xn = Scalar.pow x (Z.of_int n) in
+    let shiftn = Scalar.pow shift (Z.of_int n) in
+    let xn_min_shiftn_div_n = Scalar.(sub xn shiftn / of_int n) in
+    let n_min_1 = n - 1 in
+    Scalar.(xn_min_shiftn_div_n / pow shift (Z.of_int n_min_1) * sum)
+
   let verify_shard (t : t) commitment {index = shard_index; share = evaluations}
       ({fst_round = {quotient; remainder}; eval_proof} : shard_proof) =
     if shard_index < 0 || shard_index >= t.number_of_shards then
@@ -1317,16 +1335,11 @@ module Inner = struct
         let root =
           Domain.get t.domain_erasure_encoded_polynomial_length shard_index
         in
-        let domain = Domain.build t.shard_length in
-
+        let generator = Domain.primitive_root_of_unity t.shard_length in
         let srs_point =
           match t.srs with
           | Prove srs -> srs.kate_amortized_srs_g2_shards
           | Verify srs -> srs.kate_amortized_srs_g2_shards
-        in
-        (* Compute r_i(x). *)
-        let remainder_poly =
-          Kate_amortized.interpolation_poly ~root ~domain ~evaluations
         in
         let transcript =
           Kzg.Utils.Transcript.expand
@@ -1337,7 +1350,8 @@ module Inner = struct
         let challenge_point, transcript =
           Kzg.Utils.Fr_generation.random_fr transcript
         in
-        let eval = Poly.evaluate remainder_poly challenge_point in
+        let _pi_kzg = Kzg.Polynomial_commitment.proof_from_single eval_proof in
+        let eval = eval_from_evals challenge_point evaluations generator root in
         let kzg_ok, _transcript =
           Kzg.Polynomial_commitment.verify
             t.kzg_verifier
@@ -1356,7 +1370,7 @@ module Inner = struct
             ~commitment
             ~commitment_remainder:(Kzg.SMap.choose remainder |> snd)
             ~srs_point
-            ~domain
+            ~domain_length:t.shard_length
             ~root
             ~proof:quotient
           && kzg_ok

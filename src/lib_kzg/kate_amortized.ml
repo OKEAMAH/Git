@@ -341,11 +341,11 @@ let interpolation_poly ~root ~domain ~evaluations =
    [l]-th root of unity
 
    Implements the "Multi-reveals" section above. *)
-let verify_shard ~commitment ~commitment_remainder ~srs_point ~domain ~root
-    ~proof =
+let verify_shard ~commitment ~commitment_remainder ~srs_point ~domain_length
+    ~root ~proof =
   let open Bls12_381 in
   (* Compute [w^{i * l}]. *)
-  let root_pow = Scalar.pow root (Z.of_int (Domain.length domain)) in
+  let root_pow = Scalar.pow root (Z.of_int domain_length) in
   (* Compute [τ^l]_2 - [w^{i * l}]_2). *)
   let commit_srs_point_minus_root_pow =
     G2.(add srs_point (negate (mul (copy one) root_pow)))
