@@ -3082,4 +3082,45 @@ mod test {
         assert_eq!(get_balance(&mut handler, &caller), U256::from(999999999));
         assert!(!handler.exists(suicided_contract));
     }
+
+    #[test]
+    fn create_prefund_contract_with_no_code() {
+        let mut mock_runtime = MockHost::default();
+        let block = dummy_first_block();
+        let precompiles = precompiles::precompile_set::<MockHost>();
+        let mut evm_account_storage = init_account_storage().unwrap();
+        let config = Config::shanghai();
+
+        let caller = H160::from_str("a94f5374fce5edbc8e2a8697c15331677e6ebf0b").unwrap();
+        let prefund_contract =
+            H160::from_str("6295ee1b4f6dd65047762f924ecd367c17eabf8f").unwrap();
+
+        let mut handler = EvmHandler::new(
+            &mut mock_runtime,
+            &mut evm_account_storage,
+            caller,
+            &block,
+            &config,
+            &precompiles,
+            DUMMY_ALLOCATED_TICKS,
+            U256::one(),
+        );
+
+        set_balance(&mut handler, &caller, U256::from(10));
+        set_balance(&mut handler, &prefund_contract, U256::from(10));
+
+        let code = hex::decode("600060006000f000").unwrap(); //create empty contract
+
+        let result = handler
+            .create_contract(caller, Some(U256::one()), code, None)
+            .unwrap();
+
+        println!("{:?}", result.new_address);
+
+        assert_eq!(result.reason, ExitReason::Succeed(ExitSucceed::Stopped));
+
+        assert_eq!(get_balance(&mut handler, &caller), U256::from(9));
+
+        assert!(handler.exists(prefund_contract));
+    }
 }
