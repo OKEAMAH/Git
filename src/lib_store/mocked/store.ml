@@ -244,7 +244,32 @@ module Block = struct
     let genesis = genesis chain_store in
     Block_hash.equal hash genesis.Genesis.block
 
-  let read_block {block_store; _} ?(distance = 0) hash =
+  let uncompress_operations chain_state protocol_level encoded_operations :
+      Operation.t list list tzresult Lwt.t =
+    let open Lwt_result_syntax in
+    match encoded_operations with
+    | Block_repr.Raw ops -> return ops
+    | Compressed b ->
+        Shared.locked_use chain_state (fun chain_state ->
+            let*! proto_levels =
+              Stored_data.get chain_state.protocol_levels_data
+            in
+            match Protocol_levels.find protocol_level proto_levels with
+            | None -> tzfail (Cannot_find_protocol protocol_level)
+            | Some {protocol; _} -> (
+                match Protocol_plugin.find_shell protocol with
+                | Some (module Shell_plugin) ->
+                    return
+                    @@ Data_encoding.Binary.of_bytes_exn
+                         Shell_plugin.refactoring_encoding
+                         b
+                | None ->
+                    (* There should never be a case where we uncompress Compressed
+                       operations, but we do not have a refactoring_encoding *)
+                    tzfail
+                      (Uncompress_without_plugin {protocol_hash = protocol})))
+
+  let read_block {block_store; chain_state; _} ?(distance = 0) hash =
     let open Lwt_result_syntax in
     let* o =
       Block_store.read_block
@@ -254,7 +279,20 @@ module Block = struct
     in
     match o with
     | None -> tzfail @@ Block_not_found {hash; distance}
-    | Some block -> return block
+    | Some block ->
+        let* uncompressed_operations =
+          uncompress_operations
+            chain_state
+            block.contents.header.Block_header.shell.proto_level
+            block.contents.operations
+        in
+        return
+          {
+            block with
+            contents =
+              Block_repr.
+                {block.contents with operations = Raw uncompressed_operations};
+          }
 
   let read_block_metadata ?(distance = 0) chain_store hash =
     Block_store.read_block_metadata
@@ -493,10 +531,11 @@ module Block = struct
             known_invalid
             Store_errors.(Cannot_store_block (hash, Invalid_block))
         in
+        let may_compress_operations ops = Block_repr.Raw ops in
         let contents =
           {
             Block_repr.header = block_header;
-            operations;
+            operations = may_compress_operations operations;
             block_metadata_hash = snd block_metadata;
             operations_metadata_hashes =
               (match ops_metadata with
@@ -570,7 +609,7 @@ module Block = struct
         contents =
           {
             header = block_header;
-            operations;
+            operations = Raw operations;
             block_metadata_hash = None;
             operations_metadata_hashes = None;
           };
@@ -704,7 +743,14 @@ module Block = struct
 
   let header blk = Block_repr.header blk
 
-  let operations blk = Block_repr.operations blk
+  let raw_operations_exn blk =
+    match Block_repr.operations blk with
+    | Raw ops -> ops
+    | Compressed _ ->
+        (* This cannot happen as the `read_block` only has the "Raw" option for operations *)
+        assert false
+
+  let operations blk = raw_operations_exn blk
 
   let shell_header blk = Block_repr.shell_header blk
 
@@ -766,7 +812,7 @@ module Block = struct
 
   let operations_path block i =
     if i < 0 || validation_passes block <= i then invalid_arg "operations_path" ;
-    let ops = operations block in
+    let ops = raw_operations_exn block in
     let hashes = List.(map (map Operation.hash)) ops in
     let path = compute_operation_path hashes in
     (List.nth ops i |> WithExceptions.Option.get ~loc:__LOC__, path i)
@@ -774,13 +820,13 @@ module Block = struct
   let operations_hashes_path block i =
     if i < 0 || (header block).shell.validation_passes <= i then
       invalid_arg "operations_hashes_path" ;
-    let opss = operations block in
+    let opss = raw_operations_exn block in
     let hashes = List.(map (map Operation.hash)) opss in
     let path = compute_operation_path hashes in
     (List.nth hashes i |> WithExceptions.Option.get ~loc:__LOC__, path i)
 
   let all_operation_hashes block =
-    List.(map (map Operation.hash)) (operations block)
+    List.(map (map Operation.hash)) (raw_operations_exn block)
 end
 
 module Chain_traversal = struct
