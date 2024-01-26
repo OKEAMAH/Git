@@ -78,7 +78,7 @@ manuals: \
 .PHONY: odoc
 odoc:
 	cd $$(pwd)/.. ; dune build @doc >docs/odoc.log 2>&1; \
-	  RESULT=$$?; (grep '^Error:' docs/odoc.log || true); exit $$RESULT
+	  RESULT=$$?; (grep -B1 '^Error:' docs/odoc.log || true); exit $$RESULT
 	@rm -rf $$(pwd)/_build/api/odoc
 	@mkdir -p $$(pwd)/_build/api
 	@cp -r $$(pwd)/../_build/default/_doc $$(pwd)/_build/api/odoc
@@ -91,13 +91,13 @@ odoc-lite:
 		../scripts ../script-inputs ../src ../tezt ../irmin ../vendors ../dune ../dune-project ../dune-workspace $(TMPDOCDIR)/
 	cd $(TMPDOCDIR)/ && ./scripts/remove-old-protocols.sh
 	@echo "Running odoc in $(TMPDOCDIR), with build directory $(TOPBUILDDIR_ABS) and outputs in $(TMPDOCDIR)/odoc.log"
-	ODOC_WARN_ERROR=true dune build @doc --build-dir=$(TOPBUILDDIR_ABS) --root=$(TMPDOCDIR) >$(TMPDOCDIR)/odoc.log 2>&1; \
+	ODOC_WARN_ERROR=true dune build @doc-new --build-dir=$(TOPBUILDDIR_ABS) --root=$(TMPDOCDIR) >$(TMPDOCDIR)/odoc.log 2>&1; \
 		RESULT=$$?; \
-		(grep '^Error:' $(TMPDOCDIR)/odoc.log || true) ; \
+		(grep -B1 '^Error:' $(TMPDOCDIR)/odoc.log || true) ; \
 		exit $$RESULT
 	rm -rf $(CURDIR)/_build/api/odoc
 	mkdir -p $(CURDIR)/_build/api
-	cp -r $(TOPBUILDDIR_ABS)/default/_doc $(CURDIR)/_build/api/odoc
+	cp -r $(TOPBUILDDIR_ABS)/default/_doc_new $(CURDIR)/_build/api/odoc
 	rm -rf $(CURDIR)/_build/api/odoc/_odocls
 
 .PHONY: linkcheck
