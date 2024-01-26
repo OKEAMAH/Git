@@ -670,7 +670,7 @@ let sign_consensus_votes_aux state votes kind ~level ~round =
 let sign_consensus_votes state votes kind =
   (* Hypothesis: all consensus votes have the same round and level *)
   match votes with
-  | [] -> return_nil
+  | [] -> Lwt_result_syntax.return_nil
   | (_, ({level; round; _} : consensus_content)) :: _ ->
       let level = Raw_level.to_int32 level in
       sign_consensus_votes_aux state votes kind ~level ~round
