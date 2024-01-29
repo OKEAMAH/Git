@@ -3898,8 +3898,75 @@ let test_migration_plugin ~migrate_from ~migrate_to =
     ~description
     ()
 
-let test_amplification _protocol _dal_parameters _cryptobox _node _client
-    _dal_node =
+let test_amplification _protocol dal_parameters _cryptobox node client
+    slot_producer =
+  (* Test the amplification feature: once it has seen enough (but not
+     all) shards of a given slot, an observer DAL node is able to
+     reconstruct the complete slot and send the missing shards on
+     the DAL network.
+
+     - Initial setup:
+       - 5 boostrap bakers with equal stake,
+       - 1 DAL slot producer node on index 0,
+       - 2 DAL attester nodes for bootstrap1 and bootstrap2
+
+     - The DAL slot producer node produces a slot,
+     - Once the shards have successfully been transmitted, the DAL slot producer
+       disconnects,
+     - DAL attester nodes for 3 other bakers are launched,
+     - A DAL observer node for slot 0 connects, reconstructs, sends the missing
+       shards to the bakers,
+     - The DAL observer node can serve the slot,
+     - Once the three late bakers have received their shards, the DAL observer
+       node disconnects,
+     - All bakers attest their shards.
+  *)
+  let patch_profile_rpc dal_node profile =
+    Dal_RPC.(call dal_node (patch_profiles [profile]))
+  in
+
+  let* () = patch_profile_rpc slot_producer (Dal_RPC.Producer 0) in
+
+  (* Attester nodes of bootstrap bakers *)
+  let attester_node (baker : Account.key) =
+    let dal_node = Dal_node.create ~node () in
+    let* () =
+      Dal_node.init_config ~attester_profiles:[baker.public_key_hash] dal_node
+    in
+    update_neighbors dal_node [slot_producer] ;
+    return dal_node
+  in
+  let* attester_nodes =
+    Lwt_list.map_s attester_node (Array.to_list Account.Bootstrap.keys)
+  in
+
+  (* Run only the fist two ones to get a minority of the stake but
+     enough to reconstruct. *)
+  let attester1, attester2 =
+    match attester_nodes with a1 :: a2 :: _ -> (a1, a2) | _ -> assert false
+  in
+  let* () = Dal_node.run attester1 in
+  let* () = Dal_node.run attester2 in
+
+  (* Produce a slot *)
+  let slot_size = dal_parameters.Dal.Parameters.cryptobox.slot_size in
+  let slot_content = Helpers.make_slot ~slot_size "content" in
+  let* commitment =
+    publish_and_store_slot
+      client
+      slot_producer
+      Constant.bootstrap1
+      ~index:0
+      slot_content
+  in
+
+  (* Wait until both attesters have received their shards. *)
+  let p1 = wait_for_stored_slot attester1 commitment in
+  let p2 = wait_for_stored_slot attester2 commitment in
+  let* () = Lwt.join [p1; p2] in
+
+  (* (\* Disconnect the slot producer *\) *)
+  (* update_neighbors slot_producer [] ; *)
   unit
 
 module Tx_kernel_e2e = struct
