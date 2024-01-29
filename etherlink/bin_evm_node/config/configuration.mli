@@ -28,7 +28,6 @@ type sequencer = {
   rollup_node_endpoint : Uri.t;
       (** Rollup node endpoint used to make blueprints available and
           monitor the delayed inbox. *)
-  kernel : string;  (** Path to the kernel to execute. *)
   preimages : string;  (** Path to the preimages directory. *)
   time_between_blocks : time_between_blocks;  (** See {!time_between_blocks}. *)
   private_rpc_port : int;  (** Port for internal RPC services *)
@@ -92,7 +91,6 @@ module Cli : sig
     ?log_filter:log_filter_config ->
     verbose:bool ->
     ?rollup_node_endpoint:Uri.t ->
-    ?kernel:string ->
     ?preimages:string ->
     ?time_between_blocks:time_between_blocks ->
     sequencer:Signature.secret_key ->
@@ -123,7 +121,6 @@ module Cli : sig
     ?log_filter:log_filter_config ->
     verbose:bool ->
     ?rollup_node_endpoint:Uri.t ->
-    ?kernel:string ->
     ?preimages:string ->
     ?time_between_blocks:time_between_blocks ->
     sequencer:Signature.secret_key ->
