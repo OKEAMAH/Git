@@ -3926,7 +3926,7 @@ let test_propagate_to_attester _protocol dal_parameters _cryptobox node _client
   let* () = wait_for_stored_slot attester_node commitment in
   unit
 
-let test_amplification _protocol dal_parameters _cryptobox node client
+let test_amplification _protocol dal_parameters _cryptobox node _client
     slot_producer =
   (* Test the amplification feature: once it has seen enough (but not
      all) shards of a given slot, an observer DAL node is able to
@@ -3979,14 +3979,7 @@ let test_amplification _protocol dal_parameters _cryptobox node client
   (* Produce a slot *)
   let slot_size = dal_parameters.Dal.Parameters.cryptobox.slot_size in
   let slot_content = Helpers.make_slot ~slot_size "content" in
-  let* commitment =
-    publish_and_store_slot
-      client
-      slot_producer
-      Constant.bootstrap1
-      ~index:0
-      slot_content
-  in
+  let* commitment, _proof = Helpers.store_slot slot_producer slot_content in
 
   (* Wait until both attesters have received their shards. *)
   let p1 = wait_for_stored_slot attester1 commitment in
