@@ -3898,6 +3898,41 @@ let test_migration_plugin ~migrate_from ~migrate_to =
     ~description
     ()
 
+(* Test that shards are propagated from slot producer to attester *)
+let test_propagate_to_attester _protocol dal_parameters _cryptobox node client
+    slot_producer =
+  let patch_profile_rpc dal_node profile =
+    Dal_RPC.(call dal_node (patch_profiles [profile]))
+  in
+
+  let* () = patch_profile_rpc slot_producer (Dal_RPC.Producer 0) in
+
+  let attester_node = Dal_node.create ~node () in
+  let* () =
+    Dal_node.init_config
+      ~attester_profiles:[Constant.bootstrap1.public_key_hash]
+      attester_node
+  in
+  update_neighbors attester_node [slot_producer] ;
+
+  let* () = Dal_node.run attester_node in
+
+  (* Produce a slot *)
+  let slot_size = dal_parameters.Dal.Parameters.cryptobox.slot_size in
+  let slot_content = Helpers.make_slot ~slot_size "content" in
+  let* commitment =
+    publish_and_store_slot
+      client
+      slot_producer
+      Constant.bootstrap1
+      ~index:0
+      slot_content
+  in
+
+  (* Wait until attester has received its shards. *)
+  let* () = wait_for_stored_slot attester_node commitment in
+  unit
+
 module Tx_kernel_e2e = struct
   open Tezos_protocol_alpha.Protocol
   open Tezt_tx_kernel
@@ -4358,6 +4393,10 @@ let register ~protocols =
     ~bootstrap_profile:true
     "trusted peers reconnection"
     test_peers_reconnection
+    protocols ;
+  scenario_with_layer1_and_dal_nodes
+    "propagation to attester"
+    test_propagate_to_attester
     protocols ;
 
   (* Tests with all nodes *)
