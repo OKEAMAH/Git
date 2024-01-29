@@ -65,6 +65,24 @@ module Events = struct
       ("message_id", Types.Message_id.encoding)
       ("failure", trace_encoding)
 
+  let send_app_output =
+    declare_1
+      ~section
+      ~name:(prefix "app_output_send")
+      ~msg:"Sending App output {msg}"
+      ~level:Debug
+      ~pp1:Format.pp_print_string
+      ("msg", Data_encoding.string)
+
+  let send_p2p_output =
+    declare_1
+      ~section
+      ~name:(prefix "p2p_output_send")
+      ~msg:"Sending P2P output {msg}"
+      ~level:Debug
+      ~pp1:Format.pp_print_string
+      ("msg", Data_encoding.string)
+
   let send_p2p_message_failed =
     declare_2
       ~section
@@ -334,6 +352,10 @@ let gs_worker_p2p_output_handler gs_worker p2p_layer px_cache =
   let rec loop output_stream =
     let* p2p_output = Worker.Stream.pop output_stream in
     let* () =
+      Events.(
+        emit send_p2p_output (Format.asprintf "%a" pp_p2p_output p2p_output))
+    in
+    let* () =
       match p2p_output with
       | Worker.Out_message {to_peer; p2p_message} -> (
           let conn = P2p.find_connection_by_peer_id p2p_layer to_peer in
@@ -400,8 +422,12 @@ let transport_layer_inputs_handler gs_worker p2p_layer advertised_px_cache =
 let app_messages_handler gs_worker ~app_messages_callback =
   let open Lwt_syntax in
   let rec loop app_output_stream =
-    let* Worker.{message; message_id; topic = _} =
+    let* (Worker.{message; message_id; topic = _} as app_output) =
       Worker.Stream.pop app_output_stream
+    in
+    let* () =
+      Events.(
+        emit send_app_output (Format.asprintf "%a" pp_app_output app_output))
     in
     let* res = app_messages_callback message message_id in
     let* () =
