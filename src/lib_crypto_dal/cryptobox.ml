@@ -1300,12 +1300,15 @@ module Inner = struct
   (*TODO: find a better name.
     This computes P(x) where P is the interpolation of
     evals on shift*domain. Adapted from the second part of
-    https://hackmd.io/@vbuterin/barycentric_evaluation*)
+    https://hackmd.io/@vbuterin/barycentric_evaluation
+    (x^n - shift^n)/(N*shift^(n-1))*
+    sum_i evals.(i)*generator^i/(x - shift * generator^i)
+  *)
   let eval_from_evals x evals generator shift =
-    let init = (Scalar.zero, shift) in
-    let f (acc, domain_i) eval_i =
-      let den = Scalar.(sub x (domain_i * shift)) in
-      (Scalar.(acc + (eval_i * domain_i / den)), Scalar.(domain_i * generator))
+    let init = (Scalar.zero, Scalar.one) in
+    let f (acc, omega_i) eval_i =
+      let den = Scalar.(sub x (omega_i * shift)) in
+      (Scalar.(acc + (eval_i * omega_i / den)), Scalar.(omega_i * generator))
     in
     let sum, _ = Array.fold_left f init evals in
     let n = Array.length evals in
@@ -1350,7 +1353,7 @@ module Inner = struct
         let challenge_point, transcript =
           Kzg.Utils.Fr_generation.random_fr transcript
         in
-        let _pi_kzg = Kzg.Polynomial_commitment.proof_from_single eval_proof in
+        (* let _pi_kzg = Kzg.Polynomial_commitment.proof_from_single eval_proof in *)
         let eval = eval_from_evals challenge_point evaluations generator root in
         let kzg_ok, _transcript =
           Kzg.Polynomial_commitment.verify
