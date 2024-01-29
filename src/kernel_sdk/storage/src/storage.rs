@@ -151,8 +151,16 @@ impl<T: From<OwnedPath>> Storage<T> {
     /// Note that the bottom layer of the storage transaction stack is _not_ a transaction
     /// itself, but rather the original storage before there was any storage modification
     /// currently in progress.
-    pub fn stack_depth(&self) -> usize {
-        self.layers.len() - 1
+    pub fn stack_depth(&self) -> Option<usize> {
+        let number_of_layer = self.layers.len();
+        if number_of_layer < 2 {
+            // The bottom layer is not a transaction so the stack depth is not 0
+            // but just undefined
+            None
+        } else {
+            // Exclude the bottom layer
+            Some(number_of_layer - 2)
+        }
     }
 }
 

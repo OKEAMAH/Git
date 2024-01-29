@@ -745,8 +745,8 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         // TODO: mark `caller` and `address` as hot for gas calculation
         // issue: https://gitlab.com/tezos/tezos/-/issues/4866
-
-        if self.evm_account_storage.stack_depth() >= self.config.stack_limit {
+        let evm_depth = self.evm_account_storage.stack_depth().unwrap_or_default();
+        if evm_depth >= self.config.stack_limit {
             return Ok((
                 ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::CallTooDeep)),
                 None,
@@ -812,16 +812,21 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         input: Vec<u8>,
         transaction_context: TransactionContext,
     ) -> Result<CreateOutcome, EthereumError> {
+        let evm_depth = self.evm_account_storage.stack_depth().unwrap_or_default();
         log!(
             self.host,
             Debug,
             "Executing contract call on contract {} at depth: {}",
             address,
-            self.evm_account_storage.stack_depth()
+            evm_depth
         );
-
-        if self.evm_account_storage.stack_depth() > self.config.stack_limit {
-            log!(self.host, Debug, "Execution beyond the call limit of 1024");
+        if evm_depth > self.config.stack_limit {
+            log!(
+                self.host,
+                Debug,
+                "Execution beyond the call limit of {}",
+                self.config.stack_limit
+            );
 
             return Ok((
                 ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::CallTooDeep)),
@@ -1079,37 +1084,33 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         gas_limit: Option<u64>,
     ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
-        log!(
-            self.host,
-            Debug,
-            "Begin initial transaction at transaction depth: {}",
-            current_depth
-        );
 
-        if current_depth > 0 {
+        if current_depth.is_none() {
+            log!(self.host, Debug, "Begin initial transaction");
+            self.transaction_data.push(TransactionLayerData::new(
+                self.is_static() || is_static,
+                gas_limit,
+                self.config,
+            ));
+
+            self.evm_account_storage
+                .begin_transaction(self.host)
+                .map_err(EthereumError::from)
+        } else {
+            let number_of_tx = current_depth.unwrap_or_default() + 1;
             log!(
                 self.host,
                 Debug,
                 "Initial transaction when there is already {} transaction",
-                current_depth
+                number_of_tx
             );
 
-            return Err(EthereumError::InconsistentTransactionStack(
-                current_depth,
+            Err(EthereumError::InconsistentTransactionStack(
+                number_of_tx,
                 true,
                 true,
-            ));
+            ))
         }
-
-        self.transaction_data.push(TransactionLayerData::new(
-            self.is_static() || is_static,
-            gas_limit,
-            self.config,
-        ));
-
-        self.evm_account_storage
-            .begin_transaction(self.host)
-            .map_err(EthereumError::from)
     }
 
     /// Final commit of initial transaction
@@ -1131,49 +1132,52 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             current_depth
         );
 
-        if current_depth != 1 {
+        // Some(0) is equal to the last execution layer
+        if let Some(depth @ 0) = current_depth {
+            let expected_number_tx = depth + 1;
+            if expected_number_tx != self.transaction_data.len() {
+                return Err(EthereumError::InconsistentTransactionData(
+                    expected_number_tx,
+                    self.transaction_data.len(),
+                ));
+            }
+
+            let gas_used = self.gas_used();
+
+            if let Some(last_layer) = self.transaction_data.pop() {
+                self.evm_account_storage
+                    .commit_transaction(self.host)
+                    .map_err(EthereumError::from)?;
+
+                Ok(ExecutionOutcome {
+                    gas_used,
+                    is_success: true,
+                    reason,
+                    new_address,
+                    logs: last_layer.logs,
+                    result: Some(result),
+                    withdrawals: last_layer.withdrawals,
+                    estimated_ticks_used: self.estimated_ticks_used,
+                })
+            } else {
+                Err(EthereumError::InconsistentState(Cow::from(
+                "The transaction data stack is empty when committing the initial transaction",
+            )))
+            }
+        } else {
+            let number_of_tx = current_depth.unwrap_or_default() + 1;
             log!(
                 self.host,
                 Debug,
                 "Committing final transaction, but there are {:?} transactions",
-                current_depth
+                number_of_tx
             );
 
-            return Err(EthereumError::InconsistentTransactionStack(
-                current_depth,
+            Err(EthereumError::InconsistentTransactionStack(
+                number_of_tx,
                 true,
                 false,
-            ));
-        }
-
-        if current_depth != self.transaction_data.len() {
-            return Err(EthereumError::InconsistentTransactionData(
-                current_depth,
-                self.transaction_data.len(),
-            ));
-        }
-
-        let gas_used = self.gas_used();
-
-        if let Some(last_layer) = self.transaction_data.pop() {
-            self.evm_account_storage
-                .commit_transaction(self.host)
-                .map_err(EthereumError::from)?;
-
-            Ok(ExecutionOutcome {
-                gas_used,
-                is_success: true,
-                reason,
-                new_address,
-                logs: last_layer.logs,
-                result: Some(result),
-                withdrawals: last_layer.withdrawals,
-                estimated_ticks_used: self.estimated_ticks_used,
-            })
-        } else {
-            Err(EthereumError::InconsistentState(Cow::from(
-                "The transaction data stack is empty when committing the initial transaction",
-            )))
+            ))
         }
     }
 
@@ -1195,46 +1199,48 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             current_depth
         );
 
-        if current_depth != 1 {
+        if let Some(depth @ 0) = current_depth {
+            let expected_number_tx = depth + 1;
+            if expected_number_tx != self.transaction_data.len() {
+                return Err(EthereumError::InconsistentTransactionData(
+                    expected_number_tx,
+                    self.transaction_data.len(),
+                ));
+            }
+
+            let gas_used = self.gas_used();
+
+            self.evm_account_storage
+                .rollback_transaction(self.host)
+                .map_err(EthereumError::from)?;
+
+            let _ = self.transaction_data.pop();
+
+            Ok(ExecutionOutcome {
+                gas_used,
+                is_success: false,
+                reason,
+                new_address: None,
+                logs: vec![],
+                result,
+                withdrawals: vec![],
+                estimated_ticks_used: self.estimated_ticks_used,
+            })
+        } else {
+            let number_of_tx = current_depth.unwrap_or_default() + 1;
             log!(
                 self.host,
                 Debug,
                 "Rolling back initial transaction, but there are {:?} in progress",
-                current_depth
+                number_of_tx
             );
 
-            return Err(EthereumError::InconsistentTransactionStack(
-                current_depth,
+            Err(EthereumError::InconsistentTransactionStack(
+                number_of_tx,
                 true,
                 false,
-            ));
+            ))
         }
-
-        if current_depth != self.transaction_data.len() {
-            return Err(EthereumError::InconsistentTransactionData(
-                current_depth,
-                self.transaction_data.len(),
-            ));
-        }
-
-        let gas_used = self.gas_used();
-
-        self.evm_account_storage
-            .rollback_transaction(self.host)
-            .map_err(EthereumError::from)?;
-
-        let _ = self.transaction_data.pop();
-
-        Ok(ExecutionOutcome {
-            gas_used,
-            is_success: false,
-            reason,
-            new_address: None,
-            logs: vec![],
-            result,
-            withdrawals: vec![],
-            estimated_ticks_used: self.estimated_ticks_used,
-        })
     }
 
     /// End the initial transaction with either a commit or a rollback. The
@@ -1319,10 +1325,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             Debug,
             "Begin transaction from {} at transaction depth: {}",
             self.origin(),
-            current_depth
+            current_depth.unwrap_or_default()
         );
 
-        if current_depth == 0 {
+        if current_depth.is_none() {
             return Err(EthereumError::InconsistentTransactionStack(0, false, true));
         }
 
@@ -1341,60 +1347,64 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     fn commit_inter_transaction(&mut self) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
 
-        if current_depth < 2 {
-            return Err(EthereumError::InconsistentTransactionStack(
-                current_depth,
-                false,
-                false,
-            ));
-        }
-
-        log!(
-            self.host,
-            Debug,
-            "Commit transaction at transaction depth: {}",
-            current_depth
-        );
-
-        let gas_remaining = self.gas_remaining();
-
-        self.evm_account_storage
-            .commit_transaction(self.host)
-            .map_err(EthereumError::from)?;
-
-        if let Some(mut committed_data) = self.transaction_data.pop() {
-            if let Some(top_layer) = self.transaction_data.last_mut() {
-                top_layer
-                    .logs
-                    .try_reserve_exact(committed_data.logs.len())?;
-                top_layer.logs.append(&mut committed_data.logs);
-
-                top_layer
-                    .withdrawals
-                    .try_reserve_exact(committed_data.withdrawals.len())?;
-                top_layer
-                    .withdrawals
-                    .append(&mut committed_data.withdrawals);
-
-                top_layer
-                    .deleted_contracts
-                    .reserve(committed_data.deleted_contracts.len());
-                top_layer
-                    .deleted_contracts
-                    .append(&mut committed_data.deleted_contracts);
-
-                self.record_stipend(gas_remaining)?;
-
-                Ok(())
-            } else {
-                Err(EthereumError::InconsistentState(Cow::from(
-                    "The transaction data stack is empty",
-                )))
+        match current_depth {
+            None => {
+                let number_of_tx = current_depth.unwrap_or_default() + 1;
+                Err(EthereumError::InconsistentTransactionStack(
+                    number_of_tx,
+                    false,
+                    false,
+                ))
             }
-        } else {
-            Err(EthereumError::InconsistentState(Cow::from(
-                "The transaction data stack is empty at commit",
-            )))
+            Some(current_depth) => {
+                log!(
+                    self.host,
+                    Debug,
+                    "Commit transaction at transaction depth: {}",
+                    current_depth
+                );
+
+                let gas_remaining = self.gas_remaining();
+
+                self.evm_account_storage
+                    .commit_transaction(self.host)
+                    .map_err(EthereumError::from)?;
+
+                if let Some(mut committed_data) = self.transaction_data.pop() {
+                    if let Some(top_layer) = self.transaction_data.last_mut() {
+                        top_layer
+                            .logs
+                            .try_reserve_exact(committed_data.logs.len())?;
+                        top_layer.logs.append(&mut committed_data.logs);
+
+                        top_layer
+                            .withdrawals
+                            .try_reserve_exact(committed_data.withdrawals.len())?;
+                        top_layer
+                            .withdrawals
+                            .append(&mut committed_data.withdrawals);
+
+                        top_layer
+                            .deleted_contracts
+                            .reserve(committed_data.deleted_contracts.len());
+                        top_layer
+                            .deleted_contracts
+                            .append(&mut committed_data.deleted_contracts);
+
+                        self.record_stipend(gas_remaining)?;
+
+                        Ok(())
+                    } else {
+                        Err(EthereumError::InconsistentState(Cow::from(
+                            "The transaction data stack is empty",
+                        )))
+                    }
+                } else {
+                    Err(EthereumError::InconsistentState(Cow::from(
+                        "The transaction data stack is empty at commit",
+                    )))
+                }
+            }
         }
     }
 
@@ -1405,32 +1415,36 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     ) -> Result<(), EthereumError> {
         let current_depth = self.evm_account_storage.stack_depth();
 
-        if current_depth < 2 {
-            return Err(EthereumError::InconsistentTransactionStack(
-                current_depth,
-                false,
-                false,
-            ));
+        match current_depth {
+            None => {
+                let number_of_tx = current_depth.unwrap_or_default() + 1;
+                Err(EthereumError::InconsistentTransactionStack(
+                    number_of_tx,
+                    false,
+                    false,
+                ))
+            }
+            Some(current_depth) => {
+                log!(
+                    self.host,
+                    Debug,
+                    "Rollback transaction at transaction depth: {}",
+                    current_depth
+                );
+
+                if refund_gas {
+                    let gas_remaining = self.gas_remaining();
+                    let _ = self.transaction_data.pop();
+                    self.record_stipend(gas_remaining)?;
+                } else {
+                    let _ = self.transaction_data.pop();
+                }
+
+                self.evm_account_storage
+                    .rollback_transaction(self.host)
+                    .map_err(EthereumError::from)
+            }
         }
-
-        log!(
-            self.host,
-            Debug,
-            "Rollback transaction at transaction depth: {}",
-            current_depth
-        );
-
-        if refund_gas {
-            let gas_remaining = self.gas_remaining();
-            let _ = self.transaction_data.pop();
-            self.record_stipend(gas_remaining)?;
-        } else {
-            let _ = self.transaction_data.pop();
-        }
-
-        self.evm_account_storage
-            .rollback_transaction(self.host)
-            .map_err(EthereumError::from)
     }
 
     /// End a transaction based on an execution result from a call to
