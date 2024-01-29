@@ -3899,7 +3899,7 @@ let test_migration_plugin ~migrate_from ~migrate_to =
     ()
 
 (* Test that shards are propagated from slot producer to attester *)
-let test_propagate_to_attester _protocol dal_parameters _cryptobox node client
+let test_propagate_to_attester _protocol dal_parameters _cryptobox node _client
     slot_producer =
   let patch_profile_rpc dal_node profile =
     Dal_RPC.(call dal_node (patch_profiles [profile]))
@@ -3920,14 +3920,7 @@ let test_propagate_to_attester _protocol dal_parameters _cryptobox node client
   (* Produce a slot *)
   let slot_size = dal_parameters.Dal.Parameters.cryptobox.slot_size in
   let slot_content = Helpers.make_slot ~slot_size "content" in
-  let* commitment =
-    publish_and_store_slot
-      client
-      slot_producer
-      Constant.bootstrap1
-      ~index:0
-      slot_content
-  in
+  let* commitment, _proof = Helpers.store_slot slot_producer slot_content in
 
   (* Wait until attester has received its shards. *)
   let* () = wait_for_stored_slot attester_node commitment in
