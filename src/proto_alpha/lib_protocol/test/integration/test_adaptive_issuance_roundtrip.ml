@@ -1123,7 +1123,7 @@ let begin_test ~activate_ai ?(burn_rewards = false)
           let n = List.length delegates_name_list in
           let* block, delegates = Context.init_with_constants_n constants n in
           let*? init_level = Context.get_level (B block) in
-          let init_staked = Tez.of_mutez 200_000_000_000L in
+          let init_staked = Tez.of_mutez_exn 200_000_000_000L in
           let*? account_map =
             List.fold_left2
               ~when_different_lengths:
@@ -1867,7 +1867,7 @@ let init_constants ?reward_per_block ?(deactivate_dynamic = false)
     ?blocks_per_cycle ?delegate_parameters_activation_delay ~autostaking_enable
     () =
   let reward_per_block = Option.value ~default:0L reward_per_block in
-  let base_total_issued_per_minute = Tez.of_mutez reward_per_block in
+  let base_total_issued_per_minute = Tez.of_mutez_exn reward_per_block in
   let default_constants = Default_parameters.constants_test in
   (* default for tests: 12 *)
   let blocks_per_cycle =
@@ -1944,7 +1944,7 @@ let init_scenario ?(force_ai = true) ?reward_per_block () =
            --> add_account_with_funds
                  "staker"
                  "delegate"
-                 (Amount (Tez.of_mutez 2_000_000_000_000L))
+                 (Amount (Tez.of_mutez_exn 2_000_000_000_000L))
            --> set_delegate "staker" (Some "delegate"))
     --> wait_ai_activation
   in
@@ -1994,11 +1994,11 @@ module Roundtrip = struct
 
   let shorter_roundtrip_for_baker =
     let constants = init_constants ~autostaking_enable:false () in
-    let amount = Amount (Tez.of_mutez 333_000_000_000L) in
+    let amount = Amount (Tez.of_mutez_exn 333_000_000_000L) in
     let preserved_cycles = constants.preserved_cycles in
     begin_test ~activate_ai:true ~constants ["delegate"]
     --> next_block --> wait_ai_activation
-    --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
+    --> stake "delegate" (Amount (Tez.of_mutez_exn 1_800_000_000_000L))
     --> next_cycle
     --> snapshot_balances "init" ["delegate"]
     --> unstake "delegate" amount
@@ -2010,9 +2010,9 @@ module Roundtrip = struct
     --> check_snapshot_balances "init"
 
   let status_quo_rountrip =
-    let full_amount = Tez.of_mutez 10_000_000L in
-    let amount_1 = Tez.of_mutez 2_999_999L in
-    let amount_2 = Tez.of_mutez 7_000_001L in
+    let full_amount = Tez.of_mutez_exn 10_000_000L in
+    let amount_1 = Tez.of_mutez_exn 2_999_999L in
+    let amount_2 = Tez.of_mutez_exn 7_000_001L in
     snapshot_balances "init" ["staker"]
     --> stake "staker" (Amount full_amount)
     --> next_cycle
@@ -2071,16 +2071,19 @@ module Roundtrip = struct
     --> unstake "staker" Nothing
 
   let full_balance_in_finalizable =
-    add_account_with_funds "dummy" "staker" (Amount (Tez.of_mutez 10_000_000L))
+    add_account_with_funds
+      "dummy"
+      "staker"
+      (Amount (Tez.of_mutez_exn 10_000_000L))
     --> stake "staker" All_but_one --> next_cycle --> unstake "staker" All
     --> wait_n_cycles (default_unstake_wait + 2)
     (* At this point, almost all the balance (but one mutez) of the stake is in finalizable *)
     (* Staking is possible, but not transfer *)
     --> assert_failure
-          (transfer "staker" "dummy" (Amount (Tez.of_mutez 10_000_000L)))
-    --> stake "staker" (Amount (Tez.of_mutez 10_000_000L))
+          (transfer "staker" "dummy" (Amount (Tez.of_mutez_exn 10_000_000L)))
+    --> stake "staker" (Amount (Tez.of_mutez_exn 10_000_000L))
     (* After the stake, transfer is possible again because the funds were finalized *)
-    --> transfer "staker" "dummy" (Amount (Tez.of_mutez 10_000_000L))
+    --> transfer "staker" "dummy" (Amount (Tez.of_mutez_exn 10_000_000L))
 
   (* Stress test: what happens if someone were to stake and unstake every cycle? *)
   let odd_behavior =
@@ -2103,7 +2106,7 @@ module Roundtrip = struct
     --> add_account_with_funds
           "staker"
           "delegate1"
-          (Amount (Tez.of_mutez 2_000_000_000_000L))
+          (Amount (Tez.of_mutez_exn 2_000_000_000_000L))
     --> set_delegate "staker" (Some "delegate1")
     --> wait_ai_activation --> next_cycle --> stake "staker" Half --> next_cycle
     --> set_delegate "staker" (Some "delegate2")
@@ -2125,11 +2128,11 @@ module Roundtrip = struct
     --> add_account_with_funds
           "staker"
           "delegate"
-          (Amount (Tez.of_mutez 2_000_000_000_000L))
+          (Amount (Tez.of_mutez_exn 2_000_000_000_000L))
     --> add_account_with_funds
           "dummy"
           "delegate"
-          (Amount (Tez.of_mutez 2_000_000L))
+          (Amount (Tez.of_mutez_exn 2_000_000L))
     --> set_delegate "staker" (Some "delegate")
     --> wait_ai_activation --> next_cycle --> stake "staker" Half
     --> unstake "staker" All --> next_cycle --> set_delegate "staker" None
@@ -2170,7 +2173,7 @@ module Roundtrip = struct
         edge_of_baking_over_staking = Q.one;
       }
     in
-    let amount = Amount (Tez.of_mutez 1_000_000L) in
+    let amount = Amount (Tez.of_mutez_exn 1_000_000L) in
     (* init *)
     begin_test
       ~activate_ai:true
@@ -2185,7 +2188,7 @@ module Roundtrip = struct
     --> add_account_with_funds
           "staker"
           "delegate"
-          (Amount (Tez.of_mutez 2_000_000_000_000L))
+          (Amount (Tez.of_mutez_exn 2_000_000_000_000L))
     --> set_delegate "staker" (Some "delegate")
     --> wait_cycle (`And (`AI_activation, `delegate_parameters_activation))
     --> next_cycle
@@ -2289,7 +2292,7 @@ module Rewards = struct
         edge_of_baking_over_staking = Q.one;
       }
     in
-    let delta = Amount (Tez.of_mutez 20_000_000_000L) in
+    let delta = Amount (Tez.of_mutez_exn 20_000_000_000L) in
     let cycle_stake =
       save_current_rate --> stake "delegate" delta --> next_cycle
       --> check_rate_evolution Q.gt
@@ -2305,8 +2308,8 @@ module Rewards = struct
     --> set_delegate_params "delegate" init_params
     --> save_current_rate --> wait_ai_activation
     (* We stake about 50% of the total supply *)
-    --> stake "delegate" (Amount (Tez.of_mutez 1_800_000_000_000L))
-    --> stake "__bootstrap__" (Amount (Tez.of_mutez 1_800_000_000_000L))
+    --> stake "delegate" (Amount (Tez.of_mutez_exn 1_800_000_000_000L))
+    --> stake "__bootstrap__" (Amount (Tez.of_mutez_exn 1_800_000_000_000L))
     --> (Tag "increase stake, decrease rate" --> next_cycle
          --> loop rate_var_lag (stake "delegate" delta --> next_cycle)
          --> loop 10 cycle_stake

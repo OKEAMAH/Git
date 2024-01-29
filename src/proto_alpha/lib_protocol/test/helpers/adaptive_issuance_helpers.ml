@@ -54,18 +54,15 @@ module Tez = struct
     let b = to_mutez b in
     Int64.sub a b |> of_mutez_exn
 
-  let of_mutez = of_mutez_exn
-
-  let of_z a = Z.to_int64 a |> of_mutez
+  let of_z a = Z.to_int64 a |> of_mutez_exn
 
   let of_q ~round_up Q.{num; den} =
     (if round_up then Z.cdiv num den else Z.div num den) |> of_z
 
-  let ratio num den =
-    Q.make (Z.of_int64 (to_mutez num)) (Z.of_int64 (to_mutez den))
+  let ratio num den = Q.make (to_z num) (to_z den)
 
   let mul_q tez portion =
-    let tez_z = to_mutez tez |> Z.of_int64 in
+    let tez_z = to_z tez in
     Q.(mul portion ~$$tez_z)
 end
 

@@ -146,6 +146,10 @@ module Tez : sig
 
   val of_mutez_exn : int64 -> t
 
+  val of_z : Z.t -> t option
+
+  val to_z : t -> Z.t
+
   val mul_exn : t -> int -> t
 
   val div_exn : t -> int -> t
