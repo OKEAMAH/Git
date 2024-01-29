@@ -45,6 +45,7 @@ deployed. (!11225)
 - Completely remove fatal error promotion between intermediate call/transactions. (!11334)
 - Prevent fatal errors on transfers in connection with calls. (!11365)
 - Prevent panics when BLOCKHASH opcode is used. (!11366)
+- Compute gas cost for SSTORE and SLOAD using hot/cold storage. (!11580)
 
 ### Breaking changes
 
