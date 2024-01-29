@@ -17,6 +17,7 @@
    shard store. *)
 val amplify :
   Store.Shards.t ->
+  Store.node_store ->
   Cryptobox.Commitment.t ->
   Node_context.t ->
   unit tzresult Lwt.t
