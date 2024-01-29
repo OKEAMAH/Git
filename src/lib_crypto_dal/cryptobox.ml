@@ -225,10 +225,7 @@ module Inner = struct
 
   (* We use an SMap bc of the KZG interface, but the map
      will only conatin one element*)
-  type shard_proof = {
-    fst_round : shard_proof_fst_round;
-    eval_proof : Commitment_proof.t Kzg.SMap.t;
-  }
+  type shard_proof = {fst_round : shard_proof_fst_round; eval_proof : G1.t}
   [@@deriving repr]
 
   type page = bytes
@@ -1276,22 +1273,16 @@ module Inner = struct
             fst_round
             Kzg.Utils.Transcript.empty
         in
-        let challenge_point, transcript =
+        let challenge_point, _transcript =
           Kzg.Utils.Fr_generation.random_fr transcript
         in
         let eval = Poly.evaluate remainder challenge_point in
-        let eval_proof, _transcript =
-          Kzg.Polynomial_commitment.prove
-            t.kzg_prover
-            transcript
-            [Kzg.SMap.singleton "remainder" remainder]
-            [()]
-            [Kzg.SMap.singleton "challenge" challenge_point]
-            [
-              Kzg.SMap.singleton
-                "challenge"
-                (Kzg.SMap.singleton "remainder" eval);
-            ]
+        let eval_proof =
+          Kzg.Polynomial_commitment.simple_proof
+            ~srs:t.kzg_prover
+            ~poly:remainder
+            ~query:challenge_point
+            ~answer:eval
         in
         {fst_round; eval_proof})
       quotients
@@ -1344,6 +1335,23 @@ module Inner = struct
           | Prove srs -> srs.kate_amortized_srs_g2_shards
           | Verify srs -> srs.kate_amortized_srs_g2_shards
         in
+
+        let x_g2 =
+          match t.srs with
+          | Prove srs -> Srs_g2.get srs.raw.srs_g2 1
+          | Verify srs -> Srs_g2.get srs.raw.srs_g2 1
+        in
+        let one_g2 =
+          match t.srs with
+          | Prove srs -> Srs_g2.get srs.raw.srs_g2 0
+          | Verify srs -> Srs_g2.get srs.raw.srs_g2 0
+        in
+        let one_g1 =
+          match t.srs with
+          | Prove srs -> Srs_g1.get srs.raw.srs_g1 0
+          | Verify srs -> Srs_g1.get srs.raw.srs_g1 0
+        in
+
         let transcript =
           Kzg.Utils.Transcript.expand
             shard_proof_fst_round_t
@@ -1353,21 +1361,14 @@ module Inner = struct
         let challenge_point, transcript =
           Kzg.Utils.Fr_generation.random_fr transcript
         in
-        (* let _pi_kzg = Kzg.Polynomial_commitment.proof_from_single eval_proof in *)
-        let eval = eval_from_evals challenge_point evaluations generator root in
-        let kzg_ok, _transcript =
-          Kzg.Polynomial_commitment.verify
-            t.kzg_verifier
-            transcript
-            [remainder]
-            [Kzg.SMap.singleton "challenge" challenge_point]
-            [
-              Kzg.SMap.singleton
-                "challenge"
-                (Kzg.SMap.singleton "remainder" eval);
-            ]
-            eval_proof
+
+        (*this alpha is not used by the prover so we can throw the transcript.
+               We could also use the OS RNG.*)
+        let batching_alpha, _transcript =
+          Kzg.Utils.Fr_generation.random_fr transcript
         in
+        let pi_kzg = eval_proof in
+        let eval = eval_from_evals challenge_point evaluations generator root in
         if
           Kate_amortized.verify_shard
             ~commitment
@@ -1376,7 +1377,13 @@ module Inner = struct
             ~domain_length:t.shard_length
             ~root
             ~proof:quotient
-          && kzg_ok
+            ~pi_kzg
+            ~challenge_point
+            ~batching_alpha
+            ~eval
+            ~x_g2
+            ~one_g1
+            ~one_g2
         then Ok ()
         else Error `Invalid_shard
 
@@ -1553,7 +1560,7 @@ module Internal_for_tests = struct
           quotient = Commitment_proof.random ~state ();
           remainder = Kzg.SMap.singleton "" (Commitment_proof.random ~state ());
         };
-      eval_proof = Kzg.SMap.singleton "" (Commitment_proof.random ~state ());
+      eval_proof = G1.random ~state ();
     }
 
   let make_dummy_shard ~state ~index ~length =

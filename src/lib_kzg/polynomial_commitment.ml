@@ -247,3 +247,8 @@ let verify srs transcript cmt_map_list query_list answer_list proof =
   let query = group_queries query_list in
   let answer = group_answers answer_list in
   verify_single srs transcript cmt_map query answer proof
+
+let simple_proof ~srs ~poly ~query ~answer =
+  let to_divide = Poly.(poly - constant answer) in
+  let h = fst @@ Poly.division_xn to_divide 1 (Scalar.negate query) in
+  Commitment.commit_single Public_parameters.(srs.srs1) h

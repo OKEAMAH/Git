@@ -341,8 +341,10 @@ let interpolation_poly ~root ~domain ~evaluations =
    [l]-th root of unity
 
    Implements the "Multi-reveals" section above. *)
+
 let verify_shard ~commitment ~commitment_remainder ~srs_point ~domain_length
-    ~root ~proof =
+    ~root ~proof ~pi_kzg ~challenge_point ~batching_alpha ~eval ~x_g2 ~one_g1
+    ~one_g2 =
   let open Bls12_381 in
   (* Compute [w^{i * l}]. *)
   let root_pow = Scalar.pow root (Z.of_int domain_length) in
@@ -351,13 +353,34 @@ let verify_shard ~commitment ~commitment_remainder ~srs_point ~domain_length
     G2.(add srs_point (negate (mul (copy one) root_pow)))
   in
   (* Compute [r_i(τ)]_1-c. *)
-  let diff_commits = G1.(add commitment_remainder (negate commitment)) in
+  let diff_commits = G1.(add commitment (negate commitment_remainder)) in
+
   (* Checks e(c-[r_i(τ)]_1, g_2) ?= e(π, [τ^l]_2 - [w^{i * l}]_2)
      by checking
      [0]_1 ?= -e(c-[r_i(τ)]_1, g_2) + e(π, [τ^l]_2 - [w^{i * l}]_2)
             = e([r_i(τ)]_1-c, g_2) + e(π, [τ^l]_2 - [w^{i * l}]_2). *)
-  Pairing.pairing_check
-    [(diff_commits, G2.(copy one)); (proof, commit_srs_point_minus_root_pow)]
+  let kzg_part =
+    G1.(
+      mul
+        (add (copy commitment_remainder) (negate (mul (copy one_g1) eval)))
+        batching_alpha)
+  in
+  let left_t = G1.add (G1.copy diff_commits) (G1.copy kzg_part) in
+  let kzg_left_t = G1.mul pi_kzg batching_alpha in
+  let kzg_right_t =
+    G2.(add (copy x_g2) (negate (mul (copy one) challenge_point)))
+  in
+
+  (* Compute [τ^l]_2 - [w^{i * l}]_2). *)
+  let res =
+    Pairing.pairing_check
+      [
+        (G1.negate left_t, G2.(copy one_g2));
+        (kzg_left_t, kzg_right_t);
+        (proof, commit_srs_point_minus_root_pow);
+      ]
+  in
+  res
 
 let verify_page t ~commitment ~srs_point ~domain ~root ~evaluations ~proof =
   let open Bls12_381 in

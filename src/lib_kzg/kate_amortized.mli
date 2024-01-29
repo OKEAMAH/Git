@@ -45,4 +45,11 @@ val verify_shard :
   domain_length:int ->
   root:scalar ->
   proof:shard_proof ->
+  pi_kzg:G1.t ->
+  challenge_point:scalar ->
+  batching_alpha:scalar ->
+  eval:scalar ->
+  x_g2:G2.t ->
+  one_g1:G1.t ->
+  one_g2:G2.t ->
   bool
