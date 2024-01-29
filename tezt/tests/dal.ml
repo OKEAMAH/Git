@@ -3949,11 +3949,7 @@ let test_amplification _protocol dal_parameters _cryptobox node _client
        node disconnects,
      - All bakers attest their shards.
   *)
-  let patch_profile_rpc dal_node profile =
-    Dal_RPC.(call dal_node (patch_profiles [profile]))
-  in
-
-  let* () = patch_profile_rpc slot_producer (Dal_RPC.Producer 0) in
+  let* () = Dal_RPC.(call slot_producer (patch_profiles [Producer 0])) in
 
   (* Attester nodes of bootstrap bakers *)
   let attester_node (baker : Account.key) =
