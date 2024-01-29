@@ -658,6 +658,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         runtime: evm::Runtime,
         sub_context_result: Result<ExitReason, EthereumError>,
         address: H160,
+        caller: H160,
     ) -> Result<CreateOutcome, EthereumError> {
         match sub_context_result {
             Ok(sub_context_result @ ExitReason::Succeed(ExitSucceed::Suicided)) => {
@@ -704,6 +705,17 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             // Since the sub context failed, return address 0 (`None` in our case) (https://www.evm.codes/#f0?fork=shanghai)
             Ok(sub_context_result @ ExitReason::Error(_)) => {
                 Ok((sub_context_result, None, vec![]))
+            }
+            Ok(
+                sub_context_result @ ExitReason::Fatal(ExitFatal::CallErrorAsFatal(
+                    ExitError::CallTooDeep,
+                )),
+            ) => {
+                if self.get_nonce(caller) > U256::one() {
+                    Ok((ExitReason::Succeed(ExitSucceed::Stopped), None, vec![]))
+                } else {
+                    Ok((sub_context_result, None, vec![]))
+                }
             }
             Ok(sub_context_result @ ExitReason::Fatal(_)) => {
                 Ok((sub_context_result, None, vec![]))
@@ -800,7 +812,7 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
 
         let result = self.execute(&mut runtime);
 
-        self.end_create(runtime, result, address)
+        self.end_create(runtime, result, address, caller)
     }
 
     /// Call a contract
