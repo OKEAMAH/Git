@@ -12,6 +12,7 @@ type t = {
   smart_rollup_address : Tezos_crypto.Hashed.Smart_rollup_address.t;
   mutable next_blueprint_number : Ethereum_types.quantity;
       (** Number for the next bluerpint to be produced. *)
+  blueprint_watcher : Blueprint_types.t Lwt_watcher.input;
 }
 
 (** [init ~data_dir ~preimages ~smart_rollup_address ()] creates
@@ -69,6 +70,8 @@ val execute_and_inspect :
 
 val find_blueprint :
   t -> Ethereum_types.quantity -> Blueprint_types.payload option Lwt.t
+
+val last_produced_blueprint : t -> Blueprint_types.t tzresult Lwt.t
 
 (** [apply_blueprint ctxt blueprint] applies [blueprint] in the freshest EVM
     state stored under [ctxt]. It commits the result if the blueprint produces
