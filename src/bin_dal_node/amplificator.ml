@@ -22,6 +22,7 @@ let amplify (shard_store : Store.Shards.t) (slot_store : Store.node_store)
         Store.Shards.count_values shard_store commitment
       in
       if number_of_already_stored_shards >= number_of_needed_shards then
+        let*! () = Event.(emit reconstruct_started commitment) in
         (* We have enough shards to reconstruct the whole slot. *)
         let shards =
           Store.Shards.read_all shard_store commitment ~number_of_shards
@@ -50,5 +51,6 @@ let amplify (shard_store : Store.Shards.t) (slot_store : Store.node_store)
             ~with_proof:true
           |> Errors.to_option_tzresult
         in
+        let*! () = Event.(emit reconstruct_finished commitment) in
         return_unit
       else return_unit

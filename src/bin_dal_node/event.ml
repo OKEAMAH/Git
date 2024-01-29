@@ -238,3 +238,21 @@ let metrics_server_is_ready =
     ~level:Notice
     ("host", Data_encoding.string)
     ("port", Data_encoding.uint16)
+
+let reconstruct_started =
+  declare_1
+    ~section
+    ~name:"reconstruct_started"
+    ~msg:"slot reconstruction for commitment {commitment} started"
+    ~level:Notice
+    ~pp1:Cryptobox.Commitment.pp_short
+    ("commitment", Cryptobox.Commitment.encoding)
+
+let reconstruct_finished =
+  declare_1
+    ~section
+    ~name:"reconstruct_finished"
+    ~msg:"Slot reconstruction for commitment {commitment} finished"
+    ~level:Notice
+    ~pp1:Cryptobox.Commitment.pp_short
+    ("commitment", Cryptobox.Commitment.encoding)
