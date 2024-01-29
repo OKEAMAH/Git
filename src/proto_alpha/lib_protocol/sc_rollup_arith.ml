@@ -721,6 +721,18 @@ module Make (Context : Sc_rollup_PVM_sig.Generic_pvm_context_sig) :
         | Some c -> Format.fprintf fmt "Some %a" Z.pp_print c
     end)
 
+    module Predecessor_timestamp_counter = Make_var (struct
+      type t = Z.t
+
+      let initial = Z.zero
+
+      let encoding = Data_encoding.n
+
+      let name = "predecessor_timestamp_counter"
+
+      let pp fmt c = Format.fprintf fmt "Some %a" Z.pp_print c
+    end)
+
     (** Store an internal message counter. This is used to distinguish
         an unparsable external message and a internal message, which we both
         treat as no-ops. *)
@@ -1172,7 +1184,12 @@ module Make (Context : Sc_rollup_PVM_sig.Generic_pvm_context_sig) :
       | Ok (Internal End_of_level) ->
           let* () = incr_internal_message_counter in
           return None
-      | Ok (Internal (Info_per_level _)) ->
+      | Ok (Internal (Info_per_level {predecessor_timestamp; _})) ->
+          let* counter = Predecessor_timestamp_counter.get in
+          let counter =
+            Z.add counter (Z.of_int64 (Time.to_seconds predecessor_timestamp))
+          in
+          let* () = Predecessor_timestamp_counter.set counter in
           let* () = incr_internal_message_counter in
           return None
     in

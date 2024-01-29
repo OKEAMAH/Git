@@ -1046,11 +1046,10 @@ module Player_client = struct
           List.mapi
             (fun l payloads_per_level ->
               if l = corrupt_at_l then
-                {
-                  payloads_per_level with
-                  predecessor_timestamp = dumb_timestamp;
-                  predecessor = dumb_predecessor;
-                }
+                wrap_messages
+                  (Raw_level.of_int32_exn (Int32.of_int l))
+                  ~pred_info:(dumb_timestamp, dumb_predecessor)
+                  payloads_per_level.messages
               else payloads_per_level)
             payloads_per_levels
         in
@@ -1569,7 +1568,7 @@ let test_perfect_against_sol_hater =
 let test_perfect_against_eol_hater =
   test_game ~p1_strategy:Perfect ~p2_strategy:EOL_hater ()
 
-let _test_perfect_against_info_hater =
+let test_perfect_against_info_hater =
   test_game ~p1_strategy:Perfect ~p2_strategy:Info_hater ()
 
 let test_perfect_against_nostalgic =
@@ -1632,10 +1631,7 @@ let tests =
         test_perfect_against_eager;
         test_perfect_against_sol_hater;
         test_perfect_against_eol_hater;
-        (* TODO: https://gitlab.com/tezos/tezos/-/issues/6839
-           an issue with the generator / assume of this test makes it run for ~15 minutes.
-           Disactivating until we find the root cause. *)
-        (* test_perfect_against_info_hater; *)
+        test_perfect_against_info_hater;
         test_perfect_against_nostalgic;
         test_cut_at_level;
       ] )

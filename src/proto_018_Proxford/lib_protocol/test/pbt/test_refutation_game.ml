@@ -1633,9 +1633,7 @@ let tests =
         test_perfect_against_eager;
         test_perfect_against_sol_hater;
         test_perfect_against_eol_hater;
-        (* TODO: https://gitlab.com/tezos/tezos/-/issues/6839
-           an issue with the generator / assume of this test makes it run for ~15 minutes.
-           Disactivating until we find the root cause. *)
+        (* Deactivated because the test is invalid with the Arith PVM in Oxford. *)
         (* test_perfect_against_info_hater; *)
         test_perfect_against_nostalgic;
         test_cut_at_level;
