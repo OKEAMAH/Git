@@ -59,18 +59,30 @@ let sleep10ms profiler =
   Unix.sleepf 0.01 ;
   Profiler.stop profiler
 
+let sleep700ms profiler =
+  Profiler.record profiler "sleep700ms" ;
+  print_endline "---sleep700---" ;
+  Unix.sleepf 0.7 ;
+  Profiler.stop profiler
+
 let foo profiler =
   Profiler.record profiler "foo" ;
   sleep10ms profiler ;
+  sleep700ms profiler ;
   sleep10ms profiler ;
   Profiler.stop profiler
 
 let bar profiler =
   Profiler.record profiler "bar" ;
+  sleep700ms profiler ;
   sleep10ms profiler ;
   foo profiler ;
   foo profiler ;
   Profiler.stop profiler
+
+let test profiler =
+  bar profiler ;
+  foo profiler
 
 let () =
   Tezt_core.Test.register
@@ -85,7 +97,7 @@ let () =
       ("/tmp/test_simple_profiling.txt", Profiler.Detailed)
   in
   plug profiler test_profiler_instance ;
-  bar profiler ;
+  test profiler ;
 
   print_endline "Profiling result\n================" ;
   print_file_content "/tmp/test_simple_profiling.txt" ;
