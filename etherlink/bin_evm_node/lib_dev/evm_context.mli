@@ -15,7 +15,7 @@ type t = {
       (** Number for the next bluerpint to be produced. *)
 }
 
-(** [init ~data_dir ~kernel ~preimages ~smart_rollup_address] creates
+(** [init ~data_dir ~kernel ~preimages ~smart_rollup_address ()] creates
     a context where it initializes the {!type-index}, and use a
     checkpoint mechanism to load the latest {!type-store} if any.
 
@@ -26,7 +26,8 @@ val init :
   kernel:string ->
   preimages:string ->
   smart_rollup_address:string ->
-  secret_key:Signature.secret_key ->
+  ?produce_genesis_with:Signature.secret_key ->
+  unit ->
   t tzresult Lwt.t
 
 (** [init_from_rollup_node ~data_dir

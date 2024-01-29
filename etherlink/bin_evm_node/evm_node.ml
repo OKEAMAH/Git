@@ -683,7 +683,8 @@ let sequencer_command =
           ~kernel:config.mode.kernel
           ~preimages:config.mode.preimages
           ~smart_rollup_address
-          ~secret_key:sequencer
+          ~produce_genesis_with:sequencer
+          ()
       in
       let module Sequencer = Sequencer.Make (struct
         let ctxt = ctxt
