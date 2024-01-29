@@ -151,6 +151,31 @@ and round_update = {
 
 type t = action
 
+let artificial_delay_opt =
+  let v = Sys.getenv_opt "SIGN_DELAY" in
+  Option.bind v (fun s ->
+      match float_of_string_opt s with
+      | None ->
+          Format.eprintf
+            "Error while parsing signature artifical delay '%s': ignoring.@."
+            s ;
+          None
+      | Some d -> Some d)
+
+let sign_with_artificial_delay sign_f =
+  let open Lwt_syntax in
+  match artificial_delay_opt with
+  | None -> sign_f ()
+  | Some d ->
+      let sign_t = sign_f () in
+      let delay_t = Lwt_unix.sleep d in
+      let sign_ignored_result_t =
+        let* _ = sign_t in
+        return_unit
+      in
+      let* () = Lwt.join [delay_t; sign_ignored_result_t] in
+      sign_t
+
 let pp_action fmt = function
   | Do_nothing -> Format.fprintf fmt "do nothing"
   | Inject_block _ -> Format.fprintf fmt "inject block"
@@ -345,7 +370,8 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     simulation_kind
     state.global_state.constants.parametric
   >>=? fun {unsigned_block_header; operations} ->
-  sign_block_header state consensus_key unsigned_block_header
+  let s () = sign_block_header state consensus_key unsigned_block_header in
+  sign_with_artificial_delay s 
   >>=? fun signed_block_header ->
   (match seed_nonce_opt with
   | None ->
@@ -379,60 +405,62 @@ let inject_preendorsements state ~preendorsements =
   let block_location =
     Baking_files.resolve_location ~chain_id `Highwatermarks
   in
-  List.filter_map_es
-    (fun (((consensus_key, _) as delegate), consensus_content) ->
-      Events.(emit signing_preendorsement delegate) >>= fun () ->
-      let shell =
-        (* The branch is the latest finalized block. *)
-        {
-          Tezos_base.Operation.branch =
-            state.level_state.latest_proposal.predecessor.shell.predecessor;
-        }
-      in
-      let contents = Single (Preendorsement consensus_content) in
-      let level = Raw_level.to_int32 consensus_content.level in
-      let round = consensus_content.round in
-      let sk_uri = consensus_key.secret_key_uri in
-      cctxt#with_lock (fun () ->
-          Baking_highwatermarks.may_sign_preendorsement
-            cctxt
-            block_location
-            ~delegate:consensus_key.public_key_hash
-            ~level
-            ~round
-          >>=? function
-          | true ->
-              Baking_highwatermarks.record_preendorsement
-                cctxt
-                block_location
-                ~delegate:consensus_key.public_key_hash
-                ~level
-                ~round
-              >>=? fun () -> return_true
-          | false -> return state.global_state.config.force)
-      >>=? fun may_sign ->
-      (if may_sign then
-       let unsigned_operation = (shell, Contents_list contents) in
-       let watermark = Operation.(to_watermark (Preendorsement chain_id)) in
-       let unsigned_operation_bytes =
-         Data_encoding.Binary.to_bytes_exn
-           Operation.unsigned_encoding
-           unsigned_operation
-       in
-       Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
-      else
-        fail (Baking_highwatermarks.Block_previously_preendorsed {round; level}))
-      >>= function
-      | Error err ->
-          Events.(emit skipping_preendorsement (delegate, err)) >>= fun () ->
-          return_none
-      | Ok signature ->
-          let protocol_data =
-            Operation_data {contents; signature = Some signature}
-          in
-          let operation : Operation.packed = {shell; protocol_data} in
-          return_some (delegate, operation, level, round))
-    preendorsements
+  let sign_f () = 
+    List.filter_map_es
+      (fun (((consensus_key, _) as delegate), consensus_content) ->
+        Events.(emit signing_preendorsement delegate) >>= fun () ->
+        let shell =
+          (* The branch is the latest finalized block. *)
+          {
+            Tezos_base.Operation.branch =
+              state.level_state.latest_proposal.predecessor.shell.predecessor;
+          }
+        in
+        let contents = Single (Preendorsement consensus_content) in
+        let level = Raw_level.to_int32 consensus_content.level in
+        let round = consensus_content.round in
+        let sk_uri = consensus_key.secret_key_uri in
+        cctxt#with_lock (fun () ->
+            Baking_highwatermarks.may_sign_preendorsement
+              cctxt
+              block_location
+              ~delegate:consensus_key.public_key_hash
+              ~level
+              ~round
+            >>=? function
+            | true ->
+                Baking_highwatermarks.record_preendorsement
+                  cctxt
+                  block_location
+                  ~delegate:consensus_key.public_key_hash
+                  ~level
+                  ~round
+                >>=? fun () -> return_true
+            | false -> return state.global_state.config.force)
+        >>=? fun may_sign ->
+        (if may_sign then
+        let unsigned_operation = (shell, Contents_list contents) in
+        let watermark = Operation.(to_watermark (Preendorsement chain_id)) in
+        let unsigned_operation_bytes =
+          Data_encoding.Binary.to_bytes_exn
+            Operation.unsigned_encoding
+            unsigned_operation
+        in
+        Client_keys.sign cctxt ~watermark sk_uri unsigned_operation_bytes
+        else
+          fail (Baking_highwatermarks.Block_previously_preendorsed {round; level}))
+        >>= function
+        | Error err ->
+            Events.(emit skipping_preendorsement (delegate, err)) >>= fun () ->
+            return_none
+        | Ok signature ->
+            let protocol_data =
+              Operation_data {contents; signature = Some signature}
+            in
+            let operation : Operation.packed = {shell; protocol_data} in
+            return_some (delegate, operation, level, round))
+      preendorsements in
+    sign_with_artificial_delay sign_f
   >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
   List.iter_ep
@@ -557,7 +585,8 @@ let sign_dal_attestations state attestations =
 let inject_endorsements state ~endorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  sign_endorsements state endorsements >>=? fun signed_operations ->
+  let sign_f () = sign_endorsements state endorsements in 
+  sign_with_artificial_delay sign_f >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
   List.iter_ep
     (fun (delegate, operation, level, round) ->
