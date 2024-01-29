@@ -221,16 +221,13 @@ let legacy_run_command =
           ~allowed_origins
           ~allowed_headers
       in
-      match configuration.mode with
-      | Batcher -> Batcher.Autonomous.run ~data_dir configuration cctxt
-      | _ ->
-          Rollup_node_daemon.run
-            ~data_dir
-            ~irmin_cache_size:Configuration.default_irmin_cache_size
-            ~index_buffer_size:Configuration.default_index_buffer_size
-            ?log_kernel_debug_file
-            configuration
-            cctxt)
+      Rollup_node_daemon.run
+        ~data_dir
+        ~irmin_cache_size:Configuration.default_irmin_cache_size
+        ~index_buffer_size:Configuration.default_index_buffer_size
+        ?log_kernel_debug_file
+        configuration
+        cctxt)
 
 let run_command =
   let open Tezos_clic in
@@ -324,16 +321,75 @@ let run_command =
           ~allowed_origins
           ~allowed_headers
       in
-      match configuration.mode with
-      | Batcher -> Batcher.Autonomous.run ~data_dir configuration cctxt
-      | _ ->
-          Rollup_node_daemon.run
-            ~data_dir
-            ~irmin_cache_size:Configuration.default_irmin_cache_size
-            ~index_buffer_size:Configuration.default_index_buffer_size
-            ?log_kernel_debug_file
-            configuration
-            cctxt)
+      Rollup_node_daemon.run
+        ~data_dir
+        ~irmin_cache_size:Configuration.default_irmin_cache_size
+        ~index_buffer_size:Configuration.default_index_buffer_size
+        ?log_kernel_debug_file
+        configuration
+        cctxt)
+
+let run_autonmous_batcher =
+  let open Tezos_clic in
+  let open Lwt_result_syntax in
+  let open Cli in
+  command
+    ~group
+    ~desc:"Run only the batcher without access to the context or store."
+    (args10
+       data_dir_arg
+       rpc_addr_arg
+       rpc_port_arg
+       metrics_addr_arg
+       reconnection_delay_arg
+       injector_retention_period_arg
+       injector_attempts_arg
+       injection_ttl_arg
+       cors_allowed_origins_arg
+       cors_allowed_headers_arg)
+    (prefixes ["run"; "autonomous"; "batcher"; "with"; "operators"]
+    @@ seq_of_param @@ operator_param)
+    (fun ( data_dir,
+           rpc_addr,
+           rpc_port,
+           metrics_addr,
+           reconnection_delay,
+           injector_retention_period,
+           injector_attempts,
+           injection_ttl,
+           allowed_origins,
+           allowed_headers )
+         operators
+         cctxt ->
+      let* configuration =
+        Configuration.Cli.create_or_read_config
+          ~data_dir
+          ~rpc_addr
+          ~rpc_port
+          ~metrics_addr
+          ~loser_mode:None
+          ~reconnection_delay
+          ~dal_node_endpoint:None
+          ~dac_observer_endpoint:None
+          ~dac_timeout:None
+          ~pre_images_endpoint:None
+          ~injector_retention_period
+          ~injector_attempts
+          ~injection_ttl
+          ~mode:(Some Batcher)
+          ~sc_rollup_address:None
+          ~operators
+          ~index_buffer_size:None
+          ~irmin_cache_size:None
+          ~log_kernel_debug:false
+          ~boot_sector_file:None
+          ~no_degraded:true
+          ~gc_frequency:None
+          ~history_mode:None
+          ~allowed_origins
+          ~allowed_headers
+      in
+      Batcher.Autonomous.run ~data_dir configuration cctxt)
 
 let protocols_command =
   let open Tezos_clic in
@@ -501,6 +557,7 @@ let sc_rollup_commands () =
   [
     config_init_command;
     run_command;
+    run_autonmous_batcher;
     legacy_run_command;
     protocols_command;
     dump_metrics;
