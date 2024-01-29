@@ -74,6 +74,17 @@ pub struct ExecutionOutcome {
 /// and in what way). Second part tells Sputnik the return data if any.
 type CallOutcome = (ExitReason, Vec<u8>);
 
+pub enum CreateError {
+    PreconditionErr(ExitReason),
+    EthereumErr(EthereumError),
+}
+
+impl From<EthereumError> for CreateError {
+    fn from(value: EthereumError) -> Self {
+        CreateError::EthereumErr(value)
+    }
+}
+
 /// The result of creating a contract as expected by the SputnikVM EVM implementation.
 /// First part of the triple is the execution outcome - same as for normal contract
 /// execution. Second part is the address of the newly created contract, if one was
@@ -653,10 +664,21 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         }
     }
 
+    // Sub function to handle the `CreateError`s and return the according outcome.
+    fn handle_create_error(
+        &self,
+        error: CreateError,
+    ) -> Result<CreateOutcome, EthereumError> {
+        match error {
+            CreateError::PreconditionErr(exit) => Ok((exit, None, vec![])),
+            CreateError::EthereumErr(eth_err) => Err(eth_err),
+        }
+    }
+
     fn end_create(
         &mut self,
         runtime: evm::Runtime,
-        sub_context_result: Result<ExitReason, EthereumError>,
+        sub_context_result: Result<ExitReason, CreateError>,
         address: H160,
     ) -> Result<CreateOutcome, EthereumError> {
         match sub_context_result {
@@ -708,7 +730,73 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             Ok(sub_context_result @ ExitReason::Fatal(_)) => {
                 Ok((sub_context_result, None, vec![]))
             }
-            Err(err) => Err(err),
+            Err(create_error) =>
+            // This is either an ethereum error or a pre-condition that failed.
+            {
+                self.handle_create_error(create_error)
+            }
+        }
+    }
+
+    // Sub function to determine if the `caller` can create a contract at `address`.
+    // According to the Ethereum yellow paper (p. 37), `CallTooDeep` and `OutOfFund` should be
+    // the first checks to decide wether we start the contract creation or not.
+    fn caller_can_create(
+        &mut self,
+        caller: H160,
+        address: H160,
+        value: U256,
+    ) -> Result<(), CreateError> {
+        if self.evm_account_storage.stack_depth() >= self.config.stack_limit {
+            Err(CreateError::PreconditionErr(ExitReason::Fatal(
+                ExitFatal::CallErrorAsFatal(ExitError::CallTooDeep),
+            )))
+        } else {
+            let try_transfer_fund = self
+                .execute_transfer(caller, address, value)
+                .map_err(CreateError::from);
+
+            try_transfer_fund.and_then(|transfer| match transfer {
+                TransferExitReason::OutOfFund => Err(CreateError::PreconditionErr(
+                    ExitReason::Error(ExitError::OutOfFund),
+                )),
+                TransferExitReason::Returned => Ok(()), // Otherwise result is ok and we do nothing and continue
+            })
+        }
+    }
+
+    // Sub function to handle the collision part, we pinpoint two ways of colliding which are
+    // if the contract already exists or if it has been marked as deleted within the same transaction
+    fn contract_will_collide(&mut self, address: H160) -> Result<(), CreateError> {
+        if self.deleted(address) {
+            // The contract has been deleted, so the address is empty.
+            // We are trying to re-create the same contract that was deleted at
+            // the same transaction level: this is not allowed.
+            // TODO/NB: https://gitlab.com/tezos/tezos/-/issues/6783
+            // This behaviour is appropriate to <=Shanghai configuration.
+            // In the upcoming Cancun fork, the semantic of this behaviour will change.
+            Err(CreateError::PreconditionErr(ExitReason::Error(
+                ExitError::CreateCollision,
+            )))
+        } else {
+            // TODO: https://gitlab.com/tezos/tezos/-/issues/6716
+            // Create collision and failed transfers should use up all the gas
+            let address_exist = self.is_colliding(address).map_err(CreateError::from);
+            address_exist.and_then(|exist| {
+                if exist {
+                    log!(
+                        self.host,
+                        Debug,
+                        "Failed to create contract at {:?}. Address is non-empty",
+                        address
+                    );
+                    Err(CreateError::PreconditionErr(ExitReason::Error(
+                        ExitError::CreateCollision,
+                    )))
+                } else {
+                    Ok(())
+                }
+            })
         }
     }
 
@@ -729,65 +817,14 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         initial_code: Vec<u8>,
         create_opcode: bool,
     ) -> Result<CreateOutcome, EthereumError> {
-        let address = self.create_address(scheme);
-
-        if self.deleted(address) && create_opcode {
-            if let CreateScheme::Create2 { .. } = scheme {
-                // The contract has been deleted, so the address is empty.
-                // We are trying to re-create the same contract that was deleted at
-                // the same transaction level: this is not allowed.
-                // TODO/NB: https://gitlab.com/tezos/tezos/-/issues/6783
-                // This behaviour is appropriate to <=Shanghai configuration.
-                // In the upcoming Cancun fork, the semantic of this behaviour will change.
-                self.increment_nonce(caller)?;
-                return Ok((
-                    ExitReason::Succeed(ExitSucceed::Stopped),
-                    Some(H160::zero()), // see: https://www.evm.codes/#f5?fork=shanghai
-                    vec![],
-                ));
-            }
-        }
-
         log!(self.host, Debug, "Executing a contract create");
 
-        // TODO: mark `caller` and `address` as hot for gas calculation
-        // issue: https://gitlab.com/tezos/tezos/-/issues/4866
-
-        if self.evm_account_storage.stack_depth() >= self.config.stack_limit {
-            return Ok((
-                ExitReason::Fatal(ExitFatal::CallErrorAsFatal(ExitError::CallTooDeep)),
-                None,
-                vec![],
-            ));
-        }
+        let address = self.create_address(scheme);
 
         let context = Context {
             address,
             caller,
             apparent_value: value,
-        };
-
-        // TODO: https://gitlab.com/tezos/tezos/-/issues/6716
-        // Create collision and failed transfers should use up all the gas
-        if self.is_colliding(address)? {
-            log!(
-                self.host,
-                Debug,
-                "Failed to create contract at {:?}. Address is non-empty",
-                address
-            );
-            return Ok((ExitReason::Error(ExitError::CreateCollision), None, vec![]));
-        }
-
-        match self.execute_transfer(caller, address, value)? {
-            TransferExitReason::OutOfFund => {
-                return Ok((ExitReason::Error(ExitError::OutOfFund), None, vec![]))
-            }
-            TransferExitReason::Returned => (), // Otherwise result is ok and we do nothing and continue
-        }
-
-        if create_opcode {
-            self.increment_nonce(caller)?
         };
 
         let mut runtime = evm::Runtime::new(
@@ -798,9 +835,29 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             self.config.memory_limit,
         );
 
-        let result = self.execute(&mut runtime);
+        let execution_result = match self.caller_can_create(caller, address, value) {
+            Ok(()) => {
+                // At this point of the execution, we pass the check can_create (CallTooDeep and OutOfFund)
+                // So we update the nonce
+                if create_opcode {
+                    self.increment_nonce(caller)?
+                };
 
-        self.end_create(runtime, result, address)
+                // Execute if there is no collision
+                match self.contract_will_collide(address) {
+                    Err(err) => Err(err),
+                    Ok(()) => self.execute(&mut runtime).map_err(CreateError::from),
+                }
+            }
+            Err(err) => Err(err),
+        };
+
+        // Now execution result is:
+        //   - Ok(something) -> it means that the execution occurs
+        //   - Err(ExitReason) -> One of the pre conditions fails (transfer_fund, collision ...)
+        //   - Err(EthereumError) -> An ethereum error occured
+
+        self.end_create(runtime, execution_result, address)
     }
 
     /// Call a contract
