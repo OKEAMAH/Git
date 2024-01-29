@@ -23,3 +23,38 @@ where
         self.write(rd, result);
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::{
+        backend::tests::TestBackendFactory,
+        create_backend, create_state,
+        registers::{a0, a1},
+        HartState, HartStateLayout,
+    };
+    use proptest::{arbitrary::any, prop_assert_eq, proptest};
+
+    pub fn test<F: TestBackendFactory>() {
+        test_addiw::<F>();
+    }
+
+    fn test_addiw<F: TestBackendFactory>() {
+        proptest!(|(
+            imm in any::<i64>(),
+            reg_val in any::<i64>())|
+        {
+            let mut backend = create_backend!(HartStateLayout, F);
+            let mut state = create_state!(HartState, F, backend);
+
+            state.xregisters.write(a0, reg_val as u64);
+            state.xregisters.run_addiw(imm, a0, a1);
+            // check against wrapping addition performed on the lowest 32 bits
+            let r_val = reg_val as u32;
+            let i_val = imm as u32;
+            prop_assert_eq!(
+                state.xregisters.read(a1),
+                r_val.wrapping_add(i_val) as i32 as i64 as u64
+            )
+        });
+    }
+}
