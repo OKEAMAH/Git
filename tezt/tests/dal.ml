@@ -3963,12 +3963,18 @@ let test_amplification _protocol dal_parameters _cryptobox node _client
   let* attester_nodes =
     Lwt_list.map_s attester_node (Array.to_list Account.Bootstrap.keys)
   in
+  let attester1, attester2, attester3, attester4, attester5 =
+    match attester_nodes with
+    | [a1; a2; a3; a4; a5] -> (a1, a2, a3, a4, a5)
+    | _ -> assert false
+  in
+  (* Observer node, will run after the slot producer has disconnected *)
+  let observer_node = Dal_node.create ~node () in
+  let* () = Dal_node.init_config ~observer_profiles:[0] observer_node in
+  update_neighbors observer_node attester_nodes ;
 
   (* Run only the fist two ones to get a minority of the stake but
      enough to reconstruct. *)
-  let attester1, attester2 =
-    match attester_nodes with a1 :: a2 :: _ -> (a1, a2) | _ -> assert false
-  in
   let* () = Dal_node.run attester1 in
   let* () = Dal_node.run attester2 in
 
@@ -3982,8 +3988,19 @@ let test_amplification _protocol dal_parameters _cryptobox node _client
   let p2 = wait_for_stored_slot attester2 commitment in
   let* () = Lwt.join [p1; p2] in
 
-  (* (\* Disconnect the slot producer *\) *)
-  (* update_neighbors slot_producer [] ; *)
+  (* Disconnect the slot producer *)
+  update_neighbors slot_producer [] ;
+
+  (* Launch the 3 remaining attesters and the observer node *)
+  let* () = Dal_node.run attester3 in
+  let* () = Dal_node.run attester4 in
+  let* () = Dal_node.run attester5 in
+  let* () = Dal_node.run observer_node in
+  let p3 = wait_for_stored_slot attester3 commitment in
+  let p4 = wait_for_stored_slot attester4 commitment in
+  let p5 = wait_for_stored_slot attester5 commitment in
+  let* () = Lwt.join [p3; p4; p5] in
+
   unit
 
 module Tx_kernel_e2e = struct
