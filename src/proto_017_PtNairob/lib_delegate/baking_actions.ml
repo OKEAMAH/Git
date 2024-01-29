@@ -28,6 +28,34 @@ open Alpha_context
 open Baking_state
 module Events = Baking_events.Actions
 
+let artificial_delay_opt =
+  let v = Sys.getenv_opt "SIGN_DELAY" in
+  Option.bind v (fun s ->
+      match float_of_string_opt s with
+      | None ->
+          Format.eprintf
+            "Error while parsing signature artifical delay '%s': ignoring.@."
+            s ;
+          None
+      | Some d -> Some d)
+
+let sign_with_artificial_delay sign_f =
+  let open Lwt_syntax in
+  match artificial_delay_opt with
+  | None -> sign_f ()
+  | Some d ->
+      Baking_profiler.record_s
+        (Format.sprintf "sign with minimum %.2fs delay" d)
+      @@ fun () ->
+      let sign_t = sign_f () in
+      let delay_t = Lwt_unix.sleep d in
+      let sign_ignored_result_t =
+        let* _ = sign_t in
+        return_unit
+      in
+      let* () = Lwt.join [delay_t; sign_ignored_result_t] in
+      sign_t
+
 module Operations_source = struct
   type error +=
     | Failed_operations_fetch of {
@@ -345,7 +373,10 @@ let inject_block ~state_recorder state block_to_bake ~updated_state =
     simulation_kind
     state.global_state.constants.parametric
   >>=? fun {unsigned_block_header; operations} ->
-  sign_block_header state consensus_key unsigned_block_header
+  let sign () = 
+    sign_block_header state consensus_key unsigned_block_header
+  in 
+  sign_with_artificial_delay sign
   >>=? fun signed_block_header ->
   (match seed_nonce_opt with
   | None ->
@@ -379,6 +410,7 @@ let inject_preendorsements state ~preendorsements =
   let block_location =
     Baking_files.resolve_location ~chain_id `Highwatermarks
   in
+  let sign_operations () = 
   List.filter_map_es
     (fun (((consensus_key, _) as delegate), consensus_content) ->
       Events.(emit signing_preendorsement delegate) >>= fun () ->
@@ -432,7 +464,8 @@ let inject_preendorsements state ~preendorsements =
           in
           let operation : Operation.packed = {shell; protocol_data} in
           return_some (delegate, operation, level, round))
-    preendorsements
+    preendorsements in
+  sign_with_artificial_delay sign_operations 
   >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
   List.iter_ep
@@ -557,7 +590,8 @@ let sign_dal_attestations state attestations =
 let inject_endorsements state ~endorsements =
   let cctxt = state.global_state.cctxt in
   let chain_id = state.global_state.chain_id in
-  sign_endorsements state endorsements >>=? fun signed_operations ->
+  let sign_endorsement_f () = sign_endorsements state endorsements in
+  sign_with_artificial_delay sign_endorsement_f >>=? fun signed_operations ->
   (* TODO: add a RPC to inject multiple operations *)
   List.iter_ep
     (fun (delegate, operation, level, round) ->
