@@ -11,11 +11,17 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
+env_logger = { workspace = true }
+log = { workspace = true }
+futures = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
 # DSN
 dsn-client = { workspace = true }
-dsn-loopback = { workspace = true }
+dsn-core = { workspace = true }
+
+# Protocols
+loopback = { workspace = true }
 
 [[bin]]
 name = "dsn-node"

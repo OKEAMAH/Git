@@ -16,15 +16,14 @@ bcs = { workspace = true }
 futures = { workspace = true }
 log = { workspace = true }
 prost = { workspace = true }
+serde = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 tokio-stream = { workspace = true }
 tonic = { workspace = true, features = ["prost", "transport"] }
 thiserror = { workspace = true }
 
 # DSN
-dsn-api = { workspace = true }
-dsn-transaction = { workspace = true }
-dsn-pre-block = { workspace = true }
+dsn-core = { workspace = true }
 
 [target.'cfg(not(target_env = "msvc"))'.build-dependencies]
 protobuf-src = { workspace = true }

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 [package]
-name = "dsn-loopback"
+name = "loopback"
 publish = false
 license = { workspace = true }
 authors = { workspace = true }
@@ -12,11 +12,11 @@ version = { workspace = true }
 
 [dependencies]
 async-trait = { workspace = true }
+bcs = { workspace = true }
 log = { workspace = true }
+serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 
 # DSN
-dsn-api = { workspace = true }
-dsn-transaction = { workspace = true }
-dsn-pre-block = { workspace = true }
+dsn-core = { workspace = true }

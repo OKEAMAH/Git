@@ -2,24 +2,30 @@
 //
 // SPDX-License-Identifier: MIT
 
-//! Pre-block type
-
-use dsn_transaction::Transaction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transaction(pub Vec<u8>);
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PreBlockMetadata {
     pub author: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PreBlockHeader {
     pub id: u64,
     pub metadata: PreBlockMetadata,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PreBlock {
     pub header: PreBlockHeader,
     pub transactions: Vec<Transaction>,
+}
+
+impl Transaction {
+    pub fn size(&self) -> usize {
+        self.0.len()
+    }
 }

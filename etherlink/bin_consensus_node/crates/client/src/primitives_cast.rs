@@ -3,17 +3,22 @@
 // SPDX-License-Identifier: MIT
 
 use crate::proto;
-use dsn_pre_block::{PreBlock, PreBlockHeader};
-use dsn_transaction::Transaction;
+use dsn_core::types::{PreBlock, PreBlockHeader, Transaction};
 
 impl TryFrom<PreBlockHeader> for proto::PreBlockHeader {
-    type Error = crate::Error;
+    type Error = crate::RpcError;
 
     fn try_from(value: PreBlockHeader) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.id,
             metadata: bcs::to_bytes(&value.metadata)?,
         })
+    }
+}
+
+impl From<proto::Transaction> for Transaction {
+    fn from(value: proto::Transaction) -> Self {
+        Self(value.transaction)
     }
 }
 
@@ -26,7 +31,7 @@ impl From<Transaction> for proto::Transaction {
 }
 
 impl TryFrom<PreBlock> for proto::PreBlock {
-    type Error = crate::Error;
+    type Error = crate::RpcError;
 
     fn try_from(value: PreBlock) -> Result<Self, Self::Error> {
         Ok(Self {

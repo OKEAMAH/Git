@@ -7,9 +7,7 @@ resolver = "2"
 members = [
     "crates/node",
     "crates/client",
-    "crates/api",
-    "crates/primitives/pre-block",
-    "crates/primitives/transaction",
+    "crates/core",
     "crates/protocols/loopback",
 ]
 
@@ -21,10 +19,10 @@ edition = "2021"
 
 [workspace.dependencies]
 async-trait = "0.1.61"
+bcs = "0.1.4"
 env_logger = "0.10.0"
 futures = "0.3.28"
 log = "0.4"
-bcs = "0.1.4"
 prost = "0.12.1"
 prost-build = "0.12.1"
 protobuf-src = "1.1.0"
@@ -36,8 +34,8 @@ tonic-build = { version = "0.10" }
 thiserror = "1.0.40"
 
 # DSN
-dsn-api = { path = "crates/api" }
+dsn-core = { path = "crates/core" }
 dsn-client = { path = "crates/client" }
-dsn-pre-block = { path = "crates/primitives/pre-block" }
-dsn-transaction = { path = "crates/primitives/transaction" }
-dsn-loopback = { path = "crates/protocols/loopback" }
+
+# Protocols
+loopback = { path = "crates/protocols/loopback" }

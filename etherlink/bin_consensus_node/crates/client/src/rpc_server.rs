@@ -2,39 +2,67 @@
 //
 // SPDX-License-Identifier: MIT
 
-use dsn_api::PreBlocksApi;
+use dsn_core::traits::{PreBlocksApi, TransactionsApi};
 use futures::FutureExt;
-use std::net::SocketAddr;
+use log::info;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tonic::transport::Server;
 
 use crate::pre_blocks_service::PreBlocksService;
 use crate::proto::pre_blocks_server::PreBlocksServer;
+use crate::proto::transactions_server::TransactionsServer;
+use crate::transactions_service::TransactionsService;
+use crate::RpcError;
+
+pub const DEFAULT_RPC_SERVER_HOST: &str = "127.0.0.1";
+pub const DEFAULT_RPC_SERVER_PORT: u16 = 8998;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RpcConfig {
+    host: String,
+    port: u16,
+}
+
+impl Default for RpcConfig {
+    fn default() -> Self {
+        Self {
+            host: DEFAULT_RPC_SERVER_HOST.into(),
+            port: DEFAULT_RPC_SERVER_PORT,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct RpcServer<Client: PreBlocksApi> {
-    addr: SocketAddr,
-    client: Arc<Client>,
+    config: RpcConfig,
+    client: Client,
     rx_shutdown: broadcast::Receiver<()>,
 }
 
-impl<Client: PreBlocksApi> RpcServer<Client> {
-    pub fn new(addr: SocketAddr, client: Arc<Client>, rx_shutdown: broadcast::Receiver<()>) -> Self {
+impl<Client: PreBlocksApi + TransactionsApi> RpcServer<Client> {
+    pub fn new(client: Client, config: RpcConfig, rx_shutdown: broadcast::Receiver<()>) -> Self {
         Self {
-            addr,
             client,
+            config,
             rx_shutdown,
         }
     }
 
-    async fn run(&mut self) -> Result<(), Box<tonic::transport::Error>> {
+    pub async fn run(&mut self) -> Result<(), RpcError> {
+        let addr = format!("{}:{}", self.config.host, self.config.port).parse()?;
+        info!("Starting RPC server on {}", addr);
+
         let pre_blocks_service = Arc::new(PreBlocksService::new(self.client.clone()));
+        let transactions_service = Arc::new(TransactionsService::new(self.client.clone()));
+
         let signal = self.rx_shutdown.recv().map(drop);
 
         Server::builder()
             .add_service(PreBlocksServer::from_arc(pre_blocks_service))
-            .serve_with_shutdown(self.addr, signal)
+            .add_service(TransactionsServer::from_arc(transactions_service))
+            .serve_with_shutdown(addr, signal)
             .await?;
 
         Ok(())

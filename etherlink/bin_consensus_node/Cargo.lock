@@ -190,28 +190,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "dsn-api"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "dsn-pre-block",
- "dsn-transaction",
- "tokio",
-]
-
-[[package]]
 name = "dsn-client"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "bcs",
- "dsn-api",
- "dsn-pre-block",
- "dsn-transaction",
+ "dsn-core",
  "futures",
  "log",
  "prost",
  "protobuf-src",
+ "serde",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -220,16 +209,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "dsn-loopback"
+name = "dsn-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "dsn-api",
- "dsn-pre-block",
- "dsn-transaction",
- "log",
+ "bcs",
+ "serde",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
@@ -237,23 +223,12 @@ name = "dsn-node"
 version = "0.1.0"
 dependencies = [
  "dsn-client",
- "dsn-loopback",
+ "dsn-core",
+ "env_logger",
+ "futures",
+ "log",
+ "loopback",
  "tokio",
-]
-
-[[package]]
-name = "dsn-pre-block"
-version = "0.1.0"
-dependencies = [
- "dsn-transaction",
- "serde",
-]
-
-[[package]]
-name = "dsn-transaction"
-version = "0.1.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -261,6 +236,19 @@ name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
+
+[[package]]
+name = "env_logger"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
+dependencies = [
+ "humantime",
+ "is-terminal",
+ "log",
+ "regex",
+ "termcolor",
+]
 
 [[package]]
 name = "equivalent"
@@ -489,6 +477,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
+name = "humantime"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
+
+[[package]]
 name = "hyper"
 version = "0.14.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -545,6 +539,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "is-terminal"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bad00257d07be169d870ab665980b06cdb366d792ad690bf2e76876dc503455"
+dependencies = [
+ "hermit-abi",
+ "rustix",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -586,6 +591,19 @@ name = "log"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
+
+[[package]]
+name = "loopback"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bcs",
+ "dsn-core",
+ "log",
+ "serde",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "matchit"
@@ -1008,6 +1026,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "termcolor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1234,6 +1261,37 @@ dependencies = [
  "once_cell",
  "rustix",
 ]
+
+[[package]]
+name = "winapi"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
+dependencies = [
+ "winapi-i686-pc-windows-gnu",
+ "winapi-x86_64-pc-windows-gnu",
+]
+
+[[package]]
+name = "winapi-i686-pc-windows-gnu"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
+name = "winapi-util"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f29e6f9198ba0d26b4c9f07dbe6f9ed633e1f3d5b8b414090084349e46a52596"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
+name = "winapi-x86_64-pc-windows-gnu"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-sys"
