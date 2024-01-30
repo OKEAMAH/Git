@@ -3,6 +3,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+use crate::precompiles::{call_precompile_with_gas_consumption, PrecompileResult};
 use crate::{handler::EvmHandler, precompiles::PrecompileOutcome, EthereumError};
 use alloc::vec::Vec;
 use bn::{FieldError, GroupError};
@@ -59,13 +60,10 @@ fn read_point(input: &[u8], pos: usize) -> Result<bn::G1, EthereumError> {
     }
 }
 
-pub fn ecadd_precompile<Host: Runtime>(
+fn ecadd_precompile_without_gas<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
     input: &[u8],
-    _context: &Context,
-    _is_static: bool,
-    _transfer: Option<Transfer>,
-) -> Result<PrecompileOutcome, EthereumError> {
+) -> Result<PrecompileResult, EthereumError> {
     use bn::AffineG1;
     log!(handler.borrow_host(), Info, "Calling ecAdd precompile");
     // TODO: Make the actual tick estimation (remove the stub value).
@@ -89,21 +87,31 @@ pub fn ecadd_precompile<Host: Runtime>(
             .unwrap();
     }
 
-    Ok(PrecompileOutcome {
-        exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-        output: output.to_vec(),
-        withdrawals: vec![],
-        estimated_ticks,
+    Ok(PrecompileResult {
+        outcome: PrecompileOutcome {
+            exit_status: ExitReason::Succeed(ExitSucceed::Returned),
+            output: output.to_vec(),
+            withdrawals: vec![],
+            estimated_ticks,
+        },
+        gas_cost: 150,
     })
 }
 
-pub fn ecmul_precompile<Host: Runtime>(
+pub fn ecadd_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
     input: &[u8],
     _context: &Context,
     _is_static: bool,
     _transfer: Option<Transfer>,
 ) -> Result<PrecompileOutcome, EthereumError> {
+    call_precompile_with_gas_consumption(handler, input, ecadd_precompile_without_gas)
+}
+
+fn ecmul_precompile_without_gas<Host: Runtime>(
+    handler: &mut EvmHandler<Host>,
+    input: &[u8],
+) -> Result<PrecompileResult, EthereumError> {
     use bn::AffineG1;
     log!(handler.borrow_host(), Info, "Calling ecMul precompile");
     // TODO: Make the actual tick estimation (remove the stub value).
@@ -125,21 +133,31 @@ pub fn ecmul_precompile<Host: Runtime>(
         mul.y().to_big_endian(&mut output[32..]).unwrap();
     }
 
-    Ok(PrecompileOutcome {
-        exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-        output: output.to_vec(),
-        withdrawals: vec![],
-        estimated_ticks,
+    Ok(PrecompileResult {
+        outcome: PrecompileOutcome {
+            exit_status: ExitReason::Succeed(ExitSucceed::Returned),
+            output: output.to_vec(),
+            withdrawals: vec![],
+            estimated_ticks,
+        },
+        gas_cost: 6_000,
     })
 }
 
-pub fn ecpairing_precompile<Host: Runtime>(
+pub fn ecmul_precompile<Host: Runtime>(
     handler: &mut EvmHandler<Host>,
     input: &[u8],
     _context: &Context,
     _is_static: bool,
     _transfer: Option<Transfer>,
 ) -> Result<PrecompileOutcome, EthereumError> {
+    call_precompile_with_gas_consumption(handler, input, ecmul_precompile_without_gas)
+}
+
+fn ecpairing_precompile_without_gas<Host: Runtime>(
+    handler: &mut EvmHandler<Host>,
+    input: &[u8],
+) -> Result<PrecompileResult, EthereumError> {
     log!(handler.borrow_host(), Info, "Calling ecPairing precompile");
     // TODO: Make the actual tick estimation (remove the stub value).
     let estimated_ticks = 1_000_000;
@@ -219,13 +237,28 @@ pub fn ecpairing_precompile<Host: Runtime>(
         }
     };
 
+    let gas_cost = (input.len() / PAIR_ELEMENT_LEN) as u64 * 34_000 /* ISTANBUL_PAIR_PER_POINT */ + 45_000 /* ISTANBUL_PAIR_BASE */;
+
     let mut final_output: [u8; 32] = [0; 32];
     U256::to_big_endian(&output, &mut final_output);
 
-    Ok(PrecompileOutcome {
-        exit_status: ExitReason::Succeed(ExitSucceed::Returned),
-        output: final_output.to_vec(),
-        withdrawals: vec![],
-        estimated_ticks,
+    Ok(PrecompileResult {
+        outcome: PrecompileOutcome {
+            exit_status: ExitReason::Succeed(ExitSucceed::Returned),
+            output: final_output.to_vec(),
+            withdrawals: vec![],
+            estimated_ticks,
+        },
+        gas_cost,
     })
+}
+
+pub fn ecpairing_precompile<Host: Runtime>(
+    handler: &mut EvmHandler<Host>,
+    input: &[u8],
+    _context: &Context,
+    _is_static: bool,
+    _transfer: Option<Transfer>,
+) -> Result<PrecompileOutcome, EthereumError> {
+    call_precompile_with_gas_consumption(handler, input, ecpairing_precompile_without_gas)
 }
