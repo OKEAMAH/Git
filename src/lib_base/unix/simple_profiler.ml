@@ -254,15 +254,33 @@ let pp_timeslots ppf range_start event_start duration =
   print_empty_slots ppf (20 - remaining_slots) ;
   Format.fprintf ppf " ]"
 
-let pp_line ?toplevel_timestamp nindent ppf id n t t0 baseline_timestamp start_time =
+(* creates timestamp aligned to 10 seconds on wall clock*)
+let create_ts10 ?(toplevel_timestamp : time option) (t0 : time option) : float =
+  match toplevel_timestamp with
+  | Some t_top -> float_of_int @@ (int_of_float t_top.wall / 10 * 10)
+  | None -> (
+      match t0 with
+      | Some t -> float_of_int @@ (int_of_float t.wall / 10 * 10)
+      | None -> Unix.gettimeofday ())
+
+let pp_line ?toplevel_timestamp nindent ppf id n t t0 ts10 start_time
+    children_time =
   let indent = Stdlib.List.init nindent (fun _ -> "  ") in
   let () =
     Option.iter
       (fun t ->
-        let time =
+        let ts10_time =
+          WithExceptions.Option.get ~loc:__LOC__ (Ptime.of_float_s ts10)
+        in
+        Format.fprintf ppf "timeline start: %a | " Time.System.pp_hum ts10_time ;
+        let top_time =
           WithExceptions.Option.get ~loc:__LOC__ (Ptime.of_float_s t.wall)
         in
-        Format.fprintf ppf "%a@," Time.System.pp_hum time)
+        Format.fprintf
+          ppf
+          "%a        total_time own_time  timeslots: 1 sec * 20 slots@,"
+          Time.System.pp_hum
+          top_time)
       toplevel_timestamp
   in
   let indentsym =
@@ -277,22 +295,31 @@ let pp_line ?toplevel_timestamp nindent ppf id n t t0 baseline_timestamp start_t
         ])
   in
   Format.fprintf ppf "%s %-7i " (String.sub indentsym 0 80) n ;
-  if t.wall = 0. then Format.fprintf ppf "                 "
-  else Format.fprintf ppf "% 10.3fms" (t.wall *. 1000.) ;
-  pp_timeslots ppf baseline_timestamp start_time.wall t.wall ;
-  if t.wall = 0. then Format.fprintf ppf "                 "
-  else Format.fprintf ppf " %3.0f%%" (ceil (100. *. (t.cpu /. t.wall))) ;
-  match t0 with
-  | None -> Format.fprintf ppf "@,"
-  | Some t0 -> Format.fprintf ppf " +%a@," pp_delta_t t0.wall
+  if t.wall = 0. then Format.fprintf ppf "-empty-@,"
+  else (
+    Format.fprintf ppf "% 6.0f " (t.wall *. 1000.) ;
+    let own_time = t.wall -. children_time in
+    Format.fprintf ppf " % 6.0f " (own_time *. 1000.) ;
+    pp_timeslots ppf ts10 start_time.wall t.wall ;
+    Format.fprintf ppf " %3.0f%%" (ceil (100. *. (t.cpu /. t.wall))) ;
+    match t0 with
+    | None -> Format.fprintf ppf "@,"
+    | Some t0 -> Format.fprintf ppf " +%a@," pp_delta_t t0.wall)
 
-let rec pp_report ?(toplevel_call = true) baseline_timestamp t0 nident ppf {aggregated; recorded} =
+let aggregate_children_durations {aggregated = _; recorded} : float =
+  List.fold_left
+    (fun acc (_, {duration = Span d; _}) -> acc +. d.wall)
+    0.0
+    recorded
+
+let rec pp_report ?(toplevel_call = true) ts10 t0 nident ppf
+    {aggregated; recorded} =
   StringMap.iter
     (fun id {count = n; total = Span d; children; node_lod = _} ->
-      pp_line nident ppf id n d None baseline_timestamp t0 ;
+      pp_line nident ppf id n d None ts10 t0 0.0 ;
       pp_report
         ~toplevel_call:false
-        baseline_timestamp
+        ts10
         t0
         (nident + 1)
         ppf
@@ -301,31 +328,27 @@ let rec pp_report ?(toplevel_call = true) baseline_timestamp t0 nident ppf {aggr
   List.iter
     (fun (id, {start = t; duration = Span d; contents; item_lod = _}) ->
       let toplevel_timestamp = if toplevel_call then Some t else None in
-      pp_line ?toplevel_timestamp nident ppf id 1 d (Some (t -* t0)) baseline_timestamp t ;
-      pp_report ~toplevel_call:false baseline_timestamp t (nident + 1) ppf contents)
+      let ts10 =
+        if toplevel_call then create_ts10 ?toplevel_timestamp (Some t0)
+        else ts10
+      in
+      let children_time = aggregate_children_durations contents in
+      pp_line
+        ?toplevel_timestamp
+        nident
+        ppf
+        id
+        1
+        d
+        (Some (t -* t0))
+        ts10
+        t
+        children_time ;
+      pp_report ~toplevel_call:false ts10 t (nident + 1) ppf contents)
     recorded
 
-let create_baseline_timestamp timestamp =
-  let current_time =
-    match timestamp with None -> Unix.gettimeofday () | Some t -> t.wall
-  in
-  let rounded_seconds = float_of_int @@ (int_of_float current_time / 10 * 10) in
-  let local_time = Unix.localtime rounded_seconds in
-  let ts_str =
-    Printf.sprintf
-      "%04d-%02d-%02d %02d:%02d:%02d"
-      (local_time.tm_year + 1900)
-      (local_time.tm_mon + 1)
-      local_time.tm_mday
-      local_time.tm_hour
-      local_time.tm_min
-      local_time.tm_sec
-  in
-  (rounded_seconds, ts_str)
-
 let pp_report ?t0 ppf report =
-  let baseline_timestamp, ts_str = create_baseline_timestamp t0 in
-  Format.fprintf ppf "profiling baseline: %s %.0f@;" ts_str baseline_timestamp ;
+  let ts10 = create_ts10 t0 in
   let t0 =
     match t0 with
     | Some t0 -> t0
@@ -334,7 +357,7 @@ let pp_report ?t0 ppf report =
         | (_, {start; _}) :: _ -> start
         | [] -> {wall = 0.; cpu = 0.})
   in
-  Format.fprintf ppf "@[<v 0>%a@]" (pp_report baseline_timestamp t0 0) report
+  Format.fprintf ppf "@[<v 0>%a@]" (pp_report ts10 t0 0) report
 
 type (_, _) Profiler.kind += Headless : (lod, state ref) Profiler.kind
 
