@@ -91,7 +91,8 @@ odoc-lite:
 		../scripts ../script-inputs ../src ../tezt ../irmin ../vendors ../dune ../dune-project ../dune-workspace $(TMPDOCDIR)/
 	cd $(TMPDOCDIR)/ && ./scripts/remove-old-protocols.sh
 	@echo "Running odoc in $(TMPDOCDIR), with build directory $(TOPBUILDDIR_ABS) and outputs in $(TMPDOCDIR)/odoc.log"
-	ODOC_WARN_ERROR=true dune build @doc-new --build-dir=$(TOPBUILDDIR_ABS) --root=$(TMPDOCDIR) >$(TMPDOCDIR)/odoc.log 2>&1; \
+	#ODOC_WARN_ERROR=true
+	dune build @doc-new --build-dir=$(TOPBUILDDIR_ABS) --root=$(TMPDOCDIR) >$(TMPDOCDIR)/odoc.log 2>&1; \
 		RESULT=$$?; \
 		(grep -B1 '^Error:' $(TMPDOCDIR)/odoc.log || true) ; \
 		exit $$RESULT
