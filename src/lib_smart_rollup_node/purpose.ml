@@ -62,12 +62,7 @@ let encoding =
   Data_encoding.string_enum
   @@ List.map (fun p -> (to_string_ex_purpose p, p)) all
 
-type error +=
-  | Missing_operator of ex_purpose
-  | Too_many_operators of {
-      expected_purposes : ex_purpose list;
-      given_operators : operators;
-    }
+type error += Missing_operator of ex_purpose
 
 let of_string_ex_purpose = function
   (* For backward compability:
@@ -120,24 +115,6 @@ let operators_encoding =
        ~key_of_string:of_string_exn_ex_purpose
        ~value_encoding:(fun _ -> ex_operator_encoding))
 
-let pp_operators fmt operators =
-  Format.pp_print_list
-    (fun fmt (purpose, operator) ->
-      let keys =
-        match operator with
-        | Operator (Single key) -> [key]
-        | Operator (Multiple keys) -> keys
-      in
-      Format.fprintf
-        fmt
-        "%a: %a"
-        pp_ex_purpose
-        purpose
-        (Format.pp_print_list Signature.Public_key_hash.pp)
-        keys)
-    fmt
-    (Map.bindings operators)
-
 let () =
   register_error_kind
     ~id:"sc_rollup.node.missing_mode_operator"
@@ -153,30 +130,7 @@ let () =
     Data_encoding.(obj1 (req "missing_purpose" encoding))
     (function
       | Missing_operator missing_purpose -> Some missing_purpose | _ -> None)
-    (fun missing_purpose -> Missing_operator missing_purpose) ;
-  register_error_kind
-    ~id:"sc_rollup.node.too_many_operators"
-    ~title:"Too many operators for the chosen mode"
-    ~description:"Too many operators for the chosen mode."
-    ~pp:(fun ppf (expected_purposes, given_operators) ->
-      Format.fprintf
-        ppf
-        "@[<hov>Too many operators, expecting operators for only %a, have %a.@]"
-        (Format.pp_print_list pp_ex_purpose)
-        expected_purposes
-        pp_operators
-        given_operators)
-    `Permanent
-    Data_encoding.(
-      obj2
-        (req "expected_purposes" (list encoding))
-        (req "given_operators" operators_encoding))
-    (function
-      | Too_many_operators {expected_purposes; given_operators} ->
-          Some (expected_purposes, given_operators)
-      | _ -> None)
-    (fun (expected_purposes, given_operators) ->
-      Too_many_operators {expected_purposes; given_operators})
+    (fun missing_purpose -> Missing_operator missing_purpose)
 
 (* For each purpose, it returns a list of associated operation kinds *)
 let operation_kind : ex_purpose -> Operation_kind.t list = function
@@ -276,13 +230,11 @@ let replace_operator ?default_operator ~needed_purposes
       replacement_map
       operators
   in
-  let map_size = Map.cardinal operators in
-  let needed_purpose_len = List.length needed_purposes in
-  let* () =
-    error_when
-      (map_size <> needed_purpose_len)
-      (Too_many_operators
-         {expected_purposes = needed_purposes; given_operators = operators})
+  (* Narrow to needed operators *)
+  let operators =
+    Map.filter
+      (fun p _ -> List.mem ~equal:Stdlib.( = ) p needed_purposes)
+      operators
   in
   return operators
 

@@ -39,12 +39,7 @@ type ex_operator = Operator : 'a operator -> ex_operator
     operator] are correctly related with [`kind] *)
 type operators = private ex_operator Map.t
 
-type error +=
-  | Missing_operator of ex_purpose
-  | Too_many_operators of {
-      expected_purposes : ex_purpose list;
-      given_operators : operators;
-    }
+type error += Missing_operator of ex_purpose
 
 (** [to_string_ex_purpose p] returns a string representation of purpose [p]. *)
 val to_string_ex_purpose : ex_purpose -> string

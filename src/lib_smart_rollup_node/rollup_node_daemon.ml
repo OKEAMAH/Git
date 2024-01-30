@@ -558,8 +558,7 @@ let run ({node_ctxt; configuration; plugin; _} as state) =
   protect start ~on_error:(function
       | Rollup_node_errors.(
           ( Lost_game _ | Unparsable_boot_sector _ | Invalid_genesis_state _
-          | Operator_not_in_whitelist | Purpose.Missing_operator _
-          | Purpose.Too_many_operators _ ))
+          | Operator_not_in_whitelist | Purpose.Missing_operator _ ))
         :: _ as e ->
           fatal_error_exit e
       | Rollup_node_errors.Could_not_open_preimage_file _ :: _ as e ->
