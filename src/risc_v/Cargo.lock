@@ -1129,6 +1129,7 @@ name = "risc-v-parser"
 version = "0.1.0"
 dependencies = [
  "goblin",
+ "risc-v-machine-state",
 ]
 
 [[package]]
