@@ -969,6 +969,14 @@ let block_hash_gen =
     bin = kernel_inputs_path ^ "/block_hash_gen.bin";
   }
 
+(** The info for the "call_selfdestruct.sol" contract. *)
+let call_selfdestruct =
+  {
+    label = "call_selfdestruct";
+    abi = kernel_inputs_path ^ "/call_selfdestruct.abi";
+    bin = kernel_inputs_path ^ "/call_selfdestruct.bin";
+  }
+
 (** Test that the contract creation works.  *)
 let test_l2_deploy_simple_storage =
   register_proxy
@@ -4159,6 +4167,28 @@ let test_regression_block_hash_gen =
   let* _address, _tx = deploy ~contract:block_hash_gen ~sender evm_setup in
   unit
 
+let test_l2_call_selfdetruct_contract_in_same_transaction =
+  Protocol.register_test
+    ~__FILE__
+    ~tags:["evm"; "l2_call"; "selfdestrcut"]
+    ~uses:(fun _protocol ->
+      [
+        Constant.octez_smart_rollup_node;
+        Constant.octez_evm_node;
+        Constant.smart_rollup_installer;
+        Constant.WASM.evm_kernel;
+      ])
+    ~title:"Check destruct contract in same transaction can be called"
+  @@ fun protocol ->
+  let* ({evm_node; sc_rollup_node; node; client; _} as evm_setup) =
+    setup_evm_kernel ~admin:None protocol
+  in
+  let* _ = next_evm_level ~evm_node ~sc_rollup_node ~node ~client in
+  let sender = Eth_account.bootstrap_accounts.(0) in
+  let* _address, _tx = deploy ~contract:call_selfdestruct ~sender evm_setup in
+
+  unit
+
 let register_evm_node ~protocols =
   test_originate_evm_kernel protocols ;
   test_evm_node_connection protocols ;
@@ -4232,7 +4262,8 @@ let register_evm_node ~protocols =
   test_l2_intermediate_OOG_call protocols ;
   test_l2_ether_wallet protocols ;
   test_keep_alive protocols ;
-  test_regression_block_hash_gen protocols
+  test_regression_block_hash_gen protocols ;
+  test_l2_call_selfdetruct_contract_in_same_transaction protocols
 
 let () =
   register_evm_node ~protocols:[Alpha] ;
