@@ -19,7 +19,7 @@ docker_target="${7:-without-evm-artifacts}"
 rust_toolchain_image=${8:-registry.gitlab.com/tezos/tezos/rust-toolchain}
 rust_toolchain_image_version="${9:-}"
 if [ -z "$rust_toolchain_image_version" ]; then
-  rust_toolchain_image_version=$(git rev-parse HEAD)
+  rust_toolchain_image_version=latest
 fi
 commit_datetime="${10:-$(git show -s --pretty=format:%ci HEAD)}"
 commit_tag="${11:-$(git describe --tags --always)}"
