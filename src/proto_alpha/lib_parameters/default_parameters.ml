@@ -31,7 +31,8 @@ let seconds_in_a_day = 60 * 60 * 24
 
 let seconds_in_a_week = seconds_in_a_day * 7
 
-let make_sc_rollup_parameter ~dal_activation_level block_time =
+let make_sc_rollup_parameter ~dal_activation_level
+    ~dal_attested_slots_validity_lag block_time =
   (* Maximum number of outbox messages per level.
 
       WARNING: changing this value impacts the storage size a rollup has to
@@ -120,6 +121,7 @@ let make_sc_rollup_parameter ~dal_activation_level block_time =
           metadata = Raw_level.root;
           dal_page = dal_activation_level;
           dal_parameters = dal_activation_level;
+          dal_attested_slots_validity_lag;
         };
       private_enable = true;
       riscv_pvm_enable = false;
@@ -179,7 +181,19 @@ let constants_mainnet =
          exception with the value [Int32.int_min] (see tezt/tests/mockup.ml). *)
       Raw_level.of_int32_exn Int32.(pred max_int)
   in
-  let sc_rollup = make_sc_rollup_parameter ~dal_activation_level block_time in
+  let dal_attested_slots_validity_lag =
+    (* A rollup node shouldn't import an attested whose attested level in too
+       far in the past wrt the current level. Importation window is fixed to 4
+       weeks below. The constant below is the number of blocks produced during
+       28 days with a block time of 15 seconds. *)
+    161_280
+  in
+  let sc_rollup =
+    make_sc_rollup_parameter
+      ~dal_activation_level
+      ~dal_attested_slots_validity_lag
+      block_time
+  in
   {
     Constants.Parametric.preserved_cycles = 5;
     consensus_rights_delay = 5;
