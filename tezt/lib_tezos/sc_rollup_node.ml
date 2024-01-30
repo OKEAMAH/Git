@@ -192,6 +192,7 @@ module Parameters = struct
     rpc_host : string;
     rpc_port : int;
     mode : mode;
+    autonomous_batcher : bool;
     dal_node : Dal_node.t option;
     loser_mode : string option;
     allow_degraded : bool;
@@ -324,9 +325,13 @@ let runlike_argument rollup_node =
      Metrics_addr (metrics_addr ^ ":" ^ string_of_int metrics_port));
     Rpc_addr (rpc_host rollup_node);
     Rpc_port (rpc_port rollup_node);
-    History_mode rollup_node_state.history_mode;
-    Gc_frequency rollup_node_state.gc_frequency;
   ]
+  @ (if rollup_node_state.autonomous_batcher then []
+    else
+      [
+        History_mode rollup_node_state.history_mode;
+        Gc_frequency rollup_node_state.gc_frequency;
+      ])
   @ optional_arg (fun s -> Loser_mode s) rollup_node_state.loser_mode
   @ optional_switch No_degraded (not rollup_node_state.allow_degraded)
   @ optional_arg (fun n -> Dal_node n) rollup_node_state.dal_node
@@ -507,12 +512,63 @@ let create_with_endpoint ?runner ?path ?name ?color ?data_dir ~base_dir
         operators;
         default_operator;
         mode;
+        autonomous_batcher = false;
         endpoint;
         dal_node;
         loser_mode;
         allow_degraded;
         gc_frequency;
         history_mode;
+        password_file;
+        pending_ready = [];
+        pending_level = [];
+        runner;
+      }
+  in
+  on_event sc_node (handle_event sc_node) ;
+  sc_node
+
+let create_autonoumous_batcher_with_endpoint ?runner ?path ?name ?color
+    ?data_dir ~base_dir ?event_pipe ?metrics_addr ?metrics_port
+    ?(rpc_host = Constant.default_host) ?rpc_port ?(operators = [])
+    ?default_operator ?password_file endpoint =
+  let name = match name with None -> fresh_name () | Some name -> name in
+  let data_dir =
+    match data_dir with None -> Temp.dir name | Some dir -> dir
+  in
+  let rpc_port =
+    match rpc_port with None -> Port.fresh () | Some port -> port
+  in
+  let metrics_port =
+    match metrics_port with None -> Port.fresh () | Some port -> port
+  in
+  let path =
+    Option.value ~default:(Uses.path Constant.octez_smart_rollup_node) path
+  in
+  let sc_node =
+    create
+      ~path
+      ~name
+      ?runner
+      ?color
+      ?event_pipe
+      {
+        data_dir;
+        base_dir;
+        metrics_addr;
+        metrics_port;
+        rpc_host;
+        rpc_port;
+        operators;
+        default_operator;
+        mode = Batcher;
+        autonomous_batcher = true;
+        endpoint;
+        dal_node = None;
+        loser_mode = None;
+        allow_degraded = true;
+        gc_frequency = 1;
+        history_mode = Full;
         password_file;
         pending_ready = [];
         pending_level = [];
@@ -549,6 +605,26 @@ let create ?runner ?path ?name ?color ?data_dir ~base_dir ?event_pipe
     mode
     (Node node)
 
+let create_autonomous_batcher ?runner ?path ?name ?color ?data_dir ~base_dir
+    ?event_pipe ?metrics_addr ?metrics_port ?rpc_host ?rpc_port ?operators
+    ?default_operator ?password_file (node : Node.t) =
+  create_autonoumous_batcher_with_endpoint
+    ?runner
+    ?path
+    ?name
+    ?color
+    ?data_dir
+    ~base_dir
+    ?event_pipe
+    ?metrics_addr
+    ?metrics_port
+    ?rpc_host
+    ?rpc_port
+    ?operators
+    ?default_operator
+    ?password_file
+    (Node node)
+
 let do_runlike_command ?event_level ?event_sections_levels ?password_file node
     arguments =
   if node.status <> Not_running then
@@ -576,6 +652,11 @@ let run ?(legacy = false) ?(restart = false) ?mode ?event_level
       let arguments = legacy_node_args node rollup_address in
       let arguments = add_missing_arguments ~arguments ~extra_arguments in
       ["run"] @ make_arguments arguments
+    else if node.persistent_state.autonomous_batcher then
+      let args = runlike_argument node in
+      let operators = operators_params node in
+      ["run"; "autonomous"; "batcher"; "with"; "operators"]
+      @ operators @ make_arguments args
     else
       let default_mode, cmd, arguments = node_args node rollup_address in
       let arguments = add_missing_arguments ~arguments ~extra_arguments in

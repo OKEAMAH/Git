@@ -406,6 +406,15 @@ let wait_until_n_batches_are_injected rollup_node ~nb_batches =
   nb_injected := !nb_injected + 1 ;
   if !nb_injected >= nb_batches then Some () else None
 
+let bake_and_wait_injection_round client sc_node =
+  let injection_round =
+    Sc_rollup_node.wait_for sc_node "total_injected_ops.v0" (fun _ -> Some ())
+  in
+  let* () = Client.bake_for_and_wait client in
+  (* let* (_ : int) = Sc_rollup_node.wait_sync sc_node ~timeout:10. in *)
+  let* () = injection_round in
+  unit
+
 let send_message_batcher_aux ?rpc_hooks client sc_node msgs =
   let batched =
     Sc_rollup_node.wait_for sc_node "batched.v0" (Fun.const (Some ()))
@@ -419,13 +428,54 @@ let send_message_batcher_aux ?rpc_hooks client sc_node msgs =
     @@ Sc_rollup_rpc.post_local_batcher_injection ~messages:msgs
   in
   (* New head will trigger injection  *)
-  let* () = Client.bake_for_and_wait client in
+  let* () = bake_and_wait_injection_round client sc_node in
   (* Injector should get messages right away because the batcher is configured
      to not have minima. *)
   let* _ = batched in
   let* _ = added_to_injector in
   let* _ = injected in
   return hashes
+
+let bake_levels ?hook n client sc_node =
+  fold n () @@ fun i () ->
+  let* () = match hook with None -> unit | Some hook -> hook i in
+  if i = n - 1 then bake_and_wait_injection_round client sc_node
+  else Client.bake_for_and_wait client
+
+(** Bake [at_least] levels.
+    Then continues baking until an event happens.
+    waiting for the rollup node to catch up to the client's level.
+    Returns the event value. *)
+let bake_until_event ?hook ?(at_least = 0) ?(timeout = 15.) client sc_node
+    ?event_name event =
+  let event_value = ref None in
+  let _ =
+    let* return_value = event in
+    event_value := Some return_value ;
+    unit
+  in
+  let rec bake_loop i =
+    let* () = match hook with None -> unit | Some hook -> hook i in
+    let* () = bake_and_wait_injection_round client sc_node in
+    match !event_value with
+    | Some value -> return value
+    | None -> bake_loop (i + 1)
+  in
+  let* () = bake_levels ?hook (max 0 (at_least - 1)) client sc_node in
+  let* updated_level =
+    Lwt.catch
+      (fun () -> Lwt.pick [Lwt_unix.timeout timeout; bake_loop 0])
+      (function
+        | Lwt_unix.Timeout ->
+            Test.fail
+              "Timeout of %f seconds reached when waiting for event %a to \
+               happens."
+              timeout
+              (Format.pp_print_option Format.pp_print_string)
+              event_name
+        | e -> raise e)
+  in
+  return updated_level
 
 let send_message_batcher ?rpc_hooks client sc_node msgs =
   let* hashes = send_message_batcher_aux ?rpc_hooks client sc_node msgs in
@@ -476,6 +526,7 @@ let test_rollup_node_inbox ?(extra_tags = []) ~variant scenario ~kind =
     ~kind
   @@ fun _protocol sc_rollup_node sc_rollup node client ->
   let* () = scenario sc_rollup_node sc_rollup node client in
+  let* _ = Sc_rollup_node.wait_sync ~timeout:30. sc_rollup_node in
   let* inbox_from_sc_rollup_node =
     Sc_rollup_node.RPC.call sc_rollup_node
     @@ Sc_rollup_rpc.get_global_block_inbox ()
@@ -596,46 +647,6 @@ let sc_rollup_node_handles_chain_reorg sc_rollup_node sc_rollup node client =
   let* _ = Sc_rollup_node.wait_for_level ~timeout:3. sc_rollup_node 5 in
   unit
 
-let bake_levels ?hook n client =
-  fold n () @@ fun i () ->
-  let* () = match hook with None -> unit | Some hook -> hook i in
-  Client.bake_for_and_wait client
-
-(** Bake [at_least] levels.
-    Then continues baking until an event happens.
-    waiting for the rollup node to catch up to the client's level.
-    Returns the event value. *)
-let bake_until_event ?hook ?(at_least = 0) ?(timeout = 15.) client ?event_name
-    event =
-  let event_value = ref None in
-  let _ =
-    let* return_value = event in
-    event_value := Some return_value ;
-    unit
-  in
-  let rec bake_loop i =
-    let* () = match hook with None -> unit | Some hook -> hook i in
-    let* () = Client.bake_for_and_wait client in
-    match !event_value with
-    | Some value -> return value
-    | None -> bake_loop (i + 1)
-  in
-  let* () = bake_levels ?hook at_least client in
-  let* updated_level =
-    Lwt.catch
-      (fun () -> Lwt.pick [Lwt_unix.timeout timeout; bake_loop 0])
-      (function
-        | Lwt_unix.Timeout ->
-            Test.fail
-              "Timeout of %f seconds reached when waiting for event %a to \
-               happens."
-              timeout
-              (Format.pp_print_option Format.pp_print_string)
-              event_name
-        | e -> raise e)
-  in
-  return updated_level
-
 (** Bake [at_least] levels.
     Then continues baking until the rollup node updates the lpc,
     waiting for the rollup node to catch up to the client's level.
@@ -646,7 +657,14 @@ let bake_until_lpc_updated ?hook ?at_least ?timeout client sc_rollup_node =
     Sc_rollup_node.wait_for sc_rollup_node event_name @@ fun json ->
     JSON.(json |-> "level" |> as_int_opt)
   in
-  bake_until_event ?hook ?at_least ?timeout client ~event_name event
+  bake_until_event
+    ?hook
+    ?at_least
+    ?timeout
+    client
+    sc_rollup_node
+    ~event_name
+    event
 
 (** helpers that send a message then bake until the rollup node
     executes an output message (whitelist_update) *)
@@ -658,6 +676,7 @@ let send_messages_then_bake_until_rollup_node_execute_output_message
       ~timeout:5.0
       ~at_least:(commitment_period + challenge_window + 1)
       client
+      rollup_node
       ~event_name:"included_successful_operation"
     @@ wait_for_included_successful_operation
          rollup_node
@@ -699,19 +718,25 @@ let check_batcher_message_status response status =
     ~error_msg:"Status of message is %L but expected %R."
 
 (* Rollup node batcher *)
-let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
+let sc_rollup_node_batcher ~autonomous sc_rollup_node sc_rollup node client =
   let* () =
     Sc_rollup_node.run ~event_level:`Debug sc_rollup_node sc_rollup []
   in
-  let batcher =
-    Sc_rollup_node.create
-      Batcher
-      node
-      ~base_dir:(Client.base_dir client)
-      ~default_operator:Constant.bootstrap5.alias
+  let* batcher =
+    if autonomous then
+      let* _ = Sc_rollup_node.config_init sc_rollup_node sc_rollup in
+      let batcher =
+        Sc_rollup_node.create_autonomous_batcher
+          node
+          ~data_dir:(Sc_rollup_node.data_dir sc_rollup_node)
+          ~base_dir:(Client.base_dir client)
+          ~default_operator:Constant.bootstrap5.alias
+      in
+      let* () = Sc_rollup_node.run ~event_level:`Debug batcher sc_rollup [] in
+      return batcher
+    else return sc_rollup_node
   in
-  let* () = Sc_rollup_node.run ~event_level:`Debug batcher sc_rollup [] in
-  let* _level = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:10. in
+  let* _level = Sc_rollup_node.wait_sync batcher ~timeout:10. in
   Log.info "Sending one message to the batcher" ;
   let msg1 = "3 3 + out" in
   let* hashes =
@@ -731,23 +756,40 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
   in
   Check.((queue = [(msg1_hash, msg1)]) (list (tuple2 string string)))
     ~error_msg:"Queue is %L but should be %R." ;
+  (* let _ = assert false in *)
   (* This block triggers injection in the injector. *)
-  let injected = wait_for_injecting_event ~tags:["add_messages"] batcher in
-  let* () = Client.bake_for_and_wait client in
-  let* _ = injected in
+  let* () = bake_and_wait_injection_round client batcher in
+  (* let* _ = *)
+  (*   bake_until_event ~at_least:1 client ~event_name:"injected" *)
+  (*   @@ wait_for_injecting_event ~tags:["add_messages"] batcher *)
+  (* in *)
+  (* let injected = wait_for_injecting_event ~tags:["add_messages"] batcher in *)
+  (* let* () = Client.bake_for_and_wait client in *)
+  (* let* _ = Sc_rollup_node.wait_sync ~timeout:10. sc_rollup_node in *)
+  (* let* _ = injected in *)
   let* _msg1, status_msg1 =
     Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
   check_batcher_message_status status_msg1 "injected" ;
   (* We bake so that msg1 is included. *)
+  (* let* _ = *)
+  (*   bake_until_event *)
+  (*     ~at_least:1 *)
+  (*     client *)
+  (*     ~event_name:"included_successful_operation" *)
+  (*   @@ wait_for_included_successful_operation *)
+  (*        batcher *)
+  (*        ~operation_kind:"add_messages" *)
+  (* in *)
   let* () = Client.bake_for_and_wait client in
+  let* _ = Sc_rollup_node.wait_sync ~timeout:10. sc_rollup_node
+  and* _ = Sc_rollup_node.wait_sync ~timeout:10. batcher in
   let* _msg1, status_msg1 =
     Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
   check_batcher_message_status status_msg1 "included" ;
-  let* _ = wait_for_current_level node ~timeout:3. sc_rollup_node in
   Log.info "Sending multiple messages to the batcher" ;
   let msg2 =
     (* "012456789 012456789 012456789 ..." *)
@@ -763,11 +805,13 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
   let* hashes2 =
     send_message_batcher client batcher (List.init 9 (Fun.const msg2))
   in
+  let* _ = Sc_rollup_node.wait_sync ~timeout:10. sc_rollup_node
+  and* _ = Sc_rollup_node.wait_sync ~timeout:10. batcher in
   let* queue =
     Sc_rollup_node.RPC.call batcher @@ Sc_rollup_rpc.get_local_batcher_queue ()
   in
   Check.((queue = []) (list (tuple2 string string)))
-    ~error_msg:"Queue is %L should be %empty R." ;
+    ~error_msg:"Queue is %L should be empty." ;
   let* block = Client.RPC.call client @@ RPC.get_chain_block () in
   let contents1 =
     check_l1_block_contains
@@ -782,6 +826,7 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
       incl_count
       contents1
   in
+  let* _ = Sc_rollup_node.wait_sync ~timeout:10. sc_rollup_node in
   (* We bake to trigger second injection by injector. *)
   let* () = Client.bake_for_and_wait client in
   let* block = Client.RPC.call client @@ RPC.get_chain_block () in
@@ -820,7 +865,10 @@ let sc_rollup_node_batcher sc_rollup_node sc_rollup node client =
     Sc_rollup_node.RPC.call batcher
     @@ Sc_rollup_rpc.get_local_batcher_queue_msg_hash ~msg_hash:msg1_hash
   in
-  check_batcher_message_status status_msg1 "committed" ;
+  (* Autonomous batcher does not know about commitment status. *)
+  check_batcher_message_status
+    status_msg1
+    (if autonomous then "included" else "committed") ;
   unit
 
 let rec check_can_get_between_blocks rollup_node ~first ~last =
@@ -889,7 +937,9 @@ let test_gc variant ?(tags = []) ~challenge_window ~commitment_period
   in
   let* origination_level = Node.get_level node in
   (* We start at level 2, bake until the expected level *)
-  let* () = bake_levels (expected_level - origination_level) client in
+  let* () =
+    bake_levels (expected_level - origination_level) client sc_rollup_node
+  in
   let* level =
     Sc_rollup_node.wait_for_level ~timeout:3. sc_rollup_node expected_level
   in
@@ -1016,11 +1066,16 @@ let test_snapshots ~kind ~challenge_window ~commitment_period ~history_mode =
     Sc_rollup_node.run rollup_node_4 other_rollup [History_mode history_mode]
   in
   let rollup_node_processing =
-    let* () = bake_levels stop_rollup_node_2_levels client in
+    let* () = bake_levels stop_rollup_node_2_levels client sc_rollup_node in
     Log.info "Stopping rollup node 2 before snapshot is made." ;
     let* () = Sc_rollup_node.terminate rollup_node_2 in
     let* () = Sc_rollup_node.terminate rollup_node_4 in
-    let* () = bake_levels (total_blocks - stop_rollup_node_2_levels) client in
+    let* () =
+      bake_levels
+        (total_blocks - stop_rollup_node_2_levels)
+        client
+        sc_rollup_node
+    in
     let* (_ : int) = Sc_rollup_node.wait_sync sc_rollup_node ~timeout:3. in
     unit
   in
@@ -1101,7 +1156,7 @@ let test_snapshots ~kind ~challenge_window ~commitment_period ~history_mode =
   Log.info "Bake until next commitment." ;
   let* () =
     let event_name = "smart_rollup_node_new_commitment.v0" in
-    bake_until_event client ~event_name
+    bake_until_event client sc_rollup_node ~event_name
     @@ Sc_rollup_node.wait_for sc_rollup_node event_name (Fun.const (Some ()))
   in
   let* _ = Sc_rollup_node.wait_sync ~timeout:30.0 sc_rollup_node in
@@ -1453,11 +1508,11 @@ let tezos_client_get_commitment client sc_rollup commitment_hash =
   return commitment_opt
 
 let check_published_commitment_in_l1 ?(force_new_level = true) sc_rollup client
-    (published_commitment : Sc_rollup_rpc.commitment_info) =
+    sc_rollup_node (published_commitment : Sc_rollup_rpc.commitment_info) =
   let* () =
     if force_new_level then
       (* Triggers injection into the L1 context *)
-      bake_levels 1 client
+      bake_levels 1 client sc_rollup_node
     else unit
   in
   let* commitment_in_l1 =
@@ -1556,7 +1611,11 @@ let commitment_stored _protocol sc_rollup_node sc_rollup _node client =
   check_commitment_eq
     (stored_commitment, "stored")
     (published_commitment.commitment_and_hash.commitment, "published") ;
-  check_published_commitment_in_l1 sc_rollup client published_commitment
+  check_published_commitment_in_l1
+    sc_rollup
+    client
+    sc_rollup_node
+    published_commitment
 
 let mode_publish mode publishes _protocol sc_rollup_node sc_rollup node client =
   let nodes_args =
@@ -1776,7 +1835,11 @@ let commitments_messages_reset kind _protocol sc_rollup_node sc_rollup _node
   check_commitment_eq
     (stored_commitment, "stored")
     (published_commitment.commitment_and_hash.commitment, "published") ;
-  check_published_commitment_in_l1 sc_rollup client published_commitment
+  check_published_commitment_in_l1
+    sc_rollup
+    client
+    sc_rollup_node
+    published_commitment
 
 let commitment_stored_robust_to_failures _protocol sc_rollup_node sc_rollup node
     client =
@@ -2029,7 +2092,11 @@ let commitments_reorgs ~switch_l1_node ~kind _protocol sc_rollup_node sc_rollup
   check_commitment_eq
     (stored_commitment, "stored")
     (published_commitment.commitment_and_hash.commitment, "published") ;
-  check_published_commitment_in_l1 sc_rollup client published_commitment
+  check_published_commitment_in_l1
+    sc_rollup
+    client
+    sc_rollup_node
+    published_commitment
 
 (* This test simulate a reorganisation where a block is reproposed, and ensures
    that the correct commitment is published. *)
@@ -3343,7 +3410,7 @@ let bailout_mode_recover_bond_starting_no_commitment_staked ~kind =
   let* () = Sc_rollup_node.run sc_rollup_node' sc_rollup []
   and* () =
     let event_name = "smart_rollup_node_daemon_exit_bailout_mode.v0" in
-    bake_until_event tezos_client ~event_name
+    bake_until_event tezos_client sc_rollup_node ~event_name
     @@ Sc_rollup_node.wait_for sc_rollup_node' event_name (Fun.const (Some ()))
   in
   Log.info "Check that the bond have been recovered by the rollup node" ;
@@ -5872,7 +5939,13 @@ let register_protocol_independent () =
     ~kind
     ~variant:"batcher"
     ~extra_tags:["batcher"; Tag.flaky]
-    sc_rollup_node_batcher
+    (sc_rollup_node_batcher ~autonomous:false)
+    protocols ;
+  test_rollup_node_inbox
+    ~kind
+    ~variant:"autonomous_batcher"
+    ~extra_tags:["batcher"; "autonomous"; Tag.flaky]
+    (sc_rollup_node_batcher ~autonomous:true)
     protocols ;
   test_rollup_node_inbox ~kind ~variant:"basic" basic_scenario protocols ;
   test_gc

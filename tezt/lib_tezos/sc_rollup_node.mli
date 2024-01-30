@@ -161,6 +161,25 @@ val create_with_endpoint :
   Client.endpoint ->
   t
 
+(** Create an autonmous batcher. *)
+val create_autonomous_batcher :
+  ?runner:Runner.t ->
+  ?path:string ->
+  ?name:string ->
+  ?color:Log.Color.t ->
+  ?data_dir:string ->
+  base_dir:string ->
+  ?event_pipe:string ->
+  ?metrics_addr:string ->
+  ?metrics_port:int ->
+  ?rpc_host:string ->
+  ?rpc_port:int ->
+  ?operators:(purpose * string) list ->
+  ?default_operator:string ->
+  ?password_file:string ->
+  Node.t ->
+  t
+
 (** [write_in_stdin rollup_node str] write str into the stdin of the
     rollup node process. *)
 val write_in_stdin : t -> string -> unit Lwt.t
