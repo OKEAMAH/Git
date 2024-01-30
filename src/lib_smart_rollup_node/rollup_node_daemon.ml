@@ -119,9 +119,15 @@ let process_unseen_head ({node_ctxt; _} as state) ~catching_up ~predecessor
   let* () = handle_protocol_migration ~catching_up state head in
   let* rollup_ctxt = previous_context node_ctxt ~predecessor in
   let module Plugin = (val state.plugin) in
+  let start_timestamp = Time.System.now () in
   let* inbox_hash, inbox, inbox_witness, messages =
     Plugin.Inbox.process_head node_ctxt ~predecessor head
   in
+  let stop_timestamp = Time.System.now () in
+  (match state.configuration.metrics_addr with
+  | Some _ ->
+      Metrics.Inbox.set_fetch_time @@ Ptime.diff stop_timestamp start_timestamp
+  | _ -> ()) ;
   let* () =
     when_ (Node_context.dal_supported node_ctxt) @@ fun () ->
     Plugin.Dal_slots_tracker.process_head node_ctxt (Layer1.head_of_header head)
@@ -248,7 +254,9 @@ and update_l2_chain ({node_ctxt; _} as state) ~catching_up
       Lwt_watcher.notify node_ctxt.global_block_watcher l2_block ;
       let stop_timestamp = Time.System.now () in
       let process_time = Ptime.diff stop_timestamp start_timestamp in
-      Metrics.Inbox.set_process_time process_time ;
+      (match state.configuration.metrics_addr with
+      | Some _ -> Metrics.Inbox.set_process_time process_time
+      | _ -> ()) ;
       let*! () =
         Daemon_event.new_head_processed head.hash head.level process_time
       in
@@ -293,6 +301,13 @@ let report_missing_data result =
    also processes any missing blocks that were not processed. *)
 let on_layer_1_head ({node_ctxt; _} as state) (head : Layer1.header) =
   let open Lwt_result_syntax in
+  let* () =
+    match state.configuration.metrics_addr with
+    | Some _ ->
+        Lwt.map Result.ok
+        @@ Metrics.Performance.set_stats state.node_ctxt.data_dir
+    | _ -> return_unit
+  in
   let* old_head = Node_context.last_processed_head_opt node_ctxt in
   let old_head =
     match old_head with
@@ -522,11 +537,15 @@ let run ({node_ctxt; configuration; plugin; _} as state) =
     in
     daemonize state
   in
-  Metrics.Info.init_rollup_node_info
-    ~id:configuration.sc_rollup_address
-    ~mode:configuration.mode
-    ~genesis_level:node_ctxt.genesis_info.level
-    ~pvm_kind:(Octez_smart_rollup.Kind.to_string node_ctxt.kind) ;
+  (match configuration.metrics_addr with
+  | Some _ ->
+      Metrics.Info.init_rollup_node_info
+        ~id:configuration.sc_rollup_address
+        ~mode:configuration.mode
+        ~genesis_level:node_ctxt.genesis_info.level
+        ~genesis_hash:node_ctxt.genesis_info.commitment_hash
+        ~pvm_kind:(Octez_smart_rollup.Kind.to_string node_ctxt.kind)
+  | _ -> ()) ;
   let fatal_error_exit e =
     Format.eprintf "%!%a@.Exiting.@." pp_print_trace e ;
     let*! _ = Lwt_exit.exit_and_wait 1 in

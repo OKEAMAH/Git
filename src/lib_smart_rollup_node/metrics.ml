@@ -38,25 +38,9 @@ let v_labels_counter =
 (** Registers a gauge in [sc_rollup_node_registry] *)
 let v_gauge = Gauge.v ~registry:sc_rollup_node_registry ~namespace ~subsystem
 
-(** Creates a metric with a given [collector] *)
-let metric ~help ~name collector =
-  let info =
-    {
-      MetricInfo.name =
-        MetricName.v (String.concat "_" [namespace; subsystem; name]);
-      help;
-      metric_type = Gauge;
-      label_names = [];
-    }
-  in
-  let collect () =
-    LabelSetMap.singleton [] [Prometheus.Sample_set.sample (collector ())]
-  in
-  (info, collect)
-
-(** Registers a metric defined with [info] associated to its [collector] *)
-let add_metric (info, collector) =
-  CollectorRegistry.(register sc_rollup_node_registry) info collector
+let set_gauge help name f =
+  let m = v_gauge ~help name in
+  fun x -> Gauge.set m @@ f x
 
 module Cohttp (Server : Cohttp_lwt.S.Server) = struct
   let callback _conn req _body =
@@ -65,13 +49,28 @@ module Cohttp (Server : Cohttp_lwt.S.Server) = struct
     let uri = Request.uri req in
     match (Request.meth req, Uri.path uri) with
     | `GET, "/metrics" ->
-        let* data = CollectorRegistry.(collect sc_rollup_node_registry) in
+        let* data_sc = CollectorRegistry.(collect sc_rollup_node_registry) in
+        let* data_injector =
+          CollectorRegistry.(collect Octez_injector.Metrics.registry)
+        in
+        let data_merged =
+          MetricFamilyMap.merge
+            (fun _ v1 v2 -> match v1 with Some v1 -> Some v1 | _ -> v2)
+            data_sc
+            data_injector
+        in
         let body =
-          Fmt.to_to_string Prometheus_app.TextFormat_0_0_4.output data
+          Fmt.to_to_string Prometheus_app.TextFormat_0_0_4.output data_merged
         in
         let headers =
           Header.init_with "Content-Type" "text/plain; version=0.0.4"
         in
+        Server.respond_string ~status:`OK ~headers ~body ()
+    | `GET, "/test" ->
+        let headers =
+          Header.init_with "Content-Type" "text/plain; version=0.0.4"
+        in
+        let body = "bla" in
         Server.respond_string ~status:`OK ~headers ~body ()
     | _ -> Server.respond_error ~status:`Bad_request ~body:"Bad request" ()
 end
@@ -118,7 +117,6 @@ let pp_label_names fmt =
     fmt
 
 let print_csv_metrics ppf metrics =
-  let open Prometheus in
   Format.fprintf ppf "@[<v>Name,Type,Description,Labels" ;
   List.iter
     (fun (v, _) ->
@@ -131,7 +129,7 @@ let print_csv_metrics ppf metrics =
         v.MetricInfo.help
         pp_label_names
         v.MetricInfo.label_names)
-    (Prometheus.MetricFamilyMap.to_list metrics) ;
+    (MetricFamilyMap.to_list metrics) ;
   Format.fprintf ppf "@]@."
 
 module Info = struct
@@ -147,15 +145,19 @@ module Info = struct
     let help = "Rollup node info" in
     v_labels_counter
       ~help
-      ~label_names:["rollup_address"; "mode"; "genesis_level"; "pvm_kind"]
+      ~label_names:
+        ["rollup_address"; "mode"; "genesis_level"; "genesis_hash"; "pvm_kind"]
       "rollup_node_info"
 
-  let init_rollup_node_info ~id ~mode ~genesis_level ~pvm_kind =
+  let init_rollup_node_info ~id ~mode ~genesis_level ~genesis_hash ~pvm_kind =
     let id = Tezos_crypto.Hashed.Smart_rollup_address.to_b58check id in
     let mode = Configuration.string_of_mode mode in
     let genesis_level = Int32.to_string genesis_level in
+    let genesis_hash = Commitment.Hash.to_b58check genesis_hash in
     ignore
-    @@ Counter.labels rollup_node_info [id; mode; genesis_level; pvm_kind] ;
+    @@ Counter.labels
+         rollup_node_info
+         [id; mode; genesis_level; genesis_hash; pvm_kind] ;
     ()
 
   let () =
@@ -166,76 +168,182 @@ module Info = struct
       Counter.labels node_general_info [version; commit_hash; commit_date]
     in
     ()
+
+  let set_lcc_level_l1 =
+    set_gauge
+      "Block level of the Last Cemented Commitment on (LCC) - L1"
+      "lcc_level_l1"
+      Int32.to_float
+
+  let set_lcc_level_local =
+    set_gauge
+      "Block level of the Last Cemented Commitment (LCC) - Local"
+      "lcc_level_local"
+      Int32.to_float
+
+  let set_lpc_level_l1 =
+    set_gauge
+      "Block level of the Last Published Commitment on (LCC) - L1"
+      "lpc_level_l1"
+      Int32.to_float
+
+  let set_lpc_level_local =
+    set_gauge
+      "Block level of the Last Published Commitment (LCC) - Local"
+      "lpc_level_local"
+      Int32.to_float
 end
 
 module Inbox = struct
-  type t = {head_inbox_level : Gauge.t}
+  let set_head_level =
+    set_gauge "Level of last inbox" "inbox_level" Int32.to_float
 
-  module Stats = struct
-    let internal_messages_number = ref 0.
-
-    let external_messages_number = ref 0.
-
-    let zero () =
-      internal_messages_number := 0. ;
-      external_messages_number := 0.
-
-    let set ~is_internal l =
-      zero () ;
-      List.iter
-        (fun x ->
-          let r =
-            if is_internal x then internal_messages_number
-            else external_messages_number
-          in
-          r := !r +. 1.)
-        l
-  end
-
-  let head_process_time =
+  let internal_messages_number =
     v_gauge
-      ~help:"The time the rollup node spent processing the head"
-      "head_inbox_process_time"
+      ~help:"Number of internal messages in inbox"
+      "inbox_internal_messages_number"
 
-  module Head_process_time_histogram = Histogram (struct
-    (* These values define the 20 buckets of the histogram. The buckets deal
-       with the time intervals [0.01 * i, 0.01 * (i + 1)) for i = 0,..., 20-1,
-       so that we cover the range 0-200 ms for the inbox head processing time.
-       The last bucket (i = 20) covers the range 200 ms-Infinity. *)
-    let spec = Histogram_spec.of_linear 0. 0.01 20
-  end)
+  let external_messages_number =
+    v_gauge
+      ~help:"Number of external messages in inbox"
+      "inbox_external_messages_number"
 
-  let head_process_time_histogram =
-    Head_process_time_histogram.v
-      ~registry:sc_rollup_node_registry
-      ~namespace
-      ~subsystem
-      ~help:"The time the rollup node spent processing the head"
-      "head_inbox_process_time_histogram"
-
-  let set_process_time pt =
-    let pt = Ptime.Span.to_float_s pt in
-    Prometheus.Gauge.set head_process_time pt ;
-    Head_process_time_histogram.observe head_process_time_histogram pt
-
-  let metrics =
-    let head_inbox_level =
-      v_gauge ~help:"The level of the last inbox" "head_inbox_level"
+  let set_messages ~is_internal l =
+    let internal, external_ =
+      List.fold_left
+        (fun (internal, external_) x ->
+          if is_internal x then (internal +. 1., external_)
+          else (internal, external_ +. 1.))
+        (0., 0.)
+        l
     in
-    let head_internal_messages_number =
-      metric
-        ~help:"The number of internal messages in head's inbox"
-        ~name:"head_inbox_internal_messages_number"
-        (fun () -> !Stats.internal_messages_number)
+    Gauge.set internal_messages_number internal ;
+    Gauge.set external_messages_number external_
+
+  let set_process_time =
+    set_gauge
+      "The time the rollup node spent processing the head"
+      "inbox_process_time"
+      Ptime.Span.to_float_s
+
+  let set_fetch_time =
+    set_gauge
+      "The time the rollup node spent fetching the inbox"
+      "inbox_fetch_time"
+      Ptime.Span.to_float_s
+end
+
+module GC = struct
+  let set_process_time =
+    set_gauge "GC processing time" "gc_process_time" Ptime.Span.to_float_s
+
+  let set_oldest_available_level =
+    set_gauge
+      "Oldest Available Level after GC"
+      "gc_oldest_available_level"
+      Int32.to_float
+end
+
+module PVM = struct end
+
+module Batcher = struct
+  let set_get_time =
+    set_gauge "Time to fetch batches" "batcher_get_time" Ptime.Span.to_float_s
+
+  let set_inject_time =
+    set_gauge
+      "Time to inject batches"
+      "batcher_inject_time"
+      Ptime.Span.to_float_s
+
+  let set_message_queue_size =
+    set_gauge "Batcher queue size" "batcher_queue_size" Int.to_float
+
+  let set_last_batch_level =
+    set_gauge "Level of last batch" "batcher_last_batch_level" Int32.to_float
+
+  let set_last_batch_time =
+    set_gauge "Time of last batch" "batcher_last_batch_time" Ptime.to_float_s
+end
+
+module Performance = struct
+  let virtual_ = v_gauge ~help:"Size Memory Stats" "performance_virtual"
+
+  let resident = v_gauge ~help:"Resident Memory Stats" "performance_resident"
+
+  let shared = v_gauge ~help:"Shared Memory Stats" "performance_shared"
+
+  let mem = v_gauge ~help:"Mem Memory Stats" "performance_mem"
+
+  let set_memory_stats () =
+    let open Lwt_syntax in
+    let* result = Sys_info.memory_stats () in
+    let one_mega = 1024. *. 1024. in
+    match result with
+    | Ok (Statm stats) ->
+        let page_size = Int64.of_int stats.page_size in
+        Gauge.set virtual_
+        @@ (Int64.(to_float @@ mul stats.size page_size) /. one_mega) ;
+        Gauge.set resident
+        @@ (Int64.(to_float @@ mul stats.resident page_size) /. one_mega) ;
+        Gauge.set shared
+        @@ (Int64.(to_float @@ mul stats.shared page_size) /. one_mega) ;
+        return_unit
+    | Ok (Ps stats) ->
+        Gauge.set mem (stats.mem *. Int.to_float stats.page_size /. one_mega) ;
+        Gauge.set resident
+        @@ Int64.(to_float @@ mul stats.resident @@ of_int stats.page_size)
+           /. one_mega ;
+        return_unit
+    | Error _ ->
+        Format.eprintf "ERROR WHILE GETTING MEMORY STATS@." ;
+        return_unit
+
+  let cpu = v_gauge ~help:"CPU Percentage" "performance_cpu_percentage"
+
+  let set_cpu_stats =
+    let open Unix in
+    let sum ts =
+      ts.tms_utime +. ts.tms_stime +. ts.tms_cutime +. ts.tms_cstime
     in
-    let head_external_messages_number =
-      metric
-        ~help:"The number of external messages in head's inbox"
-        ~name:"head_inbox_external_messages_number"
-        (fun () -> !Stats.external_messages_number)
-    in
-    List.iter
-      add_metric
-      [head_internal_messages_number; head_external_messages_number] ;
-    {head_inbox_level}
+    let t0 = ref 0. in
+    let ts0 = ref 0. in
+    fun () ->
+      let t = Unix.gettimeofday () in
+      let ts = sum @@ Unix.times () in
+      if !t0 = 0. then (
+        t0 := t ;
+        ts0 := ts)
+      else
+        let percentage = (ts -. !ts0) /. (t -. !t0) *. 100. in
+        t0 := t ;
+        ts0 := ts ;
+        Gauge.set cpu percentage
+
+  let rec directory_size path =
+    let content = Sys.readdir path in
+    Array.fold_left (fun acc file ->
+        let full_path = Filename.concat path file in
+        if Sys.is_directory full_path then
+          acc + directory_size full_path
+        else
+          let stat = Unix.stat full_path in
+          acc + stat.st_size) 0 content
+
+  let storage = v_gauge ~help:"Storage Disk Usage" "performance_storage"
+  let context = v_gauge ~help:"Context Disk Usage" "performance_context"
+  let logs = v_gauge ~help:"Logs Disk Usage" "performance_logs"
+  let data = v_gauge ~help:"Data Disk Usage" "performance_data"
+
+  let set_disk_usage_stats data_dir =
+    let one_mega = 1024 * 1024 in
+    Gauge.set storage @@ Float.of_int @@ (directory_size @@ Filename.concat data_dir "storage") / one_mega;
+    Gauge.set context @@ Float.of_int @@ (directory_size @@ Filename.concat data_dir "context") / one_mega;
+    Gauge.set logs @@ Float.of_int @@ (directory_size @@ Filename.concat data_dir "daily_logs") / one_mega;
+    Gauge.set data @@ Float.of_int @@ (directory_size data_dir) / one_mega
+
+  let set_stats data_dir =
+    set_disk_usage_stats data_dir;
+    set_cpu_stats ();
+    set_memory_stats ()
 end

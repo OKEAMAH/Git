@@ -42,24 +42,53 @@ module Info : sig
     id:Tezos_crypto.Hashed.Smart_rollup_address.t ->
     mode:Configuration.mode ->
     genesis_level:int32 ->
+    genesis_hash:Commitment.Hash.t ->
     pvm_kind:string ->
     unit
+
+  val set_lcc_level_local : int32 -> unit
+
+  val set_lcc_level_l1 : int32 -> unit
+
+  val set_lpc_level_local : int32 -> unit
+
+  val set_lpc_level_l1 : int32 -> unit
 end
 
 (** The metrics related to Inboxes *)
 module Inbox : sig
-  (** The type of an inbox metrics *)
-  type t = {head_inbox_level : Prometheus.Gauge.t}
+  val set_head_level : int32 -> unit
 
-  (** The stats for the inboxes *)
-  module Stats : sig
-    (** Set the number of messages from the head *)
-    val set : is_internal:('a -> bool) -> 'a list -> unit
-  end
+  (** Set the number of messages from the head *)
+  val set_messages : is_internal:('a -> bool) -> 'a list -> unit
 
   (** Set the time the rollup node used to process the head *)
-  val set_process_time : Ptime.Span.t -> unit
+  val set_process_time : Ptime.span -> unit
 
-  (** The inboxes metrics *)
-  val metrics : t
+  (** Set the time the rollup node used to fetch the inbox *)
+  val set_fetch_time : Ptime.span -> unit
+end
+
+module Batcher : sig
+  val set_get_time : Ptime.span -> unit
+
+  val set_inject_time : Ptime.span -> unit
+
+  val set_message_queue_size : int -> unit
+
+  val set_last_batch_level : int32 -> unit
+
+  val set_last_batch_time : Ptime.t -> unit
+end
+
+module GC : sig
+  val set_process_time : Ptime.span -> unit
+  val set_oldest_available_level : int32 -> unit
+end
+
+module Performance : sig
+  val set_memory_stats : unit -> unit Lwt.t
+  val set_cpu_stats : unit -> unit
+  val set_disk_usage_stats : string -> unit
+  val set_stats : string -> unit Lwt.t
 end

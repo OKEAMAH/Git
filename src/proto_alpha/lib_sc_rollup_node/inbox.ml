@@ -137,8 +137,7 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
     Node_context.inbox_of_head node_ctxt (Layer1.head_of_header predecessor)
   in
   let predecessor_timestamp = predecessor.header.timestamp in
-  let inbox_metrics = Metrics.Inbox.metrics in
-  Prometheus.Gauge.set inbox_metrics.head_inbox_level @@ Int32.to_float level ;
+  Metrics.Inbox.set_head_level level ;
   let inbox = Sc_rollup_proto_types.Inbox.of_octez inbox in
   let*? messages =
     Environment.wrap_tzresult
@@ -158,7 +157,7 @@ let process_messages (node_ctxt : _ Node_context.t) ~is_first_block
       inbox
       messages
   in
-  Metrics.Inbox.Stats.set
+  Metrics.Inbox.set_messages
     messages_with_protocol_internal_messages
     ~is_internal:(function
       | Sc_rollup.Inbox_message.Internal _ -> true
