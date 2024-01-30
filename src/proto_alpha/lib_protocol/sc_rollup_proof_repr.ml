@@ -247,9 +247,9 @@ module Dal_helpers = struct
     | Ok () -> true
     | Error _ -> false
 
-  let valid_slot_id ~dal_number_of_slots ~dal_activation_level
-      ~dal_attestation_lag ~origination_level ~commit_inbox_level
-      Dal_slot_repr.Header.{published_level; index} =
+  let valid_slot_id ~dal_number_of_slots ~dal_attested_slots_validity_lag
+      ~dal_activation_level ~dal_attestation_lag ~origination_level
+      ~commit_inbox_level Dal_slot_repr.Header.{published_level; index} =
     (* [dal_attestation_lag] is supposed to be positive. *)
     let open Raw_level_repr in
     slot_index_is_valid ~dal_number_of_slots ~slot_index:index
