@@ -197,32 +197,14 @@ let () =
           * commitment_period)
       v}
 *)
-let commitment_level_of_inbox_level (node_ctxt : _ Node_context.t) inbox_level =
-  let open Lwt_result_syntax in
-  let last_published_commitment = Reference.get node_ctxt.lpc in
-  let+ constants =
-    Protocol_plugins.get_constants_of_level node_ctxt inbox_level
-  in
-  let commitment_period =
-    Int32.of_int constants.sc_rollup.commitment_period_in_blocks
-  in
-  Option.map
-    (fun last_published_commitment ->
-      (* TODO: https://gitlab.com/tezos/tezos/-/issues/6246
-         fix and test last_published_inbox_level in RPC dir. *)
-      let last_published = last_published_commitment.Commitment.inbox_level in
-      let open Int32 in
-      div (sub last_published inbox_level) commitment_period
-      |> mul commitment_period |> sub last_published)
-    last_published_commitment
 
 let inbox_info_of_level (node_ctxt : _ Node_context.t) inbox_level =
   let open Lwt_result_syntax in
-  let+ finalized_level = Node_context.get_finalized_level node_ctxt in
+  let* finalized_level = Node_context.get_finalized_level node_ctxt in
   let finalized = Compare.Int32.(inbox_level <= finalized_level) in
   let lcc = Reference.get node_ctxt.lcc in
   let cemented = Compare.Int32.(inbox_level <= lcc.level) in
-  (finalized, cemented)
+  return (finalized, cemented)
 
 let () =
   (* Improve batcher status RPC *)
@@ -236,74 +218,42 @@ let () =
   | Committed _ -> assert false (* Batched does not know commitment status *)
   | Included {op; oph; op_index; l1_block; l1_level; _} -> (
       let* finalized, cemented = inbox_info_of_level node_ctxt l1_level in
-      let* commitment_level =
-        commitment_level_of_inbox_level node_ctxt l1_level
+      let* commitment_info =
+        Node_context.find_commitment_after_level node_ctxt l1_level
       in
-      match commitment_level with
+      match commitment_info with
       | None ->
+          (* Commitment not computed yet for inbox *)
           return
             (Rollup_node_services.Included
                {op; oph; op_index; l1_block; l1_level; finalized; cemented})
-      | Some commitment_level -> (
-          let* block =
-            Node_context.find_l2_block_by_level node_ctxt commitment_level
+      | Some (commitment_hash, commitment) -> (
+          (* Commitment computed *)
+          let* published_at =
+            Node_context.commitment_published_at_level node_ctxt commitment_hash
           in
-          match block with
+          match published_at with
           | None ->
-              (* Commitment not computed yet for inbox *)
+              (* Commitment not published yet *)
               return
                 (Rollup_node_services.Included
                    {op; oph; op_index; l1_block; l1_level; finalized; cemented})
-          | Some block -> (
-              let commitment_hash =
-                WithExceptions.Option.get
-                  ~loc:__LOC__
-                  block.header.commitment_hash
-              in
-              (* Commitment computed *)
-              let* published_at =
-                Node_context.commitment_published_at_level
-                  node_ctxt
-                  commitment_hash
-              in
-              match published_at with
-              | None | Some {published_at_level = None; _} ->
-                  (* Commitment not published yet *)
-                  return
-                    (Rollup_node_services.Included
-                       {
-                         op;
-                         oph;
-                         op_index;
-                         l1_block;
-                         l1_level;
-                         finalized;
-                         cemented;
-                       })
-              | Some
-                  {
-                    first_published_at_level;
-                    published_at_level = Some published_at_level;
-                  } ->
-                  (* Commitment published *)
-                  let* commitment =
-                    Node_context.get_commitment node_ctxt commitment_hash
-                  in
-                  return
-                    (Rollup_node_services.Committed
-                       {
-                         op;
-                         oph;
-                         op_index;
-                         l1_block;
-                         l1_level;
-                         finalized;
-                         cemented;
-                         commitment;
-                         commitment_hash;
-                         first_published_at_level;
-                         published_at_level;
-                       }))))
+          | Some {first_published_at_level; published_at_level} ->
+              return
+                (Rollup_node_services.Committed
+                   {
+                     op;
+                     oph;
+                     op_index;
+                     l1_block;
+                     l1_level;
+                     finalized;
+                     cemented;
+                     commitment;
+                     commitment_hash;
+                     first_published_at_level;
+                     published_at_level;
+                   })))
 
 let add_describe dir =
   Tezos_rpc.Directory.register_describe_directory_service

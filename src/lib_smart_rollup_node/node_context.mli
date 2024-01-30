@@ -366,6 +366,12 @@ val register_published_commitment :
   published_by_us:bool ->
   unit tzresult Lwt.t
 
+(** [find_commitment_after_level t level] returns the earliest commitment [c]
+    for which [c.inbox_level >= level], i.e. the commitments that attest the
+    effect of the inbox at level [level].  *)
+val find_commitment_after_level :
+  _ t -> int32 -> (Commitment.Hash.t * Commitment.t) option tzresult Lwt.t
+
 (** {3 Inboxes} *)
 
 (** [get_inbox t inbox_hash] retrieves the inbox whose hash is [inbox_hash] from

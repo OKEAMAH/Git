@@ -569,6 +569,34 @@ let register_published_commitment node_ctxt commitment ~first_published_at_level
   if update_lpc_ref then Reference.set node_ctxt.lpc (Some commitment) ;
   return_unit
 
+let find_commitment_after_level node_ctxt inbox_level =
+  let open Lwt_result_syntax in
+  let* head = last_processed_head_opt node_ctxt in
+  match head with
+  | None -> return_none
+  | Some head -> (
+      let last_commitment_hash =
+        Sc_rollup_block.most_recent_commitment head.header
+      in
+      let* last_commitment = find_commitment node_ctxt last_commitment_hash in
+      match last_commitment with
+      | None -> return_none
+      | Some last_commitment when last_commitment.inbox_level < inbox_level ->
+          return None
+      | Some last_commitment ->
+          let rec find commitment_hash commitment =
+            let* prev_commitment =
+              find_commitment node_ctxt commitment.Commitment.predecessor
+            in
+            match prev_commitment with
+            | None -> return_none
+            | Some prev_commitment ->
+                if prev_commitment.inbox_level <= inbox_level then
+                  return_some (commitment_hash, commitment)
+                else find commitment.predecessor prev_commitment
+          in
+          find last_commitment_hash last_commitment)
+
 let find_inbox {store; _} inbox_hash =
   let open Lwt_result_syntax in
   let+ inbox = Store.Inboxes.read store.inboxes inbox_hash in

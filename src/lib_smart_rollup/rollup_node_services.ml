@@ -82,7 +82,7 @@ type message_status =
       commitment : Commitment.t;
       commitment_hash : Commitment.Hash.t;
       first_published_at_level : int32;
-      published_at_level : int32;
+      published_at_level : int32 option;
     }
 
 type gc_info = {
@@ -206,7 +206,7 @@ module Encodings = struct
              (req "commitment" Commitment.encoding)
              (req "hash" Commitment.Hash.encoding)
              (req "first_published_at_level" int32)
-             (req "published_at_level" int32))
+             (opt "published_at_level" int32))
           (function
             | Committed
                 {
