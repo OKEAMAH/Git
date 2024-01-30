@@ -515,6 +515,13 @@ let rec monitor_l1_chain l1_ctxt cctxt state =
     in
     state.last_seen_head <- Some head ;
     let*! () = Injector.inject ~header:header.shell () in
+    (* Event for tests *)
+    let*! () =
+      Daemon_event.new_head_processed
+        head_hash
+        header.shell.level
+        Ptime.Span.zero
+    in
     return_unit
   in
   (* Ignore errors *)
