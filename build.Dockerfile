@@ -38,17 +38,3 @@ RUN while read -r protocol; do \
     mkdir -p tezos/parameters/"$protocol"-parameters && \
     cp tezos/src/proto_"$(echo "$protocol" | tr - _)"/parameters/*.json tezos/parameters/"$protocol"-parameters; \
     done < tezos/script-inputs/active_protocol_versions
-
-FROM ${RUST_TOOLCHAIN_IMAGE}:${RUST_TOOLCHAIN_IMAGE_VERSION} AS layer2-builder
-WORKDIR /home/tezos/
-RUN mkdir -p /home/tezos/evm_kernel
-COPY --chown=tezos:nogroup kernels.mk evm_kernel
-COPY --chown=tezos:nogroup src evm_kernel/src
-RUN make -C evm_kernel -f kernels.mk build-deps \
-  && make -C evm_kernel -f kernels.mk EVM_CONFIG=src/kernel_evm/config/dailynet.yaml evm_installer.wasm
-
-# We move the EVM kernel in the final image in a dedicated stage to parallelize
-# the two builder stages.
-FROM without-evm-artifacts as with-evm-artifacts
-COPY --from=layer2-builder --chown=tezos:nogroup /home/tezos/evm_kernel/evm_installer.wasm evm_kernel
-COPY --from=layer2-builder --chown=tezos:nogroup /home/tezos/evm_kernel/_evm_installer_preimages/ evm_kernel/_evm_installer_preimages
