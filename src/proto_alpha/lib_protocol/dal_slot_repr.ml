@@ -940,8 +940,6 @@ module History_v2 = struct
   (* History is represented via a skip list. The content of the cell
      is the hash of a merkle proof. *)
 
-  [@@@ocaml.warning "-a"]
-
   (* A leaf of the merkle tree is a slot. *)
   module Leaf = struct
     type t = Header.t
