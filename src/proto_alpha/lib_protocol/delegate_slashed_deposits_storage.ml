@@ -323,13 +323,13 @@ let apply_and_clear_denunciations ctxt =
                   (`Contract (Contract_repr.Implicit rewarded))
               in
               let percentage =
-                Int_percentage.add_bounded percentage slashing_percentage
+                Percentage.add_bounded percentage slashing_percentage
               in
               ( ctxt,
                 percentage,
                 punish_balance_updates @ reward_balance_updates
                 @ balance_updates ))
-            (ctxt, Int_percentage.p0, balance_updates)
+            (ctxt, Percentage.p0, balance_updates)
             denunciations_to_apply
         in
         let slashings =

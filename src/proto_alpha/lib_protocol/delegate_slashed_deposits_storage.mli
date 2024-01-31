@@ -92,7 +92,7 @@ val clear_outdated_slashed_deposits :
 val apply_and_clear_denunciations :
   Raw_context.t ->
   (Raw_context.t
-  * Int_percentage.t Signature.Public_key_hash.Map.t
+  * Percentage.t Signature.Public_key_hash.Map.t
   * Receipt_repr.balance_updates)
   tzresult
   Lwt.t
