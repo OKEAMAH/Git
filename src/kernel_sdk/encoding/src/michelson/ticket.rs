@@ -31,6 +31,8 @@ use tezos_data_encoding::{
 };
 use thiserror::Error;
 
+use super::MichelsonTicket;
+
 #[cfg(feature = "testing")]
 pub mod testing;
 
@@ -148,8 +150,6 @@ impl<Expr: Michelson> Ticket<Expr> {
         if amount.is_positive() {
             Ok(Ticket(MichelsonTicket(
                 MichelsonContract(creator),
-                // todo!("Créer le contents_type depuis Val"),
-                // contents_type.into(), //
                 contents.into(),
                 MichelsonInt(Zarith(amount)),
             )))
@@ -205,12 +205,10 @@ impl Ticket<MichelsonString> {
     /// clone used in testing
     #[cfg(feature = "testing")]
     pub fn testing_clone(&self) -> Self {
-        Ticket(MichelsonPair(
+        Ticket(MichelsonTicket(
             MichelsonContract(self.creator().0.clone()),
-            MichelsonPair(
-                MichelsonString(self.contents().0.clone()),
-                MichelsonInt(Zarith(self.amount().clone())),
-            ),
+            MichelsonString(self.contents().0.clone()),
+            MichelsonInt(Zarith(self.amount().clone())),
         ))
     }
 }
