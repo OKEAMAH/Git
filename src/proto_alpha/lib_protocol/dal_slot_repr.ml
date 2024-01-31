@@ -1244,6 +1244,48 @@ module History_v2 = struct
       in
       return (new_head, cache)
 
+    (* Given a list [attested_slot_headers] of well-ordered (wrt slots indices)
+       (attested) slot headers, this function builds an extension [l] of
+       [attested_slot_headers] such that:
+
+       - all elements in [attested_slot_headers] are in [l],
+
+       - for every slot index i in [0, number_of_slots - 1] that doesn't appear
+       in [attested_slot_headers], an unattested slot id is inserted in [l],
+
+       - [l] is well sorted wrt. slots indices. *)
+    let fill_slot_headers ~number_of_slots ~published_level
+        attested_slot_headers =
+      let open Result_syntax in
+      let module I = Dal_slot_index_repr in
+      let+ all_indices =
+        I.slots_range ~number_of_slots ~lower:0 ~upper:(number_of_slots - 1)
+      in
+      let mk_unattested index =
+        Content.Unattested Header.{published_level; index}
+      in
+      (* Hypothesis: both lists are sorted in increasing order w.r.t. slots
+         indices. *)
+      let rec aux indices slots =
+        match (indices, slots) with
+        | _, [] -> List.map mk_unattested indices
+        | [], s :: _ ->
+            failwith
+              (Format.sprintf
+                 "Unreachable: cannot have more slots than indices: %d"
+                 (I.to_int s.Header.id.index))
+        | i :: indices', s :: slots' ->
+            let c = I.compare i s.Header.id.index in
+            if Compare.Int.(c = 0) then Attested s :: aux indices' slots'
+            else if Compare.Int.(c < 0) then
+              (* i < s.Header.id.index *)
+              mk_unattested i :: aux indices' slots
+            else
+              (* i > s.Header.id.index *)
+              failwith "Unreachable: all indices of 'slots' are in 'indices'"
+      in
+      aux all_indices attested_slot_headers
+
     (*  TODO: will be uncommented incrementally on the next MRs *)
 
     (*
