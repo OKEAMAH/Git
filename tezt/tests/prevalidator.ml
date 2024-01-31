@@ -2357,6 +2357,105 @@ module Revamped = struct
     Log.info "The [validated] batch as the correct number of manager payloads." ;
     unit
 
+  (** This test injects consensus operations and management operations from several sources and checks that the [delegate] filter on mempool correctly filters operations by delegates. *)
+  let test_filter_mempool_operations_by_delegates =
+    Protocol.register_test
+      ~__FILE__
+      ~title:"Filter mempool operations by delegates"
+      ~tags:["mempool"; "delegate"]
+    @@ fun protocol ->
+    log_step 1 "Initialize a node and a client." ;
+    let* node, client =
+      Client.init_with_protocol
+        ~nodes_args:[Synchronisation_threshold 0]
+        ~protocol
+        `Client
+        ()
+    in
+
+    log_step 2 "Bake an empty block to be able to attest it." ;
+    let* level =
+      bake_for ~empty:true ~protocol ~wait_for_flush:true node client
+    in
+
+    let* block_payload_hash =
+      Operation.Consensus.get_block_payload_hash client
+    in
+    let* slots_json = Operation.Consensus.get_slots ~level client in
+    let inject_attestation (delegate : Account.key) =
+      Operation.Consensus.inject
+        (Operation.Consensus.attestation
+           ~use_legacy_name:true
+           ~slot:(Operation.Consensus.first_slot ~slots_json delegate)
+           ~level
+           ~round:0
+           ~block_payload_hash)
+        ~signer:delegate
+        client
+    in
+
+    log_step 3 "Attest with bootstrap1." ;
+    let* (`OpHash oph_1_1) = inject_attestation Constant.bootstrap1 in
+
+    log_step 4 "Inject a delegation with bootstrap1." ;
+    let* (`OpHash oph_1_2) =
+      let source = Constant.bootstrap1 in
+      Operation.Manager.(inject [make ~source @@ delegation ()] client)
+    in
+
+    log_step 5 "Attest with bootstrap2." ;
+    let* (`OpHash oph_2) = inject_attestation Constant.bootstrap2 in
+
+    log_step 6 "Inject a transfer with bootstrap3." ;
+    let* (`OpHash oph_3) =
+      let source = Constant.bootstrap3 in
+      Operation.Manager.(inject [make ~source @@ delegation ()] client)
+    in
+
+    log_step
+      7
+      "Check that only %s operations are recovered when using the [delegate] \
+       filter on it"
+      Constant.bootstrap1.alias ;
+    let* mempool =
+      Mempool.get_mempool
+        client
+        ~delegates:[Constant.bootstrap1.public_key_hash]
+    in
+    Mempool.check_mempool ~validated:[oph_1_1; oph_1_2] mempool ;
+
+    log_step
+      8
+      "Check that only %s and %s operations are recovered when using the \
+       [delegate] filter on them"
+      Constant.bootstrap2.alias
+      Constant.bootstrap3.alias ;
+    let* mempool =
+      Mempool.get_mempool
+        client
+        ~delegates:
+          [
+            Constant.bootstrap2.public_key_hash;
+            Constant.bootstrap3.public_key_hash;
+          ]
+    in
+    Mempool.check_mempool ~validated:[oph_2; oph_3] mempool ;
+
+    log_step
+      8
+      "Check that no operation is recovered when using the [delegate] filter \
+       on %s"
+      Constant.bootstrap4.alias ;
+    let* mempool =
+      Mempool.get_mempool
+        client
+        ~delegates:[Constant.bootstrap4.public_key_hash]
+    in
+    Mempool.check_mempool mempool ;
+
+    Log.info "The [delegate] filter has filtered the delegates correctly." ;
+    unit
+
   (** Runs a network of three nodes, one of which has a disabled mempool.
       Check that operations do not propagate to the node with disable mempool and
       that this node does not run a prevalidator nor accepts operation injections. *)
@@ -3932,6 +4031,7 @@ let register ~protocols =
   Revamped.precheck_with_empty_balance protocols ;
   Revamped.inject_operations protocols ;
   Revamped.test_inject_manager_batch protocols ;
+  Revamped.test_filter_mempool_operations_by_delegates protocols ;
   Revamped.mempool_disabled protocols ;
   Revamped.propagation_future_attestation protocols ;
   Revamped.test_mempool_config_operation_filtering protocols ;
