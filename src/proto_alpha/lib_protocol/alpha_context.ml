@@ -563,7 +563,7 @@ module Delegate = struct
 
     let current_cycle_denunciations_list ctxt =
       let open Lwt_syntax in
-      let* r = Storage.Current_cycle_denunciations.bindings ctxt in
+      let* r = Storage.Pending_denunciations.bindings ctxt in
       let r =
         List.map (fun (x, l) -> List.map (fun y -> (x, y)) l) r |> List.flatten
       in
