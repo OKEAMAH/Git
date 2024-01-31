@@ -168,7 +168,7 @@ module RPC : sig
 
   (**  Call RPC "PATCH /profiles" to update the list of profiles tracked by
          the DAL node. *)
-  val patch_profiles : operator_profiles -> unit RPC_core.t
+  val patch_profiles : ?save_config:bool -> operator_profiles -> unit RPC_core.t
 
   (**  Call RPC "GET /profiles" to retrieve the list of profiles tracked by
          the DAL node. *)

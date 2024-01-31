@@ -2136,8 +2136,8 @@ let test_dal_node_test_patch_profile _protocol _parameters _cryptobox _node
     let* response = Dal_RPC.(call_raw dal_node @@ patch_profiles [profile]) in
     return @@ RPC_core.check_string_response ~code:400 response
   in
-  let patch_profile_rpc profile =
-    Dal_RPC.(call dal_node (patch_profiles [profile]))
+  let patch_profile_rpc ?save_config profile =
+    Dal_RPC.(call dal_node (patch_profiles ?save_config [profile]))
   in
   let profile1 = Dal_RPC.Attester Constant.bootstrap1.public_key_hash in
   let profile2 = Dal_RPC.Attester Constant.bootstrap2.public_key_hash in
@@ -2155,10 +2155,24 @@ let test_dal_node_test_patch_profile _protocol _parameters _cryptobox _node
   let* () =
     check_profiles ~__LOC__ dal_node ~expected:(Operator [profile1; profile2])
   in
-  (* Test that the patched profiles are persisted after restart. *)
+  (* Test that the patched profiles are persisted after restart using SIGTERM. *)
   let* () = Dal_node.terminate dal_node in
   let* () = Dal_node.run dal_node ~wait_ready:true in
-  check_profiles ~__LOC__ dal_node ~expected:(Operator [profile1; profile2])
+  let* () =
+    check_profiles ~__LOC__ dal_node ~expected:(Operator [profile1; profile2])
+  in
+  (* Test that the patched profiles are persisted after restart, even if we stop
+     the DAL node abruptly to not let it the opportunity to save its config at
+     the end of its execution, when the [save_config] flag is used. *)
+  let profile3 = Dal_RPC.Attester Constant.bootstrap3.public_key_hash in
+  let* () = patch_profile_rpc ~save_config:true profile3 in
+  let* () = Dal_node.stop dal_node in
+  let* () = Dal_node.kill dal_node in
+  let* () = Dal_node.run dal_node ~wait_ready:true in
+  check_profiles
+    ~__LOC__
+    dal_node
+    ~expected:(Operator [profile1; profile2; profile3])
 
 (* Check that result of the DAL node's
    GET /profiles/<public_key_hash>/attested_levels/<level>/assigned_shard_indices

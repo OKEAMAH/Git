@@ -173,6 +173,9 @@ module Dal_RPC = struct
     | [] -> ()
     | _ -> JSON.error t "Not an empty object"
 
+  let mk_query_arg ~to_string field v_opt =
+    Option.fold ~none:[] ~some:(fun v -> [(field, to_string v)]) v_opt
+
   let post_commitment slot =
     let slot =
       JSON.parse
@@ -247,16 +250,16 @@ module Dal_RPC = struct
         Operator operator_profiles
     | _ -> failwith "invalid case"
 
-  let patch_profiles profiles =
+  let patch_profiles ?save_config profiles =
     let data : RPC_core.data =
       Data (`A (List.map json_of_operator_profile profiles))
     in
-    make ~data PATCH ["profiles"] as_empty_object_or_fail
+    let query_string =
+      mk_query_arg ~to_string:string_of_bool "save_config" save_config
+    in
+    make ~query_string ~data PATCH ["profiles"] as_empty_object_or_fail
 
   let get_profiles () = make GET ["profiles"] profiles_of_json
-
-  let mk_query_arg ~to_string field v_opt =
-    Option.fold ~none:[] ~some:(fun v -> [(field, to_string v)]) v_opt
 
   let get_commitment_headers ?slot_level ?slot_index commitment =
     let query_string =
