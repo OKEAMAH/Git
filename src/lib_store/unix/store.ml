@@ -2607,6 +2607,93 @@ let check_history_mode_consistency chain_dir history_mode =
              {previous_mode = stored_history_mode; next_mode = history_mode})
       else (* Store is not yet initialized. *) return_unit
 
+(* Loads a [distance] blocks into RAM (to avoid reading noise), and
+   then, flushes it to the disk.*)
+let export_raw store ~head ~distance ~raw_blocks_path =
+  let open Lwt_result_syntax in
+  Format.printf "%s@." __LOC__ ;
+  let chain_store = main_chain_store store in
+  Format.printf "%s@." __LOC__ ;
+  let rec read_blocks acc block_hash n =
+    if n = 0 then return acc
+    else
+      let () =
+        Format.printf "Read block with hash : %a@." Block_hash.pp block_hash
+      in
+      let* block = Block.read_block chain_store block_hash in
+      let () =
+        Format.printf
+          "Finished reading block with hash : %a@."
+          Block_hash.pp
+          block_hash
+      in
+      read_blocks (block :: acc) (Block.predecessor block) (n - 1)
+  in
+  Format.printf "%s@." __LOC__ ;
+  let* blocks = read_blocks [] (Block.hash head) distance in
+  Format.printf "%s@." __LOC__ ;
+  let*! raw_blocks_fd =
+    Lwt_unix.openfile raw_blocks_path Unix.[O_CREAT; O_TRUNC; O_RDWR] 0o777
+  in
+  Format.printf "%s@." __LOC__ ;
+  let start = Time.System.now () in
+  let* (last_offset : int) =
+    List.fold_left_es
+      (fun pos b ->
+        let bytes = Data_encoding.Binary.to_bytes_exn Block_repr.encoding b in
+        let len = Bytes.length bytes in
+        let*! () = Lwt_utils_unix.write_bytes raw_blocks_fd bytes in
+        return (pos + len))
+      0
+      blocks
+  in
+  Format.printf "%s@." __LOC__ ;
+  let*! () = Lwt_unix.fsync raw_blocks_fd in
+  let stop = Time.System.now () in
+  let diff = Ptime.diff stop start in
+  Format.printf
+    "Wrote %d blocks (%d Kb) in %a@."
+    distance
+    (last_offset / 1024)
+    Ptime.Span.pp
+    diff ;
+  let*! () = Lwt_unix.close raw_blocks_fd in
+  return_unit
+
+(* Loads all blocks in the givent [raw_blocks_path] file *)
+let import_raw ~raw_blocks_path =
+  let open Lwt_result_syntax in
+  let*! raw_blocks_fd =
+    Lwt_unix.openfile raw_blocks_path Unix.[O_RDONLY] 0o777
+  in
+  let count = ref 0 in
+  let last_offset = ref 0 in
+  let start = Time.System.now () in
+  let rec loop offset =
+    let*! _b, ofs =
+      Block_repr_unix.pread_block_exn raw_blocks_fd ~file_offset:offset
+    in
+    incr count ;
+    let next = offset + ofs in
+    last_offset := next ;
+    loop next
+  in
+  let*! _ =
+    Lwt.catch
+      (fun () -> loop 0)
+      (function End_of_file -> return_unit | e -> tzfail e)
+  in
+  let stop = Time.System.now () in
+  let diff = Ptime.diff stop start in
+  Format.printf
+    "Read %d blocks (%d Kb) in %a@."
+    !count
+    (!last_offset / 1024)
+    Ptime.Span.pp
+    diff ;
+  let*! () = Lwt_unix.close raw_blocks_fd in
+  return_unit
+
 let init ?patch_context ?commit_genesis ?history_mode ?(readonly = false)
     ?block_cache_limit ~store_dir ~context_dir ~allow_testchains genesis =
   let open Lwt_result_syntax in
@@ -2691,6 +2778,25 @@ let init ?patch_context ?commit_genesis ?history_mode ?(readonly = false)
   in
   Store_metrics.set_invalid_blocks_collector invalid_blocks_collector ;
   let*! () = Store_events.(emit end_init_store) () in
+  let bench =
+    match Sys.getenv_opt "BENCH" with
+    | Some v -> int_of_string_opt v
+    | None -> None
+  in
+  let* () =
+    match bench with
+    | Some distance ->
+        Format.printf "WIP: break point to do some dirty benchs@." ;
+        let raw_blocks_path = "./raw_blocks" in
+        let*! head = Chain.current_head main_chain_store in
+        Format.printf "%s@." __LOC__ ;
+        let* () = export_raw store ~head ~distance ~raw_blocks_path in
+        Format.printf "%s@." __LOC__ ;
+        let* () = import_raw ~raw_blocks_path in
+        Format.printf "WIP: bench was run successfully@." ;
+        assert false
+    | None -> return_unit
+  in
   return store
 
 let close_store global_store =
