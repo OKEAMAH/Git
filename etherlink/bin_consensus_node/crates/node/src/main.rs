@@ -4,14 +4,12 @@
 
 //! DSN node entrypoint
 
-use std::sync::Arc;
-
-use dsn_client::rpc_server::{RpcConfig, RpcServer};
 use dsn_core::storage::ephemeral::EphemeralStorage;
+use dsn_protocol::{protocol, ProtocolConfig};
+use dsn_rpc::{RpcConfig, RpcServer};
 use futures::future::try_join_all;
-use log::{error, info};
-use loopback::{loopback, LoopbackConfig};
-use tokio::sync::broadcast;
+use log::info;
+use tokio::{signal, sync::broadcast};
 
 #[tokio::main]
 async fn main() {
@@ -19,25 +17,23 @@ async fn main() {
     info!("DSN node is launching...");
 
     let (tx_shutdown, _) = broadcast::channel(1);
+    let storage = EphemeralStorage::default();
 
-    let storage = Arc::new(EphemeralStorage::default());
-    let lp_cfg = LoopbackConfig::default();
-    let (mut lp_runner, lp_client) = loopback(storage, lp_cfg, tx_shutdown.subscribe());
+    let proto_cfg = ProtocolConfig::default();
+    let (mut proto_runner, proto_client) = protocol(storage, proto_cfg, tx_shutdown.subscribe());
 
     let rpc_cfg = RpcConfig::default();
-    let mut rpc_server = RpcServer::new(lp_client, rpc_cfg, tx_shutdown.subscribe());
+    let mut rpc_server = RpcServer::new(proto_client, rpc_cfg, tx_shutdown.subscribe());
 
-    let lp_handle = tokio::spawn(async move {
-        if let Err(err) = lp_runner.run().await {
-            error!("Loopback runner failed with {}", err);
+    let proto_handle = tokio::spawn(async move { proto_runner.run().await });
+    let rpc_handle = tokio::spawn(async move { rpc_server.run().await });
+    let shutdown_handle = tokio::spawn(async move {
+        match signal::ctrl_c().await {
+            Ok(_) => tx_shutdown.send(()).map(|_| ()).map_err(|_| ()),
+            Err(_) => Err(()),
         }
     });
-
-    let rpc_handle = tokio::spawn(async move {
-        if let Err(err) = rpc_server.run().await {
-            error!("RPC server failed with {}", err);
-        }
-    });
-
-    try_join_all(vec![lp_handle, rpc_handle]).await.unwrap();
+    try_join_all(vec![proto_handle, rpc_handle, shutdown_handle])
+        .await
+        .unwrap();
 }

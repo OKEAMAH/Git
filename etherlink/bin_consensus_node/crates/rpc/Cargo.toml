@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 [package]
-name = "loopback"
+name = "dsn-rpc"
 publish = false
 license = { workspace = true }
 authors = { workspace = true }
@@ -13,10 +13,20 @@ version = { workspace = true }
 [dependencies]
 async-trait = { workspace = true }
 bcs = { workspace = true }
+futures = { workspace = true }
 log = { workspace = true }
+prost = { workspace = true }
 serde = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
+tokio-stream = { workspace = true }
+tonic = { workspace = true, features = ["prost", "transport"] }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["sync"] }
 
 # DSN
 dsn-core = { workspace = true }
+
+[target.'cfg(not(target_env = "msvc"))'.build-dependencies]
+protobuf-src = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true, features = ["prost", "transport"] }

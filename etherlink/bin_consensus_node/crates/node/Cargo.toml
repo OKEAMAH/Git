@@ -17,11 +17,9 @@ futures = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
 # DSN
-dsn-client = { workspace = true }
+dsn-rpc = { workspace = true }
 dsn-core = { workspace = true }
-
-# Protocols
-loopback = { workspace = true }
+dsn-protocol = { workspace = true }
 
 [[bin]]
 name = "dsn-node"

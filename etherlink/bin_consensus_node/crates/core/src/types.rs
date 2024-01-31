@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+//! DSN core types.
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

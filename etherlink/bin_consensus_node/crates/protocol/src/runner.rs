@@ -2,27 +2,27 @@
 //
 // SPDX-License-Identifier: MIT
 
-//! Loopback protocol
+//! DSN protocol runner implementation.
 
 use std::time::Duration;
 
 use dsn_core::storage::StorageBackend;
 use dsn_core::types::{PreBlock, PreBlockHeader, Transaction};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use tokio::sync::{broadcast, mpsc};
 use tokio::time::Instant;
 
-use crate::error::LoopbackError;
-use crate::state::LoopbackState;
-use crate::{LoopbackConfig, LoopbackRunner};
+use crate::error::ProtocolError;
+use crate::state::ProtocolState;
+use crate::{ProtocolConfig, ProtocolRunner};
 
-impl<S: StorageBackend> LoopbackRunner<S> {
+impl<S: StorageBackend> ProtocolRunner<S> {
     pub fn new(
-        state: LoopbackState<S>,
+        state: ProtocolState<S>,
         tx_pre_blocks: broadcast::Sender<PreBlock>,
         rx_mempool: mpsc::Receiver<Transaction>,
         rx_shutdown: broadcast::Receiver<()>,
-        config: LoopbackConfig,
+        config: ProtocolConfig,
     ) -> Self {
         Self {
             state,
@@ -33,9 +33,9 @@ impl<S: StorageBackend> LoopbackRunner<S> {
         }
     }
 
-    pub async fn run(&mut self) -> Result<(), LoopbackError> {
+    async fn run_inner(&mut self) -> Result<(), ProtocolError> {
         info!(
-            "Starting loopback protocol with {} ms commit delay",
+            "Starting protocol runner with {} ms commit delay",
             self.config.commit_delay_ms
         );
         let timer_delay = Duration::from_millis(self.config.commit_delay_ms);
@@ -44,7 +44,7 @@ impl<S: StorageBackend> LoopbackRunner<S> {
 
         let mut pre_block_id = match self.state.get_head() {
             Ok(header) => header.id + 1,
-            Err(LoopbackError::MissingPreBlockHead) => 0,
+            Err(ProtocolError::MissingPreBlockHead) => 0,
             Err(err) => return Err(err),
         };
 
@@ -56,10 +56,10 @@ impl<S: StorageBackend> LoopbackRunner<S> {
             tokio::select! {
                 Some(transaction) = self.rx_mempool.recv() => {
                     if txs_count >= self.config.max_pre_block_txs_count {
-                        warn!("Transactions are getting delayed because of max count limit overflow");
+                        warn!("Transactions are getting delayed because of max count limit hit");
                         tokio::task::yield_now().await;
                     } else if txs_size >= self.config.max_pre_block_txs_size {
-                        warn!("Transactions are getting delayed because of max size limit overflow");
+                        warn!("Transactions are getting delayed because of max size limit hit");
                         tokio::task::yield_now().await;
                     } else {
                         txs_count += 1;
@@ -78,8 +78,7 @@ impl<S: StorageBackend> LoopbackRunner<S> {
                     };
 
                     if self.tx_pre_blocks.send(pre_block.clone()).is_err() {
-                        warn!("All pre-block subscribers are dropped (likely shutdown in progress)");
-                        continue
+                        warn!("All pre-block subscribers are dropped (shutdown in progress?)");
                     }
 
                     self.state.update_head(pre_block)?;
@@ -93,6 +92,19 @@ impl<S: StorageBackend> LoopbackRunner<S> {
                 _ = self.rx_shutdown.recv() => {
                     return Ok(())
                 },
+            }
+        }
+    }
+
+    pub async fn run(&mut self) -> Result<(), ()> {
+        match self.run_inner().await {
+            Err(err) => {
+                error!("Protocol runner failed with {}", err);
+                Err(())
+            }
+            Ok(()) => {
+                info!("Protocol runner terminated");
+                Ok(())
             }
         }
     }

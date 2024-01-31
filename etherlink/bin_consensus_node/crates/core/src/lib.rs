@@ -2,8 +2,9 @@
 //
 // SPDX-License-Identifier: MIT
 
-//! DSN API
+//! DSN core primitives.
 
+pub mod api;
+pub mod network;
 pub mod storage;
-pub mod traits;
 pub mod types;

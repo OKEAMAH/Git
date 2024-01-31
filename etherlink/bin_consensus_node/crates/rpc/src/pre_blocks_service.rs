@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use async_trait::async_trait;
-use dsn_core::traits::PreBlocksApi;
+use dsn_core::api::PreBlocksApi;
 use dsn_core::types::PreBlock;
 use log::error;
 use tokio::sync::mpsc;

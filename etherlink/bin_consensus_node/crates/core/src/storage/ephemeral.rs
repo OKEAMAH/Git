@@ -2,18 +2,23 @@
 //
 // SPDX-License-Identifier: MIT
 
+//! In-memory storage backend.
+//! Non-persistent, inefficient, for testing purposes ONLY.
+
 use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    sync::Mutex,
+    collections::HashMap,
+    sync::{Arc, RwLock, RwLockReadGuard},
 };
 
 use super::{Snapshot, StorageBackend, StorageError, WriteBatch};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EphemeralStorageError {
-    #[error("Failed to acquire lock")]
-    AcquireLock,
+    #[error("Failed to acquire read lock")]
+    AcquireReadLock,
+
+    #[error("Failed to acquire write lock")]
+    AcquireWriteLock,
 }
 
 impl From<EphemeralStorageError> for StorageError {
@@ -24,14 +29,14 @@ impl From<EphemeralStorageError> for StorageError {
 
 pub type InnerStore = HashMap<(&'static str, Vec<u8>), Vec<u8>>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EphemeralStorage {
-    data: Mutex<RefCell<InnerStore>>,
+    data: Arc<RwLock<InnerStore>>,
 }
 
 #[derive(Debug)]
-pub struct EphemeralSnapshot {
-    pub data: InnerStore,
+pub struct EphemeralSnapshot<'a> {
+    data: RwLockReadGuard<'a, InnerStore>,
 }
 
 #[derive(Debug, Default)]
@@ -40,48 +45,35 @@ pub struct EphemeralWriteBatch {
 }
 
 impl StorageBackend for EphemeralStorage {
-    type Snapshot = EphemeralSnapshot;
+    type Snapshot<'a> = EphemeralSnapshot<'a>;
     type WriteBatch = EphemeralWriteBatch;
 
-    // This is very inefficient, not supposed to be used outside of testing env
-    fn snapshot(
-        &self,
-        scopes: impl IntoIterator<Item = &'static str>,
-    ) -> Result<Self::Snapshot, StorageError> {
-        let scopes: HashSet<&'static str> = scopes.into_iter().collect();
-        Ok(EphemeralSnapshot {
-            data: self
-                .data
-                .lock()
-                .map_err(|_| EphemeralStorageError::AcquireLock)?
-                .borrow()
-                .iter()
-                .filter_map(|((s, k), v)| {
-                    if scopes.contains(s) {
-                        Some(((*s, k.clone()), v.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<InnerStore>(),
-        })
+    // NOTE that although this implementation allows multiple concurrent
+    // readers, a write lock cannot be acquired until all readers release.
+    // Similarly no one can read until a write is in the process.
+    fn snapshot<'b>(&'b self) -> Result<Self::Snapshot<'_>, StorageError> {
+        Ok(EphemeralSnapshot::new(
+            self.data
+                .read()
+                .map_err(|_| EphemeralStorageError::AcquireReadLock)?,
+        ))
     }
 
     fn batch(&self) -> Result<Self::WriteBatch, StorageError> {
         Ok(EphemeralWriteBatch::default())
     }
 
-    fn write(&self, batch: Self::WriteBatch) -> Result<(), StorageError> {
-        let data = self
+    fn write(&mut self, batch: Self::WriteBatch) -> Result<(), StorageError> {
+        let mut data = self
             .data
-            .lock()
-            .map_err(|_| EphemeralStorageError::AcquireLock)?;
+            .write()
+            .map_err(|_| EphemeralStorageError::AcquireWriteLock)?;
 
         batch.data.into_iter().for_each(|(s, k, v)| {
             if let Some(v) = v {
-                data.borrow_mut().insert((s, k), v);
+                data.insert((s, k), v);
             } else {
-                data.borrow_mut().remove(&(s, k));
+                data.remove(&(s, k));
             }
         });
 
@@ -89,7 +81,13 @@ impl StorageBackend for EphemeralStorage {
     }
 }
 
-impl Snapshot for EphemeralSnapshot {
+impl<'a> EphemeralSnapshot<'a> {
+    pub fn new(data: RwLockReadGuard<'a, InnerStore>) -> Self {
+        Self { data }
+    }
+}
+
+impl<'a> Snapshot for EphemeralSnapshot<'a> {
     fn get(&self, scope: &'static str, key: &[u8]) -> Result<Option<Vec<u8>>, StorageError> {
         Ok(self.data.get(&(scope, key.to_vec())).cloned())
     }

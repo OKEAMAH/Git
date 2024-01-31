@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use async_trait::async_trait;
-use dsn_core::traits::TransactionsApi;
+use dsn_core::api::TransactionsApi;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
 

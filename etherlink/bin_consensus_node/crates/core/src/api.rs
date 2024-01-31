@@ -2,19 +2,27 @@
 //
 // SPDX-License-Identifier: MIT
 
+//! DSN API traits.
+//!
+//! These are the public interfaces that have to be implemented
+//! by the local protocol clients.
+//!
+//! It allows to decouple remote clients (e.g. RPC users) from
+//! the particular protocol, storage, network backends.
+
 use crate::types::{PreBlock, PreBlockHeader, Transaction};
 use async_trait::async_trait;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
-    #[error("Internal error: {0}")]
+    #[error("Internal API error: {0}")]
     Internal(#[source] Box<dyn std::error::Error>),
 
     #[error("Shutdown in progress")]
-    Shutdown,
+    ShutdownInProgress,
 
     #[error("Item not found")]
-    NotFound,
+    ItemNotFound,
 }
 
 #[async_trait]

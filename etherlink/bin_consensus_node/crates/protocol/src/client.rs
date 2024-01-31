@@ -2,20 +2,22 @@
 //
 // SPDX-License-Identifier: MIT
 
+//! Local protocol client.
+
 use async_trait::async_trait;
-use dsn_core::traits::{ApiError, PreBlocksApi, TransactionsApi};
+use dsn_core::api::{ApiError, PreBlocksApi, TransactionsApi};
 use dsn_core::{
     storage::StorageBackend,
     types::{PreBlock, PreBlockHeader, Transaction},
 };
 use tokio::sync::{broadcast, mpsc};
 
-use crate::error::LoopbackError;
-use crate::{state::LoopbackState, LoopbackClient};
+use crate::error::ProtocolError;
+use crate::{state::ProtocolState, ProtocolClient};
 
-impl<S: StorageBackend> LoopbackClient<S> {
+impl<S: StorageBackend> ProtocolClient<S> {
     pub fn new(
-        state: LoopbackState<S>,
+        state: ProtocolState<S>,
         rx_pre_blocks: broadcast::Receiver<PreBlock>,
         tx_mempool: mpsc::Sender<Transaction>,
     ) -> Self {
@@ -27,7 +29,7 @@ impl<S: StorageBackend> LoopbackClient<S> {
     }
 }
 
-impl<S: StorageBackend> Clone for LoopbackClient<S> {
+impl<S: StorageBackend> Clone for ProtocolClient<S> {
     fn clone(&self) -> Self {
         Self {
             state: self.state.clone(),
@@ -38,22 +40,22 @@ impl<S: StorageBackend> Clone for LoopbackClient<S> {
 }
 
 #[async_trait]
-impl<S: StorageBackend> TransactionsApi for LoopbackClient<S> {
+impl<S: StorageBackend> TransactionsApi for ProtocolClient<S> {
     async fn submit_transaction(&self, transaction: Transaction) -> Result<(), ApiError> {
         self.tx_mempool
             .send(transaction)
             .await
-            .map_err(Into::<LoopbackError>::into)
+            .map_err(Into::<ProtocolError>::into)
             .map_err(Into::into)
     }
 }
 
 #[async_trait]
-impl<S: StorageBackend> PreBlocksApi for LoopbackClient<S> {
+impl<S: StorageBackend> PreBlocksApi for ProtocolClient<S> {
     async fn get_pre_blocks_head(&self) -> Result<PreBlockHeader, ApiError> {
         match self.state.get_head() {
             Ok(value) => Ok(value),
-            Err(LoopbackError::MissingPreBlockHead) => Err(ApiError::NotFound),
+            Err(ProtocolError::MissingPreBlockHead) => Err(ApiError::ItemNotFound),
             Err(err) => Err(err.into()),
         }
     }
@@ -72,7 +74,7 @@ impl<S: StorageBackend> PreBlocksApi for LoopbackClient<S> {
         self.rx_pre_blocks
             .recv()
             .await
-            .map_err(|_| ApiError::Shutdown)
+            .map_err(|_| ApiError::ShutdownInProgress)
     }
 
     async fn clear_queue(&mut self) -> Result<(), ApiError> {

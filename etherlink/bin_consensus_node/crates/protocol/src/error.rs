@@ -2,11 +2,13 @@
 //
 // SPDX-License-Identifier: MIT
 
-use dsn_core::{storage::StorageError, traits::ApiError, types::Transaction};
+//! Protocol specific errors.
+
+use dsn_core::{api::ApiError, storage::StorageError, types::Transaction};
 use tokio::sync::mpsc;
 
 #[derive(Debug, thiserror::Error)]
-pub enum LoopbackError {
+pub enum ProtocolError {
     #[error("Failed to send transaction: {0}")]
     TransactionSend(#[from] mpsc::error::SendError<Transaction>),
 
@@ -18,10 +20,16 @@ pub enum LoopbackError {
 
     #[error("Latest pre-block header not found")]
     MissingPreBlockHead,
+
+    #[error("Pre-block #{0} not found")]
+    PreBlockNotFound(u64),
 }
 
-impl From<LoopbackError> for ApiError {
-    fn from(value: LoopbackError) -> Self {
-        Self::Internal(Box::new(value))
+impl From<ProtocolError> for ApiError {
+    fn from(value: ProtocolError) -> Self {
+        match value {
+            ProtocolError::PreBlockNotFound(_) => Self::ItemNotFound,
+            err => Self::Internal(Box::new(err)),
+        }
     }
 }

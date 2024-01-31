@@ -6,9 +6,9 @@
 resolver = "2"
 members = [
     "crates/node",
-    "crates/client",
+    "crates/rpc",
     "crates/core",
-    "crates/protocols/loopback",
+    "crates/protocol",
 ]
 
 [workspace.package]
@@ -35,7 +35,5 @@ thiserror = "1.0.40"
 
 # DSN
 dsn-core = { path = "crates/core" }
-dsn-client = { path = "crates/client" }
-
-# Protocols
-loopback = { path = "crates/protocols/loopback" }
+dsn-rpc = { path = "crates/rpc" }
+dsn-protocol = { path = "crates/protocol" }
