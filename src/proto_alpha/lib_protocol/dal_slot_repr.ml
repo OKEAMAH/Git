@@ -1199,6 +1199,25 @@ module History_v2 = struct
           let equal = equal_history
         end)
 
+    (* check that the slots' levels are equal to [published_level] and that their
+       indices are well ordered. *)
+    let check_same_level_and_well_ordered published_level = function
+      | [] -> true
+      | Header.{id = {published_level = pl; index}; _} :: l ->
+          Raw_level_repr.equal published_level pl
+          && fst
+             @@ List.fold_left
+                  (fun (well_ordered, idx)
+                       Header.{id = {published_level = pl; index = idx'}; _} ->
+                    ( well_ordered
+                      && Raw_level_repr.equal published_level pl
+                      && Compare.Int.( < )
+                           (Dal_slot_index_repr.compare idx idx')
+                           0,
+                      idx' ))
+                  (true, index)
+                  l
+
     (*  TODO: will be uncommented incrementally on the next MRs *)
 
     (*
