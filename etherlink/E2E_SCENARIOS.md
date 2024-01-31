@@ -24,7 +24,7 @@ The code for the scenario can be found in [Counter.sol](https://github.com/trili
 1. User can deploy the Counter using `forge`
    * The contract is deployed on Etherlink
    * User can see the contract address and transaction hash
-2. User can verify the Counter
+2. User can verify the Counter using `forge`
    * User can verify the contract
    * User can see the contract verified on Blockscout
 3. User can check the value in the Counter using `cast`
