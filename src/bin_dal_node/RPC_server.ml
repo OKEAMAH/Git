@@ -232,7 +232,9 @@ module Profile_handlers = struct
         | Some pctxt ->
             Node_context.set_profile_ctxt ctxt pctxt ;
             if save_config then
-              Configuration_file.save (Node_context.get_config ctxt)
+              let config = Node_context.get_config ctxt in
+              let profiles = Profile_manager.get_profiles pctxt in
+              Configuration_file.save {config with profiles}
             else return_unit)
 
   let get_profiles ctxt () () =
