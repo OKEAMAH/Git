@@ -40,13 +40,11 @@ type t = {
   activated : bool;
       (** [true] if the DAL is activated. This may have
           an impact on the loading time of the node. *)
-  use_mock_srs_for_testing : parameters option;
+  use_mock_srs_for_testing : bool;
       (** If [None], the srs is read from the srs files.
           This is the value expected for production. For testing
           purposes, we may want to compute the srs instead but this is
-          not secure. In this case, the size of a slot, page, the
-          erasure code redundancy factor and number of shards must be
-          specified. *)
+          not secure. *)
   bootstrap_peers : string list;
       (** List of bootstrap peers to use in the DAL p2p. *)
 }

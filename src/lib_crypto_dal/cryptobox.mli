@@ -546,7 +546,7 @@ end
 module Config : sig
   type t = Dal_config.t = {
     activated : bool;
-    use_mock_srs_for_testing : parameters option;
+    use_mock_srs_for_testing : bool;
     bootstrap_peers : string list;
   }
 
