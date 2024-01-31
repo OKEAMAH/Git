@@ -15,7 +15,7 @@ mod micheline;
 #[cfg(feature = "alloc")]
 pub mod ticket;
 
-use self::micheline::{bin_write_prim_generic_ticket, MichelineGeneric};
+use self::micheline::{bin_write_micheline_ticket, MichelineTicket};
 
 use super::contract::Contract;
 use micheline::{
@@ -50,7 +50,7 @@ pub mod v1_primitives {
     /// unit encoding case tag.
     pub const UNIT_TAG: u8 = 11;
 
-    /// unit encoding case tag.
+    /// ticket encoding case tag.
     pub const TICKET_TAG: u8 = 157;
 }
 
@@ -78,6 +78,12 @@ where
 {
 }
 impl<Arg> Michelson for MichelsonOption<Arg> where Arg: Michelson {}
+
+/// Michelson *ticket* encoding.
+#[derive(Debug, PartialEq, Eq)]
+pub struct MichelsonTicket<Arg0>(pub MichelsonContract, pub Arg0, pub MichelsonInt)
+where
+    Arg0: Debug + PartialEq + Eq;
 
 /// Michelson *unit* encoding.
 #[derive(Debug, PartialEq, Eq)]
@@ -235,6 +241,15 @@ impl HasEncoding for MichelsonInt {
     }
 }
 
+impl<Arg> HasEncoding for MichelsonTicket<Arg>
+where
+    Arg: Debug + PartialEq + Eq,
+{
+    fn encoding() -> Encoding {
+        Encoding::Custom
+    }
+}
+
 // --------
 // DECODING
 // --------
@@ -269,17 +284,50 @@ where
     }
 }
 
+// fn comme_tu_veux<'a>(bytes: &'a MichelineBytes) -> NomResult<'a, Contract> {
+//     Contract::nom_read(&bytes.0)
+// }
+
 impl<Arg0> NomReader for MichelsonTicket<Arg0>
 where
     Arg0: NomReader + Debug + PartialEq + Eq,
 {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
-        map(
-            MichelineGeneric::<_, { prim::TICKET_TAG }>::nom_read,
-            Into::into,
-        )(input)
+        let (
+            input,
+            MichelineTicket {
+                contract,
+                arg1,
+                amount,
+            },
+        ) = MichelineTicket::<_, { prim::TICKET_TAG }>::nom_read(input)?;
+        let contract = Contract::try_from(contract.0).expect("todo: return an error");
+        let new_contract = MichelsonContract(contract);
+        let amount = amount.0.into();
+        Ok((input, MichelsonTicket(new_contract, arg1, amount)))
+
+        // map(
+        //     MichelineTicket::<_, { prim::TICKET_TAG }>::nom_read,
+        //     |MichelineTicket {
+        //          contract,
+        //          arg1,
+        //          amount,
+        //      }| MichelsonTicket(contract, arg1, amount.0.into()),
+        // )(input)
     }
 }
+
+
+
+impl<Arg> BinWriter for MichelsonTicket<Arg>
+where
+    Arg: BinWriter + Debug + PartialEq + Eq,
+{
+    fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
+        bin_write_micheline_ticket(prim::TICKET_TAG, &self.0, &self.1, &self.2, output)
+    }
+}
+
 
 impl<Arg0, Arg1> NomReader for MichelsonOr<Arg0, Arg1>
 where

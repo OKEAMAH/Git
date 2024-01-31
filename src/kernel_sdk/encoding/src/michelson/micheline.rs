@@ -211,6 +211,16 @@ where
     pub(crate) arg2: Arg2,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct MichelineTicket<Arg1, const PRIM_TAG: u8>
+where
+    Arg1: Debug + PartialEq + Eq,
+{
+    pub(crate) contract: MichelineString,
+    pub(crate) arg1: Arg1,
+    pub(crate) amount: MichelineInt,
+}
+
 /// lib_micheline *prim-2 some annotations* encoding.
 ///
 /// Encoded as an `obj4`, prefixed by [MICHELINE_PRIM_2_ARGS_SOME_ANNOTS_TAG], with fields:
@@ -354,21 +364,16 @@ where
     }
 }
 
-impl<Arg, const PRIM_TAG: u8> From<MichelineGeneric<Arg, PRIM_TAG>> for Node
+impl<Arg1, const PRIM_TAG: u8> From<MichelineTicket<Arg1, PRIM_TAG>> for Node
 where
-    Arg: Debug + PartialEq + Eq,
-    Node: From<Arg>,
+    Arg1: Debug + PartialEq + Eq,
+    Node: From<Arg1>,
 {
-    fn from(a: MichelineGeneric<Arg, PRIM_TAG>) -> Self {
-        let mut args = Vec::new();
-        for a in a.args {
-            let node = a.into();
-            args.push(node);
-        }
+    fn from(a: MichelineTicket<Arg1, PRIM_TAG>) -> Self {
         Node::Prim {
             prim_tag: PRIM_TAG,
-            args,
-            annots: a.annots,
+            args: vec![a.contract.into(), a.arg1.into(), a.amount.into()],
+            annots: Annotations::default(),
         }
     }
 }
@@ -503,6 +508,28 @@ where
         );
 
         map(parse, |arg| MichelinePrim1ArgNoAnnots { arg })(input)
+    }
+}
+
+impl<Arg, const PRIM_TAG: u8> NomReader for MichelineTicket<Arg, PRIM_TAG>
+where
+    Arg: NomReader + Debug + PartialEq + Eq,
+{
+    fn nom_read(input: &[u8]) -> NomResult<Self> {
+        let parse = preceded(
+            tag([MICHELINE_PRIM_GENERIC_TAG, PRIM_TAG]),
+            tuple((
+                MichelineString::nom_read,
+                Arg::nom_read,
+                MichelineInt::nom_read,
+            )),
+        );
+
+        map(parse, |(contract, arg1, amount)| MichelineTicket {
+            contract,
+            arg1,
+            amount,
+        })(input)
     }
 }
 
@@ -1053,6 +1080,27 @@ pub(crate) fn bin_write_micheline_seq(
 ) -> BinResult {
     enc::put_bytes(&[MICHELINE_SEQ_TAG], output);
     enc::dynamic(enc::list(Node::bin_write))(args, output)?;
+
+    Ok(())
+}
+
+/// Write `PRIM_TAG`, `args` & `annots` into an `obj3` encoding, prefixed with the
+/// [MICHELINE_PRIM_GENERIC_TAG].
+pub(crate) fn bin_write_micheline_ticket<Arg>(
+    prim_tag: u8,
+    contract: &MichelineBytes,
+    arg: &Arg,
+    amount: &MichelineInt,
+    output: &mut Vec<u8>,
+) -> BinResult
+where
+    Arg: BinWriter,
+{
+    enc::put_bytes(&[MICHELINE_PRIM_GENERIC_TAG, prim_tag], output);
+
+    contract.bin_write(output)?;
+    arg.bin_write(output)?;
+    amount.bin_write(output)?;
 
     Ok(())
 }
