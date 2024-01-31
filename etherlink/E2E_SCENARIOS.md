@@ -29,7 +29,7 @@ The code for the scenario can be found in [Counter.sol](https://github.com/trili
    * User can see the contract verified on Blockscout
 3. User can check the value in the Counter using `cast`
    * User can make a request to see the value in the Counter
-4. User can increment the value in the Counter
+4. User can increment the value in the Counter using `cast`
    * User can make a transaction to increment the value in the Counter by 1
 5. User can set the value in the Counter
    * User can make a transaction to set the value in the Counter
