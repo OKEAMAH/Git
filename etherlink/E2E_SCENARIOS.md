@@ -31,7 +31,7 @@ The code for the scenario can be found in [Counter.sol](https://github.com/trili
    * User can make a request to see the value in the Counter
 4. User can increment the value in the Counter using `cast`
    * User can make a transaction to increment the value in the Counter by 1
-5. User can set the value in the Counter
+5. User can set the value in the Counter using `cast`
    * User can make a transaction to set the value in the Counter
 
 The code for the deployment can be found in [Counter.s.sol](https://github.com/trilitech/development-tools-compatibility-etherlink/blob/main/foundry/script/Counter.s.sol). For the rest of the actions, the tool will directly make the interactions with Etherlink via the cli.
