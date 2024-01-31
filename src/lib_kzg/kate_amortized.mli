@@ -34,3 +34,13 @@ val verify :
   evaluations:scalar array ->
   proof:shard_proof ->
   bool
+
+val verify_multi :
+  public_parameters ->
+  commitment:Commitment.Single.t ->
+  srs_point:G2.t ->
+  domain:Domain.t ->
+  root_list:scalar list ->
+  evaluations_list:scalar array list ->
+  proof_list:shard_proof list ->
+  bool

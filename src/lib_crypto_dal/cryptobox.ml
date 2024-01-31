@@ -211,7 +211,7 @@ module Inner = struct
 
   type commitment = Commitment.t
 
-  type shard_proof = Commitment_proof.t
+  type shard_proof = Commitment_proof.t [@@deriving repr]
 
   type commitment_proof = Commitment_proof.t
 
@@ -1237,6 +1237,32 @@ module Inner = struct
             ~proof
         then Ok ()
         else Error `Invalid_shard
+
+  let verify_shard_multi (t : t) commitment shard_list proof_list =
+    let root_list =
+      List.map
+        (fun shard ->
+          Domain.get t.domain_erasure_encoded_polynomial_length shard.index)
+        shard_list
+    in
+    let evaluations_list = List.map (fun shard -> shard.share) shard_list in
+    let domain = Domain.build t.shard_length in
+    let srs_point =
+      match t.srs with
+      | Prove srs -> srs.kate_amortized_srs_g2_shards
+      | Verify srs -> srs.kate_amortized_srs_g2_shards
+    in
+    if
+      Kate_amortized.verify_multi
+        t.kate_amortized
+        ~commitment
+        ~srs_point
+        ~domain
+        ~root_list
+        ~evaluations_list
+        ~proof_list
+    then Ok ()
+    else Error `Invalid_shard
 
   let prove_page t p page_index =
     if page_index < 0 || page_index >= t.pages_per_slot then
