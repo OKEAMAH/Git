@@ -12,7 +12,6 @@ use crate::inbox::InboxContent;
 use crate::inbox::{read_inbox, TezosContracts};
 use crate::read_last_info_per_level_timestamp;
 use crate::upgrade::store_kernel_upgrade;
-use crate::Timestamp;
 use anyhow::Ok;
 use tezos_crypto_rs::hash::ContractKt1Hash;
 use tezos_evm_logging::{log, Level::*};

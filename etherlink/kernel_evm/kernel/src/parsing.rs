@@ -76,6 +76,12 @@ pub const MAX_SIZE_PER_CHUNK: usize = 4095 // Max input size minus external tag
             - 32; // Chunk hash size
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct LevelWithInfo {
+    pub level: u32,
+    pub info: InfoPerLevel,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Input {
     SimpleTransaction(Box<Transaction>),
     Deposit(Deposit),
@@ -93,7 +99,7 @@ pub enum Input {
         data: Vec<u8>,
     },
     Simulation,
-    Info(InfoPerLevel),
+    Info(LevelWithInfo),
     SequencerBlueprint(SequencerBlueprint),
 }
 
@@ -368,10 +374,11 @@ impl InputResult {
         smart_rollup_address: &[u8],
         tezos_contracts: &TezosContracts,
         delayed_bridge: &Option<ContractKt1Hash>,
+        level: u32,
     ) -> Self {
         match message {
             InternalInboxMessage::InfoPerLevel(info) => {
-                InputResult::Input(Input::Info(info))
+                InputResult::Input(Input::Info(LevelWithInfo { level, info }))
             }
             InternalInboxMessage::Transfer(transfer) => Self::parse_internal_transfer(
                 host,
@@ -409,6 +416,7 @@ impl InputResult {
                     &smart_rollup_address,
                     tezos_contracts,
                     delayed_bridge,
+                    input.level,
                 ),
             },
             Err(_) => InputResult::Unparsable,

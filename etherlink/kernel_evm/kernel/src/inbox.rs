@@ -13,7 +13,7 @@ use crate::simulation;
 use crate::storage::{
     chunked_hash_transaction_path, chunked_transaction_num_chunks,
     chunked_transaction_path, create_chunked_transaction,
-    get_and_increment_deposit_nonce, remove_chunked_transaction,
+    get_and_increment_deposit_nonce, remove_chunked_transaction, store_l1_level,
     store_last_info_per_level_timestamp, store_sequencer, store_transaction_chunk,
 };
 use crate::upgrade::*;
@@ -365,7 +365,11 @@ pub fn read_inbox<Host: Runtime>(
                 return Ok(None);
             }
             InputResult::Input(Input::Info(info)) => {
-                store_last_info_per_level_timestamp(host, info.predecessor_timestamp)?;
+                store_last_info_per_level_timestamp(
+                    host,
+                    info.info.predecessor_timestamp,
+                )?;
+                store_l1_level(host, info.level)?
             }
             InputResult::Input(Input::Deposit(deposit)) => {
                 res.transactions.push(handle_deposit(host, deposit)?)
