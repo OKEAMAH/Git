@@ -1124,12 +1124,42 @@ module History_v2 = struct
     let genesis, genesis_level =
       (Skip_list.genesis Content.zero, Content.zero_level)
 
+    let history_encoding =
+      let open Data_encoding in
+      (* The history_encoding is given as a union of two versions of the skip
+         list: The legacy case is meant for the transition setting where
+         refutation games may have started on the old protocol and are
+         continuing on the new one. Since Dal genesis skip list is snapshotted
+         even if dal feature flag is disabled, we should decode the old genesis
+         cell (in a hackish way), and immediately return the new representation of
+         genesis. The second case implements the normal encoding of the (new)
+         skip list representation. *)
+      union
+        ~tag_size:`Uint8
+        [
+          case
+            ~title:"dal_skip_list_legacy"
+            (Tag 0)
+            (obj2
+               (req "kind" (constant "dal_skip_list_legacy"))
+               (req "skip_list" (Data_encoding.Fixed.bytes Hex 57)))
+            (fun _ -> None)
+            (fun ((), _) -> genesis);
+          case
+            ~title:"dal_skip_list_v2"
+            (Tag 1)
+            (obj2
+               (req "kind" (constant "dal_skip_list_v2"))
+               (req
+                  "skip_list"
+                  (Skip_list.encoding Pointer_hash.encoding Content.encoding)))
+            (fun x -> Some ((), x))
+            (fun ((), x) -> x);
+        ]
+
     (*  TODO: will be uncommented incrementally on the next MRs *)
 
     (*
-    let history_encoding =
-      Skip_list.encoding Pointer_hash.encoding Header.encoding
-
     let equal_history : history -> history -> bool =
       Skip_list.equal Pointer_hash.equal Header.equal
 
