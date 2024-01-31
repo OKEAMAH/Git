@@ -401,7 +401,7 @@ fn blake2f_precompile<Host: Runtime>(
     // check that enough resources to execute (gas / ticks) are available
     let estimated_ticks =
         fail_if_too_much!(tick_model::ticks_of_blake2f(rounds), handler);
-    let cost = 0 + rounds as u64 * 1; // static_gas + dynamic_gas
+    let cost = rounds as u64; // static_gas + dynamic_gas
     if let Err(err) = handler.record_cost(cost) {
         log!(
             handler.borrow_host(),
@@ -453,7 +453,7 @@ fn blake2f_precompile<Host: Runtime>(
         handler.borrow_host(),
         Debug,
         "Output is {:?}",
-        hex::encode(&output)
+        hex::encode(output)
     );
     Ok(PrecompileOutcome {
         exit_status: ExitReason::Succeed(ExitSucceed::Returned),
