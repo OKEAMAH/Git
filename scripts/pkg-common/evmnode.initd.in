@@ -50,6 +50,9 @@ rotateonstart=yes
 [ ! -z "$sequencer_key" ] && [ "$evmmode" = "sequencer" ] && \
 	seq_opts="signing with ${sequencer_key}"
 
+[ ! -z "$evmdatadir" ] && \
+	additional_cliopts="$additional_cliopts --data-dir=${evmdatadir}"
+
 logfile="${logdir}/evmnode.log"
 evm="/usr/bin/octez-evm-node"
 
