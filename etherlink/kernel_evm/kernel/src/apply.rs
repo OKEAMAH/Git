@@ -10,9 +10,9 @@ use evm::{ExitError, ExitReason, ExitSucceed};
 use evm_execution::account_storage::{
     account_path, EthereumAccount, EthereumAccountStorage,
 };
-use evm_execution::handler::ExecutionOutcome;
+use evm_execution::handler::{ExecutionOutcome, ExtendedExitReason};
 use evm_execution::precompiles::PrecompileBTreeMap;
-use evm_execution::{run_transaction, EthereumError};
+use evm_execution::run_transaction;
 use primitive_types::{H160, U256};
 use tezos_data_encoding::enc::BinWriter;
 use tezos_ethereum::block::BlockConstants;
@@ -273,6 +273,7 @@ pub struct TransactionResult {
     execution_outcome: Option<ExecutionOutcome>,
     gas_used: U256,
     estimated_ticks_used: u64,
+    out_of_ticks: bool,
 }
 
 fn apply_ethereum_transaction_common<Host: Runtime>(
@@ -282,6 +283,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
     evm_account_storage: &mut EthereumAccountStorage,
     transaction: &EthereumTransactionCommon,
     allocated_ticks: u64,
+    retriable: bool,
 ) -> Result<ExecutionResult<TransactionResult>, anyhow::Error> {
     let effective_gas_price =
         transaction.effective_gas_price(block_constants.base_fee_per_gas())?;
@@ -314,9 +316,9 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         Some(value),
         true,
         allocated_ticks,
+        retriable,
     ) {
         Ok(outcome) => outcome,
-        Err(EthereumError::OutOfTicks) => return Ok(ExecutionResult::OutOfTicks),
         Err(err) => {
             // TODO: https://gitlab.com/tezos/tezos/-/issues/5665
             // Because the proposal's state is unclear, and we do not have a sequencer
@@ -326,7 +328,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         }
     };
 
-    let (gas_used, estimated_ticks_used) = match &execution_outcome {
+    let (gas_used, estimated_ticks_used, out_of_ticks) = match &execution_outcome {
         Some(execution_outcome) => {
             log!(
                 host,
@@ -337,11 +339,12 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
             (
                 execution_outcome.gas_used.into(),
                 execution_outcome.estimated_ticks_used,
+                execution_outcome.reason == ExtendedExitReason::OutOfTicks,
             )
         }
         None => {
             log!(host, Debug, "Transaction status: OK_UNKNOWN.");
-            (U256::zero(), 0)
+            (U256::zero(), 0, false)
         }
     };
 
@@ -350,6 +353,7 @@ fn apply_ethereum_transaction_common<Host: Runtime>(
         execution_outcome,
         gas_used,
         estimated_ticks_used,
+        out_of_ticks,
     }))
 }
 
@@ -398,6 +402,7 @@ fn apply_deposit<Host: Runtime>(
         execution_outcome: Some(execution_outcome),
         gas_used: gas_used.into(),
         estimated_ticks_used,
+        out_of_ticks: false,
     }))
 }
 
@@ -465,12 +470,12 @@ pub struct ExecutionInfo {
     pub receipt_info: TransactionReceiptInfo,
     pub object_info: TransactionObjectInfo,
     pub estimated_ticks_used: u64,
+    pub out_of_ticks: bool,
 }
 
 pub enum ExecutionResult<T> {
     Valid(T),
     Invalid,
-    OutOfTicks,
 }
 
 impl<T> From<Option<T>> for ExecutionResult<T> {
@@ -492,6 +497,7 @@ pub fn apply_transaction<Host: Runtime>(
     evm_account_storage: &mut EthereumAccountStorage,
     accounts_index: &mut IndexableStorage,
     allocated_ticks: u64,
+    retriable: bool,
 ) -> Result<ExecutionResult<ExecutionInfo>, anyhow::Error> {
     let to = transaction.to();
     let apply_result = match &transaction.content {
@@ -502,6 +508,7 @@ pub fn apply_transaction<Host: Runtime>(
             evm_account_storage,
             tx,
             allocated_ticks,
+            retriable,
         )?,
         TransactionContent::Deposit(deposit) => {
             ExecutionResult::from(apply_deposit(host, evm_account_storage, deposit)?)
@@ -514,6 +521,7 @@ pub fn apply_transaction<Host: Runtime>(
             execution_outcome,
             gas_used,
             estimated_ticks_used: ticks_used,
+            out_of_ticks,
         }) => {
             if let Some(outcome) = &execution_outcome {
                 log!(host, Debug, "Transaction executed, outcome: {:?}", outcome);
@@ -545,10 +553,10 @@ pub fn apply_transaction<Host: Runtime>(
                 receipt_info,
                 object_info,
                 estimated_ticks_used: ticks_used,
+                out_of_ticks,
             }))
         }
         ExecutionResult::Invalid => Ok(ExecutionResult::Invalid),
-        ExecutionResult::OutOfTicks => Ok(ExecutionResult::OutOfTicks),
     }
 }
 

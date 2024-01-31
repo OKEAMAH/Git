@@ -14,6 +14,7 @@ use crate::{
     tick_model, CONFIG,
 };
 
+use evm_execution::handler::ExtendedExitReason;
 use evm_execution::run_transaction;
 use evm_execution::{account_storage, handler::ExecutionOutcome, precompiles};
 use primitive_types::{H160, U256};
@@ -129,6 +130,7 @@ impl Evaluation {
             self.value,
             false,
             allocated_ticks,
+            false,
         )
         .map_err(Error::Simulation)?;
         Ok(outcome)
@@ -244,8 +246,9 @@ impl TxValidation {
             Some(transaction.value),
             false,
             allocated_ticks,
+            false,
         ) {
-            Err(evm_execution::EthereumError::OutOfTicks) => Ok(true),
+            Ok(Some(outcome)) => Ok(outcome.reason == ExtendedExitReason::OutOfTicks),
             _ => Ok(false),
         }
     }
