@@ -105,8 +105,13 @@ let locked_write_block floating_store ~offset ~block ~predecessors
     ~resulting_context_hash =
   let open Lwt_result_syntax in
   let* block_bytes =
-    match Data_encoding.Binary.to_bytes_opt Block_repr.encoding block with
-    | None -> tzfail (Cannot_encode_block block.Block_repr.hash)
+    match
+      Data_encoding.Binary.to_bytes_opt Block_repr.encoded_block_encoding block
+    with
+    | None -> (
+        match Data_encoding.Binary.to_bytes_opt Block_repr.encoding block with
+        | None -> tzfail (Cannot_encode_block block.Block_repr.hash)
+        | Some bytes -> return bytes)
     | Some bytes -> return bytes
   in
   let block_length = Bytes.length block_bytes in
