@@ -34,7 +34,7 @@ The code for the scenario can be found in [Counter.sol](https://github.com/trili
 4. User can set the value in the Counter
    * User can make a transaction to set the value in the Counter
 
-There is no code for the Actions as Remix is a graphical IDE, everything can be done manually on it.
+There is no code for the Actions as Remix is a graphical IDE, everything must be done manually on it.
 
 ### Manually testing the MR
 
