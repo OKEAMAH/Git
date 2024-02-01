@@ -17,6 +17,7 @@
 - Fix a bug where nonce and code shouldn't be set when SELFDESTRUCT is called
   in initialisation code. (!11637)
 - Fix a bug where SELFDESTRUCT deletes contracts immediately rather than at the end of the transaction. (!11658)
+- Change CallTooDeep fatal error to an error. (!11794)
 
 ### Breaking changes
 
