@@ -85,10 +85,9 @@ let load_parameters parameters =
 (* FIXME https://gitlab.com/tezos/tezos/-/issues/3400
 
    An integrity check is run to ensure the validity of the files. *)
-
-let initialisation_parameters_from_files ~srs_g1_path ~srs_size_log2 =
+(* This code is duplicated in Srs_verifier *)
+let initialisation_parameters_from_files ~srs_g1_path ~srs_size:len =
   let open Lwt_result_syntax in
-  let len = 1 lsl srs_size_log2 in
   let to_bigstring ~path =
     let open Lwt_syntax in
     let* fd = Lwt_unix.openfile path [Unix.O_RDONLY] 0o440 in
@@ -438,8 +437,8 @@ module Inner = struct
           max_polynomial_length
           shard_length)
 
-  let ensure_validity ~mode ~slot_size ~page_size ~redundancy_factor
-      ~number_of_shards ~srs_g1_length =
+  let ensure_validity ~srs_verifier ~mode ~slot_size ~page_size
+      ~redundancy_factor ~number_of_shards ~srs_g1_length =
     let open Result_syntax in
     let assert_result condition error_message =
       if not condition then fail (`Fail (error_message ())) else return_unit
@@ -478,14 +477,15 @@ module Inner = struct
             srs_g1_length)
     in
     let page_length_domain = Srs_verifier.domain_length ~size:page_size in
+    let module Srs_verifier = (val srs_verifier : Srs_verifier.S) in
     let offset_monomial_degree =
-      Srs_verifier.Internal_for_tests.max_srs_size - max_polynomial_length
+      Srs_verifier.max_srs_size - max_polynomial_length
     in
     assert_result
       Srs_verifier.(
-        Internal_for_tests.is_in_srs2 shard_length
-        && Internal_for_tests.is_in_srs2 page_length_domain
-        && Internal_for_tests.is_in_srs2 offset_monomial_degree)
+        is_in_srs2 shard_length
+        && is_in_srs2 page_length_domain
+        && is_in_srs2 offset_monomial_degree)
       (fun () ->
         Format.asprintf
           "SRS on shourd contain points of indices shard_length = %d, \
@@ -515,7 +515,7 @@ module Inner = struct
 
   (* Error cases of this functions are not encapsulated into
      `tzresult` for modularity reasons. *)
-  let make =
+  let make_from_srs_verifier =
     let open Result_syntax in
     let table = Cache.create 5 in
     let with_cache parameters f =
@@ -526,11 +526,13 @@ module Inner = struct
           Cache.replace table parameters x ;
           return x
     in
-    fun ({redundancy_factor; slot_size; page_size; number_of_shards} as
+    fun ~srs_verifier
+        ({redundancy_factor; slot_size; page_size; number_of_shards} as
         parameters) ->
       (* The cryptobox is deterministically computed from the DAL parameters and
          this computation takes time (on the order of 10ms) so we cache it. *)
       with_cache parameters @@ fun () ->
+      let module Srs_verifier = (val srs_verifier : Srs_verifier.S) in
       let max_polynomial_length =
         slot_as_polynomial_length ~slot_size ~page_size
       in
@@ -540,26 +542,31 @@ module Inner = struct
       let shard_length = erasure_encoded_polynomial_length / number_of_shards in
       let page_length = page_length ~page_size in
       let page_length_domain, _, _ = FFT.select_fft_domain page_length in
-      let srs_g2_shards, srs_g2_pages, srs_g2_commitment =
-        Srs_verifier.Internal_for_tests.get_verifier_srs2
-          ~max_polynomial_length
-          ~page_length_domain
-          ~shard_length
-      in
-      let mode, srs_g1 =
+      let* mode, srs_g1 =
         match !initialisation_parameters with
-        | Some srs_g1 -> (`Prover, srs_g1)
-        | None ->
-            (`Verifier, Srs_verifier.Internal_for_tests.get_verifier_srs1 ())
+        | Some srs_g1 ->
+            (* Check that srs_g1 is consistent with Srs_verifier, ie the correct
+               SRS was been loaded *)
+            if not (G1.eq (Srs_g1.get srs_g1 1) (Srs_verifier.get_srs1 1)) then
+              Error (`Fail "Wrong SRS loaded.")
+            else Ok (`Prover, srs_g1)
+        | None -> Ok (`Verifier, Srs_verifier.get_verifier_srs1 ())
       in
       let* () =
         ensure_validity
+          ~srs_verifier
           ~mode
           ~slot_size
           ~page_size
           ~redundancy_factor
           ~number_of_shards
           ~srs_g1_length:(Srs_g1.size srs_g1)
+      in
+      let srs_g2_shards, srs_g2_pages, srs_g2_commitment =
+        Srs_verifier.get_verifier_srs2
+          ~max_polynomial_length
+          ~page_length_domain
+          ~shard_length
       in
       let kate_amortized =
         Kate_amortized.
@@ -589,6 +596,8 @@ module Inner = struct
           mode;
           kate_amortized;
         }
+
+  let make = make_from_srs_verifier ~srs_verifier:(module Srs_verifier)
 
   let parameters
       ({redundancy_factor; slot_size; page_size; number_of_shards; _} : t) =
@@ -1269,6 +1278,10 @@ module Internal_for_tests = struct
 
   let load_parameters parameters = initialisation_parameters := Some parameters
 
+  let make =
+    make_from_srs_verifier
+      ~srs_verifier:(module Srs_verifier.Internal_for_tests)
+
   let make_dummy_shards (t : t) ~state =
     Random.set_state state ;
     let rec loop index seq =
@@ -1342,19 +1355,20 @@ module Internal_for_tests = struct
     let mode, srs_g1_length =
       match !initialisation_parameters with
       | Some srs -> (`Prover, Srs_g1.size srs)
-      | None ->
-          (`Verifier, Srs_verifier.Internal_for_tests.max_verifier_srs_size)
+      | None -> (`Verifier, Srs_verifier.max_verifier_srs_size)
     in
-    ensure_validity
-      ~mode
-      ~slot_size
-      ~page_size
-      ~redundancy_factor
-      ~number_of_shards
-      ~srs_g1_length
-
-  let ensure_validity parameters =
-    match ensure_validity parameters with Ok _ -> true | _ -> false
+    match
+      ensure_validity
+        ~srs_verifier:(module Srs_verifier.Internal_for_tests)
+        ~mode
+        ~slot_size
+        ~page_size
+        ~redundancy_factor
+        ~number_of_shards
+        ~srs_g1_length
+    with
+    | Ok _ -> true
+    | _ -> false
 
   let slot_as_polynomial_length = slot_as_polynomial_length
 end
@@ -1379,7 +1393,9 @@ module Config = struct
             return (Internal_for_tests.parameters_initialisation ())
         | None ->
             let*? srs_g1_path, _ = find_srs_files () in
-            initialisation_parameters_from_files ~srs_g1_path ~srs_size_log2
+            initialisation_parameters_from_files
+              ~srs_g1_path
+              ~srs_size:(1 lsl srs_size_log2)
       in
       Lwt.return (load_parameters initialisation_parameters)
     else return_unit

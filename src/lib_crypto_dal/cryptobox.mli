@@ -444,6 +444,11 @@ module Internal_for_tests : sig
      run using the same binary. *)
   val load_parameters : initialisation_parameters -> unit
 
+  (** [make] precomputes the set of values needed by the cryptographic
+    primitives defined in this module and stores them in a value of type [t].
+    [t] is computed for the testing SRS, not from ZCash’s SRS *)
+  val make : parameters -> (t, [> `Fail of string]) result
+
   (** Returns a randomized valid sequence of shards using the random state
      [state] for the given parameters. *)
   val make_dummy_shards : t -> state:Random.State.t -> shard Seq.t
