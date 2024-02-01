@@ -178,6 +178,7 @@ module Test = struct
     Test.make
       ~name:"erasure code"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -220,6 +221,7 @@ module Test = struct
     Test.make
       ~name:"erasure code with slot conversion"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -262,6 +264,7 @@ module Test = struct
     Test.make
       ~name:"erasure code not enough shards"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -296,6 +299,7 @@ module Test = struct
     Test.make
       ~name:"erasure code shard index out of range"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -332,6 +336,7 @@ module Test = struct
     Test.make
       ~name:"erasure code shard invalid shard length"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -352,6 +357,7 @@ module Test = struct
     Test.make
       ~name:"polynomial-slot conversions"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -371,6 +377,7 @@ module Test = struct
     Test.make
       ~name:"page proofs"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -401,6 +408,7 @@ module Test = struct
     Test.make
       ~name:"page proofs invalid page"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -434,6 +442,7 @@ module Test = struct
     Test.make
       ~name:"shard proofs"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -491,6 +500,7 @@ module Test = struct
     Test.make
       ~name:"invalid shard proof"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -533,6 +543,7 @@ module Test = struct
     Test.make
       ~name:"commitment proof"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -554,6 +565,7 @@ module Test = struct
     Test.make
       ~name:"invalid commitment proof"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -727,6 +739,7 @@ module Test = struct
     Test.make
       ~name:"wrong slot size"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -753,6 +766,7 @@ module Test = struct
     Test.make
       ~name:"page_length_mismatch"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -786,6 +800,7 @@ module Test = struct
     Test.make
       ~name:"shard_length_mismatch"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -821,6 +836,7 @@ module Test = struct
     Test.make
       ~name:"prove page out of bound"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -843,6 +859,7 @@ module Test = struct
     Test.make
       ~name:"verify page out of bound"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -878,6 +895,7 @@ module Test = struct
     Test.make
       ~name:"verify shard out of bound"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -910,6 +928,7 @@ module Test = struct
     Test.make
       ~name:"commit"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -931,6 +950,7 @@ module Test = struct
     Test.make
       ~name:"commit failure"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
@@ -959,6 +979,7 @@ module Test = struct
     Test.make
       ~name:"encoded share_size"
       ~print:print_parameters
+      ~count:30
       generate_parameters
       (fun params ->
         init () ;
