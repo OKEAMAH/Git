@@ -334,6 +334,17 @@ pub fn check_skip(test_file_path: &Path) -> bool {
         // Reason: this test rely on hot/cold access and as of right now
         // this feature will not be part of Etherlink
         | "sloadGasCost.json"
+
+        // Reason: these tests rely on EIP-2930(optional access lists)
+        // This feature will not be part of Etherlink for initial launch
+        | "transactionCosts.json"
+        | "variedContext.json"
+        | "coinbaseT01.json"
+        | "coinbaseT02.json"
+        | "coinbaseT2.json"
+        | "storageCosts.json"
+        | "manualCreate.json"
+        | "addressOpcodes.json"
     )
 }
 
