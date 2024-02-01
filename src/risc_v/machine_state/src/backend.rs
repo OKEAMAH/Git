@@ -224,18 +224,49 @@ pub mod tests {
         type Backend<L: Layout>: Backend<Layout = L>;
 
         /// Construct a backend for the given layout `L`.
-        fn make<L: Layout>(&mut self) -> Self::Backend<L>;
+        fn new<L: Layout>() -> Self::Backend<L>;
     }
 
-    pub fn test_backend(factory: &mut impl TestBackendFactory) {
-        region::tests::test_backend(factory);
-        registers::tests::test_backend(factory);
-        bus::main_memory::tests::test_backend(factory);
-        mode::tests::test_mode(factory);
-        test_example(factory);
+    /// Given a `StateLayout` and a `BackendFactory` type
+    /// create the backend and location and return the created `State<M>`
+    #[macro_export]
+    macro_rules! create_backend {
+        ($StateLayout:ty, $Factory:ty) => {
+            <$Factory>::new::<$StateLayout>()
+        };
     }
 
-    fn test_example(factory: &mut impl TestBackendFactory) {
+    /// Given a `State<M: Manager>` and optionally its `StateLayout`,
+    /// create the backend and location and return the created `State<M>`
+    #[macro_export]
+    macro_rules! create_state {
+        ($State:tt, $StateLayout:ty, $Factory:ty, $backend:ident) => {
+            {
+                use $crate::backend::{Backend, BackendManagement, Layout};
+                let loc = <$StateLayout>::placed().into_location();
+                let new_state =
+                    $State::<<<$Factory>::Backend<$StateLayout> as BackendManagement>::Manager<'_>>::new_in(
+                        $backend.allocate(loc),
+                    );
+
+                new_state
+            }
+        };
+
+        ($State:tt, $Factory:ty, $backend:ident) => {
+            create_state!($State, paste::paste!([<$State Layout>]), $Factory, $backend)
+        };
+    }
+
+    pub fn test_backend<F: TestBackendFactory>() {
+        region::tests::test_backend::<F>();
+        registers::tests::test_backend::<F>();
+        bus::main_memory::tests::test_backend::<F>();
+        mode::tests::test_mode::<F>();
+        test_example::<F>();
+    }
+
+    fn test_example<F: TestBackendFactory>() {
         struct Example<M: Manager> {
             first: Cell<u64, M>,
             second: M::Region<u32, 4>,
@@ -252,7 +283,7 @@ pub mod tests {
             }
         }
 
-        let mut backend = factory.make::<ExampleLayout>();
+        let mut backend = F::new::<ExampleLayout>();
         let placed = ExampleLayout::placed().into_location();
 
         let first_offset = placed.0.offset();
