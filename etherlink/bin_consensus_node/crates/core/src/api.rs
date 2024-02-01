@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: MIT
 
-//! DSN API traits.
+//! DSN API trait.
 //!
-//! These are the public interfaces that have to be implemented
+//! These is the public interface that have to be implemented
 //! by the local protocol clients.
 //!
 //! It allows to decouple remote clients (e.g. RPC users) from
@@ -26,7 +26,8 @@ pub enum ApiError {
 }
 
 #[async_trait]
-pub trait PreBlocksApi: Clone + Sync + Send + 'static {
+pub trait DsnApi: Clone + Sync + Send + 'static {
+    async fn submit_transaction(&self, transaction: Transaction) -> Result<(), ApiError>;
     async fn get_pre_blocks_head(&self) -> Result<PreBlockHeader, ApiError>;
     async fn get_pre_blocks(
         &self,
@@ -35,9 +36,4 @@ pub trait PreBlocksApi: Clone + Sync + Send + 'static {
     ) -> Result<Vec<PreBlock>, ApiError>;
     async fn next_pre_block(&mut self) -> Result<PreBlock, ApiError>;
     async fn clear_queue(&mut self) -> Result<(), ApiError>;
-}
-
-#[async_trait]
-pub trait TransactionsApi: Clone + Sync + Send + 'static {
-    async fn submit_transaction(&self, transaction: Transaction) -> Result<(), ApiError>;
 }

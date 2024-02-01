@@ -9,6 +9,7 @@ members = [
     "crates/rpc",
     "crates/core",
     "crates/protocol",
+    "e2e-tests"
 ]
 
 [workspace.package]

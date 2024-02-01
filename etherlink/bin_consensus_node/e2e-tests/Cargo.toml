@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2024 TriliTech <contact@trili.tech>
+#
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "dsn-e2e-tests"
+publish = false
+license = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+dsn-rpc = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
+tonic = { workspace = true }
+env_logger = { workspace = true }
+anyhow = "*"
+
+[[test]]
+name = "single_node_echo"
+path = "single_node_echo.rs"

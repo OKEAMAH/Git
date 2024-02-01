@@ -5,7 +5,7 @@
 //! Local protocol client.
 
 use async_trait::async_trait;
-use dsn_core::api::{ApiError, PreBlocksApi, TransactionsApi};
+use dsn_core::api::{ApiError, DsnApi};
 use dsn_core::{
     storage::StorageBackend,
     types::{PreBlock, PreBlockHeader, Transaction},
@@ -40,7 +40,7 @@ impl<S: StorageBackend> Clone for ProtocolClient<S> {
 }
 
 #[async_trait]
-impl<S: StorageBackend> TransactionsApi for ProtocolClient<S> {
+impl<S: StorageBackend> DsnApi for ProtocolClient<S> {
     async fn submit_transaction(&self, transaction: Transaction) -> Result<(), ApiError> {
         self.tx_mempool
             .send(transaction)
@@ -48,10 +48,7 @@ impl<S: StorageBackend> TransactionsApi for ProtocolClient<S> {
             .map_err(Into::<ProtocolError>::into)
             .map_err(Into::into)
     }
-}
 
-#[async_trait]
-impl<S: StorageBackend> PreBlocksApi for ProtocolClient<S> {
     async fn get_pre_blocks_head(&self) -> Result<PreBlockHeader, ApiError> {
         match self.state.get_head() {
             Ok(value) => Ok(value),

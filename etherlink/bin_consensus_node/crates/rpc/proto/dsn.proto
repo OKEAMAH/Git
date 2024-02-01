@@ -4,21 +4,13 @@
 
 syntax = "proto3";
 
-package ordering;
-
-message Transaction {
-    bytes transaction = 1;
-}
+package dsn;
 
 // Empty message for when we don't have anything to return
 message Empty {}
 
-service Transactions {
-    // Submit a single transaction
-    rpc SubmitTransaction(Transaction) returns (Empty) {}
-
-    // Open a unidirectional stream that will close once all transactions are sent
-    rpc SubmitTransactionStream(stream Transaction) returns (Empty) {}
+message Transaction {
+    bytes transaction = 1;
 }
 
 message PreBlockHeader {
@@ -35,9 +27,15 @@ message PreBlocksRequest {
     uint64 from_id = 1;
 }
 
-service PreBlocks {
-    // Get most recent pre-block ID
-    rpc GetLatestPreBlockHeader(Empty) returns (PreBlockHeader) {}
+service Dsn {
+    // Submit a single transaction
+    rpc SubmitTransaction(Transaction) returns (Empty) {}
+
+    // Open a unidirectional stream that will close once all transactions are sent
+    rpc SubmitTransactionStream(stream Transaction) returns (Empty) {}
+
+    // Get most recent pre-block header
+    rpc GetPreBlocksHead(Empty) returns (PreBlockHeader) {}
 
     // Fetch all pre-blocks from the specified ID (including that one)
     // and then switch to the realtime subscription mode

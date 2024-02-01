@@ -5,17 +5,17 @@
 //! DSN RPC server.
 
 pub mod proto {
-    tonic::include_proto!("ordering");
+    tonic::include_proto!("dsn");
 }
 
-pub mod pre_blocks_service;
-pub mod primitives_cast;
-pub mod rpc_server;
-pub mod transactions_service;
-
 pub mod error;
+pub mod rpc_server;
 
-use dsn_core::api::{PreBlocksApi, TransactionsApi};
+mod dsn_service;
+mod live_query;
+mod primitives_cast;
+
+use dsn_core::api::DsnApi;
 pub use error::RpcError;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
@@ -26,7 +26,7 @@ pub const DEFAULT_RPC_SERVER_HOST: &str = "127.0.0.1";
 pub const DEFAULT_RPC_SERVER_PORT: u16 = 8998;
 
 #[derive(Debug)]
-pub struct RpcServer<Client: PreBlocksApi + TransactionsApi> {
+pub struct RpcServer<Client: DsnApi> {
     config: RpcConfig,
     client: Client,
     rx_shutdown: broadcast::Receiver<()>,

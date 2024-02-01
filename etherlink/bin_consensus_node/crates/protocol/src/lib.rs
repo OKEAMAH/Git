@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 //! DSN protocol.
-//! 
+//!
 //! Currently implements a single node "echo" consensus that aggregates
 //! incoming transactions into pre-blocks on regular time intervals.
 

@@ -1,5 +1,7 @@
+// SPDX-FileCopyrightText: 2024 ParallelChain Lab
 // SPDX-FileCopyrightText: 2024 TriliTech <contact@trili.tech>
 //
+// SPDX-License-Identifier: Apache 2.0
 // SPDX-License-Identifier: MIT
 
 //! Storage backend abstraction.
