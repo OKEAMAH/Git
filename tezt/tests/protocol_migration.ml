@@ -930,7 +930,90 @@ let test_forked_migration_bakers ~migrate_from ~migrate_to =
   in
   check_blocks ~level_from ~level_to
 
+let check_baking_rights client nb_cycles_to_check ?nb_cycles_is_valid () =
+  let check_baking_rights_rpc ~expect_failure ~cycle () =
+    let*? process =
+      Client.RPC.spawn client
+      @@ RPC.get_chain_block_helper_baking_rights ~cycle ()
+    in
+    let* () = Process.check ~expect_failure process in
+    Log.info
+      "Checked the baking rights for cycle = %s (expect_failure = %s)"
+      (Int.to_string cycle)
+      (Bool.to_string expect_failure) ;
+    unit
+  in
+
+  let* level =
+    Client.RPC.call client @@ RPC.get_chain_block_helper_current_level ()
+  in
+  let nb_cycles_is_valid =
+    match nb_cycles_is_valid with Some x -> x | None -> nb_cycles_to_check
+  in
+  Lwt_list.iter_s
+    (fun cycle ->
+      let expect_failure =
+        if cycle <= level.cycle + nb_cycles_is_valid then false else true
+      in
+      check_baking_rights_rpc ~expect_failure ~cycle ())
+    (range level.cycle (level.cycle + nb_cycles_to_check))
+
+let test_migration_from_oxford_for_whole_cycle ~migrate_from ~migrate_to =
+  if Protocol.number migrate_from = Protocol.number Protocol.Oxford then
+    let parameters = JSON.parse_file (Protocol.parameter_file migrate_to) in
+    let blocks_per_cycle = JSON.(get "blocks_per_cycle" parameters |> as_int) in
+    let consensus_rights_delay =
+      JSON.(get "consensus_rights_delay" parameters |> as_int)
+    in
+    let parameters_oxford =
+      JSON.parse_file (Protocol.parameter_file migrate_from)
+    in
+    let preserved_cycles =
+      JSON.(get "preserved_cycles" parameters_oxford |> as_int)
+    in
+    for migration_level = blocks_per_cycle to 2 * blocks_per_cycle do
+      Test.register
+        ~__FILE__
+        ~title:
+          (Printf.sprintf
+             "protocol migration from Oxford at level %d"
+             migration_level)
+        ~tags:["protocol"; "migration"; "sandbox"; "baking_rights"]
+      @@ fun () ->
+      let* client, _node =
+        perform_protocol_migration
+          ~blocks_per_cycle
+          ~migration_level
+          ~migrate_from
+          ~migrate_to
+          ~baked_blocks_after_migration:0
+          ()
+      in
+      let* () =
+        check_baking_rights
+          client
+          preserved_cycles
+          ~nb_cycles_is_valid:consensus_rights_delay
+          ()
+      in
+      (* Test that we can still bake after migration *)
+      let* () =
+        repeat
+          (2 * consensus_rights_delay * blocks_per_cycle)
+          (fun () -> Client.bake_for_and_wait client)
+      in
+      let* () =
+        check_baking_rights
+          client
+          preserved_cycles
+          ~nb_cycles_is_valid:consensus_rights_delay
+          ()
+      in
+      unit
+    done
+
 let register ~migrate_from ~migrate_to =
+  test_migration_from_oxford_for_whole_cycle ~migrate_from ~migrate_to ;
   test_migration_for_whole_cycle ~migrate_from ~migrate_to ;
   test_migration_with_bakers ~migrate_from ~migrate_to () ;
   test_forked_migration_bakers ~migrate_from ~migrate_to ;
