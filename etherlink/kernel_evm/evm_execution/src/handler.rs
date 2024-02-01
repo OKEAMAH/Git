@@ -38,6 +38,9 @@ use tezos_evm_logging::{log, Level::*};
 /// Maximum allowed code size as specified by EIP-170
 const MAX_CODE_SIZE: usize = 0x6000;
 
+/// Maximum allowed code size as specified by EIP-3860
+const MAX_INIT_CODE_SIZE: usize = 2 * MAX_CODE_SIZE;
+
 /// Outcome of making the [EvmHandler] run an Ethereum transaction
 ///
 /// Be it contract -call, -create or simple transfer, the handler will update the world
@@ -1741,6 +1744,23 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         init_code: Vec<u8>,
         target_gas: Option<u64>,
     ) -> Capture<CreateOutcome, Self::CreateInterrupt> {
+        if init_code.len() > MAX_INIT_CODE_SIZE {
+            return Capture::Exit((
+                ExitReason::Error(ExitError::CreateContractLimit),
+                None,
+                vec![],
+            ));
+        }
+
+        // Charge of 2 gas for every 32-byte chunk of initcode to represent
+        // the cost of jumpdest-analysis
+        let extra_cost: u64 = (init_code.len() / 32).try_into().unwrap();
+        let target_gas = Some(self.gas_remaining());
+        let target_gas: Option<u64> = match target_gas {
+            Some(gas) => Some(gas + 2 * extra_cost),
+            None => Some(2 * extra_cost),
+        };
+
         let gas_limit = self.nested_call_gas_limit(target_gas);
 
         if let Err(err) = self.begin_inter_transaction(false, gas_limit) {
