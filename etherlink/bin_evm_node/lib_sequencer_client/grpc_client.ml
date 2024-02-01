@@ -136,6 +136,11 @@ type 'response streamed_call_handler = {
   request_handler : unit tzresult Lwt.t;
 }
 
+type 'request streamed_call_handler_client = {
+  push : 'request option -> unit;
+  request_handler : unit tzresult Lwt.t;
+}
+
 let create_http2_connection ~error_handler socket =
   let open Lwt_result_syntax in
   Lwt.catch
@@ -243,3 +248,53 @@ let streamed_call (type request response) ~(rpc : (request, response) Rpc.t)
   in
   let*! stream in
   return {request_handler; stream}
+
+let streamed_call_client_side (type request response)
+    ~(rpc : (request, response) Rpc.t) ?(error_handler = ignore)
+    ?(on_grpc_success = ignore) ?(on_grpc_failure = ignore)
+    ?(on_http2_failure = ignore) http2_connection =
+  let open Lwt_result_syntax in
+  let stream, push = Lwt_stream.create () in
+  let request_handler =
+    let*! res =
+      Grpc_lwt.Client.call
+        ~service:rpc.service
+        ~rpc:rpc.method_
+        ~do_request:(H2_lwt_unix.Client.request http2_connection ~error_handler)
+        ~handler:
+          (Grpc_lwt.Client.Rpc.client_streaming ~f:(fun f response ->
+               (* Stream points to server. *)
+               let*! () =
+                 Lwt_stream.iter_s
+                   (fun point ->
+                     Lwt.return (rpc.encode point |> fun x -> f (Some x)))
+                   stream
+               in
+               (* Signal we have finished sending requests. *)
+               f None ;
+
+               response
+               |> Lwt.map @@ function
+                  | Some str -> Some (rpc.decode str)
+                  | None -> None))
+        ()
+    in
+    match res with
+    | Ok (response, grpc_status) -> (
+        match response with
+        | None ->
+            on_grpc_failure grpc_status ;
+            return ()
+        | Some response -> (
+            match response with
+            | Ok _response ->
+                on_grpc_success grpc_status ;
+                return ()
+            | Error _err ->
+                on_grpc_failure grpc_status ;
+                return ()))
+    | Error http2_code ->
+        on_http2_failure http2_code ;
+        return ()
+  in
+  {push; request_handler}
