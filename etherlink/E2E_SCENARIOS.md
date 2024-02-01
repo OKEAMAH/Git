@@ -13,7 +13,7 @@ Repo: https://github.com/trilitech/live-testing-protocols/tree/main
 
 Basic scenario of an NFT dApp using Etherlink as blockchain layer.
 
-The code for the scenario can be found in [here](https://github.com/Camillebzd/nft_marketplace_alchemy_rtw3_7) and the live website can be be found [here](https://nft-marketplace-alchemy-rtw3-7-etherlink-nightly.vercel.app/).
+The code for the dApp used in the scenario can be found in [here](https://github.com/Camillebzd/nft_marketplace_alchemy_rtw3_7) and the live website can be be found [here](https://nft-marketplace-alchemy-rtw3-7-etherlink-nightly.vercel.app/).
 
 ### Actions:
 
