@@ -495,6 +495,8 @@ let sign_consensus_votes_aux state votes kind ~level ~round =
                     emit
                       skipping_preattestation
                       ( delegate,
+                        level,
+                        round,
                         [
                           Baking_highwatermarks.Block_previously_preattested
                             {round; level};
@@ -504,6 +506,8 @@ let sign_consensus_votes_aux state votes kind ~level ~round =
                     emit
                       skipping_attestation
                       ( delegate,
+                        level,
+                        round,
                         [
                           Baking_highwatermarks.Block_previously_attested
                             {round; level};
@@ -561,8 +565,10 @@ let sign_consensus_votes_aux state votes kind ~level ~round =
         let*! () =
           match kind with
           | `Preattestation ->
-              Events.(emit skipping_preattestation (delegate, err))
-          | `Attestation -> Events.(emit skipping_attestation (delegate, err))
+              Events.(
+                emit skipping_preattestation (delegate, level, round, err))
+          | `Attestation ->
+              Events.(emit skipping_attestation (delegate, level, round, err))
         in
         return_none
     | Ok signature ->
