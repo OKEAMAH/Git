@@ -5,17 +5,19 @@
 //! Definitions & tezos-encodings for *michelson* data.
 use nom::branch::alt;
 use nom::combinator::map;
+use prim::{TICKET_TAG, UNIT_TAG, UNIT_TYPE_TAG};
 use std::fmt::Debug;
 use tezos_data_encoding::enc::{self, BinResult, BinWriter};
 use tezos_data_encoding::encoding::{Encoding, HasEncoding};
 use tezos_data_encoding::nom::{self as nom_read, NomReader, NomResult};
 use tezos_data_encoding::types::Zarith;
+use micheline::annots::Annotations;
 
 mod micheline;
 #[cfg(feature = "alloc")]
 pub mod ticket;
 
-use self::micheline::{bin_write_micheline_ticket, MichelineTicket};
+use self::micheline::{bin_write_micheline_ticket, Node};
 
 use super::contract::Contract;
 use micheline::{
@@ -50,9 +52,13 @@ pub mod v1_primitives {
     /// unit encoding case tag.
     pub const UNIT_TAG: u8 = 11;
 
+    /// unit type tag
+    pub const UNIT_TYPE_TAG: u8 = 108;
+
     /// ticket encoding case tag.
     pub const TICKET_TAG: u8 = 157;
 }
+
 
 /// marker trait for michelson encoding
 pub trait Michelson:
@@ -99,17 +105,6 @@ pub struct MichelsonContract(pub Contract);
 pub struct MichelsonPair<Arg0, Arg1>(pub Arg0, pub Arg1)
 where
     Arg0: Debug + PartialEq + Eq,
-    Arg1: Debug + PartialEq + Eq;
-
-/// Michelson *ticket* encoding.
-#[derive(Debug, PartialEq, Eq)]
-pub struct MichelsonTicket<Arg1>(
-    pub MichelsonContract,
-    pub Arg1,
-    // pub Arg2,
-    pub MichelsonInt,
-)
-where
     Arg1: Debug + PartialEq + Eq;
 
 /// Michelson *or* encoding.
@@ -188,15 +183,6 @@ impl HasEncoding for MichelsonUnit {
 impl<Arg0, Arg1> HasEncoding for MichelsonPair<Arg0, Arg1>
 where
     Arg0: Debug + PartialEq + Eq,
-    Arg1: Debug + PartialEq + Eq,
-{
-    fn encoding() -> Encoding {
-        Encoding::Custom
-    }
-}
-
-impl<Arg1> HasEncoding for MichelsonTicket<Arg1>
-where
     Arg1: Debug + PartialEq + Eq,
 {
     fn encoding() -> Encoding {
@@ -284,50 +270,87 @@ where
     }
 }
 
-// fn comme_tu_veux<'a>(bytes: &'a MichelineBytes) -> NomResult<'a, Contract> {
-//     Contract::nom_read(&bytes.0)
-// }
-
-impl<Arg0> NomReader for MichelsonTicket<Arg0>
-where
-    Arg0: NomReader + Debug + PartialEq + Eq,
-{
+// Binary representation of a unit Ticket
+// Ticket KT1FHqsvc7vRS3u54L66DdMX4gb6QKqxJ1JW unit Unit 1
+// 0x099d0000002d01000000244b543146487173766337765253337535344c363644644d5834676236514b71784a314a57036c030b00000000
+// \t\x9d\x00\x00\x00-\x01\x00\x00\x00$KT1FHqsvc7vRS3u54L66DdMX4gb6QKqxJ1JW\x03l\x03\x0b\x00\x00\x00\x00
+impl NomReader for MichelsonTicket<MichelsonUnit> {
     fn nom_read(input: &[u8]) -> NomResult<Self> {
-        let (
-            input,
-            MichelineTicket {
-                contract,
-                arg1,
-                amount,
-            },
-        ) = MichelineTicket::<_, { prim::TICKET_TAG }>::nom_read(input)?;
-        let contract = Contract::try_from(contract.0).expect("todo: return an error");
-        let new_contract = MichelsonContract(contract);
-        let amount = amount.0.into();
-        Ok((input, MichelsonTicket(new_contract, arg1, amount)))
+        let (fst, node) = Node::nom_read(input)?;
+        let Node::Prim {
+            prim_tag,
+            args,
+            annots,
+        } = node
+        else {
+            todo!()
+        };
 
-        // map(
-        //     MichelineTicket::<_, { prim::TICKET_TAG }>::nom_read,
-        //     |MichelineTicket {
-        //          contract,
-        //          arg1,
-        //          amount,
-        //      }| MichelsonTicket(contract, arg1, amount.0.into()),
-        // )(input)
+        if prim_tag != TICKET_TAG || !annots.is_empty() || args.len() != 4 {
+            todo!()
+        };
+        let [arg0, arg1, arg2, arg3] = args.try_into().unwrap();
+        let Node::String(ticketer) = arg0 else {
+            todo!()
+        };
+        match arg1 {
+            Node::Prim {
+                prim_tag,
+                args,
+                annots,
+            } if prim_tag == UNIT_TYPE_TAG && args.is_empty() && annots.is_empty() => (),
+            _ => todo!(),
+        };
+        let contents = match arg2 {
+            Node::Prim {
+                prim_tag,
+                args,
+                annots,
+            } if prim_tag == UNIT_TAG && args.is_empty() && annots.is_empty() => {
+                MichelsonUnit
+            }
+            _ => todo!(),
+        };
+        // let Node::Prim { prim_tag, args, annots } = args[1];
+        // let conents = args[2];
+        // let amount = args[3];
+        let Node::Int(amount) = arg3 else { todo!() };
+
+        let ticket = MichelsonTicket(
+            MichelsonContract(Contract::from_b58check(&ticketer).unwrap()),
+            contents,
+            MichelsonInt(amount),
+        );
+        Ok((fst, ticket))
+        // map(Node::nom_read, |node| {
+        //     MichelsonTicket(node., arg1, amount.0.into())
+        // })(input)
     }
 }
 
+// impl<Arg0> TryFrom<Node> for MichelsonTicket<Arg0>
+// where
+// Arg0: NomReader + Debug + PartialEq + Eq,
 
 
-impl<Arg> BinWriter for MichelsonTicket<Arg>
-where
-    Arg: BinWriter + Debug + PartialEq + Eq,
+impl BinWriter for MichelsonTicket<MichelsonUnit>
 {
     fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-        bin_write_micheline_ticket(prim::TICKET_TAG, &self.0, &self.1, &self.2, output)
-    }
-}
+        let MichelsonTicket(ticketer, _contents,amount ) = self;
 
+        let ticketer = Node::String(ticketer.0.to_b58check());
+        let contents_type = Node::Prim { prim_tag: UNIT_TYPE_TAG, args: vec![], annots: Annotations(vec![]) };
+        let contents = Node::Prim { prim_tag: UNIT_TAG, args: vec![], annots: Annotations(vec![]) };
+        let amount = Node::Int(amount.0.clone());
+
+        let args = vec![ticketer, contents_type, contents, amount];
+
+        let node = Node::Prim { prim_tag: TICKET_TAG, args, annots: Annotations(vec![]) };
+        node.bin_write(output)
+
+    }
+   
+}
 
 impl<Arg0, Arg1> NomReader for MichelsonOr<Arg0, Arg1>
 where
@@ -409,15 +432,6 @@ where
     }
 }
 
-impl<Arg1> BinWriter for MichelsonTicket<Arg1>
-where
-    Arg1: BinWriter + Debug + PartialEq + Eq,
-{
-    fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
-        bin_write_prim_generic_ticket(prim::TICKET_TAG, &self.0, &self.1, &self.2, output)
-    }
-}
-
 impl<Arg0, Arg1> From<MichelinePrim2ArgsNoAnnots<Arg0, Arg1, { prim::PAIR_TAG }>>
     for MichelsonPair<Arg0, Arg1>
 where
@@ -484,15 +498,6 @@ where
     }
 }
 
-impl<Arg0> From<MichelineGeneric<Arg0, { prim::TICKET_TAG }>> for MichelsonTicket<Arg0>
-where
-    Arg0: Debug + PartialEq + Eq,
-{
-    fn from(micheline: MichelineGeneric<Arg0, { prim::TICKET_TAG }>) -> Self {
-        todo!("A faire");
-    }
-}
-
 impl<Arg> BinWriter for MichelsonOption<Arg>
 where
     Arg: BinWriter + Debug + PartialEq + Eq,
@@ -524,5 +529,22 @@ impl BinWriter for MichelsonBytes {
 impl BinWriter for MichelsonInt {
     fn bin_write(&self, output: &mut Vec<u8>) -> BinResult {
         bin_write_micheline_int(&self.0, output)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    #[test]
+    fn basic_encode_decode_on_ticket() {
+        let x = "099d0000002f01000000244b543146487173766337765253337535344c363644644d5834676236514b71784a314a57036c030b000b00000000";
+        let bytes = hex::decode(x).unwrap();
+        let result = MichelsonTicket::<MichelsonUnit>::nom_read(bytes.as_slice());
+        assert!(result.is_ok());
+        let mut output = Vec::new();
+        let result = result.unwrap().1.bin_write(&mut output);
+        assert!(result.is_ok());
+        assert_eq!(bytes, output)
     }
 }

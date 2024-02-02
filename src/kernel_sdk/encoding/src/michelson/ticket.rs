@@ -31,8 +31,6 @@ use tezos_data_encoding::{
 };
 use thiserror::Error;
 
-use super::MichelsonTicket;
-
 #[cfg(feature = "testing")]
 pub mod testing;
 
@@ -113,7 +111,8 @@ pub enum TicketError {
 
 // Expr is guarantee by construction to implement `Michelson` even though
 // rust does not enforce it in type aliases `type TicketRepr<Expr: Michelson>`.
-type TicketRepr<Expr> = MichelsonTicket<Expr>;
+type TicketRepr<Expr> =
+    MichelsonPair<MichelsonContract, MichelsonPair<Expr, MichelsonInt>>;
 
 /// Michelson ticket representative.
 #[derive(Debug, PartialEq, Eq)]
@@ -148,10 +147,9 @@ impl<Expr: Michelson> Ticket<Expr> {
     ) -> Result<Self, TicketError> {
         let amount: BigInt = amount.into();
         if amount.is_positive() {
-            Ok(Ticket(MichelsonTicket(
+            Ok(Ticket(MichelsonPair(
                 MichelsonContract(creator),
-                contents.into(),
-                MichelsonInt(Zarith(amount)),
+                MichelsonPair(contents.into(), MichelsonInt(Zarith(amount))),
             )))
         } else {
             Err(TicketError::InvalidAmount(amount))
@@ -182,11 +180,11 @@ impl<Expr: Michelson> Ticket<Expr> {
     }
     /// The ticket's content
     pub fn contents(&self) -> &Expr {
-        &self.0 .1
+        &self.0 .1 .0
     }
     /// The ticket's amount
     pub fn amount(&self) -> &BigInt {
-        &self.0 .2 .0 .0
+        &self.0 .1 .1 .0 .0
     }
 
     /// same as `amount()` but returns it as a `T`
@@ -205,10 +203,12 @@ impl Ticket<MichelsonString> {
     /// clone used in testing
     #[cfg(feature = "testing")]
     pub fn testing_clone(&self) -> Self {
-        Ticket(MichelsonTicket(
+        Ticket(MichelsonPair(
             MichelsonContract(self.creator().0.clone()),
-            MichelsonString(self.contents().0.clone()),
-            MichelsonInt(Zarith(self.amount().clone())),
+            MichelsonPair(
+                MichelsonString(self.contents().0.clone()),
+                MichelsonInt(Zarith(self.amount().clone())),
+            ),
         ))
     }
 }

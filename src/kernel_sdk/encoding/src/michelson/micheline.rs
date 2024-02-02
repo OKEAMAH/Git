@@ -46,7 +46,7 @@ pub const MICHELINE_BYTES_TAG: u8 = 10;
 // Annotations
 // -----------
 
-mod annots {
+pub(crate) mod annots {
     use regex::Regex;
     use std::fmt;
     use tezos_data_encoding::enc::{self, BinResult, BinWriter};
@@ -56,7 +56,7 @@ mod annots {
     pub struct Annotation(String);
 
     #[derive(Debug, PartialEq, Eq, Clone, Default)]
-    pub struct Annotations(Vec<Annotation>);
+    pub struct Annotations(pub(crate) Vec<Annotation>);
 
     impl fmt::Display for Annotation {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -211,16 +211,6 @@ where
     pub(crate) arg2: Arg2,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct MichelineTicket<Arg1, const PRIM_TAG: u8>
-where
-    Arg1: Debug + PartialEq + Eq,
-{
-    pub(crate) contract: MichelineString,
-    pub(crate) arg1: Arg1,
-    pub(crate) amount: MichelineInt,
-}
-
 /// lib_micheline *prim-2 some annotations* encoding.
 ///
 /// Encoded as an `obj4`, prefixed by [MICHELINE_PRIM_2_ARGS_SOME_ANNOTS_TAG], with fields:
@@ -364,20 +354,6 @@ where
     }
 }
 
-impl<Arg1, const PRIM_TAG: u8> From<MichelineTicket<Arg1, PRIM_TAG>> for Node
-where
-    Arg1: Debug + PartialEq + Eq,
-    Node: From<Arg1>,
-{
-    fn from(a: MichelineTicket<Arg1, PRIM_TAG>) -> Self {
-        Node::Prim {
-            prim_tag: PRIM_TAG,
-            args: vec![a.contract.into(), a.arg1.into(), a.amount.into()],
-            annots: Annotations::default(),
-        }
-    }
-}
-
 // ----------
 // CONVERSION
 // ----------
@@ -508,28 +484,6 @@ where
         );
 
         map(parse, |arg| MichelinePrim1ArgNoAnnots { arg })(input)
-    }
-}
-
-impl<Arg, const PRIM_TAG: u8> NomReader for MichelineTicket<Arg, PRIM_TAG>
-where
-    Arg: NomReader + Debug + PartialEq + Eq,
-{
-    fn nom_read(input: &[u8]) -> NomResult<Self> {
-        let parse = preceded(
-            tag([MICHELINE_PRIM_GENERIC_TAG, PRIM_TAG]),
-            tuple((
-                MichelineString::nom_read,
-                Arg::nom_read,
-                MichelineInt::nom_read,
-            )),
-        );
-
-        map(parse, |(contract, arg1, amount)| MichelineTicket {
-            contract,
-            arg1,
-            amount,
-        })(input)
     }
 }
 
