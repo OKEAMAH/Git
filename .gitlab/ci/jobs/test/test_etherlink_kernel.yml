@@ -1,23 +1,22 @@
-test_kernels:
+test_etherlink_kernel:
   extends:
     - .oc.kernels_template
   stage: test
   needs: [oc.docker:rust-toolchain]
   script:
-    - make -f kernels.mk check
-    - make -f kernels.mk test
+    - make -f etherlink.mk check
+    - make -f etherlink.mk test
   rules:
     - changes:
         - .gitlab-ci.yml
         # Run if the `rust-toolchain` image is updated
         - images/**/*
-        - kernels.mk
-        - src/kernel_*/**/*
-        - src/risc_v/**/*
+        - etherlink.mk
+        - etherlink/kernel_evm/**/*
         - .gitlab/**/*
         - .gitlab-ci.yml
       when: on_success
   cache:
-    key: kernels
+    key: etherlink_kernel
     paths:
       - cargo/

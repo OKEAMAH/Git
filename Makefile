@@ -559,3 +559,27 @@ test-kernels:
 .PHONY: clean-kernels
 clean-kernels:
 	make -f kernels.mk clean
+
+.PHONY: build-etherlink-deps
+build-etherlink-deps:
+	make -f etherlink.mk build-deps
+
+.PHONY: build-etherlink-dev-deps
+build-etherlink-dev-deps:
+	make -f etherlink.mk build-dev-deps
+
+.PHONY: build-etherlink
+build-etherlink:
+	make -f etherlink.mk build
+
+.PHONY: check-etherlink
+check-etherlink:
+	make -f etherlink.mk check
+
+.PHONY: test-etherlink
+test-etherlink:
+	make -f etherlink.mk test
+
+.PHONY: clean-etherlink
+clean-etherlink:
+	make -f etherlink.mk clean
