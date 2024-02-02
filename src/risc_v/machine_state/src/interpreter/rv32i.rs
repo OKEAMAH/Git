@@ -60,4 +60,11 @@ where
 
         current_pc.wrapping_add(imm as u64).wrapping_sub(4)
     }
+
+    /// run `AUIPC` instruction (U-type)
+    pub fn run_auipc(&mut self, imm: i64, rd: XRegister) {
+        // U-type immediates have bits [31:20] set and the lower 20 zeroed.
+        let rval = self.pc.read().wrapping_add(imm as u64);
+        self.xregisters.write(rd, rval);
+    }
 }
