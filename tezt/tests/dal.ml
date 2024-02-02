@@ -2161,7 +2161,7 @@ let test_dal_node_test_patch_profile _protocol _parameters _cryptobox _node
   let* () =
     check_profiles ~__LOC__ dal_node ~expected:(Operator [profile1; profile2])
   in
-  (* Test that the patched profiles are persisted after restart, even if we stop
+  (* Test whether the patched profiles persist after a restart, even if we stop
      the DAL node abruptly to not let it the opportunity to save its config at
      the end of its execution, when the [save_config] flag is used. *)
   let profile3 = Dal_RPC.Attester Constant.bootstrap3.public_key_hash in
