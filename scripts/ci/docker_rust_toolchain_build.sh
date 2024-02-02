@@ -1,4 +1,26 @@
 #!/bin/sh
+#
+# Build rust-toolchain image for CI jobs and Octez docker distribution.
+#
+# Reads the following environment variables:
+#  - 'rust_toolchain_image_name'
+#  - 'rust_toolchain_image_tag' (optional)
+#  - 'CI_COMMIT_REF_SLUG': set by GitLab CI
+#  - 'CI_DEFAULT_BRANCH': set by GitLab CI
+#  - 'CI_PIPELINE_ID': set by GitLab CI
+#  - 'CI_PIPELINE_URL': set by GitLab CI
+#  - 'CI_JOB_ID': set by GitLab CI
+#  - 'CI_JOB_URL': set by GitLab CI
+#  - 'CI_COMMIT_SHA': set by GitLab CI
+#
+# The image is tagged with
+# $rust_toolchain_image_name:$CI_COMMIT_REF_SLUG and
+# $rust_toolchain_image_name:TAG. If $rust_toolchain_image_tag is set,
+# then TAG contains this value. If not, TAG contains a hash of this
+# image's inputs.
+#
+# The inputs of this image is the set of files in the directory
+# 'images/rust-toolchain'.
 
 set -eu
 
