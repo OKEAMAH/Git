@@ -1630,17 +1630,18 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
     }
 
     fn nested_call_gas_limit(&mut self, target_gas: Option<u64>) -> Option<u64> {
-        target_gas.map(|gas| {
-            // Part of EIP-150: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-150.md
-            let gas_remaining = self.gas_remaining();
-            let max_gas_limit = if self.config.call_l64_after_gas {
-                gas_remaining - gas_remaining / 64
-            } else {
-                gas_remaining
-            };
-
-            min(gas, max_gas_limit)
-        })
+        // Part of EIP-150: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-150.md
+        let gas_remaining = self.gas_remaining();
+        let max_gas_limit = if self.config.call_l64_after_gas {
+            gas_remaining - gas_remaining / 64
+        } else {
+            gas_remaining
+        };
+        if let Some(gas) = target_gas {
+            Some(min(gas, max_gas_limit))
+        } else {
+            Some(max_gas_limit)
+        }
     }
 
     pub fn warm_access_enabled() -> bool {
@@ -1882,6 +1883,23 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         target_gas: Option<u64>,
     ) -> Capture<CreateOutcome, Self::CreateInterrupt> {
         let gas_limit = self.nested_call_gas_limit(target_gas);
+
+        if let Err(err) = self.record_cost(gas_limit.unwrap_or(0)) {
+            log!(
+                self.host,
+                Debug,
+                "Not enought gas for call. Required at least: {:?}",
+                gas_limit
+            );
+
+            return Capture::Exit((
+                ExitReason::Fatal(ExitFatal::Other(Cow::from(
+                    "Out of gas before recursive call",
+                ))),
+                None,
+                vec![],
+            ));
+        }
 
         if let Err(err) = self.begin_inter_transaction(false, gas_limit) {
             log!(
