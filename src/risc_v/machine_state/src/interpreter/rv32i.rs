@@ -68,3 +68,44 @@ where
         self.xregisters.write(rd, rval);
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::{
+        backend::tests::TestBackendFactory,
+        create_backend, create_state,
+        registers::{a0, a1, a2, t5, t6},
+        HartState, HartStateLayout,
+    };
+
+    pub fn test<F: TestBackendFactory>() {
+        test_auipc::<F>();
+    }
+
+    fn test_auipc<F: TestBackendFactory>() {
+        let pc_imm_res_rd = [
+            (0, 0, 0, a2),
+            (0, 0xFF_FFF0_0000, 0xFF_FFF0_0000, a0),
+            (0x000A_AAAA, 0xFF_FFF0_0000, 0xFF_FFFA_AAAA, a1),
+            (0xABCD_AAAA_FBC0_D3FE, 0, 0xABCD_AAAA_FBC0_D3FE, t5),
+            (0xFFFF_FFFF_FFF0_0000, 0x10_0000, 0, t6),
+        ];
+
+        for (init_pc, imm, res, rd) in pc_imm_res_rd {
+            let mut backend = create_backend!(HartStateLayout, F);
+            let mut state = create_state!(HartState, F, backend);
+
+            // Keep only bits [31:20] and then sign-extend back to 64 bits
+            let u_imm = ((imm >> 20) & 0xF_FFFF) << 20;
+            assert_eq!(imm, u_imm);
+            println!("pc: {init_pc:x}, imm: {imm:x}, res: {res:x}");
+
+            state.pc.write(init_pc);
+            state.run_auipc(imm, rd);
+
+            let read_pc = state.xregisters.read(rd);
+
+            assert_eq!(read_pc, res);
+        }
+    }
+}
