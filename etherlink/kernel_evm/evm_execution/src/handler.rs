@@ -692,9 +692,6 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 }
 
                 self.set_contract_code(address, code_out)?;
-                // EIP-161: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-161.md
-                // A created smart contract nonce must start at 1.
-                self.increment_nonce(address)?;
 
                 Ok((sub_context_result, Some(address), vec![]))
             }
@@ -743,6 +740,11 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                 // This behaviour is appropriate to <=Shanghai configuration.
                 // In the upcoming Cancun fork, the semantic of this behaviour will change.
                 self.increment_nonce(caller)?;
+                log!(
+                    self.host,
+                    Debug,
+                    "The contract has been deleted, so the address is empty."
+                );
                 return Ok((
                     ExitReason::Succeed(ExitSucceed::Stopped),
                     Some(H160::zero()), // see: https://www.evm.codes/#f5?fork=shanghai
@@ -800,6 +802,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             self.config.stack_limit,
             self.config.memory_limit,
         );
+
+        // EIP-161: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-161.md
+        // A created smart contract nonce must start at 1.
+        self.increment_nonce(address)?;
 
         let result = self.execute(&mut runtime);
 
@@ -1342,9 +1348,16 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
             self.config,
         ));
 
-        self.evm_account_storage
+        let res = self
+            .evm_account_storage
             .begin_transaction(self.host)
-            .map_err(EthereumError::from)
+            .map_err(EthereumError::from);
+
+        let current_depth = self.evm_account_storage.stack_depth();
+
+        log!(self.host, Debug, "STACK DEPTH {}", current_depth);
+
+        res
     }
 
     /// Commit an intermediate transaction
@@ -1454,6 +1467,8 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
         execution_result: Result<CreateOutcome, EthereumError>,
     ) -> Capture<CreateOutcome, T> {
         if let Ok((ref _r @ ExitReason::Succeed(_), _, _)) = execution_result {
+            log!(self.host, Debug, "SUCCCEEEDDD {:?}", _r);
+
             log!(
                 self.host,
                 Debug,
@@ -1475,8 +1490,10 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     vec![],
                 ));
             }
-        } else if let Ok((ExitReason::Revert(_), _, _)) = execution_result {
+        } else if let Ok((ref _r @ ExitReason::Revert(_), _, _)) = execution_result {
             log!(self.host, Debug, "Intermediate transaction reverted");
+
+            log!(self.host, Debug, "REVERRTTT {:?}", _r);
 
             if let Err(err) = self.rollback_inter_transaction(true) {
                 log!(
@@ -1492,10 +1509,12 @@ impl<'a, Host: Runtime> EvmHandler<'a, Host> {
                     vec![],
                 ));
             }
-        } else if let Ok((ExitReason::Error(_), _, _)) = execution_result {
+        } else if let Ok((ref _r @ ExitReason::Error(_), _, _)) = execution_result {
             // Internal call failed. [rollback_inter_transaction] will consume
             // the gas with [refund_gas = false] and revert all sub-context
             // side-effect and continue the execution.
+
+            log!(self.host, Debug, "ERRRRORRRR {:?}", _r);
 
             if let Err(err) = self.rollback_inter_transaction(false) {
                 log!(
@@ -1763,6 +1782,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
 
         let gas_limit = self.nested_call_gas_limit(target_gas);
 
+        log!(self.host, Debug, "GAS_LIMIT {}", gas_limit.unwrap());
+
         if let Err(err) = self.begin_inter_transaction(false, gas_limit) {
             log!(
                 self.host,
@@ -1780,6 +1801,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
             ))
         } else {
             let result = self.execute_create(caller, scheme, value, init_code, true);
+
+            log!(self.host, Debug, "HERE!");
 
             self.end_inter_transaction(result)
         }
@@ -1836,6 +1859,8 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
             input,
             TransactionContext::from_context(context),
         );
+
+        log!(self.host, Debug, "NOT HERE!");
 
         match self.end_inter_transaction(result) {
             Capture::Exit((reason, _, value)) => {
