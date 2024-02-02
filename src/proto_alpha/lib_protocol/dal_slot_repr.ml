@@ -1209,11 +1209,9 @@ module History_v2 = struct
              @@ List.fold_left
                   (fun (well_ordered, idx)
                        Header.{id = {published_level = pl; index = idx'}; _} ->
-                    ( well_ordered
+                    ( (well_ordered
                       && Raw_level_repr.equal published_level pl
-                      && Compare.Int.( < )
-                           (Dal_slot_index_repr.compare idx idx')
-                           0,
+                      && Dal_slot_index_repr.(idx < idx')),
                       idx' ))
                   (true, index)
                   l
