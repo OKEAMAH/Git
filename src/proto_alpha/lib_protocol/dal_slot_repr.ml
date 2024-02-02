@@ -1225,22 +1225,22 @@ module History_v2 = struct
     let add_cell (t, cache) next_cell_content ~number_of_slots =
       let open Result_syntax in
       let prev_cell_ptr = hash t in
-      let* cache = History_cache.remember prev_cell_ptr t cache in
       let Header.{published_level; _} =
         Skip_list.content t |> Content.content_id
       in
-      let* new_head =
-        if Raw_level_repr.equal published_level genesis_level then
-          (* If this is the first real cell of DAL, replace dummy genesis. *)
-          return (Skip_list.genesis next_cell_content)
-        else
+      if Raw_level_repr.equal published_level genesis_level then
+        (* If this is the first real cell of DAL, replace dummy genesis. *)
+        return (Skip_list.genesis next_cell_content, cache)
+      else
+        let* cache = History_cache.remember prev_cell_ptr t cache in
+        let* new_head =
           Skip_list.next
             ~prev_cell:t
             ~prev_cell_ptr
             next_cell_content
             ~number_of_slots
-      in
-      return (new_head, cache)
+        in
+        return (new_head, cache)
 
     (* Given a list [attested_slot_headers] of well-ordered (wrt slots indices)
        (attested) slot headers, this function builds an extension [l] of
