@@ -1216,8 +1216,8 @@ module History_v2 = struct
                   (true, index)
                   l
 
-    (* Insert a cell in the skip list [t] and the corresponding association [(t,
-       hash(t))] in the given [cache].
+    (* Insert a cell in the skip list [t] and the corresponding association [(hash(t),
+       t)] in the given [cache].
 
        Note that if the given skip list contains the genesis cell, its content is
        reset with the given content. This ensures the invariant that
