@@ -32,6 +32,11 @@ docker build images/rust-toolchain \
   --build-arg=BUILDKIT_INLINE_CACHE=1 \
   --cache-from="${image_base}:${CI_COMMIT_REF_SLUG}" \
   --cache-from="${image_base}:${CI_DEFAULT_BRANCH}" \
+  --label "com.tezos.build-pipeline-id"="${CI_PIPELINE_ID}" \
+  --label "com.tezos.build-pipeline-url"="${CI_PIPELINE_URL}" \
+  --label "com.tezos.build-job-id"="${CI_JOB_ID}" \
+  --label "com.tezos.build-job-url"="${CI_JOB_URL}" \
+  --label "com.tezos.build-tezos-revision"="${CI_COMMIT_SHA}" \
   -t "${image_base}:${CI_COMMIT_REF_SLUG}" \
   -t "${image_name}"
 
