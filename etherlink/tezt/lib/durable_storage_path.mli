@@ -70,3 +70,7 @@ val flat_fee_path : path
 (** [delayed_inbox_timeout] is the path to the timeout for
     delayed transactions. *)
 val delayed_inbox_timeout : path
+
+(** [delayed_inbox_min_levels] is the path to the minimum number of L1 levels
+    needed to have passed to consider a timeout. *)
+val delayed_inbox_min_levels : path

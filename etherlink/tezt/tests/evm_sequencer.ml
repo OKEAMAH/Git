@@ -112,7 +112,7 @@ let setup_l1_contracts ?(admin = Constant.bootstrap1) client =
   return {delayed_transaction_bridge; exchanger; bridge; admin}
 
 let setup_sequencer ?genesis_timestamp ?time_between_blocks
-    ?delayed_inbox_timeout
+    ?delayed_inbox_timeout ?delayed_inbox_min_levels
     ?(bootstrap_accounts = Eth_account.bootstrap_accounts)
     ?(sequencer = Constant.bootstrap1) protocol =
   let* node, client = setup_l1 ?timestamp:genesis_timestamp protocol in
@@ -133,6 +133,7 @@ let setup_sequencer ?genesis_timestamp ?time_between_blocks
       ~ticketer:l1_contracts.exchanger
       ~administrator:l1_contracts.admin
       ?delayed_inbox_timeout
+      ?delayed_inbox_min_levels
       ()
   in
   let* {output; _} =
@@ -967,7 +968,10 @@ let test_delayed_transfer_timeout =
   (* Start the evm node *)
   let* {client; node; l1_contracts; sc_rollup_address; sc_rollup_node; evm_node}
       =
-    setup_sequencer ~delayed_inbox_timeout:3 protocol
+    setup_sequencer
+      ~delayed_inbox_timeout:3
+      ~delayed_inbox_min_levels:1
+      protocol
   in
   (* Kill the sequencer *)
   let* () = Evm_node.terminate evm_node in
