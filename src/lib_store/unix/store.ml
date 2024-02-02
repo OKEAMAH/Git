@@ -299,30 +299,25 @@ module Block = struct
     let genesis = genesis chain_store in
     Block_hash.equal hash genesis.Genesis.block
 
-  let uncompress_operations chain_state protocol_level encoded_operations :
+  let uncompress_operations protocol_levels protocol_level encoded_operations :
       Operation.t list list tzresult Lwt.t =
     let open Lwt_result_syntax in
     match encoded_operations with
     | Block_repr.Raw ops -> return ops
-    | Compressed b ->
-        Shared.locked_use chain_state (fun chain_state ->
-            let*! proto_levels =
-              Stored_data.get chain_state.protocol_levels_data
-            in
-            match Protocol_levels.find protocol_level proto_levels with
-            | None -> tzfail (Cannot_find_protocol protocol_level)
-            | Some {protocol; _} -> (
-                match Protocol_plugin.find_shell protocol with
-                | Some (module Shell_plugin) ->
-                    return
-                    @@ Data_encoding.Binary.of_bytes_exn
-                         Shell_plugin.refactoring_encoding
-                         b
-                | None ->
-                    (* There should never be a case where we uncompress Compressed
-                       operations, but we do not have a refactoring_encoding *)
-                    tzfail
-                      (Uncompress_without_plugin {protocol_hash = protocol})))
+    | Compressed b -> (
+        match Protocol_levels.find protocol_level protocol_levels with
+        | None -> tzfail (Cannot_find_protocol protocol_level)
+        | Some Protocol_levels.{protocol; _} -> (
+            match Protocol_plugin.find_shell protocol with
+            | Some (module Shell_plugin) ->
+                return
+                @@ Data_encoding.Binary.of_bytes_exn
+                     Shell_plugin.refactoring_encoding
+                     b
+            | None ->
+                (* There should never be a case where we uncompress Compressed
+                   operations, but we do not have a refactoring_encoding *)
+                tzfail (Uncompress_without_plugin {protocol_hash = protocol})))
 
   let read_block {block_store; chain_state; _} ?(distance = 0) hash =
     let open Lwt_result_syntax in
@@ -335,9 +330,13 @@ module Block = struct
     match o with
     | None -> tzfail @@ Block_not_found {hash; distance}
     | Some block ->
+        let*! protocol_levels =
+          Shared.locked_use chain_state (fun chain_state ->
+              Stored_data.get chain_state.protocol_levels_data)
+        in
         let* uncompressed_operations =
           uncompress_operations
-            chain_state
+            protocol_levels
             block.contents.header.Block_header.shell.proto_level
             block.contents.operations
         in
@@ -348,6 +347,41 @@ module Block = struct
               Block_repr.
                 {block.contents with operations = Raw uncompressed_operations};
           }
+
+  let locked_read_block {block_store; _} chain_state ?(distance = 0) hash =
+    let open Lwt_result_syntax in
+    let* o =
+      Block_store.read_block
+        ~read_metadata:false
+        block_store
+        (Block (hash, distance))
+    in
+    match o with
+    | None -> tzfail @@ Block_not_found {hash; distance}
+    | Some block ->
+        let*! protocol_levels =
+          Stored_data.get chain_state.protocol_levels_data
+        in
+        let* uncompressed_operations =
+          uncompress_operations
+            protocol_levels
+            block.contents.header.Block_header.shell.proto_level
+            block.contents.operations
+        in
+        return
+          {
+            block with
+            contents =
+              Block_repr.
+                {block.contents with operations = Raw uncompressed_operations};
+          }
+
+  let read_block_opt chain_store ?(distance = 0) hash =
+    let open Lwt_syntax in
+    let* r = read_block chain_store ~distance hash in
+    match r with
+    | Ok block -> Lwt.return_some block
+    | Error _ -> Lwt.return_none
 
   let read_block_metadata ?(distance = 0) chain_store hash =
     Block_store.read_block_metadata
@@ -379,19 +413,22 @@ module Block = struct
     | Some metadata -> return metadata
     | None -> tzfail (Block_metadata_not_found (Block_repr.hash block))
 
-  let read_block_opt chain_store ?(distance = 0) hash =
-    let open Lwt_syntax in
-    let* r = read_block chain_store ~distance hash in
-    match r with
-    | Ok block -> Lwt.return_some block
-    | Error _ -> Lwt.return_none
-
   let read_predecessor chain_store block =
     read_block chain_store (Block_repr.predecessor block)
+
+  let locked_read_predecessor chain_store chain_state block =
+    locked_read_block chain_store chain_state (Block_repr.predecessor block)
 
   let read_predecessor_opt chain_store block =
     let open Lwt_syntax in
     let* r = read_predecessor chain_store block in
+    match r with
+    | Ok block -> Lwt.return_some block
+    | Error _ -> Lwt.return_none
+
+  let locked_read_predecessor_opt chain_store chain_state block =
+    let open Lwt_syntax in
+    let* r = locked_read_predecessor chain_store chain_state block in
     match r with
     | Ok block -> Lwt.return_some block
     | Error _ -> Lwt.return_none
@@ -418,7 +455,7 @@ module Block = struct
     | Some b -> return b
     | None -> tzfail @@ Block_not_found {hash; distance = 0}
 
-  let locked_read_block_by_level chain_store head level =
+  let read_block_by_level chain_store head level =
     let open Lwt_result_syntax in
     let distance = Int32.(to_int (sub (Block_repr.level head) level)) in
     if distance < 0 then
@@ -430,20 +467,49 @@ module Block = struct
            })
     else read_block chain_store ~distance (Block_repr.hash head)
 
-  let locked_read_block_by_level_opt chain_store head level =
+  let locked_read_block_by_level chain_store chain_state head level =
+    let open Lwt_result_syntax in
+    let distance = Int32.(to_int (sub (Block_repr.level head) level)) in
+    if distance < 0 then
+      tzfail
+        (Bad_level
+           {
+             head_level = Block_repr.level head;
+             given_level = Int32.of_int distance;
+           })
+    else
+      locked_read_block chain_store chain_state ~distance (Block_repr.hash head)
+
+  let locked_read_block_by_level chain_store head level =
+    locked_read_block_by_level chain_store head level
+
+  let read_block_by_level_opt chain_store head level =
     let open Lwt_syntax in
-    let* r = locked_read_block_by_level chain_store head level in
+    let* r = read_block_by_level chain_store head level in
+    match r with Error _ -> Lwt.return_none | Ok b -> Lwt.return_some b
+
+  let locked_read_block_by_level_opt chain_store chain_state head level =
+    let open Lwt_syntax in
+    let* r = locked_read_block_by_level chain_store chain_state head level in
     match r with Error _ -> Lwt.return_none | Ok b -> Lwt.return_some b
 
   let read_block_by_level chain_store level =
     let open Lwt_syntax in
     let* current_head = current_head chain_store in
-    locked_read_block_by_level chain_store current_head level
+    read_block_by_level chain_store current_head level
+
+  let _locked_read_block_by_level chain_store chain_state level =
+    let {current_head; _} = chain_state in
+    locked_read_block_by_level chain_store chain_state current_head level
 
   let read_block_by_level_opt chain_store level =
     let open Lwt_syntax in
     let* current_head = current_head chain_store in
-    locked_read_block_by_level_opt chain_store current_head level
+    read_block_by_level_opt chain_store current_head level
+
+  let locked_read_block_by_level_opt chain_store chain_state level =
+    let {current_head; _} = chain_state in
+    locked_read_block_by_level_opt chain_store chain_state current_head level
 
   let read_validated_block_opt {chain_state; _} hash =
     Shared.use chain_state (fun {validated_blocks; _} ->
@@ -988,21 +1054,23 @@ module Chain_traversal = struct
         | None -> Lwt.return (ancestor, [])
         | Some path -> Lwt.return (ancestor, path))
 
-  let folder chain_store block n f init =
+  let folder chain_store chain_state block n f init =
     let open Lwt_syntax in
     let rec loop acc block_head n =
       let hashes = Block.all_operation_hashes block_head in
       let acc = f acc (Block.hash block_head, hashes) in
       if n = 0 then Lwt.return acc
       else
-        let* o = Block.read_predecessor_opt chain_store block_head in
+        let* o =
+          Block.locked_read_predecessor_opt chain_store chain_state block_head
+        in
         match o with
         | None -> Lwt.return acc
         | Some predecessor -> loop acc predecessor (pred n)
     in
     loop init block n
 
-  let live_blocks chain_store block n =
+  let live_blocks chain_store chain_state block n =
     let fold (bacc, oacc) (head_hash, op_hashes) =
       let bacc = Block_hash.Set.add head_hash bacc in
       let oacc =
@@ -1014,15 +1082,15 @@ module Chain_traversal = struct
       (bacc, oacc)
     in
     let init = (Block_hash.Set.empty, Operation_hash.Set.empty) in
-    folder chain_store block n fold init
+    folder chain_store chain_state block n fold init
 
-  let live_blocks_with_ring chain_store block n ring =
+  let live_blocks_with_ring chain_store chain_state block n ring =
     let open Lwt_syntax in
     let fold acc (head_hash, op_hashes) =
       let op_hash_set = Operation_hash.Set.(of_list (List.flatten op_hashes)) in
       (head_hash, op_hash_set) :: acc
     in
-    let* l = folder chain_store block n fold [] in
+    let* l = folder chain_store chain_state block n fold [] in
     (* Don't revert the list so we can add them in the correct order. *)
     Ringo.Ring.add_list ring l ;
     Lwt.return_unit
@@ -1186,6 +1254,7 @@ module Chain = struct
           let* () =
             Chain_traversal.live_blocks_with_ring
               chain_store
+              chain_state
               block
               expected_capacity
               new_cache
@@ -1199,7 +1268,12 @@ module Chain = struct
                 (Block_hash.Set.add bh bhs, Operation_hash.Set.union ops opss))
           in
           Lwt.return (live_blocks, live_ops)
-      | _ -> Chain_traversal.live_blocks chain_store block expected_capacity
+      | _ ->
+          Chain_traversal.live_blocks
+            chain_store
+            chain_state
+            block
+            expected_capacity
 
   let compute_live_blocks chain_store ~block =
     let open Lwt_result_syntax in
@@ -1246,21 +1320,15 @@ module Chain = struct
       ?min_level (head_hash, head_header) seed =
     let open Lwt_syntax in
     let* caboose, _ =
-      Shared.use chain_store.chain_state (fun chain_state ->
-          match min_level with
-          | None -> Block_store.caboose chain_store.block_store
-          | Some min_level -> (
-              let* o =
-                Block.locked_read_block_by_level_opt
-                  chain_store
-                  chain_state.current_head
-                  min_level
-              in
-              match o with
-              | None ->
-                  (* should not happen *)
-                  Block_store.caboose chain_store.block_store
-              | Some b -> Lwt.return (Block_repr.descriptor b)))
+      match min_level with
+      | None -> Block_store.caboose chain_store.block_store
+      | Some min_level -> (
+          let* o = Block.read_block_by_level_opt chain_store min_level in
+          match o with
+          | None ->
+              (* should not happen *)
+              Block_store.caboose chain_store.block_store
+          | Some b -> Lwt.return (Block_repr.descriptor b))
     in
     let get_predecessor =
       match min_level with
@@ -1330,7 +1398,7 @@ module Chain = struct
                     let* o =
                       Block.locked_read_block_by_level_opt
                         chain_store
-                        chain_state.current_head
+                        chain_state
                         last_level_in_protocol
                     in
                     match o with
@@ -1520,7 +1588,9 @@ module Chain = struct
         let* new_head_metadata =
           trace
             Bad_head_invariant
-            (let* pred_block = Block.read_block chain_store predecessor in
+            (let* pred_block =
+               Block.locked_read_block chain_store chain_state predecessor
+             in
              (* check that prededecessor's block metadata are available *)
              let* _pred_head_metadata =
                Block.get_block_metadata chain_store pred_block
@@ -1747,7 +1817,10 @@ module Chain = struct
                      return (current_head_descr, new_target)
                    else
                      let* target_block =
-                       Block.read_block chain_store (fst new_target)
+                       Block.locked_read_block
+                         chain_store
+                         chain_state
+                         (fst new_target)
                      in
                      return (Block.descriptor target_block, new_target)
                  in
