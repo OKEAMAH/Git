@@ -222,6 +222,8 @@ impl DelayedInbox {
         host: &mut Host,
         now: Timestamp,
         timeout: u64,
+        current_level: u32,
+        min_levels: u32,
     ) -> Result<Option<Transaction>> {
         let to_pop = self.0.first_with_id(host)?.and_then(
             |(
@@ -229,10 +231,12 @@ impl DelayedInbox {
                 DelayedInboxItem {
                     transaction,
                     timestamp,
-                    level: _,
+                    level,
                 },
             )| {
-                if now.as_u64() - timestamp.as_u64() >= timeout {
+                if now.as_u64() - timestamp.as_u64() >= timeout
+                    && current_level - level >= min_levels
+                {
                     log!(
                         host,
                         Info,
@@ -261,8 +265,12 @@ impl DelayedInbox {
     ) -> Result<Vec<Transaction>> {
         let now = current_timestamp(host);
         let timeout = storage::delayed_inbox_timeout(host)?;
+        let current_level = storage::read_l1_level(host)?;
+        let min_levels = storage::delayed_inbox_min_levels(host)?;
         let mut popped: Vec<Transaction> = vec![];
-        while let Some(tx) = self.pop_first_if_timed_out(host, now, timeout)? {
+        while let Some(tx) =
+            self.pop_first_if_timed_out(host, now, timeout, current_level, min_levels)?
+        {
             popped.push(tx)
         }
         Ok(popped)
