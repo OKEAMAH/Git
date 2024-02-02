@@ -41,14 +41,22 @@ let blueprint_injection =
     ~level:Info
     ("level", Data_encoding.n)
 
-let worker_enters_degraded_mode =
+let blueprint_injection_failure =
   declare_1
     ~section
-    ~name:"blueprint_degraded"
-    ~msg:
-      "Could not inject a blueprint for level {level}, entering degraded mode"
+    ~name:"blueprint_injection_failure"
+    ~msg:"Injecting a blueprint for level {level} failed"
     ~level:Error
     ("level", Data_encoding.n)
+
+let blueprint_catchup =
+  declare_2
+    ~section
+    ~name:"blueprint_catchup"
+    ~msg:"Catching-up from level {min} to {max}"
+    ~level:Notice
+    ("min", Data_encoding.n)
+    ("max", Data_encoding.n)
 
 let invalid_blueprint =
   declare_1
@@ -64,8 +72,10 @@ let publisher_shutdown () = emit publisher_shutdown ()
 
 let blueprint_injected level = emit blueprint_injection level
 
+let blueprint_injection_failed level = emit blueprint_injection_failure level
+
 let blueprint_applied level = emit blueprint_application level
 
-let entered_degraded_mode level = emit worker_enters_degraded_mode level
-
 let invalid_blueprint_produced level = emit invalid_blueprint level
+
+let catching_up min max = emit blueprint_catchup (min, max)
