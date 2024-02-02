@@ -1274,8 +1274,8 @@ module History_v2 = struct
                  (I.to_int s.Header.id.index))
         | i :: indices', s :: slots' ->
             let c = I.compare i s.Header.id.index in
-            if Compare.Int.(c = 0) then Attested s :: aux indices' slots'
-            else if Compare.Int.(c < 0) then
+            if I.(i = s.Header.id.index) then Attested s :: aux indices' slots'
+            else if I.(i < s.Header.id.index) then
               (* i < s.Header.id.index *)
               mk_unattested i :: aux indices' slots
             else
