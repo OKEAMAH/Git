@@ -41,4 +41,4 @@ val apply_blueprint :
   config:Config.config ->
   t ->
   Blueprint_types.payload ->
-  (t * Ethereum_types.block_height) tzresult Lwt.t
+  (t * Ethereum_types.block_height * Ethereum_types.block_hash) tzresult Lwt.t

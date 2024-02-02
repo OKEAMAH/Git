@@ -11,6 +11,7 @@ type t = {
   preimages : string;  (** Path to the preimages directory. *)
   smart_rollup_address : Tezos_crypto.Hashed.Smart_rollup_address.t;
   mutable next_blueprint_number : Ethereum_types.quantity;
+  mutable current_block_hash : Ethereum_types.block_hash;
       (** Number for the next bluerpint to be produced. *)
   blueprint_watcher : Blueprint_types.t Lwt_watcher.input;
 }
@@ -79,7 +80,3 @@ val last_produced_blueprint : t -> Blueprint_types.t tzresult Lwt.t
     state stored under [ctxt]. It commits the result if the blueprint produces
     the expected block. *)
 val apply_blueprint : t -> Sequencer_blueprint.t -> t tzresult Lwt.t
-
-(** [current_block_hash ctxt] returns the hash of the latest block
-    produced. *)
-val current_block_hash : t -> Ethereum_types.block_hash tzresult Lwt.t
