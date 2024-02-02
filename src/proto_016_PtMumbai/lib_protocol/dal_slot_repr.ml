@@ -166,6 +166,7 @@ module Header = struct
       match Dal.make dal_params with
       | Ok dal -> return dal
       | Error (`Fail s) -> error (Dal_commitment_proof_error s)
+      | Error `Wrong_SRS_loaded -> error (Dal_commitment_proof_error "Wrong SRS loaded")
     in
     return @@ Dal.verify_commitment dal commitment proof
 end
@@ -743,6 +744,7 @@ module History = struct
         match Dal.make dal_params with
         | Ok dal -> return dal
         | Error (`Fail s) -> proof_error s
+        | Error `Wrong_SRS_loaded -> proof_error "Wrong SRS loaded"
       in
       let fail_with_error_msg what =
         Format.kasprintf proof_error "%s (page id=%a)." what Page.pp pid

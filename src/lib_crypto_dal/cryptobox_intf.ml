@@ -73,7 +73,7 @@ module type VERIFIER = sig
 
   (** [make] precomputes the set of values needed by the cryptographic
     primitives defined in this module and stores them in a value of type [t] *)
-  val make : parameters -> (t, [> `Fail of string]) result
+  val make : parameters -> (t, [> `Fail of string | `Wrong_SRS_loaded]) result
 
   (** [parameters t] returns the parameters given when [t] was
      initialised with the function {!val:make} *)

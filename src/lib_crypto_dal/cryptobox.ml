@@ -547,9 +547,9 @@ module Inner = struct
         | Some srs_g1 ->
             (* Check that srs_g1 is consistent with Srs_verifier, ie the correct
                SRS was been loaded *)
-            if not (G1.eq (Srs_g1.get srs_g1 1) (Srs_verifier.get_srs1 1)) then
-              Error (`Fail "Wrong SRS loaded.")
-            else Ok (`Prover, srs_g1)
+            if G1.eq (Srs_g1.get srs_g1 1) (Srs_verifier.get_srs1 1) then
+              Ok (`Prover, srs_g1)
+            else Error `Wrong_SRS_loaded
         | None -> Ok (`Verifier, Srs_verifier.get_verifier_srs1 ())
       in
       let* () =

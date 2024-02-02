@@ -612,7 +612,10 @@ module Test = struct
         assert (ensure_validity params) ;
         (let* t =
            Result.map_error
-             (function `Fail s -> [Error_monad.error_of_exn (Failure s)])
+             (function
+               | `Fail s -> [Error_monad.error_of_exn (Failure s)]
+               | `Wrong_SRS_loaded ->
+                   [Error_monad.error_of_exn (Failure "Wrong SRS loaded.")])
              (make params)
          in
          let filename = path "test_precomputation" in
@@ -652,7 +655,10 @@ module Test = struct
         assert (ensure_validity params) ;
         (let* t =
            Result.map_error
-             (function `Fail s -> [Error_monad.error_of_exn (Failure s)])
+             (function
+               | `Fail s -> [Error_monad.error_of_exn (Failure s)]
+               | `Wrong_SRS_loaded ->
+                   [Error_monad.error_of_exn (Failure "Wrong SRS loaded.")])
              (make params)
          in
          let precomputation = Cryptobox.precompute_shards_proofs t in
@@ -731,6 +737,45 @@ module Test = struct
     |> function
     | Error [Cryptobox.Failed_to_load_trusted_setup s] ->
         if Re.Str.(string_match (regexp "EOF") s 0) then () else assert false
+    | _ -> assert false
+
+  let test_wrong_SRS_loaded () =
+    Cryptobox.Internal_for_tests.reset_initialisation_parameters () ;
+    let find_srs_files () : (string * string) Error_monad.tzresult =
+      Ok (path "srs_zcash_g1_5", path "srs_zcash_g2_5")
+    in
+    let dummy_params : Dal_config.parameters =
+      {
+        slot_size = 2;
+        page_size = 2;
+        number_of_shards = 2;
+        redundancy_factor = 2;
+      }
+    in
+    let config : Cryptobox.Config.t =
+      {activated = true; use_mock_srs_for_testing = None; bootstrap_peers = []}
+    in
+    Cryptobox.Internal_for_tests.reset_initialisation_parameters () ;
+    let _ =
+      Lwt_main.run
+        (Cryptobox.Config.init_dal ~find_srs_files ~srs_size_log2:5 config)
+    in
+    (match Cryptobox.Internal_for_tests.make dummy_params with
+    | Error `Wrong_SRS_loaded -> ()
+    | _ -> assert false) ;
+    let config : Cryptobox.Config.t =
+      {
+        activated = true;
+        use_mock_srs_for_testing = Some dummy_params;
+        bootstrap_peers = [];
+      }
+    in
+    let _ =
+      Lwt_main.run
+        (Cryptobox.Config.init_dal ~find_srs_files ~srs_size_log2:5 config)
+    in
+    match Cryptobox.make dummy_params with
+    | Error `Wrong_SRS_loaded -> ()
     | _ -> assert false
 
   let test_wrong_slot_size =
@@ -1062,7 +1107,8 @@ let test =
       ("find_trusted_setup_files", Test.find_trusted_setup_files);
       ("find_trusted_setup_files_failure", Test.find_trusted_setup_files_failure);
       ( "shard_proofs_invalid_parameter",
-        Test.test_shard_proofs_invalid_parameter )
+        Test.test_shard_proofs_invalid_parameter );
+      ("wrong_SRS_loaded", Test.test_wrong_SRS_loaded)
       (*("test_collision_page_size", Test.test_collision_page_size);*);
     ]
 

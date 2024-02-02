@@ -53,6 +53,7 @@ let mk_cryptobox dal_params =
   match Cryptobox.make dal_params with
   | Ok dal -> return dal
   | Error (`Fail s) -> fail [Test_failure s]
+  | Error `Wrong_SRS_loaded -> fail [Test_failure "Wrong SRS loaded"]
 
 let derive_dal_parameters (reference : Cryptobox.parameters) ~redundancy_factor
     ~constants_divider =

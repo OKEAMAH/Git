@@ -420,6 +420,7 @@ module Helpers = struct
     match Cryptobox.make parameters with
     | Ok cryptobox -> cryptobox
     | Error (`Fail msg) -> on_error msg
+    | Error `Wrong_SRS_loaded -> on_error "Wrong SRS loaded"
 
   let publish_slot_header ?counter ?force ?source ?fee ?error ~index ~commitment
       ~proof client =

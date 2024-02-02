@@ -1496,6 +1496,8 @@ module Dal = struct
     | Ok cryptobox -> return cryptobox
     | Error (`Fail explanation) ->
         error (Dal_errors_repr.Dal_cryptobox_error {explanation})
+        | Error (`Wrong_SRS_loaded) ->
+            error (Dal_errors_repr.Dal_cryptobox_error {explanation = "Wrong SRS loaded"})
 
   let number_of_slots ctxt = ctxt.back.constants.dal.number_of_slots
 

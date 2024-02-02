@@ -447,7 +447,7 @@ module Internal_for_tests : sig
   (** [make] precomputes the set of values needed by the cryptographic
     primitives defined in this module and stores them in a value of type [t].
     [t] is computed for the testing SRS, not from ZCash’s SRS *)
-  val make : parameters -> (t, [> `Fail of string]) result
+  val make : parameters -> (t, [> `Fail of string | `Wrong_SRS_loaded]) result
 
   (** Returns a randomized valid sequence of shards using the random state
      [state] for the given parameters. *)

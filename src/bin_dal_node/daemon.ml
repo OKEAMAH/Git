@@ -73,6 +73,8 @@ let init_cryptobox dal_config (proto_parameters : Dal_plugin.proto_parameters) =
   match Cryptobox.make proto_parameters.cryptobox_parameters with
   | Ok cryptobox -> return cryptobox
   | Error (`Fail msg) -> fail [Cryptobox_initialisation_failed msg]
+  | Error `Wrong_SRS_loaded ->
+      fail [Cryptobox_initialisation_failed "Wrong SRS loaded"]
 
 module Handler = struct
   (** [make_stream_daemon handler streamed_call] calls [handler] on each newly

@@ -1056,6 +1056,10 @@ let prepare_first_block ~level ~timestamp _chain_id ctxt =
             | Ok _cryptobox -> ok ()
             | Error (`Fail explanation) ->
                 error (Dal_errors_repr.Dal_cryptobox_error {explanation})
+            | Error `Wrong_SRS_loaded ->
+                error
+                  (Dal_errors_repr.Dal_cryptobox_error
+                     {explanation = "Wrong SRS loaded"})
           else ok ()
         in
         let dal_activation_level =
@@ -1800,7 +1804,11 @@ module Dal = struct
             let back = {ctxt.back with dal_cryptobox = Some cryptobox} in
             return ({ctxt with back}, cryptobox)
         | Error (`Fail explanation) ->
-            tzfail (Dal_errors_repr.Dal_cryptobox_error {explanation}))
+            tzfail (Dal_errors_repr.Dal_cryptobox_error {explanation})
+        | Error `Wrong_SRS_loaded ->
+            tzfail
+              (Dal_errors_repr.Dal_cryptobox_error
+                 {explanation = "Wrong SRS loaded"}))
 
   let number_of_slots ctxt = ctxt.back.constants.dal.number_of_slots
 

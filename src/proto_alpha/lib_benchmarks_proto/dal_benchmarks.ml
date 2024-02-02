@@ -89,6 +89,10 @@ module Publish_slot_header : Benchmark.S = struct
         | Ok cryptobox -> return cryptobox
         | Error (`Fail msg) ->
             failwith "Dal_benchmarks: failed to initialize cryptobox (%s)" msg
+        | Error `Wrong_SRS_loaded ->
+            failwith
+              "Dal_benchmarks: failed to initialize cryptobox (Wrong SRS \
+               loaded)"
       in
       (* Memoize the cryptobox in the context *)
       let*?@ ctxt, _abstract_cryptobox = Alpha_context.Dal.make ctxt in

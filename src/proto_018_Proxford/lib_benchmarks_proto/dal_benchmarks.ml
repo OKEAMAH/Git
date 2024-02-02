@@ -89,6 +89,7 @@ module Publish_slot_header : Benchmark.S = struct
         | Ok cryptobox -> return cryptobox
         | Error (`Fail msg) ->
             failwith "Dal_benchmarks: failed to initialize cryptobox (%s)" msg
+        | Error `Wrong_SRS_loaded -> failwith "Wrong SRS loaded"
       in
 
       let* op =

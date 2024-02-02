@@ -36,7 +36,7 @@ type parameters = {
 
 (** [make] precomputes the set of values needed by cryptographic primitives
   defined in this module and store them in a value of type [t] *)
-val make : parameters -> (t, [> `Fail of string]) result
+val make : parameters -> (t, [> `Fail of string | `Wrong_SRS_loaded]) result
 
 (** Commitment to a polynomial. *)
 type commitment
