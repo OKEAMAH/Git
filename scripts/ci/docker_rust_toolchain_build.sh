@@ -32,8 +32,10 @@ image_base="${rust_toolchain_image_name}"
 
 image_tag="${rust_toolchain_image_tag:-}"
 if [ -z "$image_tag" ]; then
-  # by default, tag with the hash of the [images/rust-toolchain] folder.
-  image_tag=$(git ls-files -s images/rust-toolchain | git hash-object --stdin)
+  # by default, tag with the hash of this image's input, which are:
+  #  - this script
+  #  - the contents of the [images/rust-toolchain] directory.
+  image_tag=$(git ls-files -s scripts/ci/docker_rust_toolchain_build.sh images/rust-toolchain | git hash-object --stdin)
 fi
 image_name="${image_base}:${image_tag}"
 
