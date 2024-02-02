@@ -417,7 +417,7 @@ module Helpers = struct
       Cryptobox.Internal_for_tests.parameters_initialisation ()
     in
     Cryptobox.Internal_for_tests.load_parameters initialisation_parameters ;
-    match Cryptobox.make parameters with
+    match Cryptobox.Internal_for_tests.make parameters with
     | Ok cryptobox -> cryptobox
     | Error (`Fail msg) -> on_error msg
     | Error `Wrong_SRS_loaded -> on_error "Wrong SRS loaded"

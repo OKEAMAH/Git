@@ -584,6 +584,8 @@ module Test = struct
         | Ok false -> true
         | _ -> false)
 
+  (* TODO rajouter un test sur le cas limite degré du polynôme juste égal à la taille de la SRS pour le commitment proof *)
+
   let test_select_fft_domain =
     let open QCheck2 in
     Test.make
