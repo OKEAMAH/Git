@@ -17,9 +17,9 @@ module Make (SimulationBackend : SimulationBackend) = struct
     let*? messages = Simulation.encode call in
     let insight_requests =
       [
-        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
-        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
         Simulation.Encodings.Durable_storage_key ["evm"; "simulation_gas"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
       ]
     in
     let* results =
@@ -39,9 +39,9 @@ module Make (SimulationBackend : SimulationBackend) = struct
     let*? messages = Simulation.encode call in
     let insight_requests =
       [
-        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
-        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
         Simulation.Encodings.Durable_storage_key ["evm"; "simulation_gas"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
       ]
     in
     let* results =
@@ -61,6 +61,7 @@ module Make (SimulationBackend : SimulationBackend) = struct
     let*? messages = Simulation.encode_tx tx_raw in
     let insight_requests =
       [
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_gas"];
         Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
         Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
       ]

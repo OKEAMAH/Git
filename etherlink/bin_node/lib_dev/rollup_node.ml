@@ -85,9 +85,15 @@ end) : Services_backend_sig.Backend = struct
     let simulate_and_read ~input =
       let open Lwt_result_syntax in
       let* json = call_service ~base:Base.base simulation () () input in
+      let () =
+        Printf.printf
+          "simulate_and_read.json: %s\n%!"
+          (Data_encoding.Json.to_string json)
+      in
       let eval_result =
         Data_encoding.Json.destruct Simulation.Encodings.eval_result json
       in
+      let () = Printf.printf "eval_result not parsed\n%!" in
       return eval_result.insights
   end
 

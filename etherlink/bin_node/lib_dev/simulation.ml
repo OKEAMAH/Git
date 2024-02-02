@@ -125,7 +125,7 @@ module Encodings = struct
   type insights = {
     success : bool option;
     result : bytes option;
-    gas : Z.t option;
+    gas : bytes option;
   }
 
   type eval_result = {
@@ -214,24 +214,24 @@ module Encodings = struct
 
   let insights =
     conv
-      (fun {success; result; gas} -> (success, result, gas))
-      (fun (success, result, gas) -> {success; result; gas})
-      (tup3 bool_as_bytes (option bytes) (option n))
+      (fun {success; result; gas} -> (gas, result, success))
+      (fun (gas, result, success) -> {gas; result; success})
+      (tup3 (option bytes) (option bytes) bool_as_bytes)
 
-  let insights_from_list l =
-    match l with
-    | [success; result; gas] ->
-        Some
-          {
-            success =
-              Option.bind success (fun s ->
-                  s
-                  |> Data_encoding.Binary.of_bytes Data_encoding.bool
-                  |> Result.to_option);
-            result;
-            gas = Option.map (fun s -> s |> Bytes.to_string |> Z.of_bits) gas;
-          }
-    | _ -> None
+  let insights_from_list _l = assert false
+  (* match l with *)
+  (* | [success; result; gas] -> *)
+  (*     Some *)
+  (*       { *)
+  (*         success = *)
+  (*           Option.bind success (fun s -> *)
+  (*               s *)
+  (*               |> Data_encoding.Binary.of_bytes Data_encoding.bool *)
+  (*               |> Result.to_option); *)
+  (*         result; *)
+  (*         gas = Option.map (fun s -> s |> Bytes.to_string |> Z.of_bits) gas; *)
+  (*       } *)
+  (* | _ -> None *)
 
   let eval_result =
     conv
@@ -278,8 +278,20 @@ let call_result Encodings.{success; result; gas = _} =
 
 let gas_estimation Encodings.{success; result; gas} =
   let open Lwt_result_syntax in
+  (match success with
+  | Some s -> Printf.printf "success = Some %b\n%!" s
+  | None -> Printf.printf "success = None\n%!") ;
+
+  (match gas with
+  | Some gas -> Printf.printf "gas = Some %s\n%!" (Hex.of_bytes gas |> Hex.show)
+  | None -> Printf.printf "gas = None\n%!") ;
+
   match (success, result, gas) with
   | Some true, _, Some simulated_amount ->
+      let simulated_amount = Bytes.to_string simulated_amount |> Z.of_bits in
+      Printf.printf
+        "gas_estimation.simulated_amount: %s\n%!"
+        (Z.to_string simulated_amount) ;
       (* See EIP2200 for reference. But the tl;dr is: we cannot do the
          opcode SSTORE if we have less than 2300 gas available, even
          if we don't consume it. The simulated amount then gives an

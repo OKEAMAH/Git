@@ -439,6 +439,7 @@ fn store_simulation_outcome<Host: Runtime>(
         }
         EvaluationOutcome::Outcome(None) => {
             storage::store_simulation_status(host, false)?;
+            storage::store_evaluation_gas(host, 0)?;
             storage::store_simulation_result(
                 host,
                 Some(b"No outcome was produced when the transaction was ran".to_vec()),
@@ -446,6 +447,7 @@ fn store_simulation_outcome<Host: Runtime>(
         }
         EvaluationOutcome::OutOfTicks => {
             storage::store_simulation_status(host, false)?;
+            storage::store_evaluation_gas(host, 0)?;
             storage::store_simulation_result(
                 host,
                 Some(
@@ -458,6 +460,7 @@ fn store_simulation_outcome<Host: Runtime>(
         }
         EvaluationOutcome::EvaluationError(err) => {
             storage::store_simulation_status(host, false)?;
+            storage::store_evaluation_gas(host, 0)?;
             let msg = format!("The transaction failed: {:?}.", err);
             storage::store_simulation_result(host, Some(msg.as_bytes().to_vec()))
         }
@@ -468,6 +471,7 @@ fn store_tx_validation_outcome<Host: Runtime>(
     host: &mut Host,
     outcome: TxValidationOutcome,
 ) -> Result<(), anyhow::Error> {
+    storage::store_evaluation_gas(host, 0)?;
     match outcome {
         TxValidationOutcome::Valid(caller) => {
             storage::store_simulation_status(host, true)?;
