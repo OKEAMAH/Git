@@ -1774,11 +1774,12 @@ impl<'a, Host: Runtime> Handler for EvmHandler<'a, Host> {
         // Charge of 2 gas for every 32-byte chunk of initcode to represent
         // the cost of jumpdest-analysis
         let extra_cost: u64 = (init_code.len() / 32).try_into().unwrap();
+        let _ = self.record_cost(2 * extra_cost);
         let target_gas = Some(self.gas_remaining());
-        let target_gas: Option<u64> = match target_gas {
-            Some(gas) => Some(gas + 2 * extra_cost),
-            None => Some(2 * extra_cost),
-        };
+        // let target_gas: Option<u64> = match target_gas {
+        //     Some(gas) => Some(gas),
+        //     None => None,
+        // };
 
         let gas_limit = self.nested_call_gas_limit(target_gas);
 
