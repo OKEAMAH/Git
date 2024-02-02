@@ -95,17 +95,22 @@ let () =
 
 *)
 
+type connection_info = {
+  heads : (Block_hash.t * Block_header.t) Lwt_stream.t;
+  stopper : Tezos_rpc.Context.stopper;
+}
+
 type t = {
   name : string;
   protocols : Protocol_hash.t list option;
   reconnection_delay : float;
-  heads : (Block_hash.t * Block_header.t) Lwt_stream.t;
   cctxt : Client_context.full;
-  stopper : Tezos_rpc.Context.stopper;
+  mutable connection : connection_info option;
   mutable running : bool;
 }
 
-let rec connect ~name ?(count = 0) ~delay ~protocols cctxt =
+let rec connect ?(count = 0)
+    ({name; protocols; reconnection_delay = delay; cctxt; _} as l1_ctxt) =
   let open Lwt_syntax in
   let* () =
     if count = 0 then return_unit
@@ -123,54 +128,62 @@ let rec connect ~name ?(count = 0) ~delay ~protocols cctxt =
       let* () = Layer1_event.wait_reconnect ~name delay in
       Lwt_unix.sleep delay
   in
-  let* res =
-    Tezos_shell_services.Monitor_services.heads ?protocols cctxt cctxt#chain
-  in
-  match res with
-  | Ok (heads, stopper) ->
-      let heads =
-        Lwt_stream.map_s
-          (fun ( hash,
-                 (Tezos_base.Block_header.{shell = {level; _}; _} as header) ) ->
-            let+ () = Layer1_event.switched_new_head ~name hash level in
-            (hash, header))
-          heads
+  match l1_ctxt.connection with
+  | Some {heads; _} ->
+      Format.eprintf "Already connected@." ;
+      (* Already connected *)
+      return heads
+  | None -> (
+      Format.eprintf "Reconnected@." ;
+      let* res =
+        Tezos_shell_services.Monitor_services.heads ?protocols cctxt cctxt#chain
       in
-      return (heads, stopper)
-  | Error e ->
-      let* () = Layer1_event.cannot_connect ~name ~count e in
-      connect ~name ~delay ~protocols ~count:(count + 1) cctxt
+      match res with
+      | Ok (heads, stopper) ->
+          let heads =
+            Lwt_stream.map_s
+              (fun ( hash,
+                     (Tezos_base.Block_header.{shell = {level; _}; _} as header)
+                   ) ->
+                let+ () = Layer1_event.switched_new_head ~name hash level in
+                (hash, header))
+              heads
+          in
+          l1_ctxt.connection <- Some {heads; stopper} ;
+          return heads
+      | Error e ->
+          let* () = Layer1_event.cannot_connect ~name ~count e in
+          connect ~count:(count + 1) l1_ctxt)
 
 let start ~name ~reconnection_delay ?protocols (cctxt : #Client_context.full) =
   let open Lwt_syntax in
   let* () = Layer1_event.starting ~name in
-  let+ heads, stopper =
-    connect ~name ~delay:reconnection_delay ~protocols cctxt
+  let l1_ctxt =
+    {
+      name;
+      cctxt = (cctxt :> Client_context.full);
+      reconnection_delay;
+      protocols;
+      connection = None;
+      running = true;
+    }
   in
-  {
-    name;
-    cctxt = (cctxt :> Client_context.full);
-    heads;
-    stopper;
-    reconnection_delay;
-    protocols;
-    running = true;
-  }
+  let* (_ : (Block_hash.t * Block_header.t) Lwt_stream.t) = connect l1_ctxt in
+  return l1_ctxt
 
 let reconnect l1_ctxt =
-  let open Lwt_syntax in
-  let* heads, stopper =
-    connect
-      ~name:l1_ctxt.name
-      ~count:1
-      ~delay:l1_ctxt.reconnection_delay
-      ~protocols:l1_ctxt.protocols
-      l1_ctxt.cctxt
-  in
-  return {l1_ctxt with heads; stopper}
+  Format.eprintf "Reconnecting@." ;
+  connect ~count:1 l1_ctxt
+
+let disconnect l1_ctxt =
+  match l1_ctxt.connection with
+  | None -> ()
+  | Some {stopper; _} ->
+      stopper () ;
+      l1_ctxt.connection <- None
 
 let shutdown state =
-  state.stopper () ;
+  disconnect state ;
   state.running <- false ;
   Lwt.return_unit
 
@@ -213,6 +226,7 @@ let timeout_factor = 10.
     considered. *)
 let lwt_stream_iter_with_timeout ~min_timeout ~init_timeout f stream =
   let open Lwt_syntax in
+  (* let stream = Lwt_stream.clone stream in *)
   let rec loop timeout =
     let get_promise =
       let+ res = Lwt_stream.get stream in
@@ -243,17 +257,13 @@ let lwt_stream_iter_with_timeout ~min_timeout ~init_timeout f stream =
   loop init_timeout
 
 let iter_heads l1_ctxt f =
-  let rec loop l1_ctxt =
-    let open Lwt_result_syntax in
+  let open Lwt_result_syntax in
+  let rec loop heads =
     let* stopping_reason =
-      lwt_stream_iter_with_timeout
-        ~min_timeout:10.
-        ~init_timeout:300.
-        f
-        l1_ctxt.heads
+      lwt_stream_iter_with_timeout ~min_timeout:10. ~init_timeout:300. f heads
     in
     when_ l1_ctxt.running @@ fun () ->
-    l1_ctxt.stopper () ;
+    disconnect l1_ctxt ;
     let*! () =
       match stopping_reason with
       | Closed -> Layer1_event.connection_lost ~name:l1_ctxt.name
@@ -263,22 +273,25 @@ let iter_heads l1_ctxt f =
           Format.eprintf "@[<v 2>Connection error:@ %a@]@." pp_print_trace trace ;
           Lwt.return_unit
     in
-    let*! l1_ctxt = reconnect l1_ctxt in
-    loop l1_ctxt
+    let*! heads = reconnect l1_ctxt in
+    loop heads
   in
-  loop l1_ctxt
+  let*! heads = connect l1_ctxt in
+  loop heads
 
 let wait_first l1_ctxt =
-  let rec loop l1_ctxt =
-    let open Lwt_syntax in
-    let* head = Lwt_stream.peek l1_ctxt.heads in
+  let open Lwt_syntax in
+  let rec loop heads =
+    let* head = Lwt_stream.peek heads in
     match head with
     | Some head -> return head
     | None ->
-        let* l1_ctxt = reconnect l1_ctxt in
-        loop l1_ctxt
+        let* heads = reconnect l1_ctxt in
+        loop heads
   in
-  Lwt.no_cancel @@ loop l1_ctxt
+  Lwt.no_cancel
+  @@ let* heads = connect l1_ctxt in
+     loop heads
 
 (** [predecessors_of_blocks hashes] given a list of successive block hashes,
     from newest to oldest, returns an associative list that associates a hash to
@@ -431,14 +444,12 @@ let get_tezos_reorg_for_new_head l1_state ?get_old_predecessor old_head new_head
 
 module Internal_for_tests = struct
   let dummy cctxt =
-    let heads, _push = Lwt_stream.create () in
     {
       name = "dummy_layer_1_for_tests";
       reconnection_delay = 5.0;
-      heads;
       cctxt = (cctxt :> Client_context.full);
-      stopper = Fun.id;
       protocols = None;
+      connection = None;
       running = false;
     }
 end
