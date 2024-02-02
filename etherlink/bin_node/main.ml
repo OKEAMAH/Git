@@ -85,7 +85,7 @@ module Event = struct
       ~section
       ~name:"callback_log"
       ~msg:"Uri: {uri}\nMethod: {method}\nBody: {body}\n"
-      ~level:Notice
+      ~level:Debug
       ("uri", Data_encoding.string)
       ("method", Data_encoding.string)
       ("body", Data_encoding.string)
