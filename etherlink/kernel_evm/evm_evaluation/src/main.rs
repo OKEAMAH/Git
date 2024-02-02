@@ -344,6 +344,11 @@ pub fn check_skip(test_file_path: &Path) -> bool {
         | "storageCosts.json"
         | "transactionCosts.json"
         | "variedContext.json"
+
+        // Reason: test only precise gas value to reach OutOfGas for some opcodes
+        // see https://github.com/ethereum/tests/issues/909
+        // see https://gitlab.com/tezos/tezos/-/merge_requests/11818
+        | "operationDiffGas.json"
     )
 }
 
