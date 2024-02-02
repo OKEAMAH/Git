@@ -226,7 +226,7 @@ let timeout_factor = 10.
     considered. *)
 let lwt_stream_iter_with_timeout ~min_timeout ~init_timeout f stream =
   let open Lwt_syntax in
-  (* let stream = Lwt_stream.clone stream in *)
+  let stream = Lwt_stream.clone stream in
   let rec loop timeout =
     let get_promise =
       let+ res = Lwt_stream.get stream in
