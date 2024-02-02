@@ -45,6 +45,7 @@ include:
   - .gitlab/ci/jobs/test/tezt.yml
   - .gitlab/ci/jobs/test/test_kernels.yml
   - .gitlab/ci/jobs/test/test_etherlink_kernel.yml
+  - .gitlab/ci/jobs/test/test_riscv_kernels.yml
 
   # Stage: test_coverage
   # Only run on merge requests that do not have the label `ci--no-coverage`

@@ -1,22 +1,22 @@
-test_kernels:
+test_riscv_kernels:
   extends:
     - .oc.kernels_template
   stage: test
   needs: [oc.docker:rust-toolchain]
   script:
-    - make -f kernels.mk check
-    - make -f kernels.mk test
+    - make -f riscv.mk check
+    - make -f riscv.mk test
   rules:
     - changes:
         - .gitlab-ci.yml
         # Run if the `rust-toolchain` image is updated
         - images/**/*
-        - kernels.mk
-        - src/kernel_*/**/*
+        - riscv.mk
+        - src/risc_v/**/*
         - .gitlab/**/*
         - .gitlab-ci.yml
       when: on_success
   cache:
-    key: kernels
+    key: riscv_kernels
     paths:
       - cargo/
