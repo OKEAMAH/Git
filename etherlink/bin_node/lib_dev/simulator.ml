@@ -17,10 +17,9 @@ module Make (SimulationBackend : SimulationBackend) = struct
     let*? messages = Simulation.encode call in
     let insight_requests =
       [
-        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
-        (* TODO: https://gitlab.com/tezos/tezos/-/issues/5900
-           for now the status is not used but it should be for error handling *)
         Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_gas"];
       ]
     in
     let* results =
@@ -40,10 +39,9 @@ module Make (SimulationBackend : SimulationBackend) = struct
     let*? messages = Simulation.encode call in
     let insight_requests =
       [
-        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_gas"];
-        (* TODO: https://gitlab.com/tezos/tezos/-/issues/5900
-           for now the status is not used but it should be for error handling *)
         Simulation.Encodings.Durable_storage_key ["evm"; "simulation_status"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_result"];
+        Simulation.Encodings.Durable_storage_key ["evm"; "simulation_gas"];
       ]
     in
     let* results =
